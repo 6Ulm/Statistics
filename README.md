@@ -1,2 +1,3 @@
-# Statistics
-I wrote myself some libraries in R
+Implementation of:
+- EM and K-means
+- Hidden markov model with Viterbi algo
