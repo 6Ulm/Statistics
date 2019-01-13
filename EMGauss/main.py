@@ -1,4 +1,4 @@
-import DM2, os
+import EM_K_means, os
 
 file_path = os.getcwd() + '/data/'
 save_path = os.getcwd()
@@ -15,20 +15,29 @@ general_para = {'K':4,
                 'n_init': 1000, 
                 'bootstrap_size': 10}
 
+# read and convert data to numpy array
+def to_numpy(file_path, filename):
+    with open(file_path + filename, 'r') as file:
+        data = file.readlines()
+    data = [line.replace('\n', '') for line in data]
+    data = [line.split() for line in data]
+    data = np.array([list(map(float, line)) for line in data])
+    return data
+
 # import data
 file_train = "EMGaussian.data"
 file_test = "EMGaussian.test"
-train = DM2.to_numpy(file_path, file_train)
-test = DM2.to_numpy(file_path, file_test)
+train = to_numpy(file_path, file_train)
+test = to_numpy(file_path, file_test)
 data_set = {'train': train,
             'test': test}
 
 # Plot Kmeans
-DM2.plot_kmeans_clusters(train, general_para['K'], \
+EM_K_means.plot_kmeans_clusters(train, general_para['K'], \
                         general_para['n_init'], save_path)
 
 # Plot EM with General covariance matrix
-DM2.plot_EM_clusters(data_set, general_para, False, save_path)
+EM_K_means.plot_EM_clusters(data_set, general_para, False, save_path)
 
 # Plot EM with Isotropic covariance matrix
-DM2.plot_EM_clusters(data_set, general_para, True, save_path)
+EM_K_means.plot_EM_clusters(data_set, general_para, True, save_path)
