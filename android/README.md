@@ -109,6 +109,25 @@ npm test
   Tứ Trụ (so với bản web gốc), tìm kiếm thành phố, suy múi giờ, luồng GPS,
   nhập toạ độ tay, nút Back.
 
+### Đối chiếu 1-1 với bản web gốc
+
+Nạp CẢ HAI bản trong jsdom rồi so từng trường hiển thị một:
+
+```bash
+node diff_vs_original.mjs /đường/dẫn/QMDJ_1_1.html 1000
+node diff_vs_original.mjs /đường/dẫn/QMDJ_1_1.html 1000 987654321   # hạt giống khác
+```
+
+Bộ ca gồm các mốc dễ sai — ranh giới giờ Tý (22h–1h), quanh Lập Xuân và
+Đông/Hạ Chí, ngày đổi giờ mùa hè ở châu Âu và Bắc Mỹ, 29/2 năm nhuận, cuối
+tháng — cộng phần ngẫu nhiên phủ 1900–2100 × 28 vị trí × 3 phái × 2 ngôn ngữ.
+
+So sánh 35 trường mỗi ca: 4 trụ can/chi, nạp âm, Chính Ngọ, Tiết khí, Cục,
+Tuần thủ, Trực Phù/Trực Sử, lịch âm, **toàn bộ HTML của bàn Kỳ Môn 9 cung**, và
+bảng chi tiết của cả ba phái.
+
+Kết quả: **2000 ca (2 hạt giống), 70.000 trường, 0 khác biệt.**
+
 ## Sinh lại CSDL thành phố
 
 ```bash
