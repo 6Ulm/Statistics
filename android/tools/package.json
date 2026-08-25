@@ -1,0 +1,13 @@
+{
+  "name": "battu-kymon-tools",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Kiểm thử headless cho phần web đóng gói trong app Android.",
+  "scripts": {
+    "test": "node test_astro.mjs && node test_app.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.0"
+  }
+}

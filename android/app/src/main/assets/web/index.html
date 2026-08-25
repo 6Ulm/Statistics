@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#f4f7f9">
+    <title>Bát Tự &amp; Kỳ Môn — Giờ Mặt Trời thật</title>
+    <link rel="stylesheet" href="css/app.css">
+    <link rel="stylesheet" href="css/location.css">
+</head>
+<body id="mainBody" class="lang-zh">
+<script>
+// Samsung Internet / older Android WebView: đảm bảo Intl hoạt động
+if (typeof Intl === 'undefined' || typeof Intl.DateTimeFormat === 'undefined') {
+    window.getTimezoneOffset = function() { return 0; };
+}
+// Fix CSS env() không hỗ trợ trên Samsung cũ
+if (!CSS || !CSS.supports || !CSS.supports('padding-bottom', 'env(safe-area-inset-bottom)')) {
+    document.documentElement.style.setProperty('--safe-area-bottom', '0px');
+}
+</script>
+
+<div class="controls">
+    <!-- Language toggle -->
+    <div class="control-item gap-md">
+        <div id="langToggleWrap" class="toggle-row" style="flex:1;margin-bottom:0;">
+            <div id="langBtn_zh" onclick="setLang('zh')" class="method-toggle method-toggle-active toggle-btn">中文</div>
+            <div id="langBtn_vi" onclick="setLang('vi')" class="method-toggle toggle-btn toggle-btn-right">Tiếng Việt</div>
+        </div>
+
+    </div>
+
+    <!-- Hidden selects – kept for JS compatibility -->
+    <select id="inDay"        class="hidden-select"></select>
+    <select id="inMonth"      class="hidden-select"></select>
+    <select id="inYear"       class="hidden-select"></select>
+    <select id="solarHour"    class="hidden-select"></select>
+    <select id="solarMinute"  class="hidden-select"></select>
+    <select id="country"      class="hidden-select"></select>
+    <select id="methodSelect" class="hidden-select">
+        <option value="amban"  selected>Âm Bàn</option>
+        <option value="bophap">Sách Bổ</option>
+        <option value="trinhuan">Trí Nhuận</option>
+    </select>
+
+    <!-- Row 1: Date+Time | Country | Default -->
+    <div class="control-item gap-md">
+        <div id="dateDisplayBtn" onclick="openDatePicker()" class="picker-btn">
+            <span id="dateDisplayText">—</span>
+        </div>
+        <div id="countryDisplayBtn" onclick="openCountryPicker()" class="picker-btn">
+            <span id="countryDisplayText" class="picker-text">—</span>
+        </div>
+
+    </div>
+
+    <!-- Row 2: Method toggle buttons -->
+    <div class="control-item gap-md">
+      <div id="methodToggleWrap" class="toggle-row" style="flex:1;margin-bottom:0;">
+            <div id="methodBtn_trinhuan" onclick="selectMethod('trinhuan')" class="method-toggle toggle-btn">
+                <span id="lblMethodTriNhuan">Trí Nhuận</span>
+            </div>
+
+            <div id="methodBtn_amban"  onclick="selectMethod('amban')"  class="method-toggle method-toggle-active toggle-btn toggle-btn-right">
+                <span id="lblMethodAmBan">Âm Bàn</span>
+            </div>
+
+            <div id="methodBtn_bophap" onclick="selectMethod('bophap')" class="method-toggle toggle-btn toggle-btn-right">
+                <span id="lblMethodBoPháp">Sách Bổ</span>
+            </div>
+        </div>        <label id="cobanToggleWrap" style="display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;font-size:13px;color:var(--text-main,#333);user-select:none;margin-left:6px;">
+            <input type="checkbox" id="chkHienThiCoBan" onchange="applyCobanFilter()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent,#5c7cfa);">
+            <span id="lblHienThiCoBan">Đầy đủ</span>
+        </label>
+    </div>
+</div>
+
+
+<!-- ══ TỨ TRỤ (BÁT TỰ) PANEL ══ -->
+<table id="tuTruPanel" style="display:none;">
+    <thead>
+        <tr>
+            <th id="lblTTNam"><span id="lblTTNamTxt">Năm</span><span class="tt-val" id="ttValNam"></span></th>
+            <th id="lblTTThang"><span id="lblTTThangTxt">Tháng</span><span class="tt-val" id="ttValThang"></span></th>
+            <th id="lblTTNgay"><span id="lblTTNgayTxt">Ngày</span><span class="tt-val" id="ttValNgay"></span></th>
+            <th id="lblTTGio"><span id="lblTTGioTxt">Giờ</span><span class="tt-val" id="ttValGio"></span></th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="tt-can" id="ttCanNam">—</td>
+            <td class="tt-can" id="ttCanThang">—</td>
+            <td class="tt-can" id="ttCanNgay">—</td>
+            <td class="tt-can" id="ttCanGio">—</td>
+        </tr>
+        <tr>
+            <td id="ttChiNam"   class="tt-chi">—</td>
+            <td id="ttChiThang" class="tt-chi">—</td>
+            <td id="ttChiNgay"  class="tt-chi">—</td>
+            <td id="ttChiGio"   class="tt-chi">—</td>
+        </tr>
+        <tr>
+            <td id="ttKVNam"   class="tt-kv">—</td>
+            <td id="ttKVThang" class="tt-kv">—</td>
+            <td id="ttKVNgay"  class="tt-kv">—</td>
+            <td id="ttKVGio"   class="tt-kv">—</td>
+        </tr>
+        <tr id="ttLunarRow">
+            <td colspan="4" style="color:var(--text-main,#333); padding:4px 6px; text-align:center;" class="tt-lunar">
+                <span class="lbl" id="lblLunarInTable">Lịch âm:</span>
+                <span class="val-norm" id="out-lunar-table"></span>
+                <span id="viaWrap" style="display:none;">
+                  &nbsp;·&nbsp;
+                  <span class="lbl" id="lblViaDay">Ngày vía:</span>
+                  <span class="val-norm" id="out-via"></span>
+                </span>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+<div id="board" class="grid" style="display: none;"></div>
+
+<div id="tuTruLegend" style="display:none; text-align:center; font-size:10.5px; color:var(--text-main,#333); letter-spacing:0;">
+  <span class="lbl-vi"><span class="tt-key">Y</span> = Can năm · <span class="tt-key">M</span> = Can tháng · <span class="tt-key">D</span> = Can ngày · <span class="tt-key">H</span> = Can giờ</span>
+  <span class="lbl-zh" style="display:none;"><span class="tt-key">Y</span><span class="tt-key-zh"> = 年干</span> &nbsp;·&nbsp; <span class="tt-key">M</span><span class="tt-key-zh"> = 月干</span> &nbsp;·&nbsp; <span class="tt-key">D</span><span class="tt-key-zh"> = 日干</span> &nbsp;·&nbsp; <span class="tt-key">H</span><span class="tt-key-zh"> = 时干</span></span>
+</div>
+
+<div id="drumOverlay">
+    <div id="drumPanel">
+        <div class="drum-header">
+            <span class="drum-cancel" id="drumCancelBtn">Hủy</span>
+            <span class="drum-title"  id="drumTitleLbl">Thời gian</span>
+            <span class="drum-ok"     id="drumOkBtn">Chọn</span>
+        </div>
+        <div class="drum-col-labels">
+            <div class="drum-col-label"       id="lblDrumDay">Ngày</div>
+            <div class="drum-col-label"       id="lblDrumMonth">Tháng</div>
+            <div class="drum-col-label wide"  id="lblDrumYear">Năm</div>
+            <div style="width:5px;flex-shrink:0;"></div>
+            <div class="drum-col-label"       id="lblDrumHour">Giờ</div>
+            <div class="drum-col-label"       id="lblDrumMinute">Phút</div>
+        </div>
+        <div class="drum-cols">
+            <div class="drum-highlight"></div>
+            <div class="drum-fade top"></div>
+            <div class="drum-fade bottom"></div>
+            <div class="drum-col"      id="drumCol_day">
+                <div class="drum-list" id="drumList_day"></div>
+            </div>
+            <div class="drum-col"      id="drumCol_month">
+                <div class="drum-list" id="drumList_month"></div>
+            </div>
+            <div class="drum-col wide" id="drumCol_year">
+                <div class="drum-list" id="drumList_year"></div>
+            </div>
+            <div class="drum-divider"></div>
+            <div class="drum-col"      id="drumCol_hour">
+                <div class="drum-list" id="drumList_hour"></div>
+            </div>
+            <div class="drum-col"      id="drumCol_minute">
+                <div class="drum-list" id="drumList_minute"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="info-panel" id="baziInfoPanel" style="display: none;">
+    <!-- Dòng 1: Chính Ngọ + Tiết khí -->
+    <div class="info-line info-line-nowrap">
+        <span class="info-pair info-pair-chinhngo info-pair-f1"><span class="lbl" id="lblChinhNgo">Chính Ngọ:</span><span class="val-norm val-ellipsis" id="out-chinhngo"></span></span>
+        <span class="info-pair info-pair-tietkhi info-pair-f14"><span class="lbl" id="lblTietkhi">Tiết khí:</span><span class="val-norm val-ellipsis" id="out-tietkhi"></span></span>
+    </div>
+    <!-- Dòng 3: Cục + Tuần thủ -->
+    <div class="info-line info-line-nowrap">
+        <span class="info-pair"><span class="lbl" id="lblCuc">Cục:</span><span class="val-norm" id="out-cuc"></span></span>
+        <span class="info-pair info-pair-tietkhi info-pair-f14"><span class="lbl" id="lblTuan">Tuần thủ:</span><span class="val-norm" id="out-tuan"></span></span>
+    </div>
+    <!-- Dòng 4: Trực Phù + Trực Sử -->
+    <div class="info-line info-line-nowrap">
+        <span class="info-pair"><span class="lbl" id="lblTP">Trực Phù:</span><span class="val-norm" id="out-tp"></span></span>
+        <span class="info-pair info-pair-tietkhi info-pair-f14"><span class="lbl" id="lblTS">Trực Sử:</span><span class="val-norm" id="out-ts"></span></span>
+    </div>
+</div>
+
+<!-- ══ BẢNG NHẬT – NGUYỆT THEO VỊ TRÍ THẬT ══ -->
+<div class="info-panel" id="astroPanel" style="display:none;">
+    <div class="info-line info-line-nowrap">
+        <span class="info-pair info-pair-wide"><span class="lbl" id="lblAstroSun">Mặt Trời:</span><span class="val-norm" id="out-astro-sun"></span></span>
+        <span class="info-pair"><span class="lbl" id="lblAstroDaylen">Ngày dài:</span><span class="val-norm" id="out-astro-daylen"></span></span>
+    </div>
+    <div class="info-line info-line-nowrap">
+        <span class="info-pair info-pair-wide"><span class="lbl" id="lblAstroMoon">Mặt Trăng:</span><span class="val-norm" id="out-astro-moon"></span></span>
+        <span class="info-pair"><span class="lbl" id="lblAstroNewMoon">Sóc kế:</span><span class="val-norm" id="out-astro-newmoon"></span></span>
+    </div>
+    <div class="info-line info-line-nowrap">
+        <span class="info-pair info-pair-wide"><span class="lbl" id="lblAstroPhase">Pha:</span><span class="val-norm" id="out-astro-phase"></span></span>
+        <span class="info-pair"><span class="lbl" id="lblAstroCoord">Toạ độ:</span><span class="val-norm" id="out-astro-coord"></span></span>
+    </div>
+    <div class="info-line info-line-nowrap">
+        <span class="info-pair"><span class="lbl" id="lblAstroOffset">Lệch giờ MT thật:</span><span class="val-norm" id="out-astro-offset"></span></span>
+    </div>
+</div>
+
+<!-- ══ TRÍ NHUẬN PHÁP — PTTN INFO PANEL (collapsible) ══ -->
+<div id="trinhuanPanel" class="dp-panel">
+  <div id="trinhuanHeader" class="dp-header" onclick="toggleDetailPanel('trinhuan')">
+    <span class="dp-title">Bảng chi tiết - Trí Nhuận pháp</span>
+    <span id="trinhuanChevron" class="dp-chevron">▾</span>
+  </div>
+  <div id="trinhuanBody" class="dp-body">
+    <div id="trn-pttn-row" style="display:flex;flex-direction:column;gap:2px;margin-bottom:3px;">
+      <span><span style="color:var(--text-dim,#888)">PTTN1:</span> <b id="trn-pttn1"></b> <span style="color:var(--text-dim,#888)">-</span> <span style="color:var(--text-dim,#888)">TK1:</span> <span id="trn-tk1"></span></span>
+      <span><span style="color:var(--text-dim,#888)">PTTN2:</span> <b id="trn-pttn2"></b> <span style="color:var(--text-dim,#888)">-</span> <span style="color:var(--text-dim,#888)">TK2:</span> <span id="trn-tk2"></span></span>
+      <span><span style="color:var(--text-dim,#888)">PTTN3:</span> <b id="trn-pttn3"></b> <span style="color:var(--text-dim,#888)">-</span> <span style="color:var(--text-dim,#888)">TK3:</span> <span id="trn-tk3"></span></span>
+      <span><span id="trn-d-summary"></span></span>
+    </div>
+    <div id="trn-table-wrap" class="dp-table-wrap">
+      <table id="trn-table" class="dp-table">
+        <thead>
+          <tr>
+            <th>PTTN</th>
+            <th>Dương lịch</th>
+            <th>Tiết Khí</th>
+            <th class="c">Độn</th>
+            <th class="c">Số Cục</th>
+          </tr>
+        </thead>
+        <tbody id="trn-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SÁCH BỔ PHÁP — INFO PANEL (collapsible, shares header with Trí Nhuận) ══ -->
+<div id="sachboPanel" class="dp-panel">
+  <div id="sachboHeader" class="dp-header" onclick="toggleDetailPanel('sachbo')">
+    <span class="dp-title">Bảng chi tiết - Sách Bổ pháp</span>
+    <span id="sachboChevron" class="dp-chevron">▾</span>
+  </div>
+  <div id="sachboBody" class="dp-body">
+    <div id="sb-table-wrap" class="dp-table-wrap">
+      <table id="sb-table" class="dp-table">
+        <thead>
+          <tr>
+            <th>Tiết Khí</th>
+            <th>Dương lịch</th>
+            <th class="c">Độn</th>
+            <th class="c">Số Cục</th>
+          </tr>
+        </thead>
+        <tbody id="sb-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ÂM BÀN — SOC PANEL (collapsible) ══ -->
+<div id="ambanPanel" class="dp-panel">
+  <div id="ambanHeader" class="dp-header" onclick="toggleDetailPanel('amban')">
+    <span class="dp-title">Bảng chi tiết - Âm Bàn pháp</span>
+    <span id="ambanChevron" class="dp-chevron">▾</span>
+  </div>
+  <div id="ambanBody" class="dp-body">
+    <div id="ab-table-wrap" class="dp-table-wrap">
+      <table id="ab-table" class="dp-table">
+        <thead>
+          <tr>
+            <th class="c">Tháng âm</th>
+            <th class="c">Thời điểm Sóc</th>
+            <th class="c">Mùng 1</th>
+            <th class="c">Rằm</th>
+          </tr>
+        </thead>
+        <tbody id="ab-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ BẢNG CHỌN VỊ TRÍ (GPS / thành phố / toạ độ) ══ -->
+<div id="locOverlay">
+    <div id="locPanel">
+        <div class="drum-header">
+            <span class="drum-cancel" id="locCancel">Hủy</span>
+            <span class="drum-title"  id="locTitle">Vị trí</span>
+            <span style="width:34px;"></span>
+        </div>
+        <div id="locSearchRow">
+            <input id="locSearch" type="search" autocomplete="off" autocorrect="off"
+                   autocapitalize="off" spellcheck="false" placeholder="Tìm thành phố…">
+            <div id="locGpsBtn">📍 Dùng vị trí hiện tại</div>
+        </div>
+        <div id="locStatus"></div>
+        <div id="locList"></div>
+        <div id="locManualToggle">⌖ Nhập toạ độ</div>
+        <div id="locManualBox">
+            <div class="loc-field">
+                <label for="locLat" id="lblLocLat">Vĩ độ</label>
+                <input id="locLat" type="text" inputmode="decimal" placeholder="21.0278">
+            </div>
+            <div class="loc-field">
+                <label for="locLon" id="lblLocLon">Kinh độ</label>
+                <input id="locLon" type="text" inputmode="decimal" placeholder="105.8342">
+            </div>
+            <div class="loc-field">
+                <label for="locTz" id="lblLocTz">Múi giờ</label>
+                <select id="locTz"></select>
+            </div>
+            <button id="locApply" type="button">Áp dụng</button>
+        </div>
+    </div>
+</div>
+
+
+<script src="js/lunar.js"></script>
+<script src="js/app.js"></script>
+<script src="js/astro.js"></script>
+<script src="js/location.js"></script>
+</body>
+</html>

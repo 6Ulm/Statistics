@@ -1,0 +1,606 @@
+        /* ── CSS Variables ── */
+        :root {
+            --accent: #007bff;
+            --border-std: 1px solid #ddd;
+            --border-panel: 1.5px solid #bbb;
+            --border-accent: 1.5px solid var(--accent);
+            --bg-body: #f4f7f9;
+            --bg-white: #fff;
+            --bg-card: #fff;
+            --bg-alt: #f9f9fb;
+            --accent-light: #e8edff;
+            --border-color: #ddd;
+            --text-main: #000;
+            --text-dim: #555;
+            --shadow-panel: 0 2px 10px rgba(0,0,0,.08);
+            --shadow-info: 0 1px 4px rgba(0,0,0,.05);
+            --panel-radius: 8px;
+            --max-w: 400px;
+            --font-main: "PingFang SC", "Noto Serif CJK SC", "Source Han Serif SC", "Microsoft YaHei", "SimSun", serif;
+            --don-duong: #d44;
+            --don-am: #555;
+            --don-am-sm: #666;
+        }
+
+        /* ── Reset ── */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0; padding: 0;
+            font-family: var(--font-main);
+            font-weight: 400;
+        }
+
+        /* ── Layout ── */
+        body {
+            background: var(--bg-body);
+            display: flex; flex-direction: column;
+            align-items: center;
+            padding: 4px 6px; gap: 3px;
+            color: var(--text-main);
+        }
+        @media (min-width: 768px) {
+            body { zoom: 1.25; }
+        }
+        .controls, .info-panel, .grid, #tuTruPanel, #trinhuanPanel, #sachboPanel, #ambanPanel, #tuTruLegend {
+            width: 100%; max-width: var(--max-w);
+        }
+        #tuTruLegend {
+            box-sizing: border-box;
+            border: var(--border-panel);
+            border-radius: var(--panel-radius);
+            background: var(--bg-white, #fff);
+            padding: 4px 8px;
+            margin-top: 2px;
+        }
+
+        /* ── Controls Panel ── */
+        .controls {
+            background: var(--bg-white);
+            padding: 5px; border-radius: var(--panel-radius);
+            display: flex; flex-wrap: wrap;
+            gap: 3px; justify-content: center;
+            box-shadow: var(--shadow-panel);
+            border: var(--border-panel);
+        }
+        .control-item {
+            display: flex; align-items: center;
+            gap: 2px; font-size: 12px;
+            color: var(--text-main); white-space: nowrap; width: 100%;
+        }
+        .control-item.gap-md { gap: 4px; }
+        select.hidden-select { display: none; }
+        select, input {
+            padding: 4px; border: var(--border-std);
+            border-radius: 1px; font-size: 12px;
+            background: var(--bg-white); color: var(--text-main);
+            flex: 1; text-align: center; cursor: pointer; outline: none;
+        }
+
+        /* ── Info Panel ── */
+        .info-panel {
+            background: var(--bg-white);
+            padding: 5px; border-radius: var(--panel-radius);
+            border: var(--border-panel); color: var(--text-main);
+            box-shadow: var(--shadow-info);
+            overflow: hidden; font-size: 11px;
+        }
+        .info-line {
+            margin: 2px 0; padding-bottom: 1px;
+            border-bottom: 1px dashed #eee;
+            display: flex; align-items: baseline; gap: 4px;
+        }
+        .info-line:last-child { border-bottom: none; padding-bottom: 0; }
+        .info-line-nowrap { display: flex; align-items: baseline; gap: 6px; }
+        .info-line-nowrap .info-pair {
+            display: flex; align-items: baseline;
+            gap: 4px; flex: 1; min-width: 0; overflow: hidden;
+        }
+        .info-pair-wide { flex: 4.2 !important; }
+        .info-pair-soc  { flex: 2.8 !important; }
+        /* Tiếng Trung: ghi đè inline flex để 4 cột phải thẳng hàng (节气/朔点/值符/值使) */
+        .lang-zh .info-pair-chinhngo { flex: 1 !important; }
+        .lang-zh .info-pair-tietkhi  { flex: 1 !important; }
+        .lang-zh .info-pair-lunar     { flex: 1 !important; }
+        .lang-zh .info-pair-soc2      { flex: 1 !important; }
+        .info-line-nowrap .val-norm { white-space: nowrap; overflow: hidden; }
+        /* info-pair flex variants — thay inline style="flex:N;min-width:0;overflow:hidden;" */
+        .info-pair-f1   { flex: 1   !important; min-width: 0; overflow: hidden; }
+        .info-pair-f14  { flex: 1.4 !important; min-width: 0; overflow: hidden; }
+        .info-pair-f2   { flex: 2   !important; min-width: 0; overflow: hidden; }
+        /* val-norm text-overflow variant */
+        .val-ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* tuTruLegend key badge */
+        .tt-key { display: inline-block; border: var(--border-accent); padding: 0px 3px; line-height: 1.4; font-weight: 400; color: var(--text-main); }
+        .tt-key-zh { font-size: 12.5px; }
+
+        /* ── Labels & Values ── */
+        .lbl { font-weight: 600; color: #2c3e50; white-space: nowrap; }
+        .val, .val-norm { color: #111; }
+        .txt-red { color: red !important; }
+
+        /* ── 9-cung Grid ── */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            background: rgba(34,34,34,.1);
+            border: 1.5px solid rgba(34,34,34,.1);
+            margin-top: 2px;
+        }
+        .cell {
+            background: var(--bg-white);
+            aspect-ratio: 1;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, .8fr);
+            border: 1px solid rgba(34,34,34,.2);
+            position: relative; overflow: hidden;
+        }
+        .cell.noi-ban { background-color: #ececec; }
+
+        /* ── Sub-cell base ── */
+        .sub-cell {
+            display: flex; align-items: center; justify-content: center;
+            font-size: clamp(8px, 3vw, 10px);
+            white-space: nowrap; color: var(--text-main);
+            text-align: center; line-height: 1;
+        }
+
+        /* ── Vị trí các ô trong cell (dùng margin-left chung) ── */
+        .pos-lt-num,
+        .pos-can-thien, .pos-can-dia, .pos-can-am,
+        .pos-que-cung-hau-thien, .pos-que-cung-tien-thien,
+        .pos-than-thien, .pos-than-dia, .pos-mon, .pos-tinh { margin-left: 1px; }
+
+        .pos-lt-num {
+            grid-row: 1; grid-column: 1;
+            font-size: clamp(11px, 5vw, 12px) !important;
+            font-family: Georgia, serif; opacity: .7;
+            flex-direction: column;
+        }
+        .pos-lt-num b { font-weight: 900; color: red; }
+
+        .pos-can-thien { grid-row: 2; grid-column: 3; }
+        .pos-can-dia   { grid-row: 3; grid-column: 3; }
+        .pos-can-am    { grid-row: 4; grid-column: 3; }
+        .pos-can-an    { grid-row: 4; grid-column: 4; opacity: .5; margin-right: 2px; }
+
+        /* ── Quẻ cung (chung opacity, font-size, overflow) ── */
+        .pos-que-cung-hau-thien,
+        .pos-que-cung-tien-thien {
+            grid-column: 1;
+            display: flex; justify-content: center; align-items: center;
+            opacity: .8; font-size: clamp(14px, 4vw, 20px); line-height: .3; overflow: hidden;
+        }
+        .pos-que-cung-hau-thien  { grid-row: 2; }
+        .pos-que-cung-tien-thien { grid-row: 3; }
+
+        .pos-than-thien { grid-row: 1; grid-column: 2; }
+        .pos-than-dia   { grid-row: 3; grid-column: 2; }
+        .pos-mon        { grid-row: 4; grid-column: 2; }
+        .pos-tinh       { grid-row: 2; grid-column: 2; }
+
+        /* ── Can Giờ box ── */
+        .can-gio-box           { display: inline-block; border: var(--border-accent); padding: 1.8px; color: var(--text-main); line-height: 1; }
+        .can-gio-box.box-small { padding: 1.5px 0.5px; }
+
+        /* ── Can pair layout (Tiếng Trung) ── */
+        .can-pair-ky   { justify-content: center; }
+        .can-pair-main { font-size: .9em; display: inline-flex; align-items: center; transform: translateY(-3px); }
+        .can-pair-chinh { display: inline; }
+        .can-pair-sub  { margin-left: 2px; transform: translateY(6px); font-size: .9em; }
+
+        /* ── Tứ Cường marker ── */
+        .pos-tu-cuong {
+            grid-column: 4; justify-self: center;
+            border: var(--border-accent); color: var(--text-main);
+            padding: 1px; text-align: center;
+            display: flex; flex-direction: column; line-height: 1.1;
+            font-size: 12px;
+        }
+        .marker-single { grid-row: 2; align-self: center; }
+        .marker-multi  { grid-row: 2 / 4; align-self: center; }
+
+        /* Coban: marker ngang */
+        .marker-coban-1 { grid-row: 3; align-self: center; justify-self: center; }
+        .marker-coban-2 { grid-row: 3; align-self: center; justify-self: center;
+                          flex-direction: row; gap: 2px; }
+        .marker-coban-3,
+        .marker-coban-4 { grid-row: 3; align-self: center; justify-self: center;
+                          flex-direction: row; flex-wrap: wrap; gap: 1px;
+                          width: 26px; justify-content: center; }
+        body.coban-mode .marker-coban-1,
+        body.coban-mode .marker-coban-2,
+        body.coban-mode .marker-coban-3,
+        body.coban-mode .marker-coban-4 { grid-column: 1; }
+
+        /* ── Trung Cung ── */
+        .trung-cung {
+            background: #fafafa;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, .8fr);
+            position: relative;
+        }
+        .trung-cung .pos-can-dia { grid-row: 3; grid-column: 4; justify-content: center; align-items: center; }
+        .trung-cung .pos-can-an  { grid-row: 4; grid-column: 4; justify-content: center; align-items: center; }
+
+        /* ── Marks ── */
+        :root {
+            --kv-top:   4px;
+            --dm-top:  20px;
+        }
+        /* Shared base */
+        .kv-mark, .kv-mark-solo,
+        .dichma-mark, .dichma-mark-solo {
+            display: flex; align-items: center; justify-content: center;
+            border: 1px solid var(--text-main); border-radius: 50%;
+            z-index: 2;
+        }
+        .kv-mark, .kv-mark-solo  { width: 12px; height: 12px; }
+        .dichma-mark, .dichma-mark-solo { width: 14px; height: 14px; }
+
+        /* Cùng cung: absolute, căn giữa ngang cột cuối (25%/2 = 12.5%), xếp dọc theo CSS vars */
+        .kv-mark   { position: absolute; top: var(--kv-top); right: calc(12.5% - 6px); }
+        .dichma-mark { position: absolute; top: var(--dm-top); right: calc(12.5% - 7px); }
+
+        /* Khác cung: grid item, căn giữa row 1 cột cuối */
+        .kv-mark-solo, .dichma-mark-solo {
+            position: static;
+            grid-row: 1; grid-column: 4;
+            align-self: center; justify-self: center;
+        }
+        /* Coban 3-col: cột cuối = col 3 */
+        body.coban-mode .kv-mark   { right: calc(16.67% - 6px); }
+        body.coban-mode .dichma-mark { right: calc(16.67% - 7px); }
+        body.coban-mode .kv-mark-solo,
+        body.coban-mode .dichma-mark-solo { grid-column: 3; }
+        /* Tiếng Trung, mã solo: tăng vòng tròn lên 1 (font handled in JS) */
+        .lang-zh .dichma-mark-solo { width: 15px; height: 15px; }
+        .bold-km { background-color: yellow; margin: 2px 2px; border-radius: 3px; }
+
+        /* ── Lang overrides ── */
+        /* Tiếng Việt: dùng font Latin chuẩn để tránh bị nén theo chiều dọc bởi font CJK */
+        .lang-vi .controls,
+        .lang-vi .info-panel,
+        .lang-vi .controls *,
+        .lang-vi .info-panel * {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .lang-zh .cell      { aspect-ratio: 1; grid-template-rows: repeat(4, .8fr); }
+        .lang-zh .sub-cell  { font-size: clamp(13px, 5vw, 18px); }
+        .lang-zh .pos-lt-num { font-size: clamp(13px, 4vw, 17px) !important; }
+        .lang-vi .sub-cell  { font-size: clamp(9px, 2.8vw, 13px); white-space: normal; word-break: break-word; line-height: 1.1; }
+        .lang-vi .pos-mon, .lang-vi .pos-can-thien, .lang-vi .pos-can-dia,
+        .lang-vi .pos-than-thien, .lang-vi .pos-tinh { font-size: clamp(10px, 3.3vw, 15px); }
+        /* pos-tu-cuong không scale theo sub-cell của từng ngôn ngữ */
+        .lang-zh .pos-tu-cuong,
+        .lang-vi .pos-tu-cuong { font-size: 12px !important; }
+
+        /* ── Mobile Samsung fix ── */
+        @media (max-width: 430px) {
+            .lang-vi .sub-cell { font-size: clamp(9px, 3vw, 14px); }
+        }
+
+        /* ── Default active border on label ── */
+        label.default-active {
+            outline: 1.5px dashed rgba(0, 123, 255, 0.45);
+            outline-offset: 2px;
+            border-radius: 3px;
+        }
+
+        /* ── Toggle Row (lang / method) ── */
+        .toggle-row {
+            width: 100%; display: flex; gap: 0;
+            border-radius: 2px; overflow: hidden;
+            border: var(--border-std); margin-bottom: 2px;
+        }
+        .control-item.toggle-row { margin-bottom: 0; }
+        .toggle-btn {
+            flex: 1; padding: 4px; text-align: center; font-size: 12px;
+            cursor: pointer; user-select: none;
+            transition: background .15s, color .15s;
+        }
+        .toggle-btn-right { border-left: var(--border-std); }
+
+        /* ── Picker buttons (date / country) ── */
+        .picker-btn {
+            flex: 1; padding: 3px 6px;
+            border: var(--border-std); border-radius: 2px;
+            font-size: 11px; background: var(--bg-white); color: var(--text-main);
+            text-align: center; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            min-height: 24px; user-select: none; overflow: hidden;
+        }
+        #dateDisplayBtn    { flex: 1.1; white-space: nowrap; }
+        #countryDisplayBtn { flex: 0.9; }
+        .picker-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* ── Method Toggle ── */
+        .method-toggle        { background: var(--bg-white); color: var(--text-main); }
+        .method-toggle-active { background: var(--accent); color: var(--bg-white) !important; font-weight: 600; }
+        .method-toggle:active { opacity: .75; }
+
+        /* ── Drum Picker Overlay (shared styles) ── */
+        #drumOverlay, #countryOverlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,.38); z-index: 2000;
+            align-items: flex-end; justify-content: center;
+        }
+        #drumOverlay.open, #countryOverlay.open { display: flex; }
+
+        #drumPanel, #countryPanel {
+            width: 100%; max-width: var(--max-w);
+            background: var(--bg-white);
+            border-radius: 18px 18px 0 0;
+            box-shadow: 0 -4px 24px rgba(0,0,0,.13);
+            padding-bottom: max(env(safe-area-inset-bottom), 8px);
+            animation: slideUp .22s cubic-bezier(.32,.72,0,1);
+        }
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to   { transform: translateY(0); }
+        }
+
+        /* ── Drum UI ── */
+        .drum-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 20px 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .drum-cancel, .drum-ok {
+            font-size: 14px; font-weight: 700;
+            cursor: pointer; padding: 4px 2px; color: var(--text-main);
+        }
+        .drum-title { font-size: 14px; font-weight: 700; color: var(--text-main); }
+
+        .drum-col-labels { display: flex; padding: 0 2px; }
+        .drum-col-label {
+            flex: 1; text-align: center; font-size: 12px;
+            color: var(--text-main); padding-top: 6px;
+        }
+        .drum-col-label.wide { flex: 1.3; }
+
+        .drum-cols {
+            display: flex; height: 200px;
+            position: relative; overflow: hidden; padding: 0 2px;
+        }
+        .drum-col {
+            flex: 1; overflow: hidden; position: relative; height: 200px;
+            cursor: grab; user-select: none; -webkit-user-select: none;
+        }
+        .drum-col.wide { flex: 1.3; }
+        .drum-list { position: absolute; width: 100%; will-change: transform; }
+
+        .drum-item {
+            height: 40px; display: flex;
+            align-items: center; justify-content: center;
+            font-size: 15px; color: #bbb;
+            transition: color .15s, font-size .15s;
+            pointer-events: none;
+        }
+        .drum-item.sel { color: #111; font-size: 18px; font-weight: 500; }
+
+        .drum-highlight {
+            position: absolute; top: 80px; left: 8px; right: 8px; height: 40px;
+            border-top: var(--border-accent); border-bottom: var(--border-accent);
+            pointer-events: none; z-index: 2; border-radius: 2px;
+        }
+        .drum-fade {
+            position: absolute; left: 0; right: 0; height: 90px;
+            pointer-events: none; z-index: 1;
+        }
+        .drum-fade.top    { top: 0;    background: linear-gradient(to bottom, rgba(255,255,255,.97) 30%, transparent); }
+        .drum-fade.bottom { bottom: 0; background: linear-gradient(to top,   rgba(255,255,255,.97) 30%, transparent); }
+        .drum-divider     { width: 1px; background: #e8e8e8; margin: 10px 2px; flex-shrink: 0; align-self: stretch; }
+
+        #countryPanel .drum-cols { padding: 0 12px; }
+        .drum-item-country.sel { font-size: 13px !important; font-weight: 600; }
+
+        /* ── Tứ Trụ Panel ── */
+        #tuTruPanel {
+            border-collapse: collapse;
+            margin: 2px auto;
+            table-layout: fixed;
+            border: 1.5px solid var(--text-dim);
+        }
+        #tuTruPanel th, #tuTruPanel td {
+            padding: 3px 4px; text-align: center; border: 1px solid #bbb;
+        }
+        #tuTruPanel th {
+            font-weight: 500; color: var(--bg-white);
+            font-size: 12px; background: gray;
+        }
+        #tuTruPanel td.tt-can, #tuTruPanel td.tt-chi { font-size: 12px; font-weight: 500; }
+        #tuTruPanel td.tt-kv  { font-size: 10px; color: var(--text-main); font-style: italic; }
+        #tuTruPanel td.tt-lunar { font-size: 12px; }
+        #tuTruPanel th .tt-val { font-weight: 500; font-size: 12px; margin-left: 2px; }
+
+        .lang-zh #tuTruPanel th { font-size: 16px; padding: 2px 4px; }
+        .lang-zh #tuTruPanel td { font-size: 14px; padding: 2px 4px; }
+        .lang-zh #tuTruPanel td.tt-lunar { font-size: 14px; }
+
+        /* ── Chế độ Hiển thị Cơ bản ── */
+        body.coban-mode .pos-than-dia,
+        body.coban-mode .pos-can-am,
+        body.coban-mode .pos-can-an,
+        body.coban-mode .pos-que-cung-tien-thien { display: none !important; }
+
+        /* 3x3 grid thay vì 4x4 */
+        body.coban-mode .cell,
+        body.coban-mode .trung-cung {
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+        }
+
+        /* Reposition trong 3x3 */
+        body.coban-mode .pos-lt-num       { grid-row: 1; grid-column: 1; }
+        body.coban-mode .pos-than-thien   { grid-row: 1; grid-column: 2; }
+        body.coban-mode .pos-que-cung-hau-thien { grid-row: 2; grid-column: 1; }
+        body.coban-mode .pos-tinh         { grid-row: 2; grid-column: 2; }
+        body.coban-mode .pos-can-thien    { grid-row: 2; grid-column: 3; }
+        body.coban-mode .pos-can-dia      { grid-row: 3; grid-column: 3; }
+        body.coban-mode .pos-mon          { grid-row: 3; grid-column: 2; }
+
+        /* Trung cung trong coban */
+        body.coban-mode .trung-cung .pos-can-dia { grid-row: 3; grid-column: 3; justify-content: center; align-items: center; }
+        body.coban-mode .bold-km { width: fit-content; height: fit-content; padding: 5px 6px; margin: auto; justify-self: center; }
+
+        /* Coban: tăng font hậu thiên bát quái lên 1 (cả zh lẫn vi) */
+        body.coban-mode .pos-que-cung-hau-thien { font-size: clamp(15px, 4vw, 21px) !important;}
+        /* Coban + tiếng Việt: tăng font can/môn/thần/tinh lên 1 */
+        body.coban-mode.lang-vi .pos-mon,
+        body.coban-mode.lang-vi .pos-can-thien,
+        body.coban-mode.lang-vi .pos-can-dia,
+        body.coban-mode.lang-vi .pos-than-thien,
+        body.coban-mode.lang-vi .pos-tinh { font-size: clamp(12.5px, 3.3vw, 17px); }
+        /* ── Card flip 3D ── */
+        #boardFlipScene {
+            width: 100%; max-width: var(--max-w);
+            perspective: 800px;
+        }
+        #boardFlipScene,
+        #boardFlipInner,
+        #board,
+        #boardBack,
+        #boardFlipScene .cell {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #boardFlipInner {
+            position: relative;
+            width: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.65s cubic-bezier(0.4,0,0.2,1);
+            cursor: pointer;
+        }
+        #boardFlipInner.is-flipped {
+            transform: rotateY(180deg);
+        }
+        #board {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        #boardBack {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            background: rgba(34,34,34,.1);
+            border: 1.5px solid rgba(34,34,34,.1);
+            position: absolute;
+            inset: 0;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            transform: rotateY(180deg);
+            cursor: pointer;
+        }
+        /* ── Board back (flip side) cell content ── */
+        #boardBack .cell {
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        .flip-cell-inner {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 3px; width: 100%; height: 100%; padding: 2px;
+        }
+        .flip-pair-row {
+            display: flex; flex-direction: column; align-items: center;
+            gap: 1px; text-align: center;
+        }
+        .flip-can-pair {
+            font-size: clamp(9px, 2.8vw, 13px);
+            line-height: 1.3;
+            white-space: nowrap;
+            color: var(--text-main);
+            font-weight: 500;
+        }
+        .flip-cach-cuc {
+            font-size: clamp(7px, 2vw, 9px);
+            line-height: 1.3;
+            color: var(--text-dim);
+            white-space: nowrap;
+            display: block;
+            text-align: center;
+        }
+        /* ZH base sizes — scaled down by [data-rows] when many pairs */
+        .lang-zh .flip-can-pair                           { font-size: clamp(12px, 3.8vw, 17px); }
+        .lang-zh .flip-cach-cuc                           { font-size: clamp(8px,  2.2vw, 11px); }
+        .lang-zh .flip-cell-inner[data-rows="3"] .flip-can-pair { font-size: clamp(10px, 3.0vw, 13px); }
+        .lang-zh .flip-cell-inner[data-rows="3"] .flip-cach-cuc { font-size: clamp(7px,  2.0vw,  9px); }
+        .lang-zh .flip-cell-inner[data-rows="4"] .flip-can-pair { font-size: clamp(10px, 3.0vw, 13px); }
+        .lang-zh .flip-cell-inner[data-rows="4"] .flip-cach-cuc { font-size: clamp(7px,  2.0vw,  9px); }
+        .flip-cach-sub {
+            display: block;
+            font-size: clamp(6px, 1.7vw, 8px);
+            opacity: 0.75;
+            white-space: nowrap;
+            text-align: center;
+        }
+        .lang-zh .flip-cach-sub                                  { font-size: clamp(7px,  2.0vw,  9px); }
+        .lang-zh .flip-cell-inner[data-rows="3"] .flip-cach-sub  { font-size: clamp(6px,  1.7vw,  8px); }
+        /* tighten gap/padding when rows are many */
+        .flip-cell-inner[data-rows="3"] { gap: 2px; }
+        .flip-cell-inner[data-rows="4"] { gap: 1px; padding: 1px; }
+
+        /* ── Detail panels (Trí Nhuận / Sách Bổ / Âm Bàn) ── */
+        .dp-panel {
+            display: none;
+            background: var(--bg-card, #fff);
+            border-top: 1px solid var(--border-color, #ddd);
+            font-size: 12.5px;
+            color: var(--text-main, #333);
+            line-height: 1.7;
+        }
+        .dp-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            cursor: pointer;
+            user-select: none;
+            background: var(--bg-card, #fff);
+            border: var(--border-panel);
+            border-radius: 8px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+        .dp-title  { font-weight: 600; color: var(--text-main, #333); font-size: 13px; }
+        .dp-chevron {
+            font-size: 16px;
+            color: var(--text-main, #333);
+            transition: transform 0.25s;
+            display: inline-block;
+            transform: rotate(0deg);
+        }
+        .dp-body        { display: none; padding: 0 12px 8px 12px; }
+        .dp-table-wrap  { overflow-x: auto; margin-top: 6px; }
+        .dp-table       { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+        .dp-table thead tr { border-bottom: 1.5px solid var(--border-color, #ddd); }
+        .dp-table th    { padding: 2px 4px; text-align: left; color: var(--text-dim, #888); font-weight: 600; }
+        .dp-table th.c  { text-align: center; }
+        /* Don badge */
+        .don-badge, .don-badge-sm {
+            display: inline-block; border: 1px solid; border-radius: 2px; font-weight: 600;
+        }
+        .don-badge    { padding: 1px 5px; font-size: 11px; }
+        .don-badge-sm { padding: 0 4px;   font-size: 10px; }
+        .don-badge.duong, .don-badge-sm.duong {
+            color: var(--don-duong, #d44); border-color: var(--don-duong, #d44);
+        }
+        .don-badge.am { color: var(--don-am, #555); border-color: var(--don-am, #555); }
+        .don-badge-sm.am { color: var(--don-am-sm, #666); border-color: var(--don-am-sm, #666); }
+        /* Per-table TD default padding */
+        #trn-table td { padding: 1px 2px; }
+        #sb-table  td { padding: 2px 6px; }
+        #ab-table  td { padding: 3px 8px; }
+        /* Row stripe classes (replaces inline style in _mkRow) */
+        .dp-table tr   { border-bottom: 1px solid var(--border-color, #e8e8e8); }
+        .dp-row-active { background: var(--accent-light, #e8edff); }
+        .dp-row-alt    { background: var(--bg-alt, #f9f9fb); }
+        /* TD utility classes used in render functions */
+        .dp-num  { font-size: 11px;   font-variant-numeric: tabular-nums; }
+        .dp-num-ab { font-size: 11.5px; font-variant-numeric: tabular-nums; text-align: center; }
+        .dp-c    { text-align: center; }
+        .dp-cuc  { text-align: center; font-weight: 700; font-size: 13px; }
+        .dp-dup  { color: #bbb; font-size: 10px; }
