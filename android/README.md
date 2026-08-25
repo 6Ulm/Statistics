@@ -17,6 +17,7 @@ true-solar-time and real lunar data for any coordinate on Earth.*
 | Múi giờ | theo danh sách cứng | IANA đầy đủ, có DST, suy được từ toạ độ khi offline |
 | Mặt Trời | chỉ Chính Ngọ | Chính Ngọ, mọc/lặn, độ dài ngày, xích vĩ, lệch giờ MT thật |
 | Mặt Trăng | điểm Sóc (bảng Âm Bàn) | thêm mọc/lặn, pha, % chiếu sáng, Sóc kế tiếp theo giờ địa phương |
+| Màn hình | — | **giống hệt bản gốc**; bảng Nhật–Nguyệt ẩn, chạm "Chính Ngọ" mới hiện |
 | Mạng | tải trong trình duyệt | **không có quyền INTERNET** |
 
 Engine Bát Tự / Kỳ Môn **không bị sửa một dòng nào**. Lớp vị trí mới ghi toạ độ
@@ -24,6 +25,15 @@ Engine Bát Tự / Kỳ Môn **không bị sửa một dòng nào**. Lớp vị 
 `processAll()` và toàn bộ ba phái (Trí Nhuận / Sách Bổ / Âm Bàn) chạy y hệt cũ,
 chỉ khác là kinh độ và múi giờ giờ đây là của đúng nơi người dùng chọn.
 Bộ kiểm thử đối chiếu từng lá số với bản web gốc để bảo đảm điều đó.
+
+## Bảng Nhật–Nguyệt
+
+Màn hình chính phải giống **y hệt** bản web gốc, nên bảng Mặt Trời / Mặt Trăng
+mặc định **ẩn**. Chạm vào ô **Chính Ngọ** để mở hoặc đóng — Chính Ngọ chính là
+giờ Mặt Trời thật mà bảng này diễn giải chi tiết. Lựa chọn được ghi nhớ.
+
+Nút Back đóng theo thứ tự: hộp thoại phủ toàn màn hình trước, rồi mới tới bảng
+Nhật–Nguyệt, cuối cùng mới thoát ứng dụng.
 
 ## Vì sao chạy được offline
 
@@ -127,6 +137,17 @@ Tuần thủ, Trực Phù/Trực Sử, lịch âm, **toàn bộ HTML của bàn 
 bảng chi tiết của cả ba phái.
 
 Kết quả: **2000 ca (2 hạt giống), 70.000 trường, 0 khác biệt.**
+
+### Đối chiếu MÀN HÌNH với bản web gốc
+
+```bash
+node test_visual_parity.mjs /đường/dẫn/QMDJ_1_1.html
+```
+
+Dựng cây DOM chỉ gồm phần **thực sự nhìn thấy** (theo computed style, nên phần
+bị CSS ẩn không tính) của cả hai bản rồi so từng phần tử một — bắt được mọi
+thứ thừa hoặc thiếu. Kết quả: **246–249 phần tử, giống hệt** trên cả ba ca
+(hai ngôn ngữ × ba phái).
 
 ## Sinh lại CSDL thành phố
 

@@ -118,9 +118,18 @@ doc.getElementById('locTz').value = 'Asia/Ho_Chi_Minh';
 doc.getElementById('locApply').dispatchEvent(new w.Event('click'));
 await new Promise(r => setTimeout(r, 100));
 check('múi giờ áp dụng', val('out-chinhngo').split(' ')[1], '(GMT+7)');
-check('bảng Nhật–Nguyệt hiện', doc.getElementById('astroPanel').style.display, 'block');
+
+console.log('\nBảng Nhật–Nguyệt (mặc định ẩn để giống bản web gốc)');
+check('mặc định ẩn', doc.getElementById('astroPanel').style.display, 'none');
+doc.querySelector('.info-pair-chinhngo').dispatchEvent(new w.Event('click'));
+check('chạm Chính Ngọ thì hiện', doc.getElementById('astroPanel').style.display, 'block');
+check('có dữ liệu Mặt Trời', val('out-astro-sun').length > 5 ? 'yes' : 'no', 'yes');
+check('có dữ liệu Mặt Trăng', val('out-astro-moon').length > 5 ? 'yes' : 'no', 'yes');
+check('Back đóng bảng', String(w.__onBackPressed()), 'true');
+check('đã đóng lại', doc.getElementById('astroPanel').style.display, 'none');
 
 console.log('\nĐổi ngôn ngữ');
+doc.querySelector('.info-pair-chinhngo').dispatchEvent(new w.Event('click'));  // mở lại
 w.setLang('vi');
 check('nhãn Mặt Trời (vi)', val('lblAstroSun'), 'Mặt Trời:');
 check('giá trị đổi theo (vi)', val('out-astro-sun').slice(0, 3), 'mọc');
@@ -130,8 +139,11 @@ check('giá trị đổi theo (zh)', val('out-astro-sun').slice(0, 1), '出');
 
 console.log('\nNút Back của Android');
 w.openCountryPicker();
-check('đóng bảng đang mở', String(w.__onBackPressed()), 'true');
-check('không còn gì để đóng', String(w.__onBackPressed()), 'false');
+check('1. đóng hộp thoại vị trí trước', String(w.__onBackPressed()), 'true');
+check('   hộp thoại đã đóng', String(doc.getElementById('locOverlay').classList.contains('open')), 'false');
+check('   bảng Nhật–Nguyệt còn mở', doc.getElementById('astroPanel').style.display, 'block');
+check('2. rồi mới đóng bảng Nhật–Nguyệt', String(w.__onBackPressed()), 'true');
+check('3. không còn gì để đóng', String(w.__onBackPressed()), 'false');
 
 console.log('\nLỗi JS trong lúc chạy:', errors.length ? errors.slice(0, 5) : 'không có');
 if (errors.length) fail++;

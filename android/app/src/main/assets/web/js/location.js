@@ -25,6 +25,7 @@
     var CUSTOM_KEY = '__loc';
     var K_LOC = 'qmdj.location';
     var K_RECENT = 'qmdj.recent';
+    var K_ASTRO = 'qmdj.astroOpen';
     var MAX_RECENT = 8;
 
     /* ─────────────── Lưu trữ (native prefs → localStorage) ─────────────── */
@@ -525,6 +526,18 @@
     };
     function at(k) { return AT[k][isZH() ? 'zh' : 'vi']; }
 
+    // Mặc định ĐÓNG: màn hình chính phải giống hệt bản web gốc, không thêm gì.
+    // Chạm vào ô "Chính Ngọ" để mở/đóng — Chính Ngọ chính là giờ Mặt Trời thật
+    // mà bảng này diễn giải chi tiết.
+    var astroOpen = prefGet(K_ASTRO) === '1';
+
+    function toggleAstroPanel() {
+        astroOpen = !astroOpen;
+        prefSet(K_ASTRO, astroOpen ? '1' : '0');
+        var panel = getDOM('astroPanel');
+        if (panel) panel.style.display = astroOpen ? 'block' : 'none';
+    }
+
     function fmtDur(mins) {
         if (mins === null || mins === undefined) return '—';
         var h = Math.floor(mins / 60), mi = Math.round(mins % 60);
@@ -594,7 +607,7 @@
         setTxt('lblAstroOffset', at('offset') + ':');
         setTxt('out-astro-offset', offTxt);
 
-        panel.style.display = 'block';
+        panel.style.display = astroOpen ? 'block' : 'none';
     }
 
     function setTxt(id, s) { var el = getDOM(id); if (el) el.textContent = s; }
@@ -638,6 +651,12 @@
             };
             wrappedLang.__wrapped = true;
             window.toggleLang = wrappedLang;
+        }
+
+        var chinhNgo = document.querySelector('.info-pair-chinhngo');
+        if (chinhNgo) {
+            chinhNgo.style.cursor = 'pointer';
+            chinhNgo.addEventListener('click', toggleAstroPanel);
         }
 
         getDOM('locGpsBtn').addEventListener('click', onGpsClick);
@@ -689,11 +708,15 @@
      * Trả về true nếu đã xử lý.
      */
     window.__onBackPressed = function () {
+        // Thứ tự đóng: hộp thoại phủ toàn màn hình trước, rồi mới tới bảng
+        // Nhật–Nguyệt nằm trong trang. Đóng ngược lại sẽ để lại hộp thoại
+        // che kín màn hình mà người dùng tưởng đã bấm Back rồi.
         var ids = ['locOverlay', 'drumOverlay'];
         for (var i = 0; i < ids.length; i++) {
             var ov = getDOM(ids[i]);
             if (ov && ov.classList.contains('open')) { ov.classList.remove('open'); return true; }
         }
+        if (astroOpen) { toggleAstroPanel(); return true; }
         return false;
     };
 
