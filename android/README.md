@@ -164,9 +164,33 @@ Bản Android tính ngày âm ở **mốc múi giờ của địa điểm đang 
 đều 29 hoặc 30 ngày, số ngày âm liên tục, và mùng 1 luôn chứa Sóc (198/198 tháng
 mỗi mốc).
 
-Chỉ NGÀY ÂM LỊCH đổi mốc. Năm/Tháng Can Chi vẫn lấy từ `baziBJ` (đổi tại Lập Xuân
-và các mốc Tiết, so với `solarBJ` ở giờ Bắc Kinh) và tiết khí vẫn tính ở mốc
-UTC+8 — đó là lý do THẬT của ghi chú cũ, và nó vẫn đúng.
+Chỉ NGÀY ÂM LỊCH đổi mốc.
+
+### Giờ Bắc Kinh ở đây KHÔNG phải một quy ước
+
+Dễ hiểu nhầm chỗ này, nên nói cho rõ. Trụ **năm** và trụ **tháng** đổi tại Lập
+Xuân và 12 mốc Tiết — mà đó đều là những THỜI ĐIỂM tuyệt đối, không phải ngày
+trên lịch. Thời điểm bạn nhập cũng vậy. So thời điểm với thời điểm thì kết quả
+**không phụ thuộc hệ quy chiếu**.
+
+`_readInputBJ()` đổi giờ bạn nhập sang giờ Bắc Kinh
+(`Date.UTC(...) − tz·3600000 + 8·3600000`) chỉ để đặt cả hai vế về CÙNG một hệ
+cho tiện so; làm ở giờ địa phương cũng ra y hệt. Kiểm chứng: cùng một thời điểm
+tuyệt đối đọc từ hai nơi cho cùng trụ năm/tháng, ngay hai bên mốc Lập Xuân 2026.
+
+| Thời điểm | Nơi | Năm | Tháng | Ngày | Giờ |
+|---|---|---|---|---|---|
+| ngay sau Lập Xuân | Hà Nội 04/02 03:30 | Bính Ngọ | Canh Dần | Kỷ Dậu | Bính Dần |
+| ngay sau Lập Xuân | Paris 03/02 21:30 | Bính Ngọ | Canh Dần | Mậu Thân | Nhâm Tuất |
+| ngay trước Lập Xuân | Hà Nội 04/02 02:30 | Ất Tỵ | Kỷ Sửu | Kỷ Dậu | Ất Sửu |
+| ngay trước Lập Xuân | Paris 03/02 20:30 | Ất Tỵ | Kỷ Sửu | Mậu Thân | Nhâm Tuất |
+
+Năm và tháng trùng khít; **ngày và giờ mới khác** — đúng như thiết kế, vì hai
+trụ ấy dùng giờ Mặt Trời thật tại chỗ.
+
+Bảng tiết khí cũng vậy: **tính** ở mốc UTC+8 rồi **hiện ra ở giờ địa phương**.
+Cùng mốc Lập Xuân 2026, Hà Nội ghi `04-02-2026 03:02` còn Paris ghi
+`03-02-2026 21:02` — chênh đúng 6 giờ, cùng một thời điểm.
 
 ### Cái giá phải trả (đổi mốc kinh tuyến)
 
