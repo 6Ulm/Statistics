@@ -70,15 +70,42 @@ gốc) và **Lịch** (lịch âm dương).
 * **Hôm nay** có viền đỏ đậm trên nền vàng nhạt — tô đặc màu đỏ thì nổi hơn
   thật, nhưng chữ phải đảo sang trắng và ô hoá thành một mảng đặc, đọc ngày âm
   với can chi khó hơn hẳn.
-* Bảng **Tiết khí trong tháng** gập/mở được khi chạm vào tiêu đề, cuộn được khi
-  dài (`max-height: 34vh`), và nhớ trạng thái giữa các phiên. Gập lại là trả về
-  ~120px: các hàng lịch được chia lại ngay để không hở một mảng ở đáy.
+* Bảng **Tiết khí trong năm** gập/mở được khi chạm vào tiêu đề, cuộn được, và
+  nhớ trạng thái giữa các phiên. Gập lại là trả về cả một mảng lớn: các hàng
+  lịch được chia lại ngay để không hở khoảng trống ở đáy.
 
 Lịch âm được tính theo **UTC+7** như quy ước lịch Việt Nam (bản tiếng Trung
 dùng UTC+8) — đó chính là lý do Tết ta và Tết Tàu thỉnh thoảng lệch một ngày.
 Phải đặt lại mốc này mỗi lần vẽ: `processAll()` để lại múi giờ của địa điểm
 đang chọn trong biến toàn cục của `lunar.js`, nên nếu đang chọn Paris thì
 26/08/2026 hoá ra 15/7 thay vì 14/7.
+
+## Tiết khí: một nguyên tắc duy nhất
+
+Tiết khí xuất hiện ở ba chỗ — bảng Sách Bổ pháp (tab Kỳ Môn), bảng Tiết khí
+(tab Lịch) và widget — và cả ba phải ra **cùng một con số**. Nguyên tắc lấy theo
+bảng Sách Bổ pháp:
+
+1. `LunarYear.getJieQiJulianDays()`, không phải `getJieQiTable()`;
+2. tính ở mốc **UTC+8** (`setTzOffsetHours(null)`);
+3. rồi mới quy sang giờ địa phương: `jdLocal = jdUTC8 + (tz − 8)/24`, với `tz`
+   tra theo DST tại **chính thời điểm** của mốc đó.
+
+Bước 2 và 3 không phải chuyện vặt: tính thẳng ở múi giờ địa phương thì các tiết
+khí mùa đông của một nước có DST bị cộng nhầm offset mùa hè, lệch đúng một giờ.
+
+Tab Lịch gọi thẳng `sb_getJieQiDates` của tab Kỳ Môn thay vì chép lại — nhưng nó
+chạy khi `ShouXingUtil` đang ở mốc UTC+7 (để lịch âm ra đúng lịch Việt Nam), mà
+`findJieQi` bên trong lại đọc chính biến toàn cục ấy, nên phải đặt lại mốc rồi
+trả về như cũ. `tools/test_jieqi_parity.mjs` so hai bảng từng mục một ở năm múi
+giờ khác nhau; `tools/test_lunar_table.mjs` canh bảng của widget theo cùng
+nguyên tắc.
+
+Ở tab Lịch, bảng bỏ hai cột **Độn** và **Số Cục** (đó là chuyện của bàn Kỳ Môn)
+nên mỗi mục chỉ còn tên với ngày giờ — hẹp bằng nửa bề ngang. 24 mục vì thế xếp
+thành **hai cột kép**, 12 mục mỗi bên: bảng thấp đi một nửa, màn hình cỡ A51
+hiện đủ cả năm không phải cuộn, và ranh giới trái/phải trùng luôn ranh giới
+Dương Độn / Âm Độn.
 
 ## Widget lịch trên màn hình chính
 
@@ -123,7 +150,11 @@ node tools/test_lunar_table.mjs    # đối chiếu với lunar.js
 ```
 
 Bảng tra và cách tra đã đối chiếu **từng ngày một trong 73.414 ngày (1900–2100)
-và 4.823 mốc tiết khí, lệch 0**.
+và 4.824 mốc tiết khí, lệch 0**.
+
+Widget chỉ hiện tiết khí **của tháng đang xem** (một hoặc hai mục), không hiện
+cả 24 mục như tab Lịch: widget không cuộn và không gập được, nhét 24 dòng vào
+đó thì chữ bé đến mức vô dụng.
 
 Xem trước widget mà không cần dựng APK:
 
@@ -271,6 +302,17 @@ chiều cao màn hình.
 Gỡ `viewport.js` ra thì ca "S21 ngang" lập tức đỏ — nên phép thử này có thật,
 không phải lúc nào cũng xanh. Trước đây nó **đọc `body.style.zoom`** (thuộc tính
 inline, luôn rỗng) nên vẫn xanh với cả bản hỏng; giờ đọc computed style.
+
+### Tiết khí giữa các bảng
+
+```bash
+node test_jieqi_parity.mjs
+```
+
+Mở ứng dụng ở năm múi giờ khác nhau, đọc bảng Sách Bổ pháp ở tab Kỳ Môn và bảng
+tiết khí ở tab Lịch, rồi so **từng tên và từng mốc giờ**. Cũng kiểm mục được tô
+đậm: hai bên chỉ được lệch tối đa một mục, đúng vào ngày giao tiết (tab Kỳ Môn
+lấy cả giờ phút đang nhập, tab Lịch chỉ có độ phân giải một ngày).
 
 ### Ảnh chụp màn hình
 

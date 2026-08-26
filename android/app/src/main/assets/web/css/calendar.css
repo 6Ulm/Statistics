@@ -129,8 +129,8 @@ body.view-cal #calView { display: block; }
     flex: 1;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    font-size: 10.5px; color: #555;
-    line-height: 1.25;
+    font-size: 12.5px; color: #555;
+    line-height: 1.22;
 }
 .cal-gz span { white-space: nowrap; }
 
@@ -169,30 +169,45 @@ body.view-cal #calView { display: block; }
 .cal-jq-title:active { background: var(--bg-alt, #f4f4f6); }
 .cal-jq-chev { font-size: 13px; transition: transform .22s; }
 #calJieQi.open .cal-jq-chev { transform: rotate(180deg); }
-/* Cuộn được khi tháng có nhiều mục hoặc màn hình thấp. */
+/* Bảng 24 dòng nên luôn phải cuộn. Chiều cao do fitGrid() chia — nó biết lưới
+   lịch chiếm bao nhiêu, phần còn lại của màn hình đổ hết vào đây. */
 .cal-jq-body {
     display: none;
     margin-top: 4px;
-    max-height: 34vh;
-    overflow-y: auto;
+    max-height: var(--cal-jq-h, 34vh);
+    overflow: auto;
     -webkit-overflow-scrolling: touch;
-}
-#calJieQi.open .cal-jq-body { display: block; }
-table.cal-jq {
-    width: 100%; border-collapse: collapse;
     background: var(--bg-white, #fff);
     border: 1px solid var(--border-color, #ddd);
     border-radius: 6px;
-    font-size: 12px;
-    overflow: hidden;
 }
+#calJieQi.open .cal-jq-body { display: block; }
+
+/* Bảng dùng lại .dp-table của bảng Sách Bổ pháp — chỉ chỉnh đệm cho hợp khung
+   lịch. Hàng tiêu đề dính lại khi cuộn, vì bảng dài hơn khung nhìn. */
+/* border-collapse: collapse (kiểu của .dp-table) làm hỏng position:sticky —
+   hàng tiêu đề trôi mất khi cuộn. Tách viền ra rồi vẽ lại lên từng ô. */
+table.cal-jq { width: 100%; border-collapse: separate; border-spacing: 0; }
 table.cal-jq td {
-    padding: 4px 9px;
-    border-bottom: 1px solid #eee;
+    padding: 3px 8px;
+    border-bottom: 1px solid var(--border-color, #e8e8e8);
 }
-table.cal-jq tr:last-child td { border-bottom: none; }
-table.cal-jq td:first-child { font-weight: 600; color: var(--text-main, #222); }
-table.cal-jq td:last-child { text-align: right; color: var(--text-dim, #666); }
+table.cal-jq thead th {
+    position: sticky; top: 0; z-index: 1;
+    padding: 4px 8px;
+    background: var(--bg-white, #fff);
+    border-bottom: 1.5px solid var(--border-color, #ddd);
+}
+/* Vách ngăn giữa hai nửa bảng — cũng đúng chỗ Dương Độn chuyển sang Âm Độn. */
+.cal-jq-split { border-left: 1px solid var(--border-color, #ddd); }
+table.cal-jq .cal-jq-name { white-space: nowrap; }
+table.cal-jq .cal-jq-date { text-align: right; color: var(--text-dim, #666); }
+/* Tiết khí đang hiệu lực: tô đúng như dòng được tô ở bảng Sách Bổ pháp. */
+table.cal-jq .cal-jq-on {
+    background: var(--accent-light, #e8edff);
+    font-weight: 700;
+    color: var(--text-main, #222);
+}
 
 /* ── Ghim widget lịch ra màn hình chính ── */
 #calPinBtn {

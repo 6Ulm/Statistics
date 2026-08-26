@@ -20,7 +20,9 @@
         dows:     { vi: ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'C.Nhật'],
                     zh: ['一', '二', '三', '四', '五', '六', '日'] },
         today:    { vi: 'Hôm nay',    zh: '今天' },
-        jieqi:    { vi: 'Tiết khí trong tháng', zh: '本月节气' },
+        jieqi:    { vi: 'Tiết khí trong năm', zh: '本年节气' },
+        colTk:    { vi: 'Tiết Khí',   zh: '节气' },
+        colDate:  { vi: 'Dương lịch', zh: '公历' },
         pin:      { vi: '📌 Ghim lịch ra màn hình chính', zh: '📌 固定日历到主屏幕' },
         pinOk:    { vi: 'Hãy xác nhận trên hộp thoại vừa hiện ra.',
                     zh: '请在弹出的对话框中确认。' },
@@ -56,10 +58,16 @@
 
     // Lề trên/dưới của trang cộng khoảng cách giữa các khối trong tab Lịch.
     var GRID_CHROME = 28;
-    // Hàng vừa đủ chứa 3 dòng (ngày dương/âm, can, chi). Trần đặt cao hẳn để
-    // lịch lấp kín màn hình cao (A51 852px) — bảng tiết khí đã được trừ ra
-    // trong fitGrid nên kéo hàng cao lên không đẩy nó xuống khuất.
-    var ROW_MIN = 50, ROW_MAX = 128;
+    // Hàng vừa đủ chứa 3 dòng (ngày dương/âm, can, chi) mà không dềnh dàng.
+    // Chỗ thừa của màn hình cao giờ đổ vào bảng tiết khí 24 dòng, không kéo
+    // hàng lịch cao ra nữa.
+    var ROW_MIN = 58, ROW_MAX = 68;
+    // Bảng tiết khí mở ra thì phải cao đủ để đọc; dưới mức này thì thà để lưới
+    // lịch tràn một chút rồi cuộn cả trang.
+    // Xếp hai cột thì bảng chỉ còn 12 hàng — chừng 320px là hiện đủ, không phải
+    // cuộn. Màn hình không đủ cao thì lưới lịch được ưu tiên tới mức ROW_MIN,
+    // phần còn lại mới về bảng.
+    var JQ_PREF = 320;
 
     var K_JQ = 'qmdj.jieqiOpen';
     /** Bảng tiết khí mặc định MỞ; người dùng gập lại thì nhớ luôn. */
@@ -165,17 +173,29 @@
         if (!weeks) return;
         var grid = document.getElementById('calGrid');
         var head = document.getElementById('calHead');
-        var jq = document.getElementById('calJieQi');
+        var box = document.getElementById('calJieQi');
         var bar = document.getElementById('tabBar');
         var dow = grid ? grid.querySelector('.cal-dow') : null;
+        var title = box ? box.querySelector('.cal-jq-title') : null;
         if (!grid || !head || !dow) return;
 
         var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
         var h = function (el) { return el ? el.getBoundingClientRect().height / zoom : 0; };
-        var avail = window.innerHeight / zoom - h(head) - h(dow) - h(jq) - h(bar) - GRID_CHROME;
-        var rowH = Math.floor(avail / weeks);
-        rowH = Math.max(ROW_MIN, Math.min(ROW_MAX, rowH));
+
+        // Đo phần cố định — KHÔNG tính thân bảng tiết khí, vì chính nó là thứ
+        // ta sắp chia. Đo cả cụm rồi mới chia thì thành vòng luẩn quẩn.
+        var avail = window.innerHeight / zoom
+            - h(head) - h(dow) - h(title) - h(bar) - GRID_CHROME;
+
+        // Lưới lấy phần của nó trước (có trần), bảng tiết khí nhận toàn bộ
+        // phần còn lại — nhờ vậy màn hình cao không còn hở một mảng ở đáy.
+        var forGrid = jieQiOpen
+            ? Math.max(avail - JQ_PREF, ROW_MIN * weeks)
+            : avail;
+        var rowH = Math.max(ROW_MIN, Math.min(ROW_MAX, Math.floor(forGrid / weeks)));
         document.documentElement.style.setProperty('--cal-row-h', rowH + 'px');
+        document.documentElement.style.setProperty(
+            '--cal-jq-h', Math.max(120, Math.floor(avail - rowH * weeks)) + 'px');
     }
 
     /**
@@ -211,46 +231,127 @@
             '</div>';
     }
 
-    /** Bảng tiết khí rơi vào tháng dương lịch đang xem. */
+    /** "DD-MM-YYYY HH:MM" → số phút tuyệt đối, chỉ để so trước/sau. */
+    function parseDt(str) {
+        var m = /^(\d{2})-(\d{2})-(\d{4})[ T](\d{2}):(\d{2})/.exec(str || '');
+        if (!m) return NaN;
+        return Date.UTC(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]) / 60000;
+    }
+
+    /**
+     * Bảng 24 tiết khí của năm, DÙNG LẠI nguyên bảng Sách Bổ pháp ở tab Kỳ Môn:
+     * cùng cột (Tiết Khí · Dương lịch · Độn · Số Cục), cùng lớp CSS, cùng cách
+     * tô đậm tiết khí đang hiệu lực. Gọi thẳng `sb_getJieQiDates` và
+     * `_mkRow`/`_donBadgeSm` của app.js thay vì chép lại — chép ra là hai bảng
+     * sẽ lệch nhau ngay lần sửa đầu tiên.
+     *
+     * Mốc thời gian lấy theo NGÀY ĐANG CHỌN trong lịch (mặc định là hôm nay) và
+     * theo địa điểm đang chọn, đúng như tab Kỳ Môn — tiết khí là mốc thiên văn,
+     * giờ giao tiết khác nhau theo múi giờ.
+     */
     function renderJieQi() {
         var box = document.getElementById('calJieQi');
         if (!box) return;
-        var rows = '';
-        try {
-            var table = Solar.fromYmd(viewY, viewM, 15).getLunar().getJieQiTable();
-            var items = [];
-            for (var name in table) {
-                var s = table[name];
-                if (s.getYear() === viewY && s.getMonth() === viewM) {
-                    items.push({ name: name, s: s });
-                }
-            }
-            items.sort(function (a, b) { return a.s.getDay() - b.s.getDay(); });
-            rows = items.map(function (it) {
-                var vi = (typeof tietKhiMap !== 'undefined' && tietKhiMap[it.name]) || it.name;
-                var p = function (n) { return (n < 10 ? '0' : '') + n; };
-                return '<tr><td>' + esc(isZH() ? it.name : vi) + '</td><td>' +
-                    p(it.s.getHour()) + ':' + p(it.s.getMinute()) + ' - ' +
-                    p(it.s.getDay()) + '/' + p(it.s.getMonth()) + '/' + it.s.getYear() +
-                    '</td></tr>';
-            }).join('');
-        } catch (e) { rows = ''; }
+        var rows = null;
+        try { rows = buildJieQiRows(); } catch (e) { rows = null; }
         if (!rows) { box.innerHTML = ''; box.className = ''; return; }
+
         box.innerHTML =
             '<div class="cal-jq-title" id="calJqHead">' +
             '<span>' + t('jieqi') + '</span><span class="cal-jq-chev">▾</span></div>' +
-            '<div class="cal-jq-body"><table class="cal-jq">' + rows + '</table></div>';
+            // KHÔNG bọc thêm .dp-table-wrap: nó có overflow-x nên trở thành
+            // vùng cuộn gần nhất của <th> sticky, mà chính nó lại không giới
+            // hạn chiều cao — hàng tiêu đề vì thế trôi mất khi cuộn. Cho
+            // .cal-jq-body cuộn cả hai chiều là xong.
+            '<div class="cal-jq-body">' +
+            '<table class="dp-table cal-jq"><thead><tr>' +
+            '<th>' + t('colTk') + '</th><th>' + t('colDate') + '</th>' +
+            '<th class="cal-jq-split">' + t('colTk') + '</th><th>' + t('colDate') + '</th>' +
+            '</tr></thead><tbody id="calJqBody">' + rows + '</tbody></table></div>';
+
         // Giữ nguyên trạng thái gập/mở giữa các lần vẽ lại và giữa các phiên.
         box.className = jieQiOpen ? 'open' : '';
         document.getElementById('calJqHead').addEventListener('click', function () {
             jieQiOpen = !jieQiOpen;
             prefSet(K_JQ, jieQiOpen ? '1' : '0');
             box.className = jieQiOpen ? 'open' : '';
-            // Gập bảng lại là trả về ~120px: phải chia lại cho các hàng, không
-            // thì chỗ trống đó nằm chình ình ở đáy màn hình.
+            // Gập bảng lại là trả về một mảng lớn: phải chia lại cho các hàng,
+            // không thì chỗ trống đó nằm chình ình ở đáy màn hình.
             fitGrid(lastWeeks);
             if (typeof window.__fitScreen === 'function') setTimeout(window.__fitScreen, 60);
+            if (jieQiOpen) setTimeout(scrollToActiveJieQi, 40);
         });
+        if (jieQiOpen) setTimeout(scrollToActiveJieQi, 40);
+        return true;
+    }
+
+    /** Dựng thân bảng (12 hàng × 2 cột kép); trả null nếu app.js chưa sẵn sàng. */
+    function buildJieQiRows() {
+        if (typeof sb_getJieQiDates !== 'function' || typeof sb_findY !== 'function' ||
+            typeof TK_ZH === 'undefined' || typeof TK_VI === 'undefined') return null;
+
+        var sel = selected || { y: viewY, m: viewM, d: 1 };
+        var info = (typeof countryData !== 'undefined' && typeof getDOM === 'function')
+            ? countryData[getDOM('country').value] : null;
+        if (!info) return null;
+        var tzId = info.tzId;
+        var tz = (typeof getTimezoneOffset === 'function')
+            ? getTimezoneOffset(tzId, new Date(sel.y, sel.m - 1, sel.d, 12)) : 7;
+
+        // Bảng Sách Bổ ở tab Kỳ Môn được dựng khi ShouXingUtil đang ở múi giờ
+        // ĐỊA PHƯƠNG (app.js đặt trước bước 8). `findJieQi` bên trong sb_findY
+        // đọc biến toàn cục đó, nên nếu chạy ở mốc UTC+7 của lịch âm thì hai
+        // bảng có thể lệch nhau một giờ. Đặt đúng mốc rồi trả lại như cũ.
+        var snap = ShouXingUtil.getTzOffsetHours();
+        var Y, dates;
+        try {
+            ShouXingUtil.setTzOffsetHours(tz);
+            Y = sb_findY(sel.y, sel.m, sel.d, 12, 0, tzId, tz);
+            dates = sb_getJieQiDates(Y, tzId, tz);
+        } finally {
+            ShouXingUtil.setTzOffsetHours(snap);
+        }
+
+        // Tiết khí đang hiệu lực = mốc CUỐI CÙNG không muộn hơn ngày đang chọn.
+        // Lấy 12:00 trưa làm mốc so: chọn 00:00 thì đúng ngày giao tiết sẽ rơi
+        // về tiết trước, mà lịch chỉ có độ phân giải một ngày.
+        var at = Date.UTC(sel.y, sel.m - 1, sel.d, 12, 0) / 60000;
+        var active = 0;
+        for (var i = 0; i < 24; i++) {
+            var ts = parseDt(dates[i]);
+            if (!isNaN(ts) && ts <= at) active = i;
+        }
+
+        // Bỏ Độn và Số Cục thì mỗi mục chỉ còn tên với ngày — hẹp bằng nửa
+        // bề ngang. Xếp 12 mục đầu (Đông Chí → Mang Chủng) bên trái, 12 mục
+        // sau (Hạ Chí → Đại Tuyết) bên phải: bảng thấp đi một nửa, gần như
+        // không phải cuộn nữa, và ranh giới trái/phải trùng đúng ranh giới
+        // Dương Độn / Âm Độn.
+        var zh = isZH();
+        var cell = function (k) {
+            var on = k === active;
+            return '<td class="cal-jq-name' + (on ? ' cal-jq-on' : '') +
+                (k === 12 ? ' cal-jq-split' : '') + '"' +
+                (on ? ' id="calJqActive"' : '') + '>' +
+                esc(zh ? TK_ZH[k] : TK_VI[k]) + '</td>' +
+                '<td class="dp-num cal-jq-date' + (on ? ' cal-jq-on' : '') + '">' +
+                esc(dates[k] || '') + '</td>';
+        };
+        var rows = '';
+        for (var k = 0; k < 12; k++) {
+            rows += '<tr' + (k % 2 === 0 ? ' class="dp-row-alt"' : '') + '>' +
+                cell(k) + cell(k + 12) + '</tr>';
+        }
+        return rows;
+    }
+
+    /** Bảng 24 dòng phải cuộn; đưa tiết khí đang hiệu lực vào giữa khung nhìn. */
+    function scrollToActiveJieQi() {
+        var row = document.getElementById('calJqActive');
+        var body = document.querySelector('#calJieQi .cal-jq-body');
+        if (!row || !body) return;
+        body.scrollTop = Math.max(0,
+            row.offsetTop - body.clientHeight / 2 + row.offsetHeight / 2);
     }
 
 

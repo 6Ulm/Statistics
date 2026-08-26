@@ -16,7 +16,7 @@ import { fileURLToPath } from 'url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ASSETS = path.join(HERE, '..', 'app', 'src', 'main', 'assets');
 const require = createRequire(import.meta.url);
-const { Solar, ShouXingUtil } = require(path.join(ASSETS, 'web', 'js', 'lunar.js'));
+const { Solar, LunarYear, ShouXingUtil } = require(path.join(ASSETS, 'web', 'js', 'lunar.js'));
 ShouXingUtil.setTzOffsetHours(7);
 
 const CAN = ['Giáp', 'Ất', 'Bính', 'Đinh', 'Mậu', 'Kỷ', 'Canh', 'Tân', 'Nhâm', 'Quý'];
@@ -126,23 +126,33 @@ for (const line of jqLines) {
 }
 
 let jqChecked = 0, jqBad = 0;
-for (let y = 1900; y <= 2100; y++) {
-    const table = Solar.fromYmd(y, 6, 15).getLunar().getJieQiTable();
-    for (const name in table) {
-        const idx = TK_ZH.indexOf(name);
-        if (idx < 0) continue;
-        const sol = table[name];
+
+// Đối chiếu theo ĐÚNG nguyên tắc của bảng Sách Bổ pháp (sb_getJieQiDates trong
+// js/app.js): getJieQiJulianDays() ở mốc UTC+8, rồi quy sang giờ địa phương
+// bằng jdLocal = jdUTC8 + (tz − 8)/24. Nếu dựng bảng bằng đường khác
+// (getJieQiTable ở mốc UTC+7 chẳng hạn) thì widget và ứng dụng có thể hiện hai
+// giờ khác nhau cho cùng một tiết khí — chính là thứ phép thử này canh.
+const TZ_WIDGET = 7;
+ShouXingUtil.setTzOffsetHours(null);
+for (let Y = 1899; Y <= 2100; Y++) {
+    const jds = LunarYear.fromYear(Y + 1).getJieQiJulianDays();
+    for (let i = 0; i < 24; i++) {
+        const sol = Solar.fromJulianDay(jds[i + 1] + (TZ_WIDGET - 8) / 24);
         if (sol.getYear() < 1900 || sol.getYear() > 2100) continue;
         jqChecked++;
         const j = jdnOf(sol.getYear(), sol.getMonth(), sol.getDay());
         const want = sol.getHour() * 60 + sol.getMinute();
-        const got = jqMap.get(j + ':' + idx);
+        const got = jqMap.get(j + ':' + i);
         if (got !== want) {
             jqBad++;
-            if (jqBad <= 4) console.log(`  LỆCH tiết khí ${name} ${sol.toYmdHms()}: bảng=${got} lunar.js=${want}`);
+            if (jqBad <= 4) {
+                console.log(`  LỆCH tiết khí ${TK_ZH[i]} ${sol.toYmdHms()}: bảng=${got} lunar.js=${want}`);
+            }
         }
     }
 }
+ShouXingUtil.setTzOffsetHours(7);
+
 console.log(`Đã so ${jqChecked.toLocaleString()} mốc tiết khí · lệch ${jqBad}`);
 bad += jqBad;
 
