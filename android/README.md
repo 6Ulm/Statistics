@@ -238,11 +238,29 @@ Mở bằng Android Studio: **File → Open** rồi chọn thư mục `android/`
 |---|---|
 | `minSdk` | 24 (Android 7.0) |
 | `targetSdk` / `compileSdk` | 35 (Android 15) |
-| Ngôn ngữ | Kotlin, AGP 8.7.3, Gradle 8.14.3 |
+| Ngôn ngữ | Kotlin 2.2.21, AGP 8.13.0, Gradle 9.3.0 |
 | Phụ thuộc | chỉ `androidx.core:core-ktx` |
 
 `assembleRelease` tạo APK **chưa ký**. Muốn ký thì thêm `signingConfigs` vào
 `app/build.gradle.kts` hoặc dùng **Build → Generate Signed Bundle / APK**.
+
+### Về Gradle 9
+
+Bản Gradle nằm trong `gradle/wrapper/gradle-wrapper.properties` mới là bản
+quyết định: chạy `./gradlew` thì Gradle cài sẵn trên máy không được dùng tới,
+nên hai bên không cần trùng nhau.
+
+Lên Gradle 9 kéo theo hai thứ bắt buộc:
+
+* **AGP 8.7 không chạy được** — nó chỉ hỗ trợ tới Gradle 8.x và dừng ngay với
+  "Minimum supported Gradle version". Phải là bản AGP có hỗ trợ Gradle 9.
+* **`kotlinOptions { }` đã bị bỏ ở Kotlin 2.2**, thay bằng
+  `kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }`.
+
+Cả hai số phiên bản đều nằm gọn trong `build.gradle.kts` ở thư mục gốc. Nếu
+Android Studio báo AGP quá cũ hoặc quá mới so với Gradle bạn đang dùng, mở
+**Tools → AGP Upgrade Assistant** hoặc sửa thẳng con số đó — không có chỗ nào
+khác trong dự án phụ thuộc vào nó.
 
 ## Kiểm thử
 
