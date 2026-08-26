@@ -31,8 +31,9 @@
     border-top-color: var(--accent, #007bff);
 }
 
-/* Chừa chỗ cho thanh tab, không để nó che nội dung. */
-body { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+/* Chừa đúng chiều cao thật của thanh tab — không hơn. viewport.js đo thanh
+   rồi ghi vào biến này; 0px chỉ là giá trị tạm trước khi kịp đo. */
+body { padding-bottom: var(--tabbar-h, 0px); }
 
 /* ── Chuyển tab: ẩn toàn bộ màn hình Kỳ Môn ── */
 #calView { display: none; width: 100%; max-width: var(--max-w, 400px); }
@@ -92,75 +93,46 @@ body.view-cal #calView { display: block; }
 .cal-dow-cell.cal-sun { color: #c62828; }
 
 .cal-day {
-    padding: 3px 3px 4px;
-    min-height: 52px;
+    padding: 4px 4px 5px;
+    min-height: var(--cal-row-h, 52px);
     cursor: pointer;
     display: flex; flex-direction: column;
 }
 .cal-day:active { background: #fbdde2; }
 .cal-empty { background: #fdf5f6; }
 
-.cal-top { display: flex; align-items: flex-start; justify-content: space-between; }
-.cal-solar { font-size: 15px; font-weight: 700; color: #222; line-height: 1.1; }
-.cal-dot {
-    width: 5px; height: 5px; border-radius: 50%;
-    margin-top: 4px; flex-shrink: 0;
+.cal-top {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 2px;
 }
-.cal-dot.hd  { background: #e53935; }   /* hoàng đạo */
-.cal-dot.hac { background: #9e9e9e; }   /* hắc đạo */
+.cal-solar { font-size: 15px; font-weight: 700; color: #222; line-height: 1.1; }
 
 .cal-lunar {
-    text-align: right;
     font-size: 10.5px; color: #6b6b6b;
-    line-height: 1.2;
+    line-height: 1.2; white-space: nowrap;
 }
+/* Can một dòng, chi một dòng — cố định cho MỌI ngày, không phụ thuộc độ dài.
+   Căn giữa phần còn lại của ô: hàng cao lên thì can chi vẫn nằm cân, không bị
+   dồn xuống đáy để hở một mảng trống ở giữa. */
 .cal-gz {
-    margin-top: auto;
-    text-align: center;
-    font-size: 9.5px; color: #555;
-    line-height: 1.15;
-    white-space: normal; word-break: keep-all;
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-size: 10.5px; color: #555;
+    line-height: 1.25;
 }
+.cal-gz span { white-space: nowrap; }
 
 /* Hôm nay / ngày đang chọn */
 .cal-day.cal-today { background: #d32f2f; }
 .cal-day.cal-today .cal-solar,
 .cal-day.cal-today .cal-lunar,
 .cal-day.cal-today .cal-gz { color: #fff; }
-.cal-day.cal-today .cal-dot.hac { background: #ffcdd2; }
 .cal-day.cal-sel:not(.cal-today) {
     background: #fff;
     box-shadow: inset 0 0 0 2px #d32f2f;
 }
 
-/* ── Chi tiết ngày đang chọn ── */
-#calDetail {
-    display: none;
-    margin-top: 6px;
-    background: var(--bg-white, #fff);
-    border: var(--border-panel, 1.5px solid #bbb);
-    border-radius: 8px;
-    padding: 7px 10px 9px;
-    font-size: 12.5px;
-}
-.cal-det-line { display: flex; align-items: center; gap: 5px; padding: 1.5px 0; }
-.cal-det-line .lbl { color: var(--text-dim, #666); }
-.cal-badge {
-    margin-left: auto;
-    font-size: 10.5px; font-weight: 700;
-    border-radius: 3px; padding: 1px 6px;
-}
-.cal-badge.hd  { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
-.cal-badge.hac { background: #f0f0f0; color: #555;    border: 1px solid #ccc; }
-#calToQmdj {
-    margin-top: 8px; width: 100%;
-    padding: 7px;
-    border: none; border-radius: 6px;
-    background: var(--accent, #007bff); color: #fff;
-    font-size: 12.5px; font-weight: 700;
-    cursor: pointer;
-}
-#calToQmdj:active { opacity: .8; }
 
 /* ── Tiết khí trong tháng ── */
 #calJieQi { margin-top: 6px; }

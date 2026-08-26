@@ -137,6 +137,25 @@ w.setLang('zh');
 check('nhãn Mặt Trời (zh)', val('lblAstroSun'), '太阳:');
 check('giá trị đổi theo (zh)', val('out-astro-sun').slice(0, 1), '出');
 
+console.log('\nTab Lịch âm dương');
+w.setLang('vi');            // can chi tiếng Việt
+await new Promise(r => setTimeout(r, 200));
+w.showTab('cal');
+await new Promise(r => setTimeout(r, 200));
+const cells = [...doc.querySelectorAll('.cal-day')];
+check('số ô ngày tháng 8/2026', String(cells.length), '31');
+check('can chi luôn 2 dòng', String(cells.every(c => c.querySelector('.cal-gz').children.length === 2)), 'true');
+check('không còn chấm hoàng đạo', String(doc.querySelectorAll('.cal-dot').length), '0');
+check('không còn hộp chi tiết', String(!!doc.getElementById('calDetail')), 'false');
+const c1 = cells[0], c13 = cells[12], c26 = cells[25];
+const gz = c => [...c.querySelector('.cal-gz').children].map(x => x.textContent).join(' ');
+check('01/08 âm + can chi', c1.querySelector('.cal-lunar').textContent + ' ' + gz(c1), '19 Đinh Mùi');
+check('13/08 mùng 1 tháng 7', c13.querySelector('.cal-lunar').textContent + ' ' + gz(c13), '1/7 Kỷ Mùi');
+check('26/08 can chi', c26.querySelector('.cal-lunar').textContent + ' ' + gz(c26), '14 Nhâm Thân');
+check('hôm nay được tô đỏ', String(doc.querySelectorAll('.cal-today').length), '1');
+w.showTab('qmdj');
+await new Promise(r => setTimeout(r, 200));
+
 console.log('\nNút Back của Android');
 w.openCountryPicker();
 check('1. đóng hộp thoại vị trí trước', String(w.__onBackPressed()), 'true');

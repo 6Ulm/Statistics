@@ -24,6 +24,9 @@
     var MIN_SCALE = 0.95;
     // Không phóng quá to trên máy tính bảng / điện thoại gập.
     var MAX_SCALE = 1.6;
+    // Khoảng cách gốc giữa các bảng (app.css) và mức giãn tối đa cho phép.
+    var BASE_GAP = 3;
+    var MAX_EXTRA_GAP = 14;
 
     var lastW = 0, lastH = 0, timer = null;
 
@@ -43,9 +46,20 @@
         if (!body) return;
 
 
-        // Đo chiều cao tự nhiên ở tỉ lệ 1 rồi mới đặt tỉ lệ thật.
+        // Thanh tab cố định che mất phần đáy, nên phải chừa ĐÚNG chiều cao của
+        // nó. Đặt số cứng thì hoặc thừa (hở một khoảng ở đáy màn Kỳ Môn) hoặc
+        // thiếu (che mất dòng cuối) — đo thẳng vẫn chắc hơn.
+        var bar = document.getElementById('tabBar');
+        if (bar) {
+            var h = Math.round(bar.getBoundingClientRect().height);
+            if (h > 0) document.documentElement.style.setProperty('--tabbar-h', h + 'px');
+        }
+
+        // Đo chiều cao tự nhiên ở tỉ lệ 1 VÀ khoảng cách mặc định, nếu không
+        // phần thừa chia ở lần trước sẽ cộng dồn qua mỗi lần đo.
         var prev = body.style.zoom;
         body.style.zoom = '';
+        body.style.gap = BASE_GAP + 'px';
         var natH = body.scrollHeight;
         var availW = document.documentElement.clientWidth;
         var availH = window.innerHeight;
@@ -56,8 +70,18 @@
         // (width:100%, max-width:400px) nên trên màn hẹp nó đã vừa khít rồi.
         // Lấy hằng số 412px mà chia sẽ ra tỉ lệ < 1 và thu bé giao diện một
         // cách vô cớ trên chính S21 (360px).
-        var panel = document.querySelector('.controls');
-        var natW = panel ? panel.getBoundingClientRect().width + 12 : availW;
+        //
+        // Phải đo bảng ĐANG HIỆN. Đo cứng '.controls' thì sang tab Lịch nó bị
+        // ẩn, bề rộng đọc ra 0 → tỉ lệ vọt lên và cả trang tràn ngang.
+        var natW = 0;
+        for (var k = 0; k < body.children.length; k++) {
+            var kid = body.children[k];
+            var kcs = getComputedStyle(kid);
+            if (kcs.display === 'none' || kcs.position === 'fixed') continue;
+            var kw = kid.getBoundingClientRect().width;
+            if (kw > natW) natW = kw;
+        }
+        natW = natW ? natW + 12 : availW;      // + padding hai bên của body
 
         // Phóng to bị chặn bởi CẢ hai chiều: rộng ra thì tràn ngang, cao quá
         // thì phải cuộn.
@@ -65,8 +89,33 @@
         scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
         body.style.zoom = scale.toFixed(3);
 
+        spreadSlack(body, availH, natH * scale, scale);
+
         lastW = availW;
         lastH = availH;
+    }
+
+    /**
+     * Bề ngang đã kịch trần thì không phóng to thêm được nữa, nên ở màn dọc
+     * luôn còn thừa vài chục pixel chiều cao. Nếu cứ để nguyên, toàn bộ phần
+     * thừa dồn xuống đáy thành một khoảng hở ngay trên thanh tab.
+     * Chia đều phần thừa đó vào khoảng cách giữa các bảng — màn hình đầy đặn,
+     * không còn khoảng hở ở đáy.
+     */
+    function spreadSlack(body, availH, usedH, scale) {
+        var kids = [];
+        for (var i = 0; i < body.children.length; i++) {
+            var el = body.children[i];
+            var cs = getComputedStyle(el);
+            if (cs.display === 'none' || cs.position === 'fixed') continue;
+            kids.push(el);
+        }
+        var gaps = kids.length - 1;
+        var leftover = availH - usedH;
+        if (gaps < 1 || leftover < 6) return;
+        // gap tính theo px CHƯA phóng, nên phải chia lại cho hệ số.
+        var extra = Math.min(MAX_EXTRA_GAP, leftover / scale / gaps);
+        body.style.gap = (BASE_GAP + extra).toFixed(1) + 'px';
     }
 
     /** Gộp nhiều sự kiện resize liên tiếp thành một lần đo. */

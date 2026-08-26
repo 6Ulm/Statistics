@@ -2,11 +2,8 @@
    calendar.js — Lịch âm dương + thanh tab dưới màn hình
    Vietnamese lunar calendar tab.
 
-   Mỗi ô hiển thị: ngày dương (to), ngày âm (nhỏ), can chi tiếng Việt, và một
-   chấm màu — đỏ là ngày hoàng đạo, xám là ngày hắc đạo.
-
-   Bảng hoàng đạo dưới đây đã được đối chiếu với lịch tháng 8/2026: khớp cả
-   30/30 ngày.
+   Mỗi ô hiển thị: ngày dương (to), ngày âm (nhỏ) và can chi — can một dòng,
+   chi một dòng, giống hệt nhau ở mọi ngày.
    ════════════════════════════════════════════════════════════════════ */
 (function () {
     'use strict';
@@ -16,19 +13,6 @@
     var CAN_ZH = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
     var CHI_ZH = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 
-    /**
-     * Ngày hoàng đạo theo tháng âm lịch (cặp tháng 1–7, 2–8, 3–9, 4–10, 5–11, 6–12).
-     * Ngày có địa chi nằm trong danh sách của tháng đó là hoàng đạo.
-     */
-    var HOANG_DAO = [
-        ['Tý', 'Sửu', 'Thìn', 'Tỵ', 'Mùi', 'Tuất'],   // tháng 1, 7
-        ['Dần', 'Mão', 'Ngọ', 'Mùi', 'Dậu', 'Tý'],    // tháng 2, 8
-        ['Thìn', 'Tỵ', 'Thân', 'Dậu', 'Hợi', 'Dần'],  // tháng 3, 9
-        ['Ngọ', 'Mùi', 'Tuất', 'Hợi', 'Sửu', 'Thìn'], // tháng 4, 10
-        ['Thân', 'Dậu', 'Tý', 'Sửu', 'Mão', 'Ngọ'],   // tháng 5, 11
-        ['Tuất', 'Hợi', 'Dần', 'Mão', 'Tỵ', 'Thân'],  // tháng 6, 12
-    ];
-
     var T = {
         tabQmdj:  { vi: 'Kỳ Môn',     zh: '奇门' },
         tabCal:   { vi: 'Lịch',       zh: '日历' },
@@ -36,13 +20,7 @@
         dows:     { vi: ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'C.Nhật'],
                     zh: ['一', '二', '三', '四', '五', '六', '日'] },
         today:    { vi: 'Hôm nay',    zh: '今天' },
-        solar:    { vi: 'Dương lịch', zh: '阳历' },
-        lunar:    { vi: 'Âm lịch',    zh: '农历' },
-        canchi:   { vi: 'Can chi',    zh: '干支' },
-        hoangdao: { vi: 'Hoàng đạo',  zh: '黄道' },
-        hacdao:   { vi: 'Hắc đạo',    zh: '黑道' },
         jieqi:    { vi: 'Tiết khí trong tháng', zh: '本月节气' },
-        openQmdj: { vi: 'Xem Kỳ Môn ngày này', zh: '查看此日奇门' },
     };
     function t(k) {
         var zh = (typeof currentLang !== 'undefined' && currentLang === 'zh');
@@ -71,6 +49,10 @@
         }
     }
 
+    // Lề trên/dưới của trang cộng khoảng cách giữa các khối trong tab Lịch.
+    var GRID_CHROME = 28;
+    var ROW_MIN = 52, ROW_MAX = 104;
+
     var viewY, viewM;          // tháng đang xem (dương lịch)
     var selected = null;       // {y,m,d}
 
@@ -78,17 +60,14 @@
     function dayGanZhi(lunar) {
         var can = CAN_ZH.indexOf(lunar.getDayGan());
         var chi = CHI_ZH.indexOf(lunar.getDayZhi());
-        if (can < 0 || chi < 0) return { vi: '', chi: '', zh: '' };
+        if (can < 0 || chi < 0) return { can: '', chi: '', vi: '', chiVi: '' };
+        var zh = isZH();
         return {
+            can: zh ? lunar.getDayGan() : CAN_VI[can],
+            chi: zh ? lunar.getDayZhi() : CHI_VI[chi],
             vi: CAN_VI[can] + ' ' + CHI_VI[chi],
-            zh: lunar.getDayGan() + lunar.getDayZhi(),
-            chi: CHI_VI[chi],
+            chiVi: CHI_VI[chi],
         };
-    }
-
-    function isHoangDao(lunarMonth, chiVi) {
-        var lm = Math.abs(lunarMonth);
-        return HOANG_DAO[(lm - 1) % 6].indexOf(chiVi) >= 0;
     }
 
     function esc(s) {
@@ -129,21 +108,24 @@
             var lmon = lunar.getMonth();
             // Mùng 1 thì ghi kèm tháng âm, như lịch giấy: "1/7"
             var lunarTxt = (lday === 1) ? (lday + '/' + Math.abs(lmon) + (lmon < 0 ? 'N' : '')) : String(lday);
-            var hd = isHoangDao(lmon, gz.chi);
             var key = viewY + '-' + viewM + '-' + d;
             var cls = 'cal-cell cal-day';
             if (key === tKey) cls += ' cal-today';
             if (selected && selected.y === viewY && selected.m === viewM && selected.d === d) cls += ' cal-sel';
             if ((lead + d - 1) % 7 === 6) cls += ' cal-sun';
 
+            // Can và chi luôn nằm trên HAI dòng riêng, mọi ngày như nhau —
+            // để một chuỗi tự xuống dòng thì "Đinh Mùi" gãy đôi còn "Kỷ Dậu"
+            // nằm một dòng, nhìn so le rất xấu.
             cells.push(
                 '<div class="' + cls + '" data-d="' + d + '">' +
                 '<div class="cal-top">' +
                 '<span class="cal-solar">' + d + '</span>' +
-                '<span class="cal-dot ' + (hd ? 'hd' : 'hac') + '"></span>' +
+                '<span class="cal-lunar">' + esc(lunarTxt) + '</span>' +
                 '</div>' +
-                '<div class="cal-lunar">' + esc(lunarTxt) + '</div>' +
-                '<div class="cal-gz">' + esc(isZH() ? gz.zh : gz.vi) + '</div>' +
+                '<div class="cal-gz">' +
+                '<span>' + esc(gz.can) + '</span><span>' + esc(gz.chi) + '</span>' +
+                '</div>' +
                 '</div>'
             );
         }
@@ -155,8 +137,31 @@
         document.getElementById('calGrid').innerHTML = html;
 
         renderJieQi();
-        renderDetail();
         clearLunarBasis();
+        fitGrid(cells.length / 7);
+    }
+
+    /**
+     * Kéo cao các hàng cho lịch lấp đầy màn hình.
+     * Bố cục bị chặn bởi bề ngang nên phóng to cả trang không được (sẽ tràn
+     * ngang); phần thừa chiều cao phải rót vào chiều cao hàng thì mới hết
+     * khoảng trống mênh mông ở đáy.
+     */
+    function fitGrid(weeks) {
+        if (!weeks) return;
+        var grid = document.getElementById('calGrid');
+        var head = document.getElementById('calHead');
+        var jq = document.getElementById('calJieQi');
+        var bar = document.getElementById('tabBar');
+        var dow = grid ? grid.querySelector('.cal-dow') : null;
+        if (!grid || !head || !dow) return;
+
+        var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
+        var h = function (el) { return el ? el.getBoundingClientRect().height / zoom : 0; };
+        var avail = window.innerHeight / zoom - h(head) - h(dow) - h(jq) - h(bar) - GRID_CHROME;
+        var rowH = Math.floor(avail / weeks);
+        rowH = Math.max(ROW_MIN, Math.min(ROW_MAX, rowH));
+        document.documentElement.style.setProperty('--cal-row-h', rowH + 'px');
     }
 
     /** Bảng tiết khí rơi vào tháng dương lịch đang xem. */
@@ -188,46 +193,6 @@
             : '';
     }
 
-    /** Dải thông tin chi tiết của ngày đang chọn. */
-    function renderDetail() {
-        var box = document.getElementById('calDetail');
-        if (!box) return;
-        var s = selected;
-        if (!s) { box.style.display = 'none'; return; }
-        setLunarBasis();
-        var lunar = Solar.fromYmd(s.y, s.m, s.d).getLunar();
-        var gz = dayGanZhi(lunar);
-        var lmon = Math.abs(lunar.getMonth());
-        var hd = isHoangDao(lunar.getMonth(), gz.chi);
-        var p = function (n) { return (n < 10 ? '0' : '') + n; };
-
-        box.style.display = 'block';
-        box.innerHTML =
-            '<div class="cal-det-line"><span class="lbl">' + t('solar') + ':</span>' +
-            '<b>' + p(s.d) + '/' + p(s.m) + '/' + s.y + '</b></div>' +
-            '<div class="cal-det-line"><span class="lbl">' + t('lunar') + ':</span>' +
-            '<b>' + lunar.getDay() + '/' + lmon + '/' + lunar.getYear() + '</b></div>' +
-            '<div class="cal-det-line"><span class="lbl">' + t('canchi') + ':</span>' +
-            '<b>' + esc(isZH() ? gz.zh : gz.vi) + '</b>' +
-            '<span class="cal-badge ' + (hd ? 'hd' : 'hac') + '">' +
-            (hd ? t('hoangdao') : t('hacdao')) + '</span></div>' +
-            '<button type="button" id="calToQmdj">' + t('openQmdj') + '</button>';
-
-        var btn = document.getElementById('calToQmdj');
-        if (btn) btn.addEventListener('click', function () { openInQmdj(s); });
-    }
-
-    /** Nạp ngày đang chọn vào màn hình Kỳ Môn rồi chuyển tab. */
-    function openInQmdj(s) {
-        var set = function (id, v) {
-            var el = document.getElementById(id);
-            if (el) el.value = String(v);
-        };
-        set('inYear', s.y); set('inMonth', s.m); set('inDay', s.d);
-        if (typeof updateDateDisplay === 'function') updateDateDisplay();
-        if (typeof processAll === 'function') processAll();
-        showTab('qmdj');
-    }
 
     function shiftMonth(delta) {
         var d = new Date(viewY, viewM - 1 + delta, 1);
@@ -247,7 +212,9 @@
         if (tc) tc.classList.toggle('tab-active', cal);
         if (cal) render();
         if (typeof window.__fitScreen === 'function') setTimeout(window.__fitScreen, 50);
-        window.scrollTo(0, 0);
+        // Chỉ cuộn khi đang không ở đầu trang — gọi thừa vừa vô ích vừa làm
+        // jsdom kêu "not implemented" trong bộ kiểm thử.
+        if (window.scrollY) { try { window.scrollTo(0, 0); } catch (e) {} }
     }
     window.showTab = showTab;
 
@@ -260,6 +227,10 @@
         if (document.body.classList.contains('view-cal')) render();
     }
     window.__calRefreshLabels = refreshLabels;
+
+    window.addEventListener('resize', function () {
+        if (document.body.classList.contains('view-cal')) setTimeout(render, 180);
+    });
 
     document.addEventListener('DOMContentLoaded', function () {
         var now = new Date();
