@@ -1398,14 +1398,18 @@ function ab_renderPanel(lunarYear, lunarMonth, tzId, lonDeg, tzH) {
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    // FIX: Lunar.fromYmd(...) phải được gọi khi _tzOffsetHours = null
-    // (mốc UTC+8) — giống fix ở info panel — để tránh điểm Sóc (đã làm
-    // tròn) bị lệch sang ngày dương lịch khác do _tzOffsetHours = tz
-    // (đã set cho bảng Âm Bàn) còn đang active. formatPreciseSocLocal()
-    // sẽ tính lại thời điểm Sóc chính xác đến phút và quy đổi sang giờ
-    // địa phương sau đó.
+    // Mốc múi giờ ĐỊA PHƯƠNG, không phải UTC+8.
+    //
+    // Chính hàng này là chỗ lỗi lộ rõ nhất: cột "Sóc" quy về giờ địa phương
+    // (formatPreciseSocLocal) còn cột "Mùng 1" lại lấy từ mo.getFirstJulianDay()
+    // tính ở UTC+8 — hai hệ quy chiếu nằm cạnh nhau trong CÙNG MỘT DÒNG. Ở
+    // Paris tháng 7 âm 2026: Sóc ghi 12-08-2026 19:37 nhưng Mùng 1 ghi
+    // 13-08-2026, trong khi quy tắc là mùng 1 phải là ngày CHỨA điểm Sóc.
+    //
+    // Đặt cùng một mốc cho cả hai thì cột Mùng 1 (và cột Rằm, vốn là mùng 1 +
+    // 14) tự khớp với giờ Sóc đang hiện.
     const _tzSnapshot = ShouXingUtil.getTzOffsetHours();
-    ShouXingUtil.setTzOffsetHours(null);
+    ShouXingUtil.setTzOffsetHours(tzH);
 
     // FIX (tháng nhuận): trước đây loop `for mo=1..12` gọi
     // Lunar.fromYmd(lunarYear, mo, 1) — với năm có tháng nhuận (vd 2025 có
@@ -1429,7 +1433,7 @@ function ab_renderPanel(lunarYear, lunarMonth, tzId, lonDeg, tzH) {
         const socSolar = Solar.fromJulianDay(mo.getFirstJulianDay());
 
         const socStr   = formatPreciseSocLocal(socSolar, tzId);
-        // Mùng 1: ngày dương lịch của firstJulianDay (UTC+8)
+        // Mùng 1: ngày dương lịch của firstJulianDay (mốc địa phương)
         const mung1Str = `${pad(socSolar.getDay())}-${pad(socSolar.getMonth())}-${socSolar.getYear()}`;
         // Rằm: ngày 15 âm = firstJulianDay + 14 (0-indexed)
         const ramSolar = Solar.fromJulianDay(mo.getFirstJulianDay() + 14);
@@ -1818,6 +1822,28 @@ function processAll() {
         const lunarLocal = Solar.fromDate(exactDate).getLunar();
         const baziLocal  = lunarLocal.getEightChar();
 
+        // NGÀY ÂM LỊCH tính ở mốc múi giờ ĐỊA PHƯƠNG, không phải UTC+8.
+        //
+        // Quy tắc của lịch âm: mùng 1 là ngày CHỨA điểm Sóc. "Ngày" nào thì
+        // tuỳ mốc quy chiếu — và mốc ấy phải trùng với mốc dùng để HIỆN giờ
+        // Sóc, nếu không một màn hình có hai hệ quy chiếu. Đúng lỗi này:
+        // ở Paris, Sóc hiện 12/08/2026 19:37 (giờ Paris) trong khi mùng 1
+        // lại là 13/08 (vì tính ở UTC+8, nơi Sóc rơi vào 13/08 00:37).
+        //
+        // Ghi chú cũ ở đây cảnh báo rằng đặt mốc địa phương làm hỏng độ dài
+        // tháng 29/30. Đã kiểm lại: KHÔNG đúng. Quét 2020–2035 ở các mốc từ
+        // UTC−8 tới UTC+12, mọi tháng đều 29 hoặc 30 ngày, số ngày âm liên
+        // tục, và mùng 1 luôn chứa Sóc (198/198 tháng mỗi mốc).
+        //
+        // Chỉ đổi NGÀY ÂM LỊCH. Năm/Tháng Can Chi vẫn lấy từ baziBJ (đổi tại
+        // Lập Xuân và các mốc Tiết, so với solarBJ ở giờ Bắc Kinh) và tiết khí
+        // vẫn tính ở mốc UTC+8 — đó là lý do thật của ghi chú cũ, và nó vẫn
+        // đúng: trộn solarBJ giờ Bắc Kinh với mốc Lập Xuân giờ địa phương thì
+        // Can Chi năm/tháng lệch hẳn.
+        ShouXingUtil.setTzOffsetHours(tz);
+        const lunarDisp = Solar.fromDate(exactDate).getLunar();
+        ShouXingUtil.setTzOffsetHours(null);
+
         // FIX: _readInputBJ() trả về solarBJ ở GIỜ BẮC KINH (UTC+8) — Năm/Tháng
         // Can Chi (baziBJ.getYearGan/Zhi, getMonthGan/Zhi) phụ thuộc vào việc so
         // sánh solarBJ với mốc Lập Xuân (yearGanIndexByLiChun/Exact trong
@@ -1831,7 +1857,10 @@ function processAll() {
         // → Giữ _tzOffsetHours = null (UTC+8) cho cả baziBJ và _getPrevJieQi.
         const { solarBJ, dUTC } = _readInputBJ(y, m, d, h, min, tz);
         const baziBJ  = solarBJ.getLunar().getEightChar();
-        const lunar   = lunarLocal; // alias — âm lịch dùng local
+        // Ngày-tháng-năm âm lịch (hiển thị + cục Âm Bàn + bảng Sóc) lấy bản
+        // tính ở mốc địa phương; baziLocal vẫn dùng lunarLocal (can chi ngày
+        // là chu kỳ 60 ngày liên tục, không phụ thuộc mốc này).
+        const lunar   = lunarDisp;
 
         // Đối tượng bazi tổng hợp (Năm/Tháng từ BJ, Ngày/Giờ từ Local).
         // Giờ Can/Chi (getTimeGan/Zhi/getTime) được ghi đè bằng giá trị thiên văn
@@ -1949,16 +1978,13 @@ function processAll() {
         const res = calculateQMDJ(cuc, don, canTuan, canGioRaw, currentLang);
 
         // ── 11. Info Panel ──
-        // FIX: Lunar.fromYmd(...) phải được gọi khi _tzOffsetHours = null
-        // (mốc UTC+8), nhất quán với lunarMonthNum đã tính ở bước 4 —
-        // tránh tình trạng ShouXingUtil.setTzOffsetHours(tz) (đã set ở
-        // trên cho bảng Sách Bổ/Âm Bàn) làm lệch điểm Sóc tháng sang ngày
-        // dương lịch khác (cùng lỗi 29/30 ngày đã gặp ở bước tính
-        // lunarLocal). Sau khi lấy được socSolar (ngày đã làm tròn theo
-        // UTC+8), formatPreciseSocLocal() sẽ tính lại thời điểm Sóc chính
-        // xác đến phút và quy đổi sang giờ địa phương.
+        // Lunar.fromYmd(...) phải chạy ở CÙNG mốc múi giờ với lunarMonthNum
+        // (nay là mốc địa phương), nếu không nó tra ra mùng 1 của tháng âm
+        // theo một mốc khác và giờ Sóc hiện ra lệch hẳn một ngày.
+        // socSolar chỉ là ngày đã làm tròn; formatPreciseSocLocal() tính lại
+        // thời điểm Sóc chính xác đến phút rồi quy sang giờ địa phương.
         const _tzSnapshot = ShouXingUtil.getTzOffsetHours();
-        ShouXingUtil.setTzOffsetHours(null);
+        ShouXingUtil.setTzOffsetHours(tz);
         const socSolar  = Lunar.fromYmd(lunar.getYear(), lunarMonthNum, 1).getSolar();
         ShouXingUtil.setTzOffsetHours(_tzSnapshot);
 

@@ -31,9 +31,11 @@ const starts = new Int32Array(lines.length - 1);
 const lyear = new Int16Array(lines.length - 1);
 const lmonth = new Int8Array(lines.length - 1);
 const leap = new Int8Array(lines.length - 1);
+const socSec = new Int32Array(lines.length - 1);
 for (let i = 1; i < lines.length; i++) {
     const p = lines[i].split(' ');
-    starts[i - 1] = +p[0]; lyear[i - 1] = +p[1]; lmonth[i - 1] = +p[2]; leap[i - 1] = +p[3];
+    starts[i - 1] = +p[0]; socSec[i - 1] = +p[1];
+    lyear[i - 1] = +p[2]; lmonth[i - 1] = +p[3]; leap[i - 1] = +p[4];
 }
 
 function jdnOf(y, m, d) {
@@ -81,39 +83,97 @@ function ganZhi(jdn) {
 }
 
 /* ── so từng ngày ── */
-let checked = 0, bad = 0;
+/* ── Bảng tháng âm ──
+   Bảng ghi ĐIỂM SÓC ở mốc UTC+7; mùng 1 là ngày chứa điểm Sóc, xét ở múi giờ
+   đang xem. Kiểm ở nhiều mốc múi giờ một lúc: đặt lunar.js về đúng mốc ấy rồi
+   so từng ngày, y như LunarTable.lunarOf làm trên máy. */
+function monthStartAt(i, tzH) {
+    const utcMs = (starts[i] - 2440588) * 86400000 + socSec[i] * 1000 - 7 * 3600000;
+    const local = utcMs + tzH * 3600000;
+    return Math.floor(local / 86400000) + 2440588;
+}
+function lookupAt(jdn, tzH) {
+    let lo = 0, hi = starts.length - 1, idx = -1;
+    while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (monthStartAt(mid, tzH) <= jdn) { idx = mid; lo = mid + 1; } else hi = mid - 1;
+    }
+    if (idx < 0) return null;
+    return {
+        day: jdn - monthStartAt(idx, tzH) + 1,
+        month: lmonth[idx], year: lyear[idx], leap: leap[idx] === 1,
+    };
+}
+
+let checked = 0, bad = 0, badDay = 0, badLabel = 0;
 const samples = [];
-for (let y = 1900; y <= 2100; y++) {
-    for (let m = 1; m <= 12; m++) {
-        const days = new Date(y, m, 0).getDate();
-        for (let d = 1; d <= days; d++) {
-            const j = jdnOf(y, m, d);
-            const got = lookup(j);
-            const gz = ganZhi(j);
-            const ref = Solar.fromYmd(y, m, d).getLunar();
-            checked++;
-            const refLeap = ref.getMonth() < 0;
-            const back = civilOf(j);
-            const ok = got &&
-                back.y === y && back.m === m && back.d === d &&
-                got.day === ref.getDay() &&
-                got.month === Math.abs(ref.getMonth()) &&
-                got.year === ref.getYear() &&
-                got.leap === refLeap &&
-                CAN_ZH[gz.can] === ref.getDayGan() &&
-                CHI_ZH[gz.chi] === ref.getDayZhi();
-            if (!ok) {
-                bad++;
-                if (samples.length < 6) {
-                    samples.push(`${d}/${m}/${y}: bảng ${got ? got.day + '/' + got.month + '/' + got.year +
-                        (got.leap ? 'N' : '') + ' ' + CAN[gz.can] + ' ' + CHI[gz.chi] : 'không tra được'}` +
-                        ` | lunar.js ${ref.getDay()}/${Math.abs(ref.getMonth())}/${ref.getYear()}` +
-                        `${refLeap ? 'N' : ''} ${ref.getDayGan()}${ref.getDayZhi()}`);
+const perTz = {};
+for (const tzH of [7, 8, 2, 1, -5, -8]) {
+    let d0 = 0, l0 = 0, n0 = 0;
+    ShouXingUtil.setTzOffsetHours(tzH);
+    for (let y = 1901; y <= 2099; y++) {
+        for (let m = 1; m <= 12; m++) {
+            const days = new Date(y, m, 0).getDate();
+            for (let d = 1; d <= days; d++) {
+                const j = jdnOf(y, m, d);
+                const got = lookupAt(j, tzH);
+                const ref = Solar.fromYmd(y, m, d).getLunar();
+                checked++; n0++;
+                const back = civilOf(j);
+                const okDay = got && got.day === ref.getDay();
+                const okLabel = got && got.month === Math.abs(ref.getMonth()) &&
+                    got.year === ref.getYear() && got.leap === (ref.getMonth() < 0);
+                if (!okDay) d0++;
+                if (okDay && !okLabel) l0++;
+                const ok = got && back.y === y && back.m === m && back.d === d && okDay && okLabel;
+                if (!ok && tzH === 7) {
+                    bad++;
+                    if (samples.length < 6) {
+                        samples.push(`UTC+7 ${d}/${m}/${y}: bảng ` +
+                            `${got ? got.day + '/' + got.month + '/' + got.year + (got.leap ? 'N' : '') : 'không tra được'}` +
+                            ` | lunar.js ${ref.getDay()}/${Math.abs(ref.getMonth())}/${ref.getYear()}` +
+                            `${ref.getMonth() < 0 ? 'N' : ''}`);
+                    }
                 }
             }
         }
     }
+    ShouXingUtil.setTzOffsetHours(null);
+    perTz[tzH] = { d: d0, l: l0, n: n0 };
+    badDay += d0; badLabel += l0;
 }
+
+/* Bảng đóng trong APK là mốc UTC+7 — ở đó phải ĐÚNG TUYỆT ĐỐI.
+   Các múi giờ khác chỉ là ĐƯỜNG LÙI: widget suy mốc mùng 1 từ điểm Sóc, mà
+   lunar.js không định mùng 1 thuần tuý bằng phép lấy phần nguyên nên còn lệch
+   một ít. Đường chính là bảng do ứng dụng ghi ra (publishLunarCache trong
+   calendar.js) — chính xác tuyệt đối vì do lunar.js tính; xem
+   test_soc_parity.mjs. Ngưỡng 2% ở đây chỉ canh cho đường lùi khỏi xấu đi —
+   nó vốn đã hơn hẳn cách cũ (chốt cứng mốc UTC+7, lệch tới 16% ở UTC+2). */
+console.log('Bảng đóng sẵn theo từng mốc múi giờ (mốc UTC+7 là gốc, còn lại là đường lùi):');
+for (const [tzH, r] of Object.entries(perTz)) {
+    const pc = v => (100 * v / r.n).toFixed(2) + '%';
+    console.log(`  UTC${tzH >= 0 ? '+' : ''}${tzH}: mùng mấy lệch ${pc(r.d)} · nhãn tháng lệch ${pc(r.l)}`);
+    if (Number(tzH) !== 7 && (r.d + r.l) / r.n > 0.02) {
+        console.log('    ✗ vượt ngưỡng 2% cho đường lùi');
+        bad++;
+    }
+}
+
+/* Can chi ngày — không phụ thuộc múi giờ, kiểm riêng một lượt. */
+let gzBad = 0;
+for (let y = 1901; y <= 2099; y++) {
+    for (let m = 1; m <= 12; m++) {
+        const days = new Date(y, m, 0).getDate();
+        for (let d = 1; d <= days; d++) {
+            const gz = ganZhi(jdnOf(y, m, d));
+            const ref = Solar.fromYmd(y, m, d).getLunar();
+            if (CAN_ZH[gz.can] !== ref.getDayGan() || CHI_ZH[gz.chi] !== ref.getDayZhi()) gzBad++;
+        }
+    }
+}
+console.log(`Can chi ngày: lệch ${gzBad}`);
+bad += gzBad;
 
 /* ── Bảng tiết khí của widget ── */
 const TK_ZH = ['冬至','小寒','大寒','立春','雨水','惊蛰','春分','清明','谷雨','立夏','小满','芒种',
@@ -156,7 +216,8 @@ ShouXingUtil.setTzOffsetHours(7);
 console.log(`Đã so ${jqChecked.toLocaleString()} mốc tiết khí · lệch ${jqBad}`);
 bad += jqBad;
 
-console.log(`Đã so ${checked.toLocaleString()} ngày (1900–2100)`);
+console.log(`Đã so ${checked.toLocaleString()} ngày × 6 mốc múi giờ (1901–2099)`);
+console.log(`Lệch ở mốc gốc UTC+7: ${perTz[7].d + perTz[7].l}`);
 console.log(`Lệch: ${bad}`);
 samples.forEach(s => console.log('  ' + s));
 console.log(bad ? '\n✗ BẢNG TRA SAI' : '\n✓ Bảng tra khớp lunar.js từng ngày một');

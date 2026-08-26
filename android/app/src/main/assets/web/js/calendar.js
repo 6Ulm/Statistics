@@ -44,9 +44,25 @@
      * (UTC+2) thì lịch sẽ lệch một ngày (26/08/2026 hoá ra 15/7 thay vì 14/7).
      */
     function setLunarBasis() {
-        if (typeof ShouXingUtil !== 'undefined' && ShouXingUtil.setTzOffsetHours) {
-            ShouXingUtil.setTzOffsetHours(isZH() ? 8 : 7);
-        }
+        if (typeof ShouXingUtil === 'undefined' || !ShouXingUtil.setTzOffsetHours) return;
+        ShouXingUtil.setTzOffsetHours(localTz());
+    }
+
+    /**
+     * Múi giờ dùng làm mốc cho lịch âm = múi giờ của ĐỊA ĐIỂM ĐANG CHỌN, đúng
+     * mốc mà tab Kỳ Môn dùng để tính ngày âm và hiện giờ Sóc. Trước đây chỗ này
+     * cố định UTC+7, nên ở Paris lịch hiện mùng 1 = 13/08 trong khi bảng Sóc
+     * ghi 12/08 19:37 — hai hệ quy chiếu trên cùng một ứng dụng.
+     */
+    function localTz() {
+        try {
+            var info = countryData[getDOM('country').value];
+            if (info && info.tzId && typeof getTimezoneOffset === 'function') {
+                var sel = selected || { y: viewY, m: viewM, d: 15 };
+                return getTimezoneOffset(info.tzId, new Date(sel.y, sel.m - 1, sel.d, 12));
+            }
+        } catch (e) {}
+        return 7;
     }
     /** Trả biến toàn cục về mặc định của thư viện cho phần còn lại của ứng dụng. */
     function clearLunarBasis() {
@@ -66,6 +82,9 @@
     // Dự phòng khi chưa đo được bảng tiết khí (lần vẽ đầu): 12 hàng hai cột cao
     // chừng ngần này.
     var JQ_FALLBACK = 300;
+
+    /** Khoá kho tuỳ chọn: bảng tháng âm cho widget (xem publishLunarCache). */
+    var K_LUNAR_CACHE = 'qmdj.lunarCache';
 
     var viewY, viewM;          // tháng đang xem (dương lịch)
     var selected = null;       // {y,m,d}
@@ -155,6 +174,7 @@
         clearLunarBasis();
         lastWeeks = cells.length / 7;
         fitGrid(lastWeeks);
+        publishLunarCache();
     }
 
     /**
@@ -416,6 +436,66 @@
         if (document.body.classList.contains('view-cal')) render();
     }
     window.__calRefreshLabels = refreshLabels;
+
+    /**
+     * Ghi bảng tháng âm quanh hôm nay ra kho tuỳ chọn cho WIDGET dùng.
+     *
+     * Widget không chạy được lunar.js nên vẫn có bảng tra đóng sẵn trong APK —
+     * nhưng bảng ấy chỉ đúng tuyệt đối ở mốc UTC+7. Suy mốc mùng 1 sang múi giờ
+     * khác bằng điểm Sóc chỉ gần đúng: lunar.js không định mùng 1 thuần tuý
+     * bằng "lấy phần nguyên của điểm Sóc theo múi giờ", nên còn lệch ~0,35% số
+     * tháng.
+     *
+     * Chỗ duy nhất biết chắc câu trả lời là ỨNG DỤNG, vì nó có lunar.js. Nên
+     * mỗi lần vẽ lịch, ghi luôn ra vài chục tháng quanh hôm nay ở đúng múi giờ
+     * đang chọn; widget đọc bảng này trước, không có mới quay về bảng đóng sẵn.
+     *
+     * Định dạng: "<múi giờ phút>|<JDN mùng 1>,<tháng>,<nhuận>;…"
+     */
+    function publishLunarCache() {
+        if (typeof ShouXingUtil === 'undefined' || typeof Solar === 'undefined') return;
+        try {
+            var tz = localTz();
+            var now = new Date();
+            var rows = [];
+            ShouXingUtil.setTzOffsetHours(tz);
+            // 18 tháng trước tới 18 tháng sau là quá đủ cho một widget lịch.
+            var cur = new Date(now.getFullYear(), now.getMonth() - 19, 1);
+            var seen = {};
+            for (var i = 0; i < 40; i++) {
+                var y = cur.getFullYear(), mo = cur.getMonth() + 1;
+                var dim = new Date(y, mo, 0).getDate();
+                for (var d = 1; d <= dim; d++) {
+                    var l = Solar.fromYmd(y, mo, d).getLunar();
+                    if (l.getDay() !== 1) continue;
+                    var key = l.getYear() + ':' + l.getMonth();
+                    if (seen[key]) continue;
+                    seen[key] = 1;
+                    rows.push(jdnOf(y, mo, d) + ',' + Math.abs(l.getMonth()) +
+                        ',' + (l.getMonth() < 0 ? 1 : 0));
+                }
+                cur.setMonth(cur.getMonth() + 1);
+            }
+            ShouXingUtil.setTzOffsetHours(null);
+            if (rows.length) prefSet(K_LUNAR_CACHE, Math.round(tz * 60) + '|' + rows.join(';'));
+        } catch (e) {
+            try { ShouXingUtil.setTzOffsetHours(null); } catch (e2) {}
+        }
+    }
+
+    /** Số ngày Julius — cùng công thức với LunarTable.jdn bên Kotlin. */
+    function jdnOf(y, m, d) {
+        var a = Math.floor((14 - m) / 12), yy = y + 4800 - a, mm = m + 12 * a - 3;
+        return d + Math.floor((153 * mm + 2) / 5) + 365 * yy
+            + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+    }
+
+    /** Nhảy tới một ngày cụ thể — dùng cho kiểm thử. */
+    window.__calGoto = function (y, m, d) {
+        viewY = y; viewM = m;
+        selected = { y: y, m: m, d: d };
+        render();
+    };
 
     window.addEventListener('resize', function () {
         if (document.body.classList.contains('view-cal')) setTimeout(render, 180);

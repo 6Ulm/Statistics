@@ -42,6 +42,7 @@ object LunarTable {
         "Thu Phân", "Hàn Lộ", "Sương Giáng", "Lập Đông", "Tiểu Tuyết", "Đại Tuyết"
     )
 
+    private var socMin: IntArray = IntArray(0)
     private var jqJdn: IntArray = IntArray(0)
     private var jqMin: IntArray = IntArray(0)
     private var jqIdx: IntArray = IntArray(0)
@@ -56,12 +57,14 @@ object LunarTable {
                 val n = lines.size - 1
                 starts = IntArray(n); lYear = IntArray(n)
                 lMonth = IntArray(n); lLeap = BooleanArray(n)
+                socMin = IntArray(n)
                 for (i in 1..n) {
                     val p = lines[i].split(' ')
-                    starts[i - 1] = p[0].toInt()
-                    lYear[i - 1] = p[1].toInt()
-                    lMonth[i - 1] = p[2].toInt()
-                    lLeap[i - 1] = p[3] == "1"
+                    starts[i - 1] = p[0].toInt()      // JDN điểm Sóc ở mốc UTC+7
+                    socMin[i - 1] = p[1].toInt()      // phút trong ngày, mốc UTC+7
+                    lYear[i - 1] = p[2].toInt()
+                    lMonth[i - 1] = p[3].toInt()
+                    lLeap[i - 1] = p[4] == "1"
                 }
             }
             context.assets.open("jieqi.txt").bufferedReader().use { reader ->
@@ -183,18 +186,84 @@ object LunarTable {
     }
 
     /** Tra tháng âm chứa ngày này; null nếu ngoài khoảng 1900–2100. */
-    fun lunarOf(jdn: Int): LunarDay? {
-        if (!loaded || starts.isEmpty() || jdn < starts[0]) return null
+    /**
+     * Bảng tháng âm do CHÍNH ỨNG DỤNG ghi ra (xem publishLunarCache trong
+     * calendar.js): "<múi giờ phút>|<JDN mùng 1>,<tháng>,<nhuận>;…".
+     *
+     * Bảng đóng trong APK chỉ đúng tuyệt đối ở mốc UTC+7; suy sang múi giờ khác
+     * bằng điểm Sóc còn lệch ~0,35% số tháng vì lunar.js không định mùng 1
+     * thuần tuý bằng phép lấy phần nguyên. Ứng dụng thì có lunar.js, nên nó
+     * ghi sẵn vài chục tháng quanh hôm nay ở đúng múi giờ đang chọn — widget
+     * đọc cái này trước, hết tầm với mới quay về bảng đóng sẵn.
+     */
+    private var cacheTzMin: Int = Int.MIN_VALUE
+    private var cacheStart: IntArray = IntArray(0)
+    private var cacheMonth: IntArray = IntArray(0)
+    private var cacheLeap: BooleanArray = BooleanArray(0)
+
+    @Synchronized
+    fun loadAppCache(context: Context) {
+        val raw = context.getSharedPreferences("qmdj_prefs", Context.MODE_PRIVATE)
+            .getString("qmdj.lunarCache", null)
+        if (raw.isNullOrEmpty()) { cacheStart = IntArray(0); return }
+        try {
+            val bar = raw.indexOf('|')
+            if (bar <= 0) { cacheStart = IntArray(0); return }
+            cacheTzMin = raw.substring(0, bar).toInt()
+            val parts = raw.substring(bar + 1).split(';').filter { it.isNotEmpty() }
+            val st = IntArray(parts.size); val mo = IntArray(parts.size)
+            val lp = BooleanArray(parts.size)
+            parts.forEachIndexed { i, row ->
+                val f = row.split(',')
+                st[i] = f[0].toInt(); mo[i] = f[1].toInt(); lp[i] = f[2] == "1"
+            }
+            // Phải tăng dần thì tìm nhị phân mới đúng; ứng dụng ghi theo thứ tự
+            // thời gian rồi, nhưng đây là dữ liệu ngoài nên vẫn kiểm.
+            for (i in 1 until st.size) if (st[i] <= st[i - 1]) { cacheStart = IntArray(0); return }
+            cacheStart = st; cacheMonth = mo; cacheLeap = lp
+        } catch (e: Exception) {
+            cacheStart = IntArray(0)
+        }
+    }
+
+    /** Tra trong bảng của ứng dụng; trả null nếu không phủ tới ngày này. */
+    private fun fromAppCache(jdn: Int, tzMin: Int): LunarDay? {
+        if (cacheStart.size < 2 || cacheTzMin != tzMin) return null
+        // Ngày nằm ngoài đoạn bảng phủ thì không đoán — để bảng đóng sẵn lo.
+        if (jdn < cacheStart[0] || jdn >= cacheStart[cacheStart.size - 1]) return null
+        var lo = 0; var hi = cacheStart.size - 1; var idx = -1
+        while (lo <= hi) {
+            val mid = (lo + hi) ushr 1
+            if (cacheStart[mid] <= jdn) { idx = mid; lo = mid + 1 } else hi = mid - 1
+        }
+        if (idx < 0) return null
+        return LunarDay(jdn - cacheStart[idx] + 1, cacheMonth[idx], 0, cacheLeap[idx])
+    }
+
+    fun lunarOf(jdn: Int, tz: TimeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh")): LunarDay? {
+        fromAppCache(jdn, tz.getOffset(jdnToMillis(jdn)) / 60000)?.let { return it }
+        if (!loaded || starts.isEmpty()) return null
+        // Mùng 1 = ngày CHỨA điểm Sóc, xét ở múi giờ đang xem. Bảng ghi điểm
+        // Sóc ở mốc UTC+7 nên phải quy đổi trước rồi mới so — chốt cứng mùng 1
+        // trong bảng thì ở Paris widget lệch ứng dụng đúng một ngày.
         var lo = 0
         var hi = starts.size - 1
         var idx = -1
         while (lo <= hi) {
             val mid = (lo + hi) ushr 1
-            if (starts[mid] <= jdn) { idx = mid; lo = mid + 1 } else { hi = mid - 1 }
+            if (monthStart(mid, tz) <= jdn) { idx = mid; lo = mid + 1 } else { hi = mid - 1 }
         }
         if (idx < 0) return null
-        return LunarDay(jdn - starts[idx] + 1, lMonth[idx], lYear[idx], lLeap[idx])
+        return LunarDay(jdn - monthStart(idx, tz) + 1, lMonth[idx], lYear[idx], lLeap[idx])
     }
+
+    /** Mốc epoch (ms) của 12:00 trưa ngày JDN — đủ để tra offset/DST. */
+    private fun jdnToMillis(jdn: Int): Long =
+        (jdn - 2440588L) * 86_400_000L + 43_200_000L
+
+    /** Ngày dương (JDN) của mùng 1 tháng thứ `i`, xét ở múi giờ `tz`. */
+    private fun monthStart(i: Int, tz: TimeZone): Int =
+        localize(JieQi("", starts[i], socMin[i]), tz).jdn
 
     /** Can chi của ngày, suy thẳng từ JDN (không phụ thuộc múi giờ). */
     fun ganZhiOf(jdn: Int): Pair<String, String> {

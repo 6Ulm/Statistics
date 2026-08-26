@@ -36,6 +36,7 @@ class CalendarWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         LunarTable.ensureLoaded(context)
+        LunarTable.loadAppCache(context)
         ids.forEach { render(context, manager, it) }
         scheduleMidnight(context)
     }
@@ -44,6 +45,7 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         context: Context, manager: AppWidgetManager, id: Int, newOptions: Bundle
     ) {
         LunarTable.ensureLoaded(context)
+        LunarTable.loadAppCache(context)
         render(context, manager, id)
     }
 
@@ -61,6 +63,7 @@ class CalendarWidgetProvider : AppWidgetProvider() {
                 val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, 0)
                 if (id == 0) return
                 LunarTable.ensureLoaded(context)
+        LunarTable.loadAppCache(context)
                 val cur = prefs(context).getInt(offsetKey(id), 0)
                 val next = when (intent.action) {
                     ACTION_PREV -> cur - 1
@@ -81,6 +84,7 @@ class CalendarWidgetProvider : AppWidgetProvider() {
 
     private fun refreshAll(context: Context) {
         LunarTable.ensureLoaded(context)
+        LunarTable.loadAppCache(context)
         val manager = AppWidgetManager.getInstance(context)
         val ids = manager.getAppWidgetIds(
             ComponentName(context, CalendarWidgetProvider::class.java)
@@ -289,7 +293,7 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             val dayBase = y + dayPx + dp(context, 3f)
             c.drawText(cd.toString(), x + cellW * 0.09f, dayBase, paint)
 
-            val lunar = LunarTable.lunarOf(jdn)
+            val lunar = LunarTable.lunarOf(jdn, tz)
             paint.typeface = Typeface.DEFAULT
             paint.textAlign = Paint.Align.RIGHT
             paint.textSize = lunPx

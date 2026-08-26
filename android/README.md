@@ -85,6 +85,46 @@ Phải đặt lại mốc này mỗi lần vẽ: `processAll()` để lại múi
 đang chọn trong biến toàn cục của `lunar.js`, nên nếu đang chọn Paris thì
 26/08/2026 hoá ra 15/7 thay vì 14/7.
 
+## Lịch âm tính theo mốc nào
+
+Quy tắc: **mùng 1 là ngày CHỨA điểm Sóc**. Nhưng "ngày" nào thì tuỳ mốc quy
+chiếu — và mốc ấy phải trùng với mốc dùng để HIỆN giờ Sóc, nếu không một màn
+hình có hai hệ quy chiếu.
+
+Bản web gốc mắc đúng chỗ này: nó tính ngày âm ở mốc UTC+8 nhưng lại quy giờ Sóc
+sang giờ địa phương, nên ở Paris bảng Âm Bàn ghi **Sóc 12-08-2026 19:37** ngay
+cạnh **Mùng 1 13-08-2026** — hai con số cùng một thời điểm (17:37 UTC) nhưng đọc
+ở hai hệ khác nhau.
+
+Bản Android tính ngày âm ở **mốc múi giờ của địa điểm đang chọn**. Ở Paris mùng
+1 là 12/08, khớp với giờ Sóc đang hiện; ở Việt Nam vẫn là 13/08 như cũ.
+
+Đã kiểm lại lời cảnh báo trong mã gốc rằng mốc địa phương làm hỏng độ dài tháng
+29/30: **không đúng**. Quét 2020–2035 ở các mốc từ UTC−8 tới UTC+12, mọi tháng
+đều 29 hoặc 30 ngày, số ngày âm liên tục, và mùng 1 luôn chứa Sóc (198/198 tháng
+mỗi mốc).
+
+Chỉ NGÀY ÂM LỊCH đổi mốc. Năm/Tháng Can Chi vẫn lấy từ `baziBJ` (đổi tại Lập Xuân
+và các mốc Tiết, so với `solarBJ` ở giờ Bắc Kinh) và tiết khí vẫn tính ở mốc
+UTC+8 — đó là lý do THẬT của ghi chú cũ, và nó vẫn đúng.
+
+### Cái giá phải trả
+
+Cục Âm Bàn = `(chi năm + tháng âm + ngày âm + chi giờ) % 9`, nên đổi mốc ngày âm
+là đổi cả kết quả Kỳ Môn ở nơi lệch khỏi UTC+8:
+
+| Nơi | Ngày âm khác bản gốc | Cục Âm Bàn khác |
+|---|---|---|
+| Việt Nam UTC+7 | 0 % | **0 %** |
+| Paris (hè) | 22,9 % | **22,9 %** |
+| Paris (đông) | 29,1 % | **29,1 %** |
+| New York | 56,1 % | **55,6 %** |
+
+`diff_vs_original.mjs` vì thế đòi **trùng khít tuyệt đối ở nơi có mốc UTC+8**
+(tra múi giờ thật theo từng thời điểm — Malaysia từng ở UTC+7:30 tới 1982), còn
+nơi khác thì miễn cho các trường phụ thuộc ngày âm, và chỉ miễn cho bàn Kỳ Môn
+**khi chính cục đã khác** — cục giống mà bàn khác vẫn là hồi quy.
+
 ## Tiết khí: một nguyên tắc duy nhất
 
 Tiết khí xuất hiện ở ba chỗ — bảng Sách Bổ pháp (tab Kỳ Môn), bảng Tiết khí
@@ -157,6 +197,17 @@ node tools/test_lunar_table.mjs    # đối chiếu với lunar.js
 
 Bảng tra và cách tra đã đối chiếu **từng ngày một trong 73.414 ngày (1900–2100)
 và 4.824 mốc tiết khí, lệch 0**.
+
+Ngày âm trong widget lấy từ **bảng do chính ứng dụng ghi ra**
+(`publishLunarCache` trong `calendar.js`): mỗi lần vẽ lịch, ứng dụng ghi 40
+tháng quanh hôm nay ở đúng múi giờ đang chọn vào SharedPreferences (~500 ký
+tự). Widget đọc bảng ấy trước.
+
+Lý do không tự suy từ bảng đóng trong APK: bảng ấy ghi điểm Sóc ở mốc UTC+7, mà
+`lunar.js` **không** định mùng 1 thuần tuý bằng "lấy phần nguyên của điểm Sóc
+theo múi giờ" — suy như vậy còn lệch ~0,35% số tháng và ~1% nhãn tháng ở mốc xa
+UTC+7. Bảng đóng sẵn vẫn giữ làm đường lùi (đúng tuyệt đối ở UTC+7, và vẫn hơn
+hẳn cách cũ là chốt cứng mùng 1, vốn lệch tới 16% ở UTC+2).
 
 Widget hiện **cả 24 tiết khí của năm**, xếp hai cột 12 — đúng hình dạng bảng ở
 tab Lịch, kể cả vách ngăn giữa hai nửa và ô tô màu cho tiết khí đang hiệu lực.
@@ -351,6 +402,18 @@ cách thu nhỏ cả trang xuống đáy 0,95.
 Gỡ `viewport.js` ra thì ca "S21 ngang" lập tức đỏ — nên phép thử này có thật,
 không phải lúc nào cũng xanh. Trước đây nó **đọc `body.style.zoom`** (thuộc tính
 inline, luôn rỗng) nên vẫn xanh với cả bản hỏng; giờ đọc computed style.
+
+### Mùng 1 và điểm Sóc
+
+```bash
+node test_soc_parity.mjs
+```
+
+Mở ứng dụng ở sáu múi giờ, canh bốn điều: mùng 1 đúng là ngày chứa điểm Sóc
+(cùng một dòng của bảng Âm Bàn), Rằm = mùng 1 + 14, hai tab nói cùng một ngày
+âm, và bảng mà ứng dụng ghi ra cho widget khớp luôn. Lùi `js/app.js` về bản cũ
+thì 3/6 ca đỏ ngay, kèm đúng câu lỗi người dùng báo:
+`Sóc 12-08-2026 19:37 nhưng cột Mùng 1 ghi 13-08-2026`.
 
 ### Tiết khí giữa các bảng
 

@@ -122,6 +122,43 @@ const TEXT_IDS = [
 ];
 const HTML_IDS = ['board', 'trn-tbody', 'sb-tbody', 'ab-tbody'];
 
+/**
+ * Bảng riêng của từng phái chỉ được DỰNG LẠI khi đang ở đúng phái đó **và**
+ * ngôn ngữ không phải tiếng Trung (app.js: `if (method === 'amban' && notZH)`).
+ * Ngoài điều kiện ấy nó giữ nguyên nội dung của ca trước — so vào đó là so rác
+ * còn sót lại, và kết quả phụ thuộc thứ tự chạy ca.
+ */
+const PANEL_OF = { 'ab-tbody': 'amban', 'sb-tbody': 'bophap', 'trn-tbody': 'trinhuan' };
+const trnPanel = k => k.startsWith('trn-');
+function relevantKey(cc) {
+    return k => {
+        const owner = trnPanel(k) ? 'trinhuan' : PANEL_OF[k];
+        return !owner || (owner === cc.method && cc.lang !== 'zh');
+    };
+}
+
+/**
+ * Những trường phụ thuộc NGÀY ÂM LỊCH — nơi bản Android cố ý khác bản web gốc.
+ *
+ * Bản gốc tính ngày âm ở mốc UTC+8 rồi lại hiện giờ Sóc theo giờ địa phương,
+ * nên ở Paris nó ghi "Sóc 12-08-2026 19:37" ngay cạnh "Mùng 1 13-08-2026" —
+ * hai hệ quy chiếu trong cùng một dòng, trong khi quy tắc là mùng 1 phải là
+ * ngày CHỨA điểm Sóc. Bản Android tính ngày âm ở mốc địa phương nên khớp.
+ *
+ * Cục Âm Bàn = (chi năm + tháng âm + ngày âm + chi giờ) % 9 nên cũng đổi theo,
+ * và bảng Âm Bàn (ab-tbody) hiện cột Mùng 1 / Rằm lấy từ đó.
+ *
+ * Ở nơi có múi giờ UTC+8 thì hai bản PHẢI trùng khít — đó mới là điều đáng canh.
+ */
+const LUNAR_DEPENDENT = new Set(['out-lunar-table', 'out-cuc', 'ab-tbody']);
+
+/**
+ * Hệ quả kéo theo khi cục đổi: bàn Kỳ Môn được dựng TỪ cục, nên Thiên Bàn /
+ * Trực Phù / Trực Sử đổi theo. Chỉ miễn cho những trường này KHI cục thật sự
+ * khác — cục giống mà bàn khác thì đó là hồi quy thật, phải đỏ.
+ */
+const CUC_DEPENDENT = new Set(['board', 'out-tp', 'out-ts']);
+
 function snap(dom, c) {
     const doc = dom.window.document, w = dom.window;
     if (w.currentLang !== c.lang) w.setLang(c.lang);
@@ -155,17 +192,61 @@ const domB = await boot(fs.readFileSync(path.join(WEB, 'index.html'), 'utf8'),
         platform: () => 'android',
     });
 
-let diffs = 0, compared = 0;
+let diffs = 0, compared = 0, deliberate = 0;
 const t0 = Date.now();
 const failures = [];
+
+/**
+ * Múi giờ THẬT của thành phố tại đúng thời điểm của ca thử.
+ *
+ * Không dùng danh sách "nước ở UTC+8" được: Malaysia từng ở UTC+7:30 tới 1982,
+ * Đài Loan và Philippines cũng đổi múi giờ trong quá khứ — mà bộ ca thử chạy từ
+ * 1900 đến 2100. Phải tra theo từng thời điểm.
+ *
+ * countryData khai bằng `const` nên không nằm trên window; eval trong chính
+ * realm của jsdom thì thấy được binding đó.
+ */
+const tzIdCache = new Map();
+function tzIdOf(dom, country) {
+    if (!tzIdCache.has(country)) {
+        let id = null;
+        try { id = dom.window.eval(`countryData[${JSON.stringify(country)}].tzId`); }
+        catch (e) { id = null; }
+        tzIdCache.set(country, id);
+    }
+    return tzIdCache.get(country);
+}
+function tzHoursAt(tzId, y, m, d) {
+    const utcMs = Date.UTC(y, m - 1, d, 12);
+    const f = new Intl.DateTimeFormat('en-US', {
+        timeZone: tzId, hour12: false, year: 'numeric', month: '2-digit',
+        day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+    const p = Object.fromEntries(f.formatToParts(new Date(utcMs)).map(x => [x.type, x.value]));
+    return (Date.UTC(+p.year, +p.month - 1, +p.day, (+p.hour) % 24, +p.minute, +p.second)
+        - utcMs) / 3600000;
+}
 
 if (cases.length > N_CASES) cases.length = N_CASES;
 for (let i = 0; i < cases.length; i++) {
     const c = cases[i];
     const a = snap(domA, c), b = snap(domB, c);
     const keys = Object.keys(a);
-    compared += keys.length;
-    const bad = keys.filter(k => a[k] !== b[k]);
+    compared += keys.filter(relevantKey(c)).length;
+    // Ở múi giờ UTC+8 hai bản phải trùng khít. Nơi khác, các trường phụ thuộc
+    // ngày âm lịch được phép khác — đó là chỗ bản Android sửa lỗi trộn hệ quy
+    // chiếu của bản gốc (xem LUNAR_DEPENDENT), không phải hồi quy.
+    // Mốc địa phương trùng UTC+8 thì hai bản phải trùng khít — đó là chỗ đáng
+    // canh. Lệch khỏi UTC+8 thì ngày âm khác là CÓ CHỦ Ý.
+    const tzId = tzIdOf(domB, c.country);
+    const tzH = tzId ? tzHoursAt(tzId, c.y, c.m, c.d) : null;
+    const allowLunar = tzH === null || Math.abs(tzH - 8) > 1e-9;
+    const relevant = relevantKey(c);
+    const rawBad = keys.filter(k => relevant(k) && a[k] !== b[k]);
+    const cucChanged = allowLunar && a['out-cuc'] !== b['out-cuc'];
+    const bad = !allowLunar ? rawBad : rawBad.filter(k =>
+        !LUNAR_DEPENDENT.has(k) && !(cucChanged && CUC_DEPENDENT.has(k)));
+    if (rawBad.length !== bad.length) deliberate++;
     if (bad.length) {
         diffs++;
         if (failures.length < 5) {
@@ -179,6 +260,7 @@ for (let i = 0; i < cases.length; i++) {
 
 console.log(`\n${cases.length} ca · ${compared} trường được so sánh · ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 console.log(`Khác biệt: ${diffs}`);
+console.log(`Ca khác CÓ CHỦ Ý (ngày âm theo mốc địa phương, ngoài UTC+8): ${deliberate}`);
 for (const f of failures) {
     console.log(`\nCA LỆCH ${JSON.stringify(f.c)}`);
     for (const d of f.bad) console.log(`  ${d.k}\n    gốc=${d.a}\n    mới=${d.b}`);

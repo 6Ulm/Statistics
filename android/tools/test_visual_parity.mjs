@@ -59,9 +59,19 @@ const CASES=[
  {y:2000,m:2,d:4,h:12,mi:0,country:'FR',method:'bophap',lang:'vi'},
 ];
 let bad=0;
+/* Phép thử này canh BỐ CỤC — cùng những phần tử ấy, cùng chỗ ấy. Riêng GIÁ TRỊ
+   ngày âm lịch thì bản Android cố ý khác bản gốc ở nơi lệch khỏi UTC+8: nó tính
+   ngày âm ở mốc địa phương để mùng 1 đúng là ngày chứa điểm Sóc (xem
+   test_soc_parity.mjs). Che giá trị ấy đi cho những ca đó; giá trị được so
+   riêng trong diff_vs_original.mjs. */
+const TZ8_CASE = c => ['CN','HK','TW','SG','MY','PH'].includes(c.country);
+const maskLunar = list => list.map(x =>
+  x.replace(/(<[^>]*#out-lunar-table[^>]*>)\s*".*"$/, '$1 "<ngày âm — so riêng>"'));
+
 for(const c of CASES){
   setup(domA,c); setup(domB,c);
-  const A=visible(domA),B=visible(domB);
+  let A=visible(domA),B=visible(domB);
+  if(!TZ8_CASE(c)){ A=maskLunar(A); B=maskLunar(B); }
   const label=`${c.y}-${c.m}-${c.d} ${c.country}/${c.method}/${c.lang}`;
   if(A.join('\n')===B.join('\n')){ console.log(`  ok   ${label} — ${A.length} phần tử hiển thị, giống hệt`); }
   else{
