@@ -35,6 +35,29 @@ giờ Mặt Trời thật mà bảng này diễn giải chi tiết. Lựa chọn
 Nút Back đóng theo thứ tự: hộp thoại phủ toàn màn hình trước, rồi mới tới bảng
 Nhật–Nguyệt, cuối cùng mới thoát ứng dụng.
 
+## Vừa khít màn hình
+
+Bản gốc chỉ có một luật: `@media (min-width: 768px) { body { zoom: 1.25 } }`.
+Luật này chỉ nhìn **chiều rộng**, nên S21 **xoay ngang** (800×360) rộng hơn
+768px và bị phóng to 1,25 lần — trong khi màn hình chỉ cao 360px.
+
+`js/viewport.js` thay bằng hệ số tính từ **cả hai chiều**, đo thực tế chứ không
+đoán, rồi kẹp trong khoảng 0,95–1,6. Bố cục không đổi, chỉ to/nhỏ theo màn hình.
+
+| Máy | Trước | Sau |
+|---|---|---|
+| S21 dọc 360×800 | zoom 1 · bàn 348px | **không đổi** — vốn đã vừa khít |
+| S21 ngang 800×360 | zoom 1,25 · bàn **500px** | zoom 0,95 · bàn **380px** |
+| Z Fold mở 673×841 | zoom 1 · bàn 400px, thừa 273px hai bên | zoom 1,13 · bàn **452px**, lấp đầy |
+| Điện thoại nhỏ 320×568 | zoom 1 | zoom 0,95 |
+
+S21 dọc **không cần sửa gì**: đo bằng Chromium cho thấy không tràn ngang, không
+có chữ nào bị cắt. Khoảng trống ~13% ở đáy màn hình là do bàn Kỳ Môn hình vuông
+và đã chiếm trọn bề ngang — phóng to nữa sẽ tràn ngang, nên giữ nguyên tỉ lệ 1.
+
+Bàn phím ảo làm `innerHeight` tụt một nửa; module bỏ qua lúc đó để giao diện
+không co lại khi đang gõ tìm thành phố.
+
 ## Vì sao chạy được offline
 
 Không có `android.permission.INTERNET` trong `AndroidManifest.xml` — đây là
@@ -149,6 +172,18 @@ bị CSS ẩn không tính) của cả hai bản rồi so từng phần tử m�
 thứ thừa hoặc thiếu. Kết quả: **246–249 phần tử, giống hệt** trên cả ba ca
 (hai ngôn ngữ × ba phái).
 
+### Bố cục trên nhiều kích thước màn hình
+
+```bash
+npm install playwright && npx playwright install chromium
+node test_responsive.mjs
+```
+
+Mở trang bằng Chromium thật (WebView Android cũng là Chromium) ở 5 kích thước,
+bắt: tràn ngang, chữ bị cắt bởi ellipsis, và phóng to trong khi nội dung đã phải
+cuộn. Gỡ `viewport.js` ra thì ca "S21 ngang" lập tức đỏ — nên phép thử này có
+thật, không phải lúc nào cũng xanh.
+
 ## Sinh lại CSDL thành phố
 
 ```bash
@@ -176,6 +211,7 @@ android/
 │       ├── js/app.js                engine Bát Tự / Kỳ Môn của bản gốc
 │       ├── js/astro.js              MỚI — Mặt Trời & Mặt Trăng theo toạ độ
 │       ├── js/location.js           MỚI — GPS, tra thành phố, toạ độ tay
+│       ├── js/viewport.js           MỚI — vừa khít mọi kích thước màn hình
 │       └── data/cities.txt          34.006 thành phố + múi giờ IANA
 └── tools/                           bộ sinh dữ liệu và kiểm thử
 ```
