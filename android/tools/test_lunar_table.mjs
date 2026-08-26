@@ -115,6 +115,37 @@ for (let y = 1900; y <= 2100; y++) {
     }
 }
 
+/* ── Bảng tiết khí của widget ── */
+const TK_ZH = ['冬至','小寒','大寒','立春','雨水','惊蛰','春分','清明','谷雨','立夏','小满','芒种',
+    '夏至','小暑','大暑','立秋','处暑','白露','秋分','寒露','霜降','立冬','小雪','大雪'];
+const jqLines = fs.readFileSync(path.join(ASSETS, 'jieqi.txt'), 'utf8').trim().split('\n');
+const jqMap = new Map();                       // "jdn:idx" -> phút
+for (const line of jqLines) {
+    const [j, mins, idx] = line.split(' ').map(Number);
+    jqMap.set(j + ':' + idx, mins);
+}
+
+let jqChecked = 0, jqBad = 0;
+for (let y = 1900; y <= 2100; y++) {
+    const table = Solar.fromYmd(y, 6, 15).getLunar().getJieQiTable();
+    for (const name in table) {
+        const idx = TK_ZH.indexOf(name);
+        if (idx < 0) continue;
+        const sol = table[name];
+        if (sol.getYear() < 1900 || sol.getYear() > 2100) continue;
+        jqChecked++;
+        const j = jdnOf(sol.getYear(), sol.getMonth(), sol.getDay());
+        const want = sol.getHour() * 60 + sol.getMinute();
+        const got = jqMap.get(j + ':' + idx);
+        if (got !== want) {
+            jqBad++;
+            if (jqBad <= 4) console.log(`  LỆCH tiết khí ${name} ${sol.toYmdHms()}: bảng=${got} lunar.js=${want}`);
+        }
+    }
+}
+console.log(`Đã so ${jqChecked.toLocaleString()} mốc tiết khí · lệch ${jqBad}`);
+bad += jqBad;
+
 console.log(`Đã so ${checked.toLocaleString()} ngày (1900–2100)`);
 console.log(`Lệch: ${bad}`);
 samples.forEach(s => console.log('  ' + s));

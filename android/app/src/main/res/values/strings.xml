@@ -3,4 +3,6 @@
     <string name="app_name">Bát Tự &amp; Kỳ Môn</string>
     <string name="widget_name">Lịch âm</string>
     <string name="widget_desc">Lịch âm dương và can chi, xem ngay trên màn hình chính</string>
+    <string name="widget_prev">Tháng trước</string>
+    <string name="widget_next">Tháng sau</string>
 </resources>

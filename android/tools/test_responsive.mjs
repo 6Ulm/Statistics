@@ -39,12 +39,17 @@ const server = http.createServer((req, res) => {
 await new Promise(r => server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${server.address().port}/index.html`;
 
+// Chiều cao ở đây là chiều cao WebView thật (đã trừ thanh trạng thái và thanh
+// điều hướng), không phải chiều cao màn hình — vỏ Android chừa lề theo
+// window insets nên trang chỉ nhận được phần còn lại.
 const DEVICES = [
-    { name: 'Galaxy S21',          w: 360, h: 800, dpr: 3 },
-    { name: 'Galaxy S21 Ultra',    w: 384, h: 854, dpr: 3.5 },
-    { name: 'Galaxy S21 ngang',    w: 800, h: 360, dpr: 3 },
-    { name: 'điện thoại nhỏ',      w: 320, h: 568, dpr: 2 },
-    { name: 'Z Fold (mở)',         w: 673, h: 841, dpr: 2.6 },
+    { name: 'Galaxy S21',          w: 360, h: 740, dpr: 3 },
+    { name: 'Galaxy S21 FE',       w: 393, h: 790, dpr: 2.75 },
+    { name: 'Galaxy A51',          w: 412, h: 852, dpr: 2.625 },
+    { name: 'Galaxy S21 Ultra',    w: 384, h: 794, dpr: 3.5 },
+    { name: 'Galaxy S21 ngang',    w: 800, h: 330, dpr: 3 },
+    { name: 'điện thoại nhỏ',      w: 320, h: 520, dpr: 2 },
+    { name: 'Z Fold (mở)',         w: 673, h: 800, dpr: 2.6 },
 ];
 
 let fail = 0;
@@ -59,7 +64,11 @@ for (const d of DEVICES) {
     });
     const page = await ctx.newPage();
     await page.goto(base, { waitUntil: 'networkidle' });
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(900);
+    if (process.env.TAB === 'cal') {
+        await page.evaluate(() => window.showTab('cal'));
+        await page.waitForTimeout(600);
+    }
 
     const r = await page.evaluate(() => {
         const trunc = [];

@@ -11,50 +11,61 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Build
+import android.os.Bundle
 import android.util.TypedValue
 import android.widget.RemoteViews
 import java.util.Calendar
 
 /**
- * Widget màn hình chính: CHỈ lịch âm dương, không có bàn Kỳ Môn.
- * Xem lịch mà không phải mở ứng dụng.
+ * Widget màn hình chính: CHỈ lịch âm dương và bảng tiết khí — không có bàn Kỳ
+ * Môn, không có thanh tab, không có nút ghim. Bố cục và màu sắc giống hệt tab
+ * Lịch trong ứng dụng.
  *
- * RemoteViews không nhận WebView và cũng không dựng nổi lưới 7×6 gọn gàng,
- * nên tháng lịch được VẼ ra bitmap rồi gắn vào một ImageView.
+ * Thanh tiêu đề là View thật (xem widget_calendar.xml) để hai mũi tên ‹ › bấm
+ * được mà lùi/tiến tháng; phần lưới và bảng tiết khí bên dưới vẽ ra bitmap vì
+ * RemoteViews không dựng nổi lưới 7×6 cho gọn.
  *
- * Home-screen widget showing only the lunar calendar, drawn to a bitmap.
+ * Home-screen widget: the lunar calendar and its jieqi table, nothing else.
  */
 class CalendarWidgetProvider : AppWidgetProvider() {
 
-    override fun onUpdate(
-        context: Context, manager: AppWidgetManager, ids: IntArray
-    ) {
+    override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         LunarTable.ensureLoaded(context)
-        ids.forEach { id -> render(context, manager, id) }
+        ids.forEach { render(context, manager, it) }
         scheduleMidnight(context)
     }
 
     override fun onAppWidgetOptionsChanged(
-        context: Context, manager: AppWidgetManager, id: Int, newOptions: android.os.Bundle
+        context: Context, manager: AppWidgetManager, id: Int, newOptions: Bundle
     ) {
         LunarTable.ensureLoaded(context)
         render(context, manager, id)
     }
 
+    override fun onDeleted(context: Context, ids: IntArray) {
+        val e = prefs(context).edit()
+        ids.forEach { e.remove(offsetKey(it)) }
+        e.apply()
+    }
+
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        // Sang ngày mới / đổi múi giờ thì phải vẽ lại, nếu không ô "hôm nay"
-        // vẫn nằm ở ngày cũ.
         when (intent.action) {
-            ACTION_REFRESH -> {
-                val manager = AppWidgetManager.getInstance(context)
-                val ids = manager.getAppWidgetIds(
-                    ComponentName(context, CalendarWidgetProvider::class.java)
-                )
-                if (ids.isNotEmpty()) onUpdate(context, manager, ids)
+            ACTION_REFRESH -> refreshAll(context)
+            ACTION_PREV, ACTION_NEXT, ACTION_TODAY -> {
+                val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, 0)
+                if (id == 0) return
+                LunarTable.ensureLoaded(context)
+                val cur = prefs(context).getInt(offsetKey(id), 0)
+                val next = when (intent.action) {
+                    ACTION_PREV -> cur - 1
+                    ACTION_NEXT -> cur + 1
+                    else -> 0
+                }
+                prefs(context).edit().putInt(offsetKey(id), next.coerceIn(-1200, 1200)).apply()
+                render(context, AppWidgetManager.getInstance(context), id)
             }
         }
     }
@@ -65,129 +76,173 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         alarm(context)?.let { (am, pi) -> am.cancel(pi) }
     }
 
-    /* ─────────────── Vẽ ─────────────── */
+    private fun refreshAll(context: Context) {
+        LunarTable.ensureLoaded(context)
+        val manager = AppWidgetManager.getInstance(context)
+        val ids = manager.getAppWidgetIds(
+            ComponentName(context, CalendarWidgetProvider::class.java)
+        )
+        ids.forEach { render(context, manager, it) }
+    }
+
+    /* ─────────────── Dựng widget ─────────────── */
 
     private fun render(context: Context, manager: AppWidgetManager, id: Int) {
         val opts = manager.getAppWidgetOptions(id)
         // Ở chế độ DỌC, bề ngang là MIN_WIDTH còn chiều cao là MAX_HEIGHT.
-        // Lấy nhầm MIN_HEIGHT (vốn là chiều cao khi xoay NGANG, thấp hơn hẳn)
-        // thì bitmap lùn hơn widget thật, fitCenter co lại và mọi thứ trông
-        // sai tỉ lệ.
+        // Lấy nhầm MIN_HEIGHT (chiều cao khi xoay NGANG, thấp hơn hẳn) thì
+        // bitmap lùn hơn widget thật và mọi thứ trông sai tỉ lệ.
         val wDp = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
             .takeIf { it > 0 } ?: 320
         val hDp = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0)
             .takeIf { it > 0 }
             ?: opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
-                .takeIf { it > 0 } ?: 240
+                .takeIf { it > 0 } ?: 260
 
-        val bmp = drawMonth(context, wDp, hDp)
+        val offset = prefs(context).getInt(offsetKey(id), 0)
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            add(Calendar.MONTH, offset)
+        }
+        val year = cal.get(Calendar.YEAR)
+        val month = cal.get(Calendar.MONTH) + 1
+
         val views = RemoteViews(context.packageName, R.layout.widget_calendar)
-        views.setImageViewBitmap(R.id.widgetImage, bmp)
+        views.setTextViewText(R.id.widgetTitle, "LỊCH ÂM THÁNG $month/$year")
+        views.setImageViewBitmap(
+            R.id.widgetImage,
+            drawBody(context, wDp, (hDp - HEADER_DP).coerceAtLeast(90), year, month)
+        )
 
-        // Chạm vào widget thì mở thẳng tab Lịch, không phải bàn Kỳ Môn.
+        views.setOnClickPendingIntent(R.id.widgetPrev, navIntent(context, id, ACTION_PREV))
+        views.setOnClickPendingIntent(R.id.widgetNext, navIntent(context, id, ACTION_NEXT))
+        // Chạm tiêu đề: về tháng hiện tại, giống chạm tiêu đề trong ứng dụng.
+        views.setOnClickPendingIntent(R.id.widgetTitle, navIntent(context, id, ACTION_TODAY))
+        // Chạm vào lưới: mở ứng dụng ở tab Lịch.
         val open = Intent(context, MainActivity::class.java).apply {
             action = Intent.ACTION_MAIN
             putExtra(MainActivity.EXTRA_TAB, "cal")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
-        val pi = PendingIntent.getActivity(
-            context, 0, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        views.setOnClickPendingIntent(
+            R.id.widgetImage,
+            PendingIntent.getActivity(
+                context, 0, open,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
         )
-        views.setOnClickPendingIntent(R.id.widgetImage, pi)
         manager.updateAppWidget(id, views)
+    }
+
+    private fun navIntent(context: Context, id: Int, action: String): PendingIntent {
+        val intent = Intent(context, CalendarWidgetProvider::class.java)
+            .setAction(action)
+            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
+        // requestCode phải khác nhau cho từng widget và từng nút, nếu không hệ
+        // thống dùng lại cùng một PendingIntent và mọi nút cùng làm một việc.
+        val code = id * 8 + when (action) {
+            ACTION_PREV -> 1
+            ACTION_NEXT -> 2
+            else -> 3
+        }
+        return PendingIntent.getBroadcast(
+            context, code, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 
     private fun dp(context: Context, v: Float): Float = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, v, context.resources.displayMetrics
     )
 
-    private fun drawMonth(context: Context, wDp: Int, hDp: Int): Bitmap {
-        val w = dp(context, wDp.toFloat()).toInt().coerceIn(240, 2000)
-        val h = dp(context, hDp.toFloat()).toInt().coerceIn(160, 2000)
+    /**
+     * Vẽ lưới lịch + bảng tiết khí. Màu sắc và cách sắp xếp lấy đúng theo tab
+     * Lịch: hôm nay là viền đỏ đậm trên nền sáng, ngày của tháng trước/sau tô
+     * mờ, can một dòng chi một dòng.
+     */
+    private fun drawBody(
+        context: Context, wDp: Int, hDp: Int, year: Int, month: Int
+    ): Bitmap {
+        val w = dp(context, wDp.toFloat()).toInt().coerceIn(240, 2400)
+        val h = dp(context, hDp.toFloat()).toInt().coerceIn(90, 2400)
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
         val now = Calendar.getInstance()
-        val year = now.get(Calendar.YEAR)
-        val month = now.get(Calendar.MONTH) + 1
-        val todayJdn = LunarTable.jdn(year, month, now.get(Calendar.DAY_OF_MONTH))
+        val todayJdn = LunarTable.jdn(
+            now.get(Calendar.YEAR), now.get(Calendar.MONTH) + 1, now.get(Calendar.DAY_OF_MONTH)
+        )
 
         val first = Calendar.getInstance().apply { set(year, month - 1, 1) }
-        // Tuần bắt đầu từ Thứ 2, giống lịch trong ứng dụng.
-        val lead = (first.get(Calendar.DAY_OF_WEEK) + 5) % 7
+        val lead = (first.get(Calendar.DAY_OF_WEEK) + 5) % 7   // tuần bắt đầu Thứ 2
         val daysInMonth = first.getActualMaximum(Calendar.DAY_OF_MONTH)
         val weeks = Math.ceil((lead + daysInMonth) / 7.0).toInt().coerceAtLeast(1)
 
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        // Cỡ chữ và chiều cao phải CHẶN theo dp tuyệt đối, không thả trôi theo
-        // tỉ lệ chiều cao widget: để trôi thì widget cao một chút là tiêu đề
-        // phình to lố bịch, còn widget thấp thì chữ bé không đọc nổi.
-        val headH = minOf(h * 0.16f, dp(context, 24f))
+        // Bảng tiết khí chiếm phần đáy; phần còn lại dành cho lưới. Người dùng
+        // thu widget xuống 2 ô thì bảng tiết khí không được ăn hết chỗ — nó co
+        // lại trước, vì lưới lịch mới là thứ chính.
+        val jieQi = LunarTable.jieQiOfMonth(year, month)
+        val jqRowH = if (jieQi.isEmpty()) 0f else minOf(
+            dp(context, 15f), (h * 0.24f - dp(context, 4f)) / jieQi.size
+        ).coerceAtLeast(dp(context, 9f))
+        val jqH = if (jieQi.isEmpty()) 0f else jqRowH * jieQi.size + dp(context, 4f)
         val dowH = minOf(h * 0.10f, dp(context, 15f))
-        val gridTop = headH + dowH
+        val gridH = h - dowH - jqH
         val cellW = w / 7f
-        val cellH = (h - gridTop) / weeks
+        val cellH = gridH / weeks
 
-        // nền
         paint.color = Color.parseColor("#FDECEF")
-        c.drawRoundRect(RectF(0f, 0f, w.toFloat(), h.toFloat()), dp(context, 10f), dp(context, 10f), paint)
-
-        // thanh tiêu đề đỏ
-        paint.color = Color.parseColor("#D32F2F")
-        c.drawRoundRect(RectF(0f, 0f, w.toFloat(), headH + dp(context, 10f)), dp(context, 10f), dp(context, 10f), paint)
-        c.drawRect(0f, headH - 1, w.toFloat(), headH, paint)
-
-        paint.color = Color.WHITE
-        paint.typeface = Typeface.DEFAULT_BOLD
-        paint.textAlign = Paint.Align.CENTER
-        paint.textSize = minOf(headH * 0.52f, dp(context, 12.5f))
-        c.drawText("LỊCH ÂM THÁNG $month/$year", w / 2f, headH * 0.66f, paint)
+        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), paint)
 
         // hàng thứ
         val dows = arrayOf("T2", "T3", "T4", "T5", "T6", "T7", "CN")
+        paint.typeface = Typeface.DEFAULT_BOLD
+        paint.textAlign = Paint.Align.CENTER
         paint.textSize = minOf(dowH * 0.62f, dp(context, 9f))
         for (i in 0..6) {
             paint.color = if (i == 6) Color.parseColor("#C62828") else Color.parseColor("#7A2B33")
-            c.drawText(dows[i], cellW * (i + 0.5f), headH + dowH * 0.70f, paint)
+            c.drawText(dows[i], cellW * (i + 0.5f), dowH * 0.70f, paint)
         }
 
-        // Cỡ chữ trong ô — tính một lần, dùng cho mọi ngày.
+        // Cỡ chữ chặn theo dp tuyệt đối: thả trôi theo chiều cao widget thì
+        // widget cao một chút là chữ phình, widget thấp là chữ bé không đọc nổi.
         val dayPx = minOf(cellH * 0.34f, dp(context, 13f))
         val lunPx = minOf(cellH * 0.26f, dp(context, 9f))
         val gzPx = minOf(cellH * 0.24f, dp(context, 8.5f))
-        // Ô thấp quá mà cố nhét cả can chi thì chữ nào cũng bé không đọc nổi —
-        // thà bỏ can chi, chỉ để ngày dương và ngày âm.
         val showGanZhi = cellH >= dayPx + gzPx * 2 + dp(context, 6f)
 
-        // Các ô ngày. Ô đầu/cuối lưới điền nốt ngày của tháng trước và tháng
-        // sau (tô mờ) thay vì để trống — quét thẳng theo số ngày Julius nên
-        // không phải xử lý riêng chuyện đổi tháng, đổi năm.
         val startJdn = LunarTable.jdn(year, month, 1) - lead
         for (idx in 0 until weeks * 7) {
             val jdn = startJdn + idx
             val (cy, cm, cd) = LunarTable.civilOf(jdn)
             val outside = cm != month || cy != year
-            val col = idx % 7
-            val row = idx / 7
-            val x = cellW * col
-            val y = gridTop + cellH * row
+            val x = cellW * (idx % 7)
+            val y = dowH + cellH * (idx / 7)
             val isToday = jdn == todayJdn
 
             if (isToday) {
-                paint.color = Color.parseColor("#D32F2F")
+                // Viền đỏ đậm + nền sáng, giống hệt tab Lịch.
+                paint.style = Paint.Style.FILL
+                paint.color = Color.parseColor("#FFFBEA")
                 c.drawRect(x + 1, y + 1, x + cellW - 1, y + cellH - 1, paint)
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = dp(context, 1.6f)
+                paint.color = Color.parseColor("#D32F2F")
+                c.drawRect(x + 2, y + 2, x + cellW - 2, y + cellH - 2, paint)
+                paint.style = Paint.Style.FILL
             } else if (outside) {
                 paint.color = Color.parseColor("#FDF5F6")
                 c.drawRect(x + 1, y + 1, x + cellW - 1, y + cellH - 1, paint)
             }
 
             val fg = when {
-                isToday -> Color.WHITE
+                isToday -> Color.parseColor("#C62828")
                 outside -> Color.parseColor("#B9A3A7")
                 else -> Color.parseColor("#222222")
             }
             val dim = when {
-                isToday -> Color.parseColor("#FFE0E3")
+                isToday -> Color.parseColor("#A06B30")
                 outside -> Color.parseColor("#C2AEB2")
                 else -> Color.parseColor("#6B6B6B")
             }
@@ -212,24 +267,51 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             c.drawText(lunarTxt, x + cellW * 0.93f, dayBase, paint)
 
             if (showGanZhi) {
-                // can một dòng, chi một dòng — như lịch trong ứng dụng
                 val (can, chi) = LunarTable.ganZhiOf(jdn)
                 paint.textAlign = Paint.Align.CENTER
                 paint.textSize = gzPx
-                paint.color = if (isToday) Color.WHITE else dim
+                paint.color = if (isToday) Color.parseColor("#7A4A1C") else dim
+                if (isToday) paint.typeface = Typeface.DEFAULT_BOLD
                 val rest = cellH - (dayBase - y)
                 c.drawText(can, x + cellW / 2f, dayBase + rest * 0.40f, paint)
                 c.drawText(chi, x + cellW / 2f, dayBase + rest * 0.84f, paint)
+                paint.typeface = Typeface.DEFAULT
             }
         }
 
         // lưới
         paint.color = Color.parseColor("#F3C6CD")
         paint.strokeWidth = 1f
-        for (i in 1..6) c.drawLine(cellW * i, gridTop, cellW * i, h.toFloat(), paint)
+        paint.style = Paint.Style.STROKE
+        for (i in 1..6) c.drawLine(cellW * i, dowH, cellW * i, dowH + gridH, paint)
         for (r in 0..weeks) {
-            val y = gridTop + cellH * r
+            val y = dowH + cellH * r
             c.drawLine(0f, y, w.toFloat(), y, paint)
+        }
+        paint.style = Paint.Style.FILL
+
+        // bảng tiết khí
+        if (jieQi.isNotEmpty()) {
+            var y = dowH + gridH + dp(context, 3f)
+            paint.textSize = minOf(jqRowH * 0.62f, dp(context, 10f))
+            for (item in jieQi) {
+                val (jy, jm, jd) = LunarTable.civilOf(item.jdn)
+                paint.typeface = Typeface.DEFAULT_BOLD
+                paint.textAlign = Paint.Align.LEFT
+                paint.color = Color.parseColor("#222222")
+                c.drawText(item.name, dp(context, 6f), y + jqRowH * 0.72f, paint)
+                paint.typeface = Typeface.DEFAULT
+                paint.textAlign = Paint.Align.RIGHT
+                paint.color = Color.parseColor("#6B6B6B")
+                c.drawText(
+                    String.format(
+                        "%02d:%02d - %02d/%02d/%d",
+                        item.minutes / 60, item.minutes % 60, jd, jm, jy
+                    ),
+                    w - dp(context, 6f), y + jqRowH * 0.72f, paint
+                )
+                y += jqRowH
+            }
         }
         return bmp
     }
@@ -246,9 +328,8 @@ class CalendarWidgetProvider : AppWidgetProvider() {
     }
 
     /**
-     * Hẹn giờ vẽ lại ngay sau nửa đêm. Dùng báo thức lặp không chính xác —
-     * chỉ cần đúng ngày, không cần đúng giây, và đỡ tốn pin hơn hẳn so với
-     * để `updatePeriodMillis` đánh thức nửa tiếng một lần.
+     * Hẹn giờ vẽ lại ngay sau nửa đêm. Báo thức lặp không chính xác — chỉ cần
+     * đúng ngày, đỡ tốn pin hơn hẳn so với đánh thức nửa tiếng một lần.
      */
     private fun scheduleMidnight(context: Context) {
         val (am, pi) = alarm(context) ?: return
@@ -259,18 +340,23 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             set(Calendar.SECOND, 30)
             set(Calendar.MILLISECOND, 0)
         }
-        am.setInexactRepeating(
-            AlarmManager.RTC, next.timeInMillis, AlarmManager.INTERVAL_DAY, pi
-        )
+        am.setInexactRepeating(AlarmManager.RTC, next.timeInMillis, AlarmManager.INTERVAL_DAY, pi)
     }
+
+    private fun prefs(context: Context) =
+        context.getSharedPreferences("qmdj_widget", Context.MODE_PRIVATE)
+
+    private fun offsetKey(id: Int) = "w$id.offset"
 
     companion object {
         const val ACTION_REFRESH = "com.bazi.qimen.WIDGET_REFRESH"
+        const val ACTION_PREV = "com.bazi.qimen.WIDGET_PREV"
+        const val ACTION_NEXT = "com.bazi.qimen.WIDGET_NEXT"
+        const val ACTION_TODAY = "com.bazi.qimen.WIDGET_TODAY"
 
-        /**
-         * Mời người dùng ghim widget lịch ra màn hình chính.
-         * @return false nếu máy/launcher không hỗ trợ ghim tự động.
-         */
+        /** Chiều cao thanh tiêu đề trong widget_calendar.xml. */
+        private const val HEADER_DP = 32
+
         /** Máy này có cho ghim widget bằng một cú chạm không? */
         fun canPin(context: Context): Boolean {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
@@ -279,9 +365,8 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         }
 
         fun requestPin(context: Context): Boolean {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
+            if (!canPin(context)) return false
             val manager = AppWidgetManager.getInstance(context) ?: return false
-            if (!manager.isRequestPinAppWidgetSupported) return false
             val provider = ComponentName(context, CalendarWidgetProvider::class.java)
             return manager.requestPinAppWidget(provider, null, null)
         }

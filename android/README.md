@@ -58,6 +58,28 @@ và đã chiếm trọn bề ngang — phóng to nữa sẽ tràn ngang, nên gi
 Bàn phím ảo làm `innerHeight` tụt một nửa; module bỏ qua lúc đó để giao diện
 không co lại khi đang gõ tìm thành phố.
 
+## Tab Lịch
+
+Thanh tab đáy màn hình có hai mục: **Kỳ Môn** (bàn Kỳ Môn, đúng như bản web
+gốc) và **Lịch** (lịch âm dương).
+
+* Mỗi ô ghi ngày dương (to), ngày âm (nhỏ, mùng 1 kèm tháng) và can chi —
+  **can một dòng, chi một dòng** ở mọi ngày, không phụ thuộc độ dài tên.
+* Ô trống đầu/cuối lưới được điền bằng ngày của **tháng trước / tháng sau**, tô
+  mờ; chạm vào là nhảy sang tháng đó.
+* **Hôm nay** có viền đỏ đậm trên nền vàng nhạt — tô đặc màu đỏ thì nổi hơn
+  thật, nhưng chữ phải đảo sang trắng và ô hoá thành một mảng đặc, đọc ngày âm
+  với can chi khó hơn hẳn.
+* Bảng **Tiết khí trong tháng** gập/mở được khi chạm vào tiêu đề, cuộn được khi
+  dài (`max-height: 34vh`), và nhớ trạng thái giữa các phiên. Gập lại là trả về
+  ~120px: các hàng lịch được chia lại ngay để không hở một mảng ở đáy.
+
+Lịch âm được tính theo **UTC+7** như quy ước lịch Việt Nam (bản tiếng Trung
+dùng UTC+8) — đó chính là lý do Tết ta và Tết Tàu thỉnh thoảng lệch một ngày.
+Phải đặt lại mốc này mỗi lần vẽ: `processAll()` để lại múi giờ của địa điểm
+đang chọn trong biến toàn cục của `lunar.js`, nên nếu đang chọn Paris thì
+26/08/2026 hoá ra 15/7 thay vì 14/7.
+
 ## Widget lịch trên màn hình chính
 
 Ghim riêng **lịch âm** ra màn hình chính, không cần mở ứng dụng. Trong tab
@@ -65,19 +87,44 @@ Lịch, bấm **📌 Ghim lịch ra màn hình chính** (Android 8 trở lên; l
 nhấn giữ màn hình chính → Tiện ích → "Lịch âm"). Chạm vào widget mở thẳng tab
 Lịch, không phải bàn Kỳ Môn.
 
+Widget có **đúng thiết kế của tab Lịch** — cùng màu, cùng cách sắp chữ, cùng
+kiểu đánh dấu hôm nay — chỉ bỏ thanh tab và nút ghim. Nội dung gồm lưới lịch và
+bảng tiết khí, không có gì khác.
+
+Hai mũi tên **‹ ›** lùi/tiến tháng, chạm tiêu đề thì về tháng hiện tại; tháng
+đang xem được nhớ riêng cho **từng widget** (`qmdj_widget` / `w<id>.offset`), nên
+ghim hai cái cạnh nhau vẫn xem được hai tháng khác nhau. Ba nút dùng ba
+`requestCode` khác nhau (`id * 8 + 1|2|3`), nếu không hệ thống dùng lại cùng một
+`PendingIntent` và cả ba cùng làm một việc.
+
+Thanh tiêu đề là **View thật** (`widget_calendar.xml`) để hai mũi tên bấm được;
+phần lưới và bảng tiết khí vẽ ra bitmap vì RemoteViews không dựng nổi lưới 7×6
+cho gọn. Thu widget nhỏ lại thì bảng tiết khí co trước (tối đa 24% chiều cao) và
+can chi tự tắt khi ô không còn đủ chỗ cho ba dòng — lưới lịch mới là thứ chính.
+
 Widget vẽ bằng RemoteViews nên **không có WebView** — `lunar.js` không với tới
-được. Thay vì chép thuật toán tính điểm Sóc sang Kotlin (dễ lệch với phần còn
-lại của ứng dụng), mọi mốc mùng 1 từ 1900–2100 được tính sẵn bằng chính
-`lunar.js` rồi đóng gói thành bảng tra 43 KB; Kotlin chỉ tìm nhị phân. Can chi
-suy thẳng từ số ngày Julius.
+được. Thay vì chép thuật toán tính điểm Sóc và giờ giao tiết sang Kotlin (dễ
+lệch với phần còn lại của ứng dụng), mọi mốc mùng 1 và mọi tiết khí từ
+1900–2100 được tính sẵn bằng chính `lunar.js` rồi đóng gói thành hai bảng tra
+(43 KB + 71 KB); Kotlin chỉ tìm nhị phân. Can chi suy thẳng từ số ngày Julius.
 
 ```bash
-node tools/build_lunar_table.mjs   # sinh assets/lunar_months.txt
-node tools/test_lunar_table.mjs    # đối chiếu 73.414 ngày với lunar.js
+node tools/build_lunar_table.mjs   # sinh assets/lunar_months.txt + jieqi.txt
+node tools/test_lunar_table.mjs    # đối chiếu với lunar.js
 ```
 
-Bảng tra và cách tra đã đối chiếu **từng ngày một trong 73.414 ngày
-(1900–2100), lệch 0**.
+Bảng tra và cách tra đã đối chiếu **từng ngày một trong 73.414 ngày (1900–2100)
+và 4.823 mốc tiết khí, lệch 0**.
+
+Xem trước widget mà không cần dựng APK:
+
+```bash
+node tools/shot_widget.mjs         # ảnh widget ở 4 kích thước
+```
+
+`tools/widget_preview.html` vẽ lại y hệt `drawBody()` bằng Canvas của trình
+duyệt (cùng mô hình vẽ với Canvas của Android) và đọc **chính hai tệp assets mà
+widget dùng**, nên bản xem trước không thể lệch với widget thật.
 
 Widget tự vẽ lại sau nửa đêm bằng một báo thức lặp không chính xác — chỉ cần
 đúng ngày, đỡ tốn pin hơn nhiều so với đánh thức nửa tiếng một lần.
@@ -203,10 +250,27 @@ npm install playwright && npx playwright install chromium
 node test_responsive.mjs
 ```
 
-Mở trang bằng Chromium thật (WebView Android cũng là Chromium) ở 5 kích thước,
-bắt: tràn ngang, chữ bị cắt bởi ellipsis, và phóng to trong khi nội dung đã phải
-cuộn. Gỡ `viewport.js` ra thì ca "S21 ngang" lập tức đỏ — nên phép thử này có
-thật, không phải lúc nào cũng xanh.
+Mở trang bằng Chromium thật (WebView Android cũng là Chromium) ở 7 kích thước —
+S21, **S21 FE** (393×790 @2,75x), **A51** (412×852 @2,625x), S21 Ultra, S21 xoay
+ngang, một máy nhỏ 320×520 và Z Fold mở — rồi bắt: tràn ngang, chữ bị cắt bởi
+ellipsis, và phóng to trong khi nội dung đã phải cuộn. Chiều cao ở đây là chiều
+cao **WebView thật** (đã trừ thanh trạng thái và thanh điều hướng), không phải
+chiều cao màn hình.
+
+`TAB=cal node test_responsive.mjs` chạy lại cùng bộ đó trên tab Lịch.
+
+Gỡ `viewport.js` ra thì ca "S21 ngang" lập tức đỏ — nên phép thử này có thật,
+không phải lúc nào cũng xanh. Trước đây nó **đọc `body.style.zoom`** (thuộc tính
+inline, luôn rỗng) nên vẫn xanh với cả bản hỏng; giờ đọc computed style.
+
+### Ảnh chụp màn hình
+
+```bash
+node tools/shot_calendar.mjs       # tab Lịch + tab Kỳ Môn trên S21 / S21 FE / A51
+```
+
+Chụp bằng Chromium ở đúng kích thước WebView của từng máy: tiết khí mở, tiết khí
+gập, tháng sau, và tab Kỳ Môn — đủ để kiểm bằng mắt mà không phải cài APK.
 
 ## Sinh lại CSDL thành phố
 
@@ -225,17 +289,23 @@ android/
 │   ├── AndroidManifest.xml          không có quyền INTERNET
 │   ├── java/com/bazi/qimen/
 │   │   ├── MainActivity.kt          WebView + window insets + nút Back
-│   │   └── WebAppBridge.kt          @JavascriptInterface: assets, prefs, GPS
-│   ├── res/                         icon, theme, quy tắc sao lưu
+│   │   ├── WebAppBridge.kt          @JavascriptInterface: assets, prefs, GPS
+│   │   ├── LunarTable.kt            tra âm lịch + tiết khí cho widget
+│   │   └── CalendarWidgetProvider.kt  widget màn hình chính
+│   ├── res/                         icon, theme, layout widget, quy tắc sao lưu
+│   ├── assets/lunar_months.txt      mốc mùng 1, 1900–2100 (sinh sẵn)
+│   ├── assets/jieqi.txt             4.823 mốc tiết khí (sinh sẵn)
 │   └── assets/web/
 │       ├── index.html               khung trang + bảng chọn vị trí + bảng Nhật–Nguyệt
 │       ├── css/app.css              CSS của bản gốc, giữ nguyên
 │       ├── css/location.css         phần giao diện mới
+│       ├── css/calendar.css         MỚI — thanh tab + lịch âm dương
 │       ├── js/lunar.js              thư viện lịch âm của 6tail, giữ nguyên
 │       ├── js/app.js                engine Bát Tự / Kỳ Môn của bản gốc
 │       ├── js/astro.js              MỚI — Mặt Trời & Mặt Trăng theo toạ độ
 │       ├── js/location.js           MỚI — GPS, tra thành phố, toạ độ tay
 │       ├── js/viewport.js           MỚI — vừa khít mọi kích thước màn hình
+│       ├── js/calendar.js           MỚI — tab Lịch: lưới, tiết khí, ghim widget
 │       └── data/cities.txt          34.006 thành phố + múi giờ IANA
 └── tools/                           bộ sinh dữ liệu và kiểm thử
 ```

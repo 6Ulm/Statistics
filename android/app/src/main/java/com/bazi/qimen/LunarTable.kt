@@ -31,6 +31,20 @@ object LunarTable {
     private var ganZhiEpoch = 0
     private var loaded = false
 
+    /** Một mốc tiết khí: tên tiếng Việt, ngày, và phút kể từ 00:00 giờ địa phương. */
+    data class JieQi(val name: String, val jdn: Int, val minutes: Int)
+
+    val TIET_KHI = arrayOf(
+        "Đông Chí", "Tiểu Hàn", "Đại Hàn", "Lập Xuân", "Vũ Thủy", "Kinh Trập",
+        "Xuân Phân", "Thanh Minh", "Cốc Vũ", "Lập Hạ", "Tiểu Mãn", "Mang Chủng",
+        "Hạ Chí", "Tiểu Thử", "Đại Thử", "Lập Thu", "Xử Thử", "Bạch Lộ",
+        "Thu Phân", "Hàn Lộ", "Sương Giáng", "Lập Đông", "Tiểu Tuyết", "Đại Tuyết"
+    )
+
+    private var jqJdn: IntArray = IntArray(0)
+    private var jqMin: IntArray = IntArray(0)
+    private var jqIdx: IntArray = IntArray(0)
+
     @Synchronized
     fun ensureLoaded(context: Context) {
         if (loaded) return
@@ -49,10 +63,49 @@ object LunarTable {
                     lLeap[i - 1] = p[3] == "1"
                 }
             }
+            context.assets.open("jieqi.txt").bufferedReader().use { reader ->
+                val lines = reader.readLines().filter { it.isNotBlank() }
+                jqJdn = IntArray(lines.size)
+                jqMin = IntArray(lines.size)
+                jqIdx = IntArray(lines.size)
+                lines.forEachIndexed { i, line ->
+                    val p = line.split(' ')
+                    jqJdn[i] = p[0].toInt()
+                    jqMin[i] = p[1].toInt()
+                    jqIdx[i] = p[2].toInt()
+                }
+            }
             loaded = starts.isNotEmpty()
         } catch (e: Exception) {
             loaded = false
         }
+    }
+
+    /**
+     * Các tiết khí rơi vào một tháng dương lịch, đã sắp theo thời gian.
+     * Bảng sắp sẵn theo JDN nên chỉ cần quét đoạn giữa hai mốc đầu/cuối tháng.
+     */
+    fun jieQiOfMonth(year: Int, month: Int): List<JieQi> {
+        if (!loaded || jqJdn.isEmpty()) return emptyList()
+        val from = jdn(year, month, 1)
+        val to = from + 40
+        val out = ArrayList<JieQi>(2)
+        var lo = 0
+        var hi = jqJdn.size - 1
+        var start = jqJdn.size
+        while (lo <= hi) {                      // mốc đầu tiên ≥ from
+            val mid = (lo + hi) ushr 1
+            if (jqJdn[mid] >= from) { start = mid; hi = mid - 1 } else lo = mid + 1
+        }
+        var i = start
+        while (i < jqJdn.size && jqJdn[i] <= to) {
+            val (cy, cm, _) = civilOf(jqJdn[i])
+            if (cy == year && cm == month) {
+                out.add(JieQi(TIET_KHI[jqIdx[i]], jqJdn[i], jqMin[i]))
+            }
+            i++
+        }
+        return out
     }
 
     /** Số ngày Julius (Fliegel–Van Flandern) — giống hệt bản JavaScript. */

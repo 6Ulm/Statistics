@@ -134,25 +134,50 @@ body.view-cal #calView { display: block; }
 }
 .cal-gz span { white-space: nowrap; }
 
-/* Hôm nay / ngày đang chọn */
-.cal-day.cal-today { background: #d32f2f; }
-.cal-day.cal-today .cal-solar,
-.cal-day.cal-today .cal-lunar,
-.cal-day.cal-today .cal-gz { color: #fff; }
+/* Hôm nay: viền đỏ đậm + nền sáng khác hẳn các ngày còn lại. Tô đặc màu đỏ
+   như trước thì nổi thật, nhưng chữ phải đảo sang trắng và ô trông như một
+   mảng đặc, đọc số âm lịch với can chi khó hơn. */
+.cal-day.cal-today {
+    background: #FFFBEA;
+    box-shadow: inset 0 0 0 2.5px #d32f2f;
+}
+.cal-day.cal-today .cal-solar { color: #c62828; }
+.cal-day.cal-today .cal-lunar { color: #a06b30; }
+.cal-day.cal-today .cal-gz    { color: #7a4a1c; font-weight: 600; }
+
+/* Ngày đang chọn: viền mảnh màu nhấn, không đụng với kiểu của hôm nay. */
 .cal-day.cal-sel:not(.cal-today) {
     background: #fff;
-    box-shadow: inset 0 0 0 2px #d32f2f;
+    box-shadow: inset 0 0 0 2px var(--accent, #007bff);
 }
 
 
-/* ── Tiết khí trong tháng ── */
+/* ── Tiết khí trong tháng (gập/mở được) ── */
 #calJieQi { margin-top: 6px; }
 .cal-jq-title {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 6px;
     font-size: 11px; font-weight: 700;
     color: var(--text-dim, #777);
     text-transform: uppercase; letter-spacing: .04em;
-    padding: 0 2px 3px;
+    padding: 5px 8px;
+    background: var(--bg-white, #fff);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 6px;
+    cursor: pointer; user-select: none;
 }
+.cal-jq-title:active { background: var(--bg-alt, #f4f4f6); }
+.cal-jq-chev { font-size: 13px; transition: transform .22s; }
+#calJieQi.open .cal-jq-chev { transform: rotate(180deg); }
+/* Cuộn được khi tháng có nhiều mục hoặc màn hình thấp. */
+.cal-jq-body {
+    display: none;
+    margin-top: 4px;
+    max-height: 34vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+#calJieQi.open .cal-jq-body { display: block; }
 table.cal-jq {
     width: 100%; border-collapse: collapse;
     background: var(--bg-white, #fff);

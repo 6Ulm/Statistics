@@ -1,17 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Widget chỉ gồm một ảnh: tháng lịch được vẽ bằng Canvas trong
-  CalendarWidgetProvider. RemoteViews không dựng nổi lưới 7×6 cho gọn.
+  Thanh tiêu đề dựng bằng View thật (LinearLayout + TextView) chứ không vẽ vào
+  ảnh: có thế hai mũi tên ‹ › mới bấm được để lùi/tiến tháng. Phần lưới lịch và
+  bảng tiết khí bên dưới vẫn là một bitmap, vì RemoteViews không dựng nổi lưới
+  7×6 cho gọn.
 -->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="32dp"
+        android:orientation="horizontal"
+        android:background="@drawable/widget_header_bg">
+
+        <TextView
+            android:id="@+id/widgetPrev"
+            android:layout_width="42dp"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="‹"
+            android:textColor="#FFFFFF"
+            android:textSize="19sp"
+            android:contentDescription="@string/widget_prev" />
+
+        <TextView
+            android:id="@+id/widgetTitle"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widgetNext"
+            android:layout_width="42dp"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="›"
+            android:textColor="#FFFFFF"
+            android:textSize="19sp"
+            android:contentDescription="@string/widget_next" />
+    </LinearLayout>
 
     <ImageView
         android:id="@+id/widgetImage"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:adjustViewBounds="true"
-        android:scaleType="fitCenter"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:scaleType="fitXY"
         android:contentDescription="@string/widget_desc" />
-</FrameLayout>
+</LinearLayout>

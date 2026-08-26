@@ -56,12 +56,18 @@
 
     // Lề trên/dưới của trang cộng khoảng cách giữa các khối trong tab Lịch.
     var GRID_CHROME = 28;
-    // Hàng vừa đủ chứa 3 dòng (ngày dương/âm, can, chi) — cao hơn nữa chỉ tổ
-    // đẩy bảng tiết khí xuống tít dưới đáy.
-    var ROW_MIN = 50, ROW_MAX = 68;
+    // Hàng vừa đủ chứa 3 dòng (ngày dương/âm, can, chi). Trần đặt cao hẳn để
+    // lịch lấp kín màn hình cao (A51 852px) — bảng tiết khí đã được trừ ra
+    // trong fitGrid nên kéo hàng cao lên không đẩy nó xuống khuất.
+    var ROW_MIN = 50, ROW_MAX = 128;
+
+    var K_JQ = 'qmdj.jieqiOpen';
+    /** Bảng tiết khí mặc định MỞ; người dùng gập lại thì nhớ luôn. */
+    var jieQiOpen = prefGet(K_JQ) !== '0';
 
     var viewY, viewM;          // tháng đang xem (dương lịch)
     var selected = null;       // {y,m,d}
+    var lastWeeks = 0;         // số hàng của lưới đang hiện, để đo lại khi gập
 
     /** Can chi tiếng Việt của một đối tượng Lunar. */
     function dayGanZhi(lunar) {
@@ -75,6 +81,19 @@
             vi: CAN_VI[can] + ' ' + CHI_VI[chi],
             chiVi: CHI_VI[chi],
         };
+    }
+
+    /* Dùng chung kho tuỳ chọn với location.js (native prefs → localStorage). */
+    function prefGet(k) {
+        try {
+            var n = window.QMDJNative;
+            if (n && n.getPref) { var v = n.getPref(k); if (v !== null && v !== '') return v; }
+        } catch (e) {}
+        try { return localStorage.getItem(k); } catch (e) { return null; }
+    }
+    function prefSet(k, v) {
+        try { var n = window.QMDJNative; if (n && n.setPref) n.setPref(k, v); } catch (e) {}
+        try { localStorage.setItem(k, v); } catch (e) {}
     }
 
     function esc(s) {
@@ -132,7 +151,8 @@
 
         renderJieQi();
         clearLunarBasis();
-        fitGrid(cells.length / 7);
+        lastWeeks = cells.length / 7;
+        fitGrid(lastWeeks);
     }
 
     /**
@@ -215,9 +235,22 @@
                     '</td></tr>';
             }).join('');
         } catch (e) { rows = ''; }
-        box.innerHTML = rows
-            ? '<div class="cal-jq-title">' + t('jieqi') + '</div><table class="cal-jq">' + rows + '</table>'
-            : '';
+        if (!rows) { box.innerHTML = ''; box.className = ''; return; }
+        box.innerHTML =
+            '<div class="cal-jq-title" id="calJqHead">' +
+            '<span>' + t('jieqi') + '</span><span class="cal-jq-chev">▾</span></div>' +
+            '<div class="cal-jq-body"><table class="cal-jq">' + rows + '</table></div>';
+        // Giữ nguyên trạng thái gập/mở giữa các lần vẽ lại và giữa các phiên.
+        box.className = jieQiOpen ? 'open' : '';
+        document.getElementById('calJqHead').addEventListener('click', function () {
+            jieQiOpen = !jieQiOpen;
+            prefSet(K_JQ, jieQiOpen ? '1' : '0');
+            box.className = jieQiOpen ? 'open' : '';
+            // Gập bảng lại là trả về ~120px: phải chia lại cho các hàng, không
+            // thì chỗ trống đó nằm chình ình ở đáy màn hình.
+            fitGrid(lastWeeks);
+            if (typeof window.__fitScreen === 'function') setTimeout(window.__fitScreen, 60);
+        });
     }
 
 

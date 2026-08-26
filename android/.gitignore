@@ -16,4 +16,5 @@ captures/
 
 # Node (chỉ dùng cho bộ kiểm thử trong tools/)
 node_modules/
+node_modules
 package-lock.json

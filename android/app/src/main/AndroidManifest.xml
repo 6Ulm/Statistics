@@ -58,6 +58,9 @@
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.bazi.qimen.WIDGET_REFRESH" />
+                <action android:name="com.bazi.qimen.WIDGET_PREV" />
+                <action android:name="com.bazi.qimen.WIDGET_NEXT" />
+                <action android:name="com.bazi.qimen.WIDGET_TODAY" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
