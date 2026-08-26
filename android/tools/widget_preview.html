@@ -135,8 +135,10 @@ function drawBody(canvas, wDp, hDp, density, year, month, todayJdn) {
             c.font=(isToday?'bold ':'')+gzPx+'px sans-serif';
             c.fillStyle = isToday?'#7A4A1C':dim;
             const rest = cellH - (dayBase - y);
-            c.fillText(can, x+cellW/2, dayBase + rest*0.40);
-            c.fillText(chi, x+cellW/2, dayBase + rest*0.84);
+            const lineGap = gzPx*1.28;
+            const top = dayBase + (rest - (lineGap + gzPx))/2;
+            c.fillText(can, x+cellW/2, top + gzPx*0.75);
+            c.fillText(chi, x+cellW/2, top + gzPx*0.75 + lineGap);
         }
     }
 
@@ -170,11 +172,13 @@ const todayJdn = jdn(ty,tm,td);
 const view = (params.get('month') || `${ty}-${tm}`).split('-').map(Number);
 
 // Kích thước widget thật trên lưới màn hình chính của Samsung One UI.
+// Sàn là 4×4 ô (xem calendar_widget_info.xml); các cỡ dưới đó đã bị chặn vì ô
+// lịch thấp tới mức can chi tự tắt và số ngày không đọc nổi. Ở đây chỉ xem 4×4
+// và các cỡ KÉO TO ra, vì đó là tất cả những gì người dùng dựng được.
 const SIZES = [
-    [330, 192, '4×2 ô (nhỏ nhất)'],
-    [330, 260, '4×3 ô'],
-    [330, 352, '4×4 ô'],
-    [250, 260, '3×3 ô'],
+    [330, 352, '4×4 ô (nhỏ nhất)'],
+    [330, 440, '4×5 ô'],
+    [412, 352, '5×4 ô'],
 ];
 for (const [wd,hd,label] of SIZES) {
     const fig=document.createElement('figure');

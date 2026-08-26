@@ -1,9 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Sàn kích thước là 4×4 ô, không nhỏ hơn.
+
+    250dp là đúng 4 ô theo công thức của Android (70·n − 30). Trước đây sàn đặt
+    ở 180×160dp, tức thu được xuống 3×2 ô: ở cỡ đó ô lịch chỉ cao chừng 15dp
+    nên can chi phải tự tắt và số ngày còn khoảng 5dp — không đọc nổi. Đặt
+    minResize BẰNG min: widget vẫn kéo TO ra được (kéo to thì càng dễ đọc), chỉ
+    không thu nhỏ xuống dưới 4×4 được nữa.
+
+    targetCellWidth/Height là đường dành cho Android 12 trở lên, nơi launcher
+    tính theo ô thay vì theo dp.
+-->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
-    android:minHeight="200dp"
-    android:minResizeWidth="180dp"
-    android:minResizeHeight="160dp"
+    android:minHeight="250dp"
+    android:minResizeWidth="250dp"
+    android:minResizeHeight="250dp"
     android:targetCellWidth="4"
     android:targetCellHeight="4"
     android:resizeMode="horizontal|vertical"

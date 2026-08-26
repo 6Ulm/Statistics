@@ -272,9 +272,17 @@ class CalendarWidgetProvider : AppWidgetProvider() {
                 paint.textSize = gzPx
                 paint.color = if (isToday) Color.parseColor("#7A4A1C") else dim
                 if (isToday) paint.typeface = Typeface.DEFAULT_BOLD
+                // Can chi là một KHỐI hai dòng sát nhau, đặt cân giữa phần còn
+                // lại của ô — đúng như `.cal-gz` trong tab Lịch (flex, căn giữa,
+                // line-height 1,25). Đặt theo tỉ lệ 40%/84% của phần còn lại thì
+                // ô càng cao hai chữ càng dạt xa nhau: ở widget 4×5 khoảng cách
+                // giãn ra hơn gấp đôi cỡ chữ.
                 val rest = cellH - (dayBase - y)
-                c.drawText(can, x + cellW / 2f, dayBase + rest * 0.40f, paint)
-                c.drawText(chi, x + cellW / 2f, dayBase + rest * 0.84f, paint)
+                val lineGap = gzPx * 1.28f
+                val top = dayBase + (rest - (lineGap + gzPx)) / 2f
+                val base1 = top + gzPx * 0.75f
+                c.drawText(can, x + cellW / 2f, base1, paint)
+                c.drawText(chi, x + cellW / 2f, base1 + lineGap, paint)
                 paint.typeface = Typeface.DEFAULT
             }
         }

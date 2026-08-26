@@ -99,8 +99,17 @@ ghim hai cái cạnh nhau vẫn xem được hai tháng khác nhau. Ba nút dùn
 
 Thanh tiêu đề là **View thật** (`widget_calendar.xml`) để hai mũi tên bấm được;
 phần lưới và bảng tiết khí vẽ ra bitmap vì RemoteViews không dựng nổi lưới 7×6
-cho gọn. Thu widget nhỏ lại thì bảng tiết khí co trước (tối đa 24% chiều cao) và
-can chi tự tắt khi ô không còn đủ chỗ cho ba dòng — lưới lịch mới là thứ chính.
+cho gọn.
+
+Sàn kích thước là **4×4 ô** (`minResizeWidth/Height` = `minWidth/Height` =
+250dp): kéo to ra thì được, thu nhỏ hơn thì không. Ở 3×2 hay 4×3 ô, mỗi ô lịch
+chỉ cao chừng 15dp nên can chi tự tắt và số ngày còn khoảng 5dp — không đọc nổi,
+nên đơn giản là chặn hẳn thay vì để người dùng dựng ra một widget vô dụng.
+
+Can chi được đặt thành một **khối hai dòng sát nhau, cân giữa** phần còn lại của
+ô — đúng như `.cal-gz` trong tab Lịch. Đặt theo tỉ lệ phần trăm của phần còn lại
+thì ô càng cao hai chữ càng dạt xa nhau: ở widget 4×5 khoảng cách giãn ra hơn
+gấp đôi cỡ chữ.
 
 Widget vẽ bằng RemoteViews nên **không có WebView** — `lunar.js` không với tới
 được. Thay vì chép thuật toán tính điểm Sóc và giờ giao tiết sang Kotlin (dễ
