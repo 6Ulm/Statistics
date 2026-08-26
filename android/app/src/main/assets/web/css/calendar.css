@@ -175,12 +175,12 @@ table.cal-jq { width: 100%; border-collapse: separate; border-spacing: 0; }
 /* Đệm 2px chứ không phải 3: đúng 12 hàng nên vừa trọn màn hình S21 (740px)
    thay vì cụt mất hàng cuối — rẻ hơn nhiều so với bóp thấp hàng lịch. */
 table.cal-jq td {
-    padding: 2px 8px;
+    padding: 2px 6px;
     border-bottom: 1px solid var(--border-color, #e8e8e8);
 }
 table.cal-jq thead th {
     position: sticky; top: 0; z-index: 1;
-    padding: 4px 8px;
+    padding: 4px 6px;
     background: var(--bg-white, #fff);
     border-bottom: 1.5px solid var(--border-color, #ddd);
 }
@@ -194,9 +194,23 @@ table.cal-jq .cal-jq-name { width: 1%; white-space: nowrap; }
 table.cal-jq .cal-jq-date {
     text-align: left;
     color: var(--text-dim, #666);
-    padding-left: 10px;
+    padding-left: 8px;
 }
-table.cal-jq thead th + th { padding-left: 10px; }
+table.cal-jq thead th + th { padding-left: 8px; }
+/* Cột cuối phải có lề thật, không dính vào mép máy. Trên S21 (360px) bảng gần
+   như hết chỗ, nên khoảng này phải giành lại bằng cách bóp đệm ngang các cột
+   khác chứ không xin thêm được. */
+table.cal-jq .cal-jq-last { padding-right: 10px; }
+/* Máy rất hẹp (320px): hai cột kép không đủ chỗ cho "Sương Giáng 23-10-2026
+   11:37" nên bảng phải cuộn ngang. Hạ cỡ chữ một nấc là vừa, đỡ hơn hẳn so với
+   bắt người dùng kéo ngang. */
+@media (max-width: 345px) {
+    table.cal-jq { font-size: 11px; }
+    table.cal-jq .dp-num { font-size: 10px; }
+    table.cal-jq td, table.cal-jq thead th { padding-left: 4px; padding-right: 4px; }
+    table.cal-jq .cal-jq-date { padding-left: 6px; }
+    table.cal-jq .cal-jq-last { padding-right: 7px; }
+}
 /* Tiết khí đang hiệu lực: tô đúng như dòng được tô ở bảng Sách Bổ pháp. */
 table.cal-jq .cal-jq-on {
     background: var(--accent-light, #e8edff);

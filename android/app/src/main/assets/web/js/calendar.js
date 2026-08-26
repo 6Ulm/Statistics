@@ -267,7 +267,8 @@
             '<div class="cal-jq-body">' +
             '<table class="dp-table cal-jq"><thead><tr>' +
             '<th>' + t('colTk') + '</th><th>' + t('colDate') + '</th>' +
-            '<th class="cal-jq-split">' + t('colTk') + '</th><th>' + t('colDate') + '</th>' +
+            '<th class="cal-jq-split">' + t('colTk') + '</th>' +
+            '<th class="cal-jq-last">' + t('colDate') + '</th>' +
             '</tr></thead><tbody id="calJqBody">' + rows + '</tbody></table></div>';
         setTimeout(scrollToActiveJieQi, 40);
         return true;
@@ -316,19 +317,23 @@
         // không phải cuộn nữa, và ranh giới trái/phải trùng đúng ranh giới
         // Dương Độn / Âm Độn.
         var zh = isZH();
-        var cell = function (k) {
+        // `right` chứ không phải `k === 12`: vách ngăn phải kẻ ở ô đầu của nửa
+        // PHẢI trên MỌI hàng. Bám vào chỉ số 12 thì nó chỉ trúng hàng đầu tiên,
+        // nên đường kẻ đứt ngay sau hàng ấy.
+        var cell = function (k, right) {
             var on = k === active;
             return '<td class="cal-jq-name' + (on ? ' cal-jq-on' : '') +
-                (k === 12 ? ' cal-jq-split' : '') + '"' +
+                (right ? ' cal-jq-split' : '') + '"' +
                 (on ? ' id="calJqActive"' : '') + '>' +
                 esc(zh ? TK_ZH[k] : TK_VI[k]) + '</td>' +
-                '<td class="dp-num cal-jq-date' + (on ? ' cal-jq-on' : '') + '">' +
+                '<td class="dp-num cal-jq-date' + (on ? ' cal-jq-on' : '') +
+                (right ? ' cal-jq-last' : '') + '">' +
                 esc(dates[k] || '') + '</td>';
         };
         var rows = '';
         for (var k = 0; k < 12; k++) {
             rows += '<tr' + (k % 2 === 0 ? ' class="dp-row-alt"' : '') + '>' +
-                cell(k) + cell(k + 12) + '</tr>';
+                cell(k, false) + cell(k + 12, true) + '</tr>';
         }
         return rows;
     }
