@@ -49,6 +49,13 @@ for (const d of DEVICES) {
     await page.goto(base, { waitUntil: 'networkidle' });
     await page.waitForTimeout(900);
     await page.evaluate(() => window.showTab('cal'));
+    // Giả lập đang chạy trong ứng dụng Android: nút Ghim chỉ hiện ở đó, mà nó
+    // chiếm chỗ thật — chụp mà không có nó thì không thấy được nó bị thanh tab
+    // che mất.
+    await page.evaluate(() => {
+        document.getElementById('calPinBtn').style.display = 'block';
+        if (typeof window.__fitScreen === 'function') window.__fitScreen();
+    });
     await page.waitForTimeout(700);
 
     // 1. tháng hiện tại

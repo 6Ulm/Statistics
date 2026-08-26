@@ -169,6 +169,12 @@
         var head = document.getElementById('calHead');
         var bar = document.getElementById('tabBar');
         var dow = grid ? grid.querySelector('.cal-dow') : null;
+        // Nút "Ghim lịch ra màn hình chính" CHỈ hiện khi chạy trong ứng dụng
+        // Android, nên mọi phép đo trên trình duyệt đều không thấy nó. Không trừ
+        // ra thì trên máy thật lưới lịch với bảng tiết khí chiếm trọn màn hình
+        // rồi đẩy nút xuống dưới, nằm khuất sau thanh tab cố định.
+        var pin = document.getElementById('calPinBtn');
+        var note = document.getElementById('calPinNote');
         if (!grid || !head || !dow) return;
 
         var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
@@ -176,8 +182,11 @@
 
         // Đo phần cố định — KHÔNG tính thân bảng tiết khí, vì chính nó là thứ
         // ta sắp chia. Đo cả cụm rồi mới chia thì thành vòng luẩn quẩn.
+        var vis = function (el) {
+            return (el && getComputedStyle(el).display !== 'none') ? h(el) : 0;
+        };
         var avail = window.innerHeight / zoom
-            - h(head) - h(dow) - h(bar) - GRID_CHROME;
+            - h(head) - h(dow) - h(bar) - vis(pin) - vis(note) - GRID_CHROME;
 
         // Lưới lấy phần của nó trước (có trần), bảng tiết khí nhận toàn bộ
         // phần còn lại — nhờ vậy màn hình cao không còn hở một mảng ở đáy.
@@ -390,6 +399,9 @@
             note.textContent = (res === 'ok')
                 ? t('pinOk')
                 : t('pinManual');
+            // Ghi chú vừa hiện ra chiếm thêm chỗ — chia lại ngay, không thì nó
+            // đẩy chính nó xuống dưới thanh tab.
+            fitGrid(lastWeeks);
         });
     }
 

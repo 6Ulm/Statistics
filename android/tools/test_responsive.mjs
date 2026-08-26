@@ -66,11 +66,41 @@ for (const d of DEVICES) {
     await page.goto(base, { waitUntil: 'networkidle' });
     await page.waitForTimeout(900);
     if (process.env.TAB === 'cal') {
+        await page.evaluate(() => {
+            window.showTab('cal');
+            // Nút Ghim chỉ hiện khi chạy trong ứng dụng Android. Đo mà thiếu nó
+            // thì bố cục trên máy thật cao hơn phép thử tưởng, và nút bị thanh
+            // tab cố định che mất — đúng lỗi đã lọt ra máy thật một lần.
+            document.getElementById('calPinBtn').style.display = 'block';
+        });
+        await page.waitForTimeout(200);
+        // Vẽ lại: chỉ gọi __fitScreen thì viewport.js co giãn cả trang, nhưng
+        // fitGrid() — thứ chia chiều cao cho lưới và bảng — chỉ chạy trong
+        // render(). Trên máy thật nút Ghim đã hiện sẵn từ lần vẽ đầu.
         await page.evaluate(() => window.showTab('cal'));
         await page.waitForTimeout(600);
     }
 
     const r = await page.evaluate(() => {
+        // Thanh tab cố định nổi trên mọi thứ; phần tử nào thò xuống dưới mép
+        // trên của nó là bị che, người dùng không bấm được.
+        const hidden = [];
+        const bar = document.getElementById('tabBar');
+        if (bar) {
+            const top = bar.getBoundingClientRect().top;
+            // KHÔNG quét <body> (id mainBody): hộp của nó vốn kéo tới đáy màn
+            // hình vì có padding-bottom bằng chiều cao thanh tab — luôn "thò
+            // xuống", mà đó chính là cách chừa chỗ cho thanh tab.
+            for (const el of document.querySelectorAll('#calView > *, #mainBody > *:not(#tabBar)')) {
+                const cs = getComputedStyle(el);
+                if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+                const b = el.getBoundingClientRect();
+                if (b.height > 0 && b.bottom > top + 1 && b.top < top) {
+                    hidden.push((el.id || el.className) + ' thò xuống ' +
+                        Math.round(b.bottom - top) + 'px');
+                }
+            }
+        }
         const trunc = [];
         for (const el of document.querySelectorAll('body *')) {
             const cs = getComputedStyle(el);
@@ -92,12 +122,29 @@ for (const d of DEVICES) {
             zoom,
             boardH: board ? Math.round(board.getBoundingClientRect().height) : 0,
             trunc,
+            hidden,
         };
     });
 
     const problems = [];
     if (r.docW > r.innerW + 1) problems.push(`tràn ngang ${r.docW - r.innerW}px`);
     if (r.trunc.length) problems.push(`${r.trunc.length} chỗ chữ bị cắt: ${r.trunc.slice(0, 3).join(' | ')}`);
+    // Trang phải cuộn thì phần dưới nằm sau thanh tab là bình thường — cuộn tới
+    // là thấy (body đã chừa padding-bottom đúng bằng chiều cao thanh tab).
+    // Chỉ là lỗi khi trang VỪA màn hình mà vẫn có thứ bị che.
+    if (r.hidden.length && r.contentH <= r.innerH + 1) {
+        problems.push(`bị thanh tab che: ${r.hidden.join(' | ')}`);
+    }
+    // Tab Lịch trên điện thoại dựng đứng thì PHẢI vừa một màn hình — fitGrid()
+    // chia chiều cao chính là để thế. Tràn ra là dấu hiệu nó quên trừ một khối
+    // nào đó (nút Ghim từng bị quên đúng như vậy), và viewport.js sẽ che lỗi
+    // bằng cách thu nhỏ cả trang tới đáy 0,95.
+    // Ngưỡng 640px: dưới mức đó thì 6 hàng × ROW_MIN (58px) cộng đầu lịch, bảng
+    // tiết khí và thanh tab đã vượt màn hình rồi — máy 320×520 buộc phải cuộn,
+    // không phải lỗi chia chiều cao.
+    if (process.env.TAB === 'cal' && d.h > d.w && d.h >= 640 && r.contentH > r.innerH + 1) {
+        problems.push(`tab Lịch tràn dọc ${r.contentH - r.innerH}px (phải vừa một màn hình)`);
+    }
     // Luật cốt lõi: nội dung đã cao quá màn hình thì TUYỆT ĐỐI không được phóng
     // to thêm. Bản gốc phóng 1,25 lần chỉ vì màn rộng ≥768px, nên điện thoại
     // xoay ngang bị phóng trong khi đã phải cuộn dọc.

@@ -76,6 +76,8 @@ gốc) và **Lịch** (lịch âm dương).
   chia phần còn lại cho các hàng lịch — giữ sẵn một khoản cố định thì phần dư
   hoá thành khoảng hở ở đáy màn hình. Máy quá thấp (320×520) thì bảng tự cuộn
   và hàng tiêu đề dính lại.
+* Hai tab ngăn nhau bằng một vạch dọc, tab đang mở có **nền màu nhấn** chứ
+  không chỉ đổi màu chữ.
 
 Lịch âm được tính theo **UTC+7** như quy ước lịch Việt Nam (bản tiếng Trung
 dùng UTC+8) — đó chính là lý do Tết ta và Tết Tàu thỉnh thoảng lệch một ngày.
@@ -301,7 +303,14 @@ ellipsis, và phóng to trong khi nội dung đã phải cuộn. Chiều cao ở
 cao **WebView thật** (đã trừ thanh trạng thái và thanh điều hướng), không phải
 chiều cao màn hình.
 
-`TAB=cal node test_responsive.mjs` chạy lại cùng bộ đó trên tab Lịch.
+`TAB=cal node test_responsive.mjs` chạy lại cùng bộ đó trên tab Lịch, và **bật
+nút Ghim lên trước khi đo**. Nút ấy `display:none` ngoài ứng dụng Android, nên
+mọi phép đo trên trình duyệt vốn không thấy nó — bố cục trên máy thật vì thế cao
+hơn phép thử tưởng và nút bị thanh tab cố định che mất. Phép thử giờ canh thêm
+hai điều: không phần tử nào bị thanh tab che khi trang vừa màn hình, và **tab
+Lịch trên điện thoại dựng đứng phải vừa đúng một màn hình** — tràn ra là dấu
+hiệu `fitGrid()` quên trừ một khối nào đó, mà `viewport.js` sẽ che lỗi ấy bằng
+cách thu nhỏ cả trang xuống đáy 0,95.
 
 Gỡ `viewport.js` ra thì ca "S21 ngang" lập tức đỏ — nên phép thử này có thật,
 không phải lúc nào cũng xanh. Trước đây nó **đọc `body.style.zoom`** (thuộc tính
