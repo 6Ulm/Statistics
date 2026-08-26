@@ -143,11 +143,20 @@ await new Promise(r => setTimeout(r, 200));
 w.showTab('cal');
 await new Promise(r => setTimeout(r, 200));
 const cells = [...doc.querySelectorAll('.cal-day')];
-check('số ô ngày tháng 8/2026', String(cells.length), '31');
+check('lưới kín 42 ô, không ô trống', `${cells.length}/${doc.querySelectorAll('.cal-empty').length}`, '42/0');
+const inMonth = cells.filter(c => !c.classList.contains('cal-out'));
+check('31 ngày của tháng 8', String(inMonth.length), '31');
+check('11 ngày tháng trước/sau', String(doc.querySelectorAll('.cal-out').length), '11');
+const cellTxt = c => c.querySelector('.cal-lunar').textContent + ' ' +
+    [...c.querySelector('.cal-gz').children].map(x => x.textContent).join(' ');
+check('ô đầu = 27/7 tháng trước', cells[0].getAttribute('data-d') + '/' +
+    cells[0].getAttribute('data-m') + ' ' + cellTxt(cells[0]), '27/7 14 Nhâm Dần');
+check('ô cuối = 6/9 tháng sau', cells[41].getAttribute('data-d') + '/' +
+    cells[41].getAttribute('data-m') + ' ' + cellTxt(cells[41]), '6/9 25 Quý Mùi');
 check('can chi luôn 2 dòng', String(cells.every(c => c.querySelector('.cal-gz').children.length === 2)), 'true');
 check('không còn chấm hoàng đạo', String(doc.querySelectorAll('.cal-dot').length), '0');
 check('không còn hộp chi tiết', String(!!doc.getElementById('calDetail')), 'false');
-const c1 = cells[0], c13 = cells[12], c26 = cells[25];
+const c1 = inMonth[0], c13 = inMonth[12], c26 = inMonth[25];
 const gz = c => [...c.querySelector('.cal-gz').children].map(x => x.textContent).join(' ');
 check('01/08 âm + can chi', c1.querySelector('.cal-lunar').textContent + ' ' + gz(c1), '19 Đinh Mùi');
 check('13/08 mùng 1 tháng 7', c13.querySelector('.cal-lunar').textContent + ' ' + gz(c13), '1/7 Kỷ Mùi');

@@ -44,6 +44,21 @@ function jdnOf(y, m, d) {
         + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
 }
 
+/** Ngày dương lịch từ JDN — bản sao của LunarTable.civilOf, phép nghịch của jdnOf. */
+function civilOf(jdn) {
+    const a = jdn + 32044;
+    const b = Math.floor((4 * a + 3) / 146097);
+    const c = a - Math.floor(146097 * b / 4);
+    const d = Math.floor((4 * c + 3) / 1461);
+    const e = c - Math.floor(1461 * d / 4);
+    const m = Math.floor((5 * e + 2) / 153);
+    return {
+        d: e - Math.floor((153 * m + 2) / 5) + 1,
+        m: m + 3 - 12 * Math.floor(m / 10),
+        y: 100 * b + d - 4800 + Math.floor(m / 10),
+    };
+}
+
 /** Tìm tháng âm chứa ngày jdn — tìm nhị phân mốc mùng 1 lớn nhất mà ≤ jdn. */
 function lookup(jdn) {
     let lo = 0, hi = starts.length - 1, idx = -1;
@@ -78,7 +93,9 @@ for (let y = 1900; y <= 2100; y++) {
             const ref = Solar.fromYmd(y, m, d).getLunar();
             checked++;
             const refLeap = ref.getMonth() < 0;
+            const back = civilOf(j);
             const ok = got &&
+                back.y === y && back.m === m && back.d === d &&
                 got.day === ref.getDay() &&
                 got.month === Math.abs(ref.getMonth()) &&
                 got.year === ref.getYear() &&

@@ -102,6 +102,13 @@ body.view-cal #calView { display: block; }
 }
 .cal-day:active { background: #fbdde2; }
 .cal-empty { background: #fdf5f6; }
+
+/* Ngày của tháng trước / tháng sau: vẫn đủ thông tin nhưng mờ đi để không
+   lẫn với tháng đang xem. */
+.cal-day.cal-out { background: #fdf5f6; }
+.cal-day.cal-out .cal-solar { color: #b9a3a7; font-weight: 600; }
+.cal-day.cal-out .cal-lunar,
+.cal-day.cal-out .cal-gz { color: #c2aeb2; }
 .cal-dow-cell { min-height: 0; }        /* hàng "Thứ 2…" giữ nguyên chiều cao */
 
 .cal-top {

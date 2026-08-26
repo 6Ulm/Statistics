@@ -142,29 +142,44 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             c.drawText(dows[i], cellW * (i + 0.5f), headH + dowH * 0.68f, paint)
         }
 
-        // các ô ngày
-        for (d in 1..daysInMonth) {
-            val idx = lead + d - 1
+        // Các ô ngày. Ô đầu/cuối lưới điền nốt ngày của tháng trước và tháng
+        // sau (tô mờ) thay vì để trống — quét thẳng theo số ngày Julius nên
+        // không phải xử lý riêng chuyện đổi tháng, đổi năm.
+        val startJdn = LunarTable.jdn(year, month, 1) - lead
+        for (idx in 0 until weeks * 7) {
+            val jdn = startJdn + idx
+            val (cy, cm, cd) = LunarTable.civilOf(jdn)
+            val outside = cm != month || cy != year
             val col = idx % 7
             val row = idx / 7
             val x = cellW * col
             val y = gridTop + cellH * row
-            val jdn = LunarTable.jdn(year, month, d)
             val isToday = jdn == todayJdn
 
             if (isToday) {
                 paint.color = Color.parseColor("#D32F2F")
                 c.drawRect(x + 1, y + 1, x + cellW - 1, y + cellH - 1, paint)
+            } else if (outside) {
+                paint.color = Color.parseColor("#FDF5F6")
+                c.drawRect(x + 1, y + 1, x + cellW - 1, y + cellH - 1, paint)
             }
 
-            val fg = if (isToday) Color.WHITE else Color.parseColor("#222222")
-            val dim = if (isToday) Color.parseColor("#FFE0E3") else Color.parseColor("#6B6B6B")
+            val fg = when {
+                isToday -> Color.WHITE
+                outside -> Color.parseColor("#B9A3A7")
+                else -> Color.parseColor("#222222")
+            }
+            val dim = when {
+                isToday -> Color.parseColor("#FFE0E3")
+                outside -> Color.parseColor("#C2AEB2")
+                else -> Color.parseColor("#6B6B6B")
+            }
 
             paint.typeface = Typeface.DEFAULT_BOLD
             paint.textAlign = Paint.Align.LEFT
             paint.textSize = cellH * 0.30f
             paint.color = fg
-            c.drawText(d.toString(), x + cellW * 0.10f, y + cellH * 0.34f, paint)
+            c.drawText(cd.toString(), x + cellW * 0.10f, y + cellH * 0.34f, paint)
 
             val lunar = LunarTable.lunarOf(jdn)
             paint.typeface = Typeface.DEFAULT
@@ -182,7 +197,7 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             val (can, chi) = LunarTable.ganZhiOf(jdn)
             paint.textAlign = Paint.Align.CENTER
             paint.textSize = cellH * 0.21f
-            paint.color = if (isToday) Color.WHITE else Color.parseColor("#555555")
+            paint.color = if (isToday) Color.WHITE else dim
             c.drawText(can, x + cellW / 2f, y + cellH * 0.63f, paint)
             c.drawText(chi, x + cellW / 2f, y + cellH * 0.88f, paint)
         }

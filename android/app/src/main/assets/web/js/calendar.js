@@ -105,38 +105,25 @@
         var today = new Date();
         var tKey = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
 
+        // Ô đầu và ô cuối lưới không để trống: điền nốt ngày cuối tháng trước
+        // và ngày đầu tháng sau, tô mờ. Chạm vào một ngày như vậy thì nhảy
+        // luôn sang tháng đó.
+        var prev = new Date(viewY, viewM - 2, 1);
+        var prevY = prev.getFullYear(), prevM = prev.getMonth() + 1;
+        var prevDays = new Date(prevY, prevM, 0).getDate();
+        var next = new Date(viewY, viewM, 1);
+        var nextY = next.getFullYear(), nextM = next.getMonth() + 1;
+
         var cells = [];
-        for (var i = 0; i < lead; i++) cells.push('<div class="cal-cell cal-empty"></div>');
-
-        for (var d = 1; d <= daysInMonth; d++) {
-            var lunar = Solar.fromYmd(viewY, viewM, d).getLunar();
-            var gz = dayGanZhi(lunar);
-            var lday = lunar.getDay();
-            var lmon = lunar.getMonth();
-            // Mùng 1 thì ghi kèm tháng âm, như lịch giấy: "1/7"
-            var lunarTxt = (lday === 1) ? (lday + '/' + Math.abs(lmon) + (lmon < 0 ? 'N' : '')) : String(lday);
-            var key = viewY + '-' + viewM + '-' + d;
-            var cls = 'cal-cell cal-day';
-            if (key === tKey) cls += ' cal-today';
-            if (selected && selected.y === viewY && selected.m === viewM && selected.d === d) cls += ' cal-sel';
-            if ((lead + d - 1) % 7 === 6) cls += ' cal-sun';
-
-            // Can và chi luôn nằm trên HAI dòng riêng, mọi ngày như nhau —
-            // để một chuỗi tự xuống dòng thì "Đinh Mùi" gãy đôi còn "Kỷ Dậu"
-            // nằm một dòng, nhìn so le rất xấu.
-            cells.push(
-                '<div class="' + cls + '" data-d="' + d + '">' +
-                '<div class="cal-top">' +
-                '<span class="cal-solar">' + d + '</span>' +
-                '<span class="cal-lunar">' + esc(lunarTxt) + '</span>' +
-                '</div>' +
-                '<div class="cal-gz">' +
-                '<span>' + esc(gz.can) + '</span><span>' + esc(gz.chi) + '</span>' +
-                '</div>' +
-                '</div>'
-            );
+        for (var i = lead; i > 0; i--) {
+            cells.push(cellHtml(prevY, prevM, prevDays - i + 1, cells.length, true, tKey));
         }
-        while (cells.length % 7 !== 0) cells.push('<div class="cal-cell cal-empty"></div>');
+        for (var d = 1; d <= daysInMonth; d++) {
+            cells.push(cellHtml(viewY, viewM, d, cells.length, false, tKey));
+        }
+        for (var nd = 1; cells.length % 7 !== 0; nd++) {
+            cells.push(cellHtml(nextY, nextM, nd, cells.length, true, tKey));
+        }
 
         for (var r = 0; r < cells.length; r += 7) {
             html += '<div class="cal-row">' + cells.slice(r, r + 7).join('') + '</div>';
@@ -169,6 +156,39 @@
         var rowH = Math.floor(avail / weeks);
         rowH = Math.max(ROW_MIN, Math.min(ROW_MAX, rowH));
         document.documentElement.style.setProperty('--cal-row-h', rowH + 'px');
+    }
+
+    /**
+     * Dựng HTML một ô ngày.
+     * @param {number} idx    thứ tự ô trong lưới (để biết cột Chủ nhật)
+     * @param {boolean} outside  ngày của tháng trước/sau — tô mờ
+     */
+    function cellHtml(y, m, d, idx, outside, tKey) {
+        var lunar = Solar.fromYmd(y, m, d).getLunar();
+        var gz = dayGanZhi(lunar);
+        var lday = lunar.getDay();
+        var lmon = lunar.getMonth();
+        // Mùng 1 thì ghi kèm tháng âm, như lịch giấy: "1/7"
+        var lunarTxt = (lday === 1) ? (lday + '/' + Math.abs(lmon) + (lmon < 0 ? 'N' : '')) : String(lday);
+
+        var cls = 'cal-cell cal-day';
+        if (outside) cls += ' cal-out';
+        if (y + '-' + m + '-' + d === tKey) cls += ' cal-today';
+        if (selected && selected.y === y && selected.m === m && selected.d === d) cls += ' cal-sel';
+        if (idx % 7 === 6) cls += ' cal-sun';
+
+        // Can và chi luôn nằm trên HAI dòng riêng, mọi ngày như nhau —
+        // để một chuỗi tự xuống dòng thì "Đinh Mùi" gãy đôi còn "Kỷ Dậu"
+        // nằm một dòng, nhìn so le rất xấu.
+        return '<div class="' + cls + '" data-y="' + y + '" data-m="' + m + '" data-d="' + d + '">' +
+            '<div class="cal-top">' +
+            '<span class="cal-solar">' + d + '</span>' +
+            '<span class="cal-lunar">' + esc(lunarTxt) + '</span>' +
+            '</div>' +
+            '<div class="cal-gz">' +
+            '<span>' + esc(gz.can) + '</span><span>' + esc(gz.chi) + '</span>' +
+            '</div>' +
+            '</div>';
     }
 
     /** Bảng tiết khí rơi vào tháng dương lịch đang xem. */
@@ -281,7 +301,14 @@
         document.getElementById('calGrid').addEventListener('click', function (e) {
             var cell = e.target.closest ? e.target.closest('.cal-day') : null;
             if (!cell) return;
-            selected = { y: viewY, m: viewM, d: parseInt(cell.getAttribute('data-d'), 10) };
+            selected = {
+                y: parseInt(cell.getAttribute('data-y'), 10),
+                m: parseInt(cell.getAttribute('data-m'), 10),
+                d: parseInt(cell.getAttribute('data-d'), 10),
+            };
+            // Chạm vào ngày của tháng trước/sau thì chuyển hẳn sang tháng đó.
+            viewY = selected.y;
+            viewM = selected.m;
             render();
         });
 

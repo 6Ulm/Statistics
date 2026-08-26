@@ -63,6 +63,20 @@ object LunarTable {
         return day + (153 * m + 2) / 5 + 365 * y + y / 4 - y / 100 + y / 400 - 32045
     }
 
+    /** Ngày dương lịch từ số ngày Julius — phép nghịch của [jdn]. */
+    fun civilOf(jdn: Int): Triple<Int, Int, Int> {
+        val a = jdn + 32044
+        val b = (4 * a + 3) / 146097
+        val c = a - 146097 * b / 4
+        val d = (4 * c + 3) / 1461
+        val e = c - 1461 * d / 4
+        val m = (5 * e + 2) / 153
+        val day = e - (153 * m + 2) / 5 + 1
+        val month = m + 3 - 12 * (m / 10)
+        val year = 100 * b + d - 4800 + m / 10
+        return Triple(year, month, day)
+    }
+
     /** Tra tháng âm chứa ngày này; null nếu ngoài khoảng 1900–2100. */
     fun lunarOf(jdn: Int): LunarDay? {
         if (!loaded || starts.isEmpty() || jdn < starts[0]) return null
