@@ -120,8 +120,41 @@ nơi lệch xa kinh tuyến múi giờ của mình thì chừng 8%. Ví dụ Par
 không phải 06/07.
 
 Phần dôi ra ấy là do CHÍNH LUẬT NÀY, không phải sai số tính toán: điểm Sóc mà
-ứng dụng hiển thị rơi đúng ngày mùng 1 của `lunar.js` ở **1249/1249 tháng**
-(mốc UTC+7, 1960–2060).
+ứng dụng hiển thị rơi đúng ngày mùng 1 của `lunar.js` ở **1744/1744 tháng** từ
+1960 trở đi (mốc UTC+7).
+
+### Điểm Sóc được TÍNH, và tính bằng đúng hàm của lunar.js
+
+`getPreciseSocSolarUTC8()` không tra bảng: nó gọi thẳng `ShouXingUtil.shuoHigh`,
+tức chính hàm mà `lunar.js` dùng để định mốc Sóc. `mo.getFirstJulianDay()` chỉ
+dùng để chọn số thứ tự tuần trăng, không cung cấp giờ.
+
+Trước đây chỗ này CHÉP LẠI công thức của `shuoHigh` — và chép thiếu một bước:
+
+```js
+var v = ((t + 0.5) % 1) * SECOND_PER_DAY;
+if (v < 1800 || v > SECOND_PER_DAY - 1800) {
+    t = this.msaLonT(w) * 36525 - this.dtT(t) + tzDay;   // chính xác hơn
+}
+```
+
+Khi điểm Sóc rơi trong vòng 30 phút quanh nửa đêm, `shuoHigh` giải lại bằng
+`msaLonT` thay cho `msaLonT2`. Mà sát nửa đêm chính là lúc quyết định mùng 1 rơi
+ngày nào — bỏ bước ấy là sai đúng chỗ có hại nhất. Gọi thẳng hàm gốc đưa số
+tháng lệch từ 1960 trở đi **từ 2 về 0**.
+
+### Trước 1960: thiên văn khác sử liệu
+
+`ShouXingUtil.calcShuo` đổi chế độ tại **JD 2436935 = 01/01/1960**:
+
+* **từ 1960**: `shuoHigh` — tính thiên văn thuần;
+* **trước đó**: tra bảng `SHUO_KB` và `shuoLow` kèm chuỗi sửa `SB` — tức chép
+  lại LỊCH SỬ, ghi đúng những gì lịch chính thức ngày ấy đã ban, kể cả chỗ nó
+  sai so với thiên văn.
+
+Ứng dụng luôn tính thiên văn, nên với ngày trước 1960 mốc mùng 1 có thể lệch
+**18/742 tháng (2,43%)** so với cấu trúc tháng của `lunar.js`. Không hàm thiên
+văn nào khớp được chỗ đó — đấy là sử liệu, không phải phép tính.
 
 ### Nhãn tháng lấy ở mốc quy chiếu, không lấy ở chỗ đứng
 

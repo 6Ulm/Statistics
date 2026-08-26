@@ -821,10 +821,14 @@ function getPreciseSocSolarUTC8(roundedSolar) {
     const roundedJD = roundedSolar.getJulianDay() + 0.5; // JD nguyên dùng trong calcShuo
     const w0 = roundedJD - Solar.J2000;
     const k  = Math.round(w0 / 29.5306);
-    const w  = k * 2 * Math.PI;
-    let t = ShouXingUtil.msaLonT2(w) * 36525;
-    t = t - ShouXingUtil.dtT(t) + ShouXingUtil._tzDay(8); // mốc UTC+8 cố định
-    return Solar.fromJulianDay(t + Solar.J2000);
+    // Gọi THẲNG shuoHigh của lunar.js thay vì chép lại công thức.
+    //
+    // Bản chép cũ là đúng shuoHigh nhưng THIẾU một bước: khi điểm Sóc rơi vào
+    // trong vòng 30 phút quanh nửa đêm, shuoHigh giải lại bằng msaLonT (chính
+    // xác hơn msaLonT2). Mà sát nửa đêm chính là lúc quyết định mùng 1 rơi vào
+    // ngày nào — bỏ bước ấy đi thì sai đúng chỗ nó có hại nhất.
+    return Solar.fromJulianDay(
+        ShouXingUtil.shuoHigh(k * 2 * Math.PI, 8) + Solar.J2000);
 }
 
 /**
