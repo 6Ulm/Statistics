@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+body{margin:0;background:#8a9aa8;font-family:sans-serif;padding:14px;display:flex;flex-direction:column;gap:16px}
+figure{margin:0}
+figcaption{color:#fff;font:600 12px sans-serif;padding-bottom:4px}
+canvas{display:block;border-radius:10px}
+</style></head><body>
+<script>
+/*
+ * Xem trước widget mà không cần dựng app:
+ *     node ../../tools/... (mở thẳng file này bằng trình duyệt cũng được)
+ *
+ * Bản mô phỏng drawMonth() của CalendarWidgetProvider.kt.
+   Canvas của trình duyệt và Canvas của Android có cùng mô hình vẽ (drawText,
+   fillRect, textAlign, textSize) nên hình ra rất sát với widget thật. */
+
+const CAN = ['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'];
+const CHI = ['Tý','Sửu','Dần','Mão','Thìn','Tỵ','Ngọ','Mùi','Thân','Dậu','Tuất','Hợi'];
+
+function jdn(y,m,d){const a=Math.floor((14-m)/12),yy=y+4800-a,mm=m+12*a-3;
+  return d+Math.floor((153*mm+2)/5)+365*yy+Math.floor(yy/4)-Math.floor(yy/100)+Math.floor(yy/400)-32045;}
+function civilOf(j){const a=j+32044,b=Math.floor((4*a+3)/146097),c=a-Math.floor(146097*b/4),
+  d=Math.floor((4*c+3)/1461),e=c-Math.floor(1461*d/4),m=Math.floor((5*e+2)/153);
+  return {y:100*b+d-4800+Math.floor(m/10),m:m+3-12*Math.floor(m/10),d:e-Math.floor((153*m+2)/5)+1};}
+
+// bảng âm lịch rút gọn cho tháng 8/2026 (lấy từ lunar_months.txt)
+const LUNAR = {}; // jdn -> {day, month}
+(function(){
+  // 1/8/2026 = âm 19/6 ; 13/8/2026 = âm 1/7
+  const start = jdn(2026,8,13);          // mùng 1 tháng 7 âm
+  const prevStart = jdn(2026,7,14);      // mùng 1 tháng 6 âm
+  const nextStart = jdn(2026,9,11);      // mùng 1 tháng 8 âm
+  for(let j=prevStart;j<start;j++) LUNAR[j]={day:j-prevStart+1,month:6};
+  for(let j=start;j<nextStart;j++) LUNAR[j]={day:j-start+1,month:7};
+  for(let j=nextStart;j<nextStart+30;j++) LUNAR[j]={day:j-nextStart+1,month:8};
+})();
+const GZ_EPOCH = 2415071;
+function ganzhi(j){const i=((j-GZ_EPOCH)%60+60)%60;return [CAN[i%10],CHI[i%12]];}
+
+function draw(canvas, wDp, hDp, density, opt) {
+  const w = Math.round(wDp*density), h = Math.round(hDp*density);
+  canvas.width=w; canvas.height=h;
+  canvas.style.width=wDp+'px'; canvas.style.height=hDp+'px';
+  const c = canvas.getContext('2d');
+  const dp = v => v*density;
+
+  const year=2026, month=8, todayJdn=jdn(2026,8,26);
+  const first=new Date(year,month-1,1);
+  const lead=(first.getDay()+6)%7;
+  const daysInMonth=new Date(year,month,0).getDate();
+  const weeks=Math.max(1,Math.ceil((lead+daysInMonth)/7));
+
+  // ── hình học ──
+  const pad = opt.pad ? dp(opt.pad) : 0;
+  const headH = Math.min(h*opt.headFrac, dp(opt.headMaxDp));
+  const dowH  = Math.min(h*opt.dowFrac,  dp(opt.dowMaxDp));
+  const gridTop = headH + dowH;
+  const gridW = w - pad*2;
+  const cellW = gridW/7;
+  const cellH = (h - gridTop - pad)/weeks;
+
+  c.fillStyle='#FDECEF'; c.fillRect(0,0,w,h);
+  c.fillStyle='#D32F2F'; c.fillRect(0,0,w,headH);
+
+  c.fillStyle='#fff'; c.textAlign='center'; c.textBaseline='middle';
+  c.font='bold '+Math.min(headH*0.52, dp(opt.titleMaxDp))+'px sans-serif';
+  c.fillText('LỊCH ÂM THÁNG '+month+'/'+year, w/2, headH*0.52);
+
+  const dows=['T2','T3','T4','T5','T6','T7','CN'];
+  c.font='bold '+Math.min(dowH*0.62, dp(opt.dowTextMaxDp))+'px sans-serif';
+  for(let i=0;i<7;i++){
+    c.fillStyle = i===6 ? '#C62828' : '#7A2B33';
+    c.fillText(dows[i], pad+cellW*(i+0.5), headH+dowH*0.5);
+  }
+
+  const startJdn = jdn(year,month,1)-lead;
+  for(let idx=0; idx<weeks*7; idx++){
+    const j=startJdn+idx, cv=civilOf(j);
+    const outside = cv.m!==month || cv.y!==year;
+    const x=pad+cellW*(idx%7), y=gridTop+cellH*Math.floor(idx/7);
+    const isToday = j===todayJdn;
+
+    if(isToday){ c.fillStyle='#D32F2F'; c.fillRect(x+1,y+1,cellW-2,cellH-2); }
+    else if(outside){ c.fillStyle='#FDF5F6'; c.fillRect(x+1,y+1,cellW-2,cellH-2); }
+
+    const fg = isToday?'#fff': outside?'#B9A3A7':'#222';
+    const dim= isToday?'#FFE0E3': outside?'#C2AEB2':'#6B6B6B';
+
+    // Bao nhiêu dòng thì vừa? Ô thấp quá mà cố nhét 3 dòng thì chữ nào cũng
+    // bé không đọc nổi — thà bỏ can chi còn hơn.
+    const dayPx = Math.min(cellH*0.34, dp(opt.dayMaxDp));
+    const lunPx = Math.min(cellH*0.26, dp(opt.lunMaxDp));
+    const gzPx  = Math.min(cellH*0.24, dp(opt.gzMaxDp));
+    const need3 = dayPx + gzPx*2 + dp(6);
+    const lines = cellH >= need3 ? 3 : 2;
+
+    c.textBaseline='alphabetic';
+    c.textAlign='left';
+    c.font='bold '+dayPx+'px sans-serif';
+    c.fillStyle=fg;
+    const dayBase = y + dayPx + dp(3);
+    c.fillText(cv.d, x+cellW*0.09, dayBase);
+
+    c.textAlign='right';
+    c.font=lunPx+'px sans-serif';
+    c.fillStyle=dim;
+    const L=LUNAR[j];
+    c.fillText(L ? (L.day===1 ? L.day+'/'+L.month : L.day) : '', x+cellW*0.93, dayBase);
+
+    if (lines === 3) {
+      const [can,chi]=ganzhi(j);
+      c.textAlign='center';
+      c.font=gzPx+'px sans-serif';
+      c.fillStyle = isToday?'#fff':dim;
+      const rest = cellH - (dayBase - y);
+      c.fillText(can, x+cellW/2, dayBase + rest*0.40);
+      c.fillText(chi, x+cellW/2, dayBase + rest*0.84);
+    }
+  }
+
+  c.strokeStyle='#F3C6CD'; c.lineWidth=1;
+  for(let i=1;i<7;i++){c.beginPath();c.moveTo(pad+cellW*i,gridTop);c.lineTo(pad+cellW*i,h-pad);c.stroke();}
+  for(let r=0;r<=weeks;r++){const y=gridTop+cellH*r;c.beginPath();c.moveTo(pad,y);c.lineTo(w-pad,y);c.stroke();}
+}
+
+const SIZES = [[340,150,'4×2 ô (thấp)'],[340,190,'4×2.5 ô'],[340,240,'4×3 ô'],[300,140,'nhỏ']];
+const OPT = JSON.parse(document.currentScript?.dataset?.opt || 'null') || window.__OPT;
+for (const [wd,hd,label] of SIZES) {
+  const fig=document.createElement('figure');
+  const cap=document.createElement('figcaption'); cap.textContent=label+'  '+wd+'×'+hd+'dp';
+  const cv=document.createElement('canvas');
+  fig.append(cap,cv); document.body.append(fig);
+  draw(cv, wd, hd, 3, OPT);
+}
+</script>
+</body></html>

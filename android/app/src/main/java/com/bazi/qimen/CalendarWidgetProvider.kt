@@ -69,10 +69,16 @@ class CalendarWidgetProvider : AppWidgetProvider() {
 
     private fun render(context: Context, manager: AppWidgetManager, id: Int) {
         val opts = manager.getAppWidgetOptions(id)
+        // Ở chế độ DỌC, bề ngang là MIN_WIDTH còn chiều cao là MAX_HEIGHT.
+        // Lấy nhầm MIN_HEIGHT (vốn là chiều cao khi xoay NGANG, thấp hơn hẳn)
+        // thì bitmap lùn hơn widget thật, fitCenter co lại và mọi thứ trông
+        // sai tỉ lệ.
         val wDp = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
             .takeIf { it > 0 } ?: 320
-        val hDp = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
-            .takeIf { it > 0 } ?: 220
+        val hDp = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0)
+            .takeIf { it > 0 }
+            ?: opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
+                .takeIf { it > 0 } ?: 240
 
         val bmp = drawMonth(context, wDp, hDp)
         val views = RemoteViews(context.packageName, R.layout.widget_calendar)
@@ -113,8 +119,11 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         val weeks = Math.ceil((lead + daysInMonth) / 7.0).toInt().coerceAtLeast(1)
 
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        val headH = h * 0.13f
-        val dowH = h * 0.09f
+        // Cỡ chữ và chiều cao phải CHẶN theo dp tuyệt đối, không thả trôi theo
+        // tỉ lệ chiều cao widget: để trôi thì widget cao một chút là tiêu đề
+        // phình to lố bịch, còn widget thấp thì chữ bé không đọc nổi.
+        val headH = minOf(h * 0.16f, dp(context, 24f))
+        val dowH = minOf(h * 0.10f, dp(context, 15f))
         val gridTop = headH + dowH
         val cellW = w / 7f
         val cellH = (h - gridTop) / weeks
@@ -131,16 +140,24 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         paint.color = Color.WHITE
         paint.typeface = Typeface.DEFAULT_BOLD
         paint.textAlign = Paint.Align.CENTER
-        paint.textSize = headH * 0.46f
+        paint.textSize = minOf(headH * 0.52f, dp(context, 12.5f))
         c.drawText("LỊCH ÂM THÁNG $month/$year", w / 2f, headH * 0.66f, paint)
 
         // hàng thứ
         val dows = arrayOf("T2", "T3", "T4", "T5", "T6", "T7", "CN")
-        paint.textSize = dowH * 0.52f
+        paint.textSize = minOf(dowH * 0.62f, dp(context, 9f))
         for (i in 0..6) {
             paint.color = if (i == 6) Color.parseColor("#C62828") else Color.parseColor("#7A2B33")
-            c.drawText(dows[i], cellW * (i + 0.5f), headH + dowH * 0.68f, paint)
+            c.drawText(dows[i], cellW * (i + 0.5f), headH + dowH * 0.70f, paint)
         }
+
+        // Cỡ chữ trong ô — tính một lần, dùng cho mọi ngày.
+        val dayPx = minOf(cellH * 0.34f, dp(context, 13f))
+        val lunPx = minOf(cellH * 0.26f, dp(context, 9f))
+        val gzPx = minOf(cellH * 0.24f, dp(context, 8.5f))
+        // Ô thấp quá mà cố nhét cả can chi thì chữ nào cũng bé không đọc nổi —
+        // thà bỏ can chi, chỉ để ngày dương và ngày âm.
+        val showGanZhi = cellH >= dayPx + gzPx * 2 + dp(context, 6f)
 
         // Các ô ngày. Ô đầu/cuối lưới điền nốt ngày của tháng trước và tháng
         // sau (tô mờ) thay vì để trống — quét thẳng theo số ngày Julius nên
@@ -177,29 +194,33 @@ class CalendarWidgetProvider : AppWidgetProvider() {
 
             paint.typeface = Typeface.DEFAULT_BOLD
             paint.textAlign = Paint.Align.LEFT
-            paint.textSize = cellH * 0.30f
+            paint.textSize = dayPx
             paint.color = fg
-            c.drawText(cd.toString(), x + cellW * 0.10f, y + cellH * 0.34f, paint)
+            val dayBase = y + dayPx + dp(context, 3f)
+            c.drawText(cd.toString(), x + cellW * 0.09f, dayBase, paint)
 
             val lunar = LunarTable.lunarOf(jdn)
             paint.typeface = Typeface.DEFAULT
             paint.textAlign = Paint.Align.RIGHT
-            paint.textSize = cellH * 0.21f
+            paint.textSize = lunPx
             paint.color = dim
             val lunarTxt = when {
                 lunar == null -> ""
                 lunar.day == 1 -> "${lunar.day}/${lunar.month}"
                 else -> lunar.day.toString()
             }
-            c.drawText(lunarTxt, x + cellW * 0.92f, y + cellH * 0.32f, paint)
+            c.drawText(lunarTxt, x + cellW * 0.93f, dayBase, paint)
 
-            // can một dòng, chi một dòng — như lịch trong ứng dụng
-            val (can, chi) = LunarTable.ganZhiOf(jdn)
-            paint.textAlign = Paint.Align.CENTER
-            paint.textSize = cellH * 0.21f
-            paint.color = if (isToday) Color.WHITE else dim
-            c.drawText(can, x + cellW / 2f, y + cellH * 0.63f, paint)
-            c.drawText(chi, x + cellW / 2f, y + cellH * 0.88f, paint)
+            if (showGanZhi) {
+                // can một dòng, chi một dòng — như lịch trong ứng dụng
+                val (can, chi) = LunarTable.ganZhiOf(jdn)
+                paint.textAlign = Paint.Align.CENTER
+                paint.textSize = gzPx
+                paint.color = if (isToday) Color.WHITE else dim
+                val rest = cellH - (dayBase - y)
+                c.drawText(can, x + cellW / 2f, dayBase + rest * 0.40f, paint)
+                c.drawText(chi, x + cellW / 2f, dayBase + rest * 0.84f, paint)
+            }
         }
 
         // lưới

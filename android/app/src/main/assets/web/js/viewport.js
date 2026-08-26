@@ -24,11 +24,10 @@
     var MIN_SCALE = 0.95;
     // Không phóng quá to trên máy tính bảng / điện thoại gập.
     var MAX_SCALE = 1.6;
-    // Khoảng cách gốc giữa các bảng (app.css) và mức giãn tối đa cho phép.
+    // Khoảng cách giữa các bảng: đúng như bản web gốc, không nới thêm.
+    // Từng thử chia phần thừa chiều cao vào các khe cho kín đáy màn hình,
+    // nhưng các bảng rời rạc trông tệ hơn hẳn khoảng hở ở đáy.
     var BASE_GAP = 3;
-    // Giãn vừa phải: nhồi hết phần thừa vào khe giữa các bảng thì đáy màn hình
-    // kín nhưng các bảng lại rời rạc, nhìn còn tệ hơn khoảng hở ban đầu.
-    var MAX_EXTRA_GAP = 4;
 
     var lastW = 0, lastH = 0, timer = null;
 
@@ -48,20 +47,21 @@
         if (!body) return;
 
 
-        // Thanh tab cố định che mất phần đáy, nên phải chừa ĐÚNG chiều cao của
-        // nó. Đặt số cứng thì hoặc thừa (hở một khoảng ở đáy màn Kỳ Môn) hoặc
-        // thiếu (che mất dòng cuối) — đo thẳng vẫn chắc hơn.
-        var bar = document.getElementById('tabBar');
-        if (bar) {
-            var h = Math.round(bar.getBoundingClientRect().height);
-            if (h > 0) document.documentElement.style.setProperty('--tabbar-h', h + 'px');
-        }
-
-        // Đo chiều cao tự nhiên ở tỉ lệ 1 VÀ khoảng cách mặc định, nếu không
-        // phần thừa chia ở lần trước sẽ cộng dồn qua mỗi lần đo.
+        // Đo mọi thứ ở tỉ lệ 1 — kể cả thanh tab.
         var prev = body.style.zoom;
         body.style.zoom = '';
         body.style.gap = BASE_GAP + 'px';
+
+        // Thanh tab cố định che mất phần đáy, nên phải chừa ĐÚNG chiều cao của
+        // nó. Phải đo SAU khi bỏ zoom: đo lúc còn zoom thì con số là px đã
+        // phóng, mà --tabbar-h lại được dùng như px chưa phóng — sai lệch đó
+        // đủ để phép co giãn vượt quá màn hình vài pixel.
+        var bar = document.getElementById('tabBar');
+        if (bar) {
+            var barH = Math.round(bar.getBoundingClientRect().height);
+            if (barH > 0) document.documentElement.style.setProperty('--tabbar-h', barH + 'px');
+        }
+
         var natH = body.scrollHeight;
         var availW = document.documentElement.clientWidth;
         var availH = window.innerHeight;
@@ -87,37 +87,25 @@
 
         // Phóng to bị chặn bởi CẢ hai chiều: rộng ra thì tràn ngang, cao quá
         // thì phải cuộn.
-        var scale = Math.min(availW / natW, availH / natH);
+        // Trừ 2px dự phòng: làm tròn nửa pixel khi phóng đủ để đẩy trang dài
+        // hơn màn hình 1px, thế là hiện thanh cuộn dù nội dung vừa khít.
+        var scale = Math.min(availW / natW, (availH - 2) / natH);
         scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
         body.style.zoom = scale.toFixed(3);
 
-        spreadSlack(body, availH, natH * scale, scale);
+        // Phóng to KHÔNG chỉ là nhân chiều cao lên: chữ ngắt dòng lại, mỗi phần
+        // tử con làm tròn một ít, nên nội dung có thể cao hơn cả natH × tỉ lệ.
+        // Vì vậy phải đo kết quả THẬT rồi hạ dần cho tới khi vừa — một nhịp
+        // không đủ (đo được 1,091 → 1,088 → vẫn dôi ra 1px).
+        for (var pass = 0; pass < 4 && scale > MIN_SCALE; pass++) {
+            var realH = body.getBoundingClientRect().height;
+            if (realH <= availH) break;
+            scale = Math.max(MIN_SCALE, scale * (availH / realH) - 0.002);
+            body.style.zoom = scale.toFixed(3);
+        }
 
         lastW = availW;
         lastH = availH;
-    }
-
-    /**
-     * Bề ngang đã kịch trần thì không phóng to thêm được nữa, nên ở màn dọc
-     * luôn còn thừa vài chục pixel chiều cao. Nếu cứ để nguyên, toàn bộ phần
-     * thừa dồn xuống đáy thành một khoảng hở ngay trên thanh tab.
-     * Chia đều phần thừa đó vào khoảng cách giữa các bảng — màn hình đầy đặn,
-     * không còn khoảng hở ở đáy.
-     */
-    function spreadSlack(body, availH, usedH, scale) {
-        var kids = [];
-        for (var i = 0; i < body.children.length; i++) {
-            var el = body.children[i];
-            var cs = getComputedStyle(el);
-            if (cs.display === 'none' || cs.position === 'fixed') continue;
-            kids.push(el);
-        }
-        var gaps = kids.length - 1;
-        var leftover = availH - usedH;
-        if (gaps < 1 || leftover < 6) return;
-        // gap tính theo px CHƯA phóng, nên phải chia lại cho hệ số.
-        var extra = Math.min(MAX_EXTRA_GAP, leftover / scale / gaps);
-        body.style.gap = (BASE_GAP + extra).toFixed(1) + 'px';
     }
 
     /** Gộp nhiều sự kiện resize liên tiếp thành một lần đo. */
