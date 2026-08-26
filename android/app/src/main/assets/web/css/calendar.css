@@ -152,28 +152,13 @@ body.view-cal #calView { display: block; }
 }
 
 
-/* ── Tiết khí trong tháng (gập/mở được) ── */
+/* ── Tiết khí trong năm ──
+   Không còn hộp tiêu đề gập/mở: xếp hai cột thì 24 mục vừa một màn hình, nên
+   bảng hiện thẳng. Chiều cao do fitGrid() chia — nó biết lưới lịch chiếm bao
+   nhiêu, phần còn lại của màn hình đổ hết vào đây; màn hình thấp thì bảng tự
+   cuộn và hàng tiêu đề dính lại. */
 #calJieQi { margin-top: 6px; }
-.cal-jq-title {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 6px;
-    font-size: 11px; font-weight: 700;
-    color: var(--text-dim, #777);
-    text-transform: uppercase; letter-spacing: .04em;
-    padding: 5px 8px;
-    background: var(--bg-white, #fff);
-    border: 1px solid var(--border-color, #ddd);
-    border-radius: 6px;
-    cursor: pointer; user-select: none;
-}
-.cal-jq-title:active { background: var(--bg-alt, #f4f4f6); }
-.cal-jq-chev { font-size: 13px; transition: transform .22s; }
-#calJieQi.open .cal-jq-chev { transform: rotate(180deg); }
-/* Bảng 24 dòng nên luôn phải cuộn. Chiều cao do fitGrid() chia — nó biết lưới
-   lịch chiếm bao nhiêu, phần còn lại của màn hình đổ hết vào đây. */
 .cal-jq-body {
-    display: none;
-    margin-top: 4px;
     max-height: var(--cal-jq-h, 34vh);
     overflow: auto;
     -webkit-overflow-scrolling: touch;
@@ -181,15 +166,16 @@ body.view-cal #calView { display: block; }
     border: 1px solid var(--border-color, #ddd);
     border-radius: 6px;
 }
-#calJieQi.open .cal-jq-body { display: block; }
 
 /* Bảng dùng lại .dp-table của bảng Sách Bổ pháp — chỉ chỉnh đệm cho hợp khung
    lịch. Hàng tiêu đề dính lại khi cuộn, vì bảng dài hơn khung nhìn. */
 /* border-collapse: collapse (kiểu của .dp-table) làm hỏng position:sticky —
    hàng tiêu đề trôi mất khi cuộn. Tách viền ra rồi vẽ lại lên từng ô. */
 table.cal-jq { width: 100%; border-collapse: separate; border-spacing: 0; }
+/* Đệm 2px chứ không phải 3: đúng 12 hàng nên vừa trọn màn hình S21 (740px)
+   thay vì cụt mất hàng cuối — rẻ hơn nhiều so với bóp thấp hàng lịch. */
 table.cal-jq td {
-    padding: 3px 8px;
+    padding: 2px 8px;
     border-bottom: 1px solid var(--border-color, #e8e8e8);
 }
 table.cal-jq thead th {
@@ -200,8 +186,17 @@ table.cal-jq thead th {
 }
 /* Vách ngăn giữa hai nửa bảng — cũng đúng chỗ Dương Độn chuyển sang Âm Độn. */
 .cal-jq-split { border-left: 1px solid var(--border-color, #ddd); }
-table.cal-jq .cal-jq-name { white-space: nowrap; }
-table.cal-jq .cal-jq-date { text-align: right; color: var(--text-dim, #666); }
+/* Cột tên co đúng bằng chữ (width:1% là mẹo bảo trình duyệt thu về bề rộng nội
+   dung tối thiểu), cột ngày ăn phần còn lại và căn TRÁI. Trước đây ngày căn
+   phải nên tiêu đề "Dương lịch" (căn trái, như mọi th của .dp-table) không
+   thẳng hàng với giá trị bên dưới, mà giá trị thì bị đẩy sát mép máy. */
+table.cal-jq .cal-jq-name { width: 1%; white-space: nowrap; }
+table.cal-jq .cal-jq-date {
+    text-align: left;
+    color: var(--text-dim, #666);
+    padding-left: 10px;
+}
+table.cal-jq thead th + th { padding-left: 10px; }
 /* Tiết khí đang hiệu lực: tô đúng như dòng được tô ở bảng Sách Bổ pháp. */
 table.cal-jq .cal-jq-on {
     background: var(--accent-light, #e8edff);

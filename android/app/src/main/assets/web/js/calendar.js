@@ -20,7 +20,6 @@
         dows:     { vi: ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'C.Nhật'],
                     zh: ['一', '二', '三', '四', '五', '六', '日'] },
         today:    { vi: 'Hôm nay',    zh: '今天' },
-        jieqi:    { vi: 'Tiết khí trong năm', zh: '本年节气' },
         colTk:    { vi: 'Tiết Khí',   zh: '节气' },
         colDate:  { vi: 'Dương lịch', zh: '公历' },
         pin:      { vi: '📌 Ghim lịch ra màn hình chính', zh: '📌 固定日历到主屏幕' },
@@ -61,17 +60,12 @@
     // Hàng vừa đủ chứa 3 dòng (ngày dương/âm, can, chi) mà không dềnh dàng.
     // Chỗ thừa của màn hình cao giờ đổ vào bảng tiết khí 24 dòng, không kéo
     // hàng lịch cao ra nữa.
-    var ROW_MIN = 58, ROW_MAX = 68;
+    var ROW_MIN = 58, ROW_MAX = 80;
     // Bảng tiết khí mở ra thì phải cao đủ để đọc; dưới mức này thì thà để lưới
     // lịch tràn một chút rồi cuộn cả trang.
-    // Xếp hai cột thì bảng chỉ còn 12 hàng — chừng 320px là hiện đủ, không phải
-    // cuộn. Màn hình không đủ cao thì lưới lịch được ưu tiên tới mức ROW_MIN,
-    // phần còn lại mới về bảng.
-    var JQ_PREF = 320;
-
-    var K_JQ = 'qmdj.jieqiOpen';
-    /** Bảng tiết khí mặc định MỞ; người dùng gập lại thì nhớ luôn. */
-    var jieQiOpen = prefGet(K_JQ) !== '0';
+    // Dự phòng khi chưa đo được bảng tiết khí (lần vẽ đầu): 12 hàng hai cột cao
+    // chừng ngần này.
+    var JQ_FALLBACK = 300;
 
     var viewY, viewM;          // tháng đang xem (dương lịch)
     var selected = null;       // {y,m,d}
@@ -173,10 +167,8 @@
         if (!weeks) return;
         var grid = document.getElementById('calGrid');
         var head = document.getElementById('calHead');
-        var box = document.getElementById('calJieQi');
         var bar = document.getElementById('tabBar');
         var dow = grid ? grid.querySelector('.cal-dow') : null;
-        var title = box ? box.querySelector('.cal-jq-title') : null;
         if (!grid || !head || !dow) return;
 
         var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
@@ -185,14 +177,20 @@
         // Đo phần cố định — KHÔNG tính thân bảng tiết khí, vì chính nó là thứ
         // ta sắp chia. Đo cả cụm rồi mới chia thì thành vòng luẩn quẩn.
         var avail = window.innerHeight / zoom
-            - h(head) - h(dow) - h(title) - h(bar) - GRID_CHROME;
+            - h(head) - h(dow) - h(bar) - GRID_CHROME;
 
         // Lưới lấy phần của nó trước (có trần), bảng tiết khí nhận toàn bộ
         // phần còn lại — nhờ vậy màn hình cao không còn hở một mảng ở đáy.
-        var forGrid = jieQiOpen
-            ? Math.max(avail - JQ_PREF, ROW_MIN * weeks)
-            : avail;
-        var rowH = Math.max(ROW_MIN, Math.min(ROW_MAX, Math.floor(forGrid / weeks)));
+        // Đo chiều cao THẬT của bảng tiết khí thay vì giữ sẵn một khoản cố
+        // định: giữ 320px mà bảng chỉ cao 280px thì 40px kia thành khoảng hở ở
+        // đáy màn hình. Đo phần tử <table> chứ không phải khung cuộn — khung
+        // đang bị max-height của lần chia trước cắt ngắn.
+        var table = document.querySelector('#calJieQi table.cal-jq');
+        var jqH = table ? Math.ceil(table.getBoundingClientRect().height / zoom) + 2
+                        : JQ_FALLBACK;
+        jqH = Math.min(jqH, Math.max(120, avail - ROW_MIN * weeks));
+
+        var rowH = Math.max(ROW_MIN, Math.min(ROW_MAX, Math.floor((avail - jqH) / weeks)));
         document.documentElement.style.setProperty('--cal-row-h', rowH + 'px');
         document.documentElement.style.setProperty(
             '--cal-jq-h', Math.max(120, Math.floor(avail - rowH * weeks)) + 'px');
@@ -256,32 +254,22 @@
         try { rows = buildJieQiRows(); } catch (e) { rows = null; }
         if (!rows) { box.innerHTML = ''; box.className = ''; return; }
 
+        // Không còn hộp tiêu đề "Tiết khí trong năm" với nút gập: xếp hai cột
+        // xong thì cả 24 mục vừa một màn hình, chẳng còn gì để gập lại — thanh
+        // tiêu đề chỉ tổ ăn mất chừng 32px mà không nói thêm được gì, vì hai
+        // cột "Tiết Khí" đã tự giới thiệu chính nó.
+        //
+        // KHÔNG bọc thêm .dp-table-wrap: nó có overflow-x nên trở thành vùng
+        // cuộn gần nhất của <th> sticky, mà chính nó lại không giới hạn chiều
+        // cao — hàng tiêu đề vì thế trôi mất khi cuộn (màn hình thấp vẫn phải
+        // cuộn). Cho .cal-jq-body cuộn cả hai chiều là xong.
         box.innerHTML =
-            '<div class="cal-jq-title" id="calJqHead">' +
-            '<span>' + t('jieqi') + '</span><span class="cal-jq-chev">▾</span></div>' +
-            // KHÔNG bọc thêm .dp-table-wrap: nó có overflow-x nên trở thành
-            // vùng cuộn gần nhất của <th> sticky, mà chính nó lại không giới
-            // hạn chiều cao — hàng tiêu đề vì thế trôi mất khi cuộn. Cho
-            // .cal-jq-body cuộn cả hai chiều là xong.
             '<div class="cal-jq-body">' +
             '<table class="dp-table cal-jq"><thead><tr>' +
             '<th>' + t('colTk') + '</th><th>' + t('colDate') + '</th>' +
             '<th class="cal-jq-split">' + t('colTk') + '</th><th>' + t('colDate') + '</th>' +
             '</tr></thead><tbody id="calJqBody">' + rows + '</tbody></table></div>';
-
-        // Giữ nguyên trạng thái gập/mở giữa các lần vẽ lại và giữa các phiên.
-        box.className = jieQiOpen ? 'open' : '';
-        document.getElementById('calJqHead').addEventListener('click', function () {
-            jieQiOpen = !jieQiOpen;
-            prefSet(K_JQ, jieQiOpen ? '1' : '0');
-            box.className = jieQiOpen ? 'open' : '';
-            // Gập bảng lại là trả về một mảng lớn: phải chia lại cho các hàng,
-            // không thì chỗ trống đó nằm chình ình ở đáy màn hình.
-            fitGrid(lastWeeks);
-            if (typeof window.__fitScreen === 'function') setTimeout(window.__fitScreen, 60);
-            if (jieQiOpen) setTimeout(scrollToActiveJieQi, 40);
-        });
-        if (jieQiOpen) setTimeout(scrollToActiveJieQi, 40);
+        setTimeout(scrollToActiveJieQi, 40);
         return true;
     }
 

@@ -51,17 +51,10 @@ for (const d of DEVICES) {
     await page.evaluate(() => window.showTab('cal'));
     await page.waitForTimeout(700);
 
-    // 1. tiết khí đang MỞ (mặc định)
-    await page.screenshot({ path: path.join(OUT, `cal-${d.name}-mo.png`) });
+    // 1. tháng hiện tại
+    await page.screenshot({ path: path.join(OUT, `cal-${d.name}.png`) });
 
-    // 2. gập bảng tiết khí lại
-    await page.click('#calJqHead');
-    await page.waitForTimeout(500);
-    await page.screenshot({ path: path.join(OUT, `cal-${d.name}-gap.png`) });
-
-    // 3. mở lại + sang tháng sau (kiểm tra ô "hôm nay" biến mất đúng)
-    await page.click('#calJqHead');
-    await page.waitForTimeout(300);
+    // 2. tháng sau (kiểm tra ô "hôm nay" biến mất đúng)
     await page.click('#calNext');
     await page.waitForTimeout(500);
     await page.screenshot({ path: path.join(OUT, `cal-${d.name}-thangsau.png`) });

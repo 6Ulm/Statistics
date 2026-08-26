@@ -70,9 +70,12 @@ gốc) và **Lịch** (lịch âm dương).
 * **Hôm nay** có viền đỏ đậm trên nền vàng nhạt — tô đặc màu đỏ thì nổi hơn
   thật, nhưng chữ phải đảo sang trắng và ô hoá thành một mảng đặc, đọc ngày âm
   với can chi khó hơn hẳn.
-* Bảng **Tiết khí trong năm** gập/mở được khi chạm vào tiêu đề, cuộn được, và
-  nhớ trạng thái giữa các phiên. Gập lại là trả về cả một mảng lớn: các hàng
-  lịch được chia lại ngay để không hở khoảng trống ở đáy.
+* Bảng **tiết khí trong năm** nằm ngay dưới lưới, không có hộp tiêu đề gập/mở:
+  xếp hai cột thì cả 24 mục vừa một màn hình trên S21, S21 FE, A51, S21 Ultra và
+  Z Fold, chẳng còn gì để gập. `fitGrid()` đo chiều cao THẬT của bảng rồi mới
+  chia phần còn lại cho các hàng lịch — giữ sẵn một khoản cố định thì phần dư
+  hoá thành khoảng hở ở đáy màn hình. Máy quá thấp (320×520) thì bảng tự cuộn
+  và hàng tiêu đề dính lại.
 
 Lịch âm được tính theo **UTC+7** như quy ước lịch Việt Nam (bản tiếng Trung
 dùng UTC+8) — đó chính là lý do Tết ta và Tết Tàu thỉnh thoảng lệch một ngày.
@@ -103,9 +106,10 @@ nguyên tắc.
 
 Ở tab Lịch, bảng bỏ hai cột **Độn** và **Số Cục** (đó là chuyện của bàn Kỳ Môn)
 nên mỗi mục chỉ còn tên với ngày giờ — hẹp bằng nửa bề ngang. 24 mục vì thế xếp
-thành **hai cột kép**, 12 mục mỗi bên: bảng thấp đi một nửa, màn hình cỡ A51
-hiện đủ cả năm không phải cuộn, và ranh giới trái/phải trùng luôn ranh giới
-Dương Độn / Âm Độn.
+thành **hai cột kép**, 12 mục mỗi bên: bảng thấp đi một nửa, cả năm hiện gọn
+trong một màn hình, và ranh giới trái/phải trùng luôn ranh giới Dương Độn / Âm
+Độn. Cột tên co đúng bằng chữ và cột ngày căn trái ngay sau nó, để tiêu đề
+"Dương lịch" thẳng hàng với giá trị bên dưới thay vì bị đẩy sát mép máy.
 
 ## Widget lịch trên màn hình chính
 
