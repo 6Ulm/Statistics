@@ -17,6 +17,9 @@ import android.os.Bundle
 import android.util.TypedValue
 import android.widget.RemoteViews
 import java.util.Calendar
+import java.util.TimeZone
+import org.json.JSONException
+import org.json.JSONObject
 
 /**
  * Widget màn hình chính: CHỈ lịch âm dương và bảng tiết khí — không có bàn Kỳ
@@ -151,6 +154,28 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         )
     }
 
+    /**
+     * Múi giờ của địa điểm người dùng đã chọn trong ứng dụng. Ứng dụng ghi cả
+     * cụm vị trí thành JSON dưới khoá `qmdj.location` (xem location.js); chưa
+     * chọn gì thì dùng giờ Việt Nam, đúng như cơ sở lịch âm của widget.
+     */
+    private fun selectedTimeZone(context: Context): TimeZone {
+        val raw = context.getSharedPreferences("qmdj_prefs", Context.MODE_PRIVATE)
+            .getString("qmdj.location", null) ?: return TimeZone.getTimeZone(DEFAULT_TZ)
+        val id = try {
+            JSONObject(raw).optString("tzId", "")
+        } catch (e: JSONException) {
+            ""
+        }
+        if (id.isEmpty()) return TimeZone.getTimeZone(DEFAULT_TZ)
+        val tz = TimeZone.getTimeZone(id)
+        // getTimeZone() trả về GMT cho id lạ thay vì báo lỗi — bắt lại ở đây,
+        // không thì một id hỏng lặng lẽ đẩy mọi mốc về UTC.
+        return if (tz.id == "GMT" && id != "GMT" && id != "UTC") {
+            TimeZone.getTimeZone(DEFAULT_TZ)
+        } else tz
+    }
+
     private fun dp(context: Context, v: Float): Float = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, v, context.resources.displayMetrics
     )
@@ -179,15 +204,25 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         val daysInMonth = first.getActualMaximum(Calendar.DAY_OF_MONTH)
         val weeks = Math.ceil((lead + daysInMonth) / 7.0).toInt().coerceAtLeast(1)
 
-        // Bảng tiết khí chiếm phần đáy; phần còn lại dành cho lưới. Người dùng
-        // thu widget xuống 2 ô thì bảng tiết khí không được ăn hết chỗ — nó co
-        // lại trước, vì lưới lịch mới là thứ chính.
-        val jieQi = LunarTable.jieQiOfMonth(year, month)
-        val jqRowH = if (jieQi.isEmpty()) 0f else minOf(
-            dp(context, 15f), (h * 0.24f - dp(context, 4f)) / jieQi.size
-        ).coerceAtLeast(dp(context, 9f))
-        val jqH = if (jieQi.isEmpty()) 0f else jqRowH * jieQi.size + dp(context, 4f)
-        val dowH = minOf(h * 0.10f, dp(context, 15f))
+        // Bảng tiết khí: CẢ 24 mục của năm, xếp hai cột 12 — đúng hình dạng của
+        // tab Lịch. Mười ba hàng (một hàng tiêu đề + 12) là một khối lớn, nên
+        // chia theo TỈ LỆ của ứng dụng thay vì cho nó một khoản cố định: ở tab
+        // Lịch trên A51, hàng lịch cao ~78dp còn hàng tiết khí ~21dp, tức xấp
+        // xỉ 3,7 lần.
+        // Giờ giao tiết hiện theo múi giờ của ĐỊA ĐIỂM ĐANG CHỌN trong ứng
+        // dụng, giống hệt tab Lịch — widget không có bảng chọn nơi riêng.
+        val tz = selectedTimeZone(context)
+        val jieQi = LunarTable.jieQiYearOf(LunarTable.jdn(year, month, 15))
+            .map { LunarTable.localize(it, tz) }
+        val dowH = minOf(h * 0.09f, dp(context, 15f))
+        val jqRows = if (jieQi.size == 24) 13 else 0
+        // 6 hàng lịch × 3,7 + 13 hàng tiết khí = 35,2 phần bằng nhau.
+        // Kẹp hai đầu: dưới 9dp thì chữ tiết khí không đọc nổi, trên 18dp thì
+        // bảng phình ra nuốt mất lưới lịch trên widget cao.
+        val jqRowH = if (jqRows == 0) 0f else
+            ((h - dowH) / (weeks * ROW_RATIO + jqRows))
+                .coerceIn(dp(context, 9f), dp(context, 18f))
+        val jqH = jqRowH * jqRows + (if (jqRows == 0) 0f else dp(context, 5f))
         val gridH = h - dowH - jqH
         val cellW = w / 7f
         val cellH = gridH / weeks
@@ -207,9 +242,9 @@ class CalendarWidgetProvider : AppWidgetProvider() {
 
         // Cỡ chữ chặn theo dp tuyệt đối: thả trôi theo chiều cao widget thì
         // widget cao một chút là chữ phình, widget thấp là chữ bé không đọc nổi.
-        val dayPx = minOf(cellH * 0.34f, dp(context, 13f))
-        val lunPx = minOf(cellH * 0.26f, dp(context, 9f))
-        val gzPx = minOf(cellH * 0.24f, dp(context, 8.5f))
+        val dayPx = minOf(cellH * 0.36f, dp(context, 17f))
+        val lunPx = minOf(cellH * 0.27f, dp(context, 11.5f))
+        val gzPx = minOf(cellH * 0.25f, dp(context, 11f))
         val showGanZhi = cellH >= dayPx + gzPx * 2 + dp(context, 6f)
 
         val startJdn = LunarTable.jdn(year, month, 1) - lead
@@ -298,30 +333,113 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         }
         paint.style = Paint.Style.FILL
 
-        // bảng tiết khí
-        if (jieQi.isNotEmpty()) {
-            var y = dowH + gridH + dp(context, 3f)
-            paint.textSize = minOf(jqRowH * 0.62f, dp(context, 10f))
-            for (item in jieQi) {
-                val (jy, jm, jd) = LunarTable.civilOf(item.jdn)
-                paint.typeface = Typeface.DEFAULT_BOLD
-                paint.textAlign = Paint.Align.LEFT
-                paint.color = Color.parseColor("#222222")
-                c.drawText(item.name, dp(context, 6f), y + jqRowH * 0.72f, paint)
-                paint.typeface = Typeface.DEFAULT
-                paint.textAlign = Paint.Align.RIGHT
-                paint.color = Color.parseColor("#6B6B6B")
-                c.drawText(
-                    String.format(
-                        "%02d:%02d - %02d/%02d/%d",
-                        item.minutes / 60, item.minutes % 60, jd, jm, jy
-                    ),
-                    w - dp(context, 6f), y + jqRowH * 0.72f, paint
-                )
-                y += jqRowH
-            }
+        // ── Bảng tiết khí: 12 hàng × 2 cặp cột, y như tab Lịch ──
+        if (jqRows > 0) {
+            drawJieQi(context, c, paint, w, dowH + gridH + dp(context, 5f),
+                jqRowH, jieQi, todayJdn)
         }
         return bmp
+    }
+
+    /**
+     * Bảng 24 tiết khí, 12 hàng × hai cặp cột — cùng hình dạng, cùng màu với
+     * bảng ở tab Lịch: nền trắng, hàng lẻ tô nhạt, vách ngăn dọc giữa hai nửa,
+     * mục đang hiệu lực tô màu nhấn.
+     *
+     * Cột tên co đúng bằng chữ (đo bằng measureText, y như `width:1%` bên CSS)
+     * để cột ngày bắt đầu ngay sau nó thay vì bị đẩy sát mép.
+     */
+    private fun drawJieQi(
+        context: Context, c: Canvas, paint: Paint,
+        w: Int, top: Float, rowH: Float, jieQi: List<LunarTable.JieQi>, todayJdn: Int
+    ) {
+        val txtPx = minOf(rowH * 0.66f, dp(context, 12f))
+        val padX = dp(context, 5f)
+        val gap = dp(context, 6f)
+        val halfW = w / 2f
+
+        // Mục đang hiệu lực: mốc CUỐI CÙNG không muộn hơn hôm nay, giống tab
+        // Lịch. Hôm nay nằm ngoài dãy đang hiện thì không tô mục nào.
+        var active = -1
+        for (i in jieQi.indices) if (jieQi[i].jdn <= todayJdn) active = i
+
+        // Bề rộng cột tên = tên dài nhất, đo thật.
+        paint.typeface = Typeface.DEFAULT
+        paint.textSize = txtPx
+        var nameW = 0f
+        for (item in jieQi) nameW = maxOf(nameW, paint.measureText(item.name))
+        nameW += padX * 2
+
+        val headH = rowH
+        val tableH = headH + rowH * 12
+
+        paint.style = Paint.Style.FILL
+        paint.color = Color.WHITE
+        c.drawRect(0f, top, w.toFloat(), top + tableH, paint)
+
+        // hàng tiêu đề
+        paint.typeface = Typeface.DEFAULT_BOLD
+        paint.textAlign = Paint.Align.LEFT
+        paint.color = Color.parseColor("#222222")
+        val headBase = top + headH * 0.72f
+        for (half in 0..1) {
+            val x0 = halfW * half
+            c.drawText(context.getString(R.string.col_jieqi), x0 + padX, headBase, paint)
+            c.drawText(context.getString(R.string.col_solar), x0 + nameW + gap, headBase, paint)
+        }
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = dp(context, 1.2f)
+        paint.color = Color.parseColor("#DDDDDD")
+        c.drawLine(0f, top + headH, w.toFloat(), top + headH, paint)
+        paint.style = Paint.Style.FILL
+
+        for (r in 0 until 12) {
+            val y = top + headH + rowH * r
+            if (r % 2 == 0) {
+                paint.color = Color.parseColor("#FAFAFA")
+                c.drawRect(0f, y, w.toFloat(), y + rowH, paint)
+            }
+            for (half in 0..1) {
+                val k = r + half * 12
+                val item = jieQi[k]
+                val x0 = halfW * half
+                val on = k == active
+                if (on) {
+                    paint.color = Color.parseColor("#E8EDFF")
+                    c.drawRect(x0, y, x0 + halfW, y + rowH, paint)
+                }
+                val base = y + rowH * 0.72f
+                paint.textAlign = Paint.Align.LEFT
+                paint.typeface = if (on) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+                paint.color = Color.parseColor("#222222")
+                c.drawText(item.name, x0 + padX, base, paint)
+
+                val (jy, jm, jd) = LunarTable.civilOf(item.jdn)
+                paint.typeface = if (on) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+                paint.color = if (on) Color.parseColor("#222222") else Color.parseColor("#666666")
+                c.drawText(
+                    String.format(
+                        "%02d-%02d-%d %02d:%02d",
+                        jd, jm, jy, item.minutes / 60, item.minutes % 60
+                    ),
+                    x0 + nameW + gap, base, paint
+                )
+            }
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 1f
+            paint.color = Color.parseColor("#EEEEEE")
+            c.drawLine(0f, y + rowH, w.toFloat(), y + rowH, paint)
+            paint.style = Paint.Style.FILL
+        }
+
+        // vách ngăn giữa hai nửa — kẻ suốt cả bảng, kể cả hàng tiêu đề
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 1f
+        paint.color = Color.parseColor("#DDDDDD")
+        c.drawLine(halfW, top, halfW, top + tableH, paint)
+        c.drawRect(0f, top, w.toFloat(), top + tableH, paint)
+        paint.style = Paint.Style.FILL
+        paint.typeface = Typeface.DEFAULT
     }
 
     /* ─────────────── Tự làm mới lúc nửa đêm ─────────────── */
@@ -364,6 +482,12 @@ class CalendarWidgetProvider : AppWidgetProvider() {
 
         /** Chiều cao thanh tiêu đề trong widget_calendar.xml. */
         private const val HEADER_DP = 32
+
+        /** Hàng lịch cao gấp ngần này lần hàng tiết khí — lấy theo tab Lịch. */
+        private const val ROW_RATIO = 3.7f
+
+        /** Chưa chọn địa điểm thì lấy giờ Việt Nam — cùng cơ sở với lịch âm. */
+        private const val DEFAULT_TZ = "Asia/Ho_Chi_Minh"
 
         /** Máy này có cho ghim widget bằng một cú chạm không? */
         fun canPin(context: Context): Boolean {

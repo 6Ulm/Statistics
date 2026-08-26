@@ -158,9 +158,27 @@ node tools/test_lunar_table.mjs    # đối chiếu với lunar.js
 Bảng tra và cách tra đã đối chiếu **từng ngày một trong 73.414 ngày (1900–2100)
 và 4.824 mốc tiết khí, lệch 0**.
 
-Widget chỉ hiện tiết khí **của tháng đang xem** (một hoặc hai mục), không hiện
-cả 24 mục như tab Lịch: widget không cuộn và không gập được, nhét 24 dòng vào
-đó thì chữ bé đến mức vô dụng.
+Widget hiện **cả 24 tiết khí của năm**, xếp hai cột 12 — đúng hình dạng bảng ở
+tab Lịch, kể cả vách ngăn giữa hai nửa và ô tô màu cho tiết khí đang hiệu lực.
+
+Chừng ấy nội dung cần chiều cao thật: 6 hàng lịch cộng 13 hàng bảng. Chiều cao
+được chia theo đúng tỉ lệ của tab Lịch (hàng lịch cao gấp ~3,7 lần hàng tiết
+khí), rồi kẹp hàng tiết khí trong khoảng 9–18dp.
+
+| Cỡ widget | Kết quả |
+|---|---|
+| 4×5 ô (sàn) | đọc được nhưng chữ tiết khí chỉ ~8dp |
+| **4×6 ô (mặc định)** | chữ thoải mái, lịch vẫn đủ chỗ cho can chi |
+| 4×7 ô trở lên | gần như y hệt tab Lịch |
+
+Sàn đặt ở 4×5 để còn đặt được trên lưới màn hình chính 5 hàng mặc định của One
+UI; kéo cao thêm một hàng là khác hẳn.
+
+Giờ giao tiết hiện theo **múi giờ của địa điểm đang chọn trong ứng dụng**, đọc
+từ `qmdj.location` trong SharedPreferences. Bảng `jieqi.txt` lưu giờ ở UTC+7 nên
+widget quy đổi lại bằng `TimeZone.getOffset()` — tra theo từng thời điểm, nên
+giờ mùa đông của nước có DST không bị cộng nhầm offset mùa hè. Không có bước
+này thì cùng một tiết khí, widget và ứng dụng lệch nhau tới mấy tiếng.
 
 Xem trước widget mà không cần dựng APK:
 
@@ -341,7 +359,8 @@ node test_jieqi_parity.mjs
 ```
 
 Mở ứng dụng ở năm múi giờ khác nhau, đọc bảng Sách Bổ pháp ở tab Kỳ Môn và bảng
-tiết khí ở tab Lịch, rồi so **từng tên và từng mốc giờ**. Cũng kiểm mục được tô
+tiết khí ở tab Lịch, dựng lại bảng của **widget** từ chính `jieqi.txt` (kể cả
+bước quy đổi múi giờ), rồi so cả ba **từng tên và từng mốc giờ**. Cũng kiểm mục được tô
 đậm: hai bên chỉ được lệch tối đa một mục, đúng vào ngày giao tiết (tab Kỳ Môn
 lấy cả giờ phút đang nhập, tab Lịch chỉ có độ phân giải một ngày).
 

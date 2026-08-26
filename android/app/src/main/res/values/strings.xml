@@ -5,4 +5,7 @@
     <string name="widget_desc">Lịch âm dương và can chi, xem ngay trên màn hình chính</string>
     <string name="widget_prev">Tháng trước</string>
     <string name="widget_next">Tháng sau</string>
+    <!-- Tiêu đề cột bảng tiết khí trong widget — trùng chữ với tab Lịch. -->
+    <string name="col_jieqi">Tiết Khí</string>
+    <string name="col_solar">Dương lịch</string>
 </resources>

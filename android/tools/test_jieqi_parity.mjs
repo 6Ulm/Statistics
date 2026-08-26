@@ -12,8 +12,10 @@
  * ShouXingUtil về UTC+7 để lịch âm ra đúng lịch Việt Nam), mà `findJieQi` bên
  * trong lại đọc chính biến toàn cục đó. Phép thử này canh đúng chỗ ấy.
  *
- * (Bảng tiết khí của widget được canh riêng trong test_lunar_table.mjs, cũng
- * theo nguyên tắc Sách Bổ pháp.)
+ * Ca thứ ba là WIDGET: nó không chạy JavaScript mà tra bảng jieqi.txt, và bảng
+ * đó lưu giờ ở UTC+7 rồi mới quy sang múi giờ của địa điểm đang chọn. Phép thử
+ * dựng lại đúng phép quy đổi ấy rồi so với bảng trên màn hình — ba nơi hiện
+ * tiết khí thì cả ba phải ra cùng một con số.
  */
 import fs from 'fs';
 import http from 'http';
@@ -21,7 +23,60 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const WEB = path.join(HERE, '..', 'app', 'src', 'main', 'assets', 'web');
+const ASSETS = path.join(HERE, '..', 'app', 'src', 'main', 'assets');
+const WEB = path.join(ASSETS, 'web');
+
+/* ── Bản dựng lại LunarTable.jieQiYearOf + localize bằng JavaScript ── */
+const TK_VI_TABLE = ['Đông Chí', 'Tiểu Hàn', 'Đại Hàn', 'Lập Xuân', 'Vũ Thủy', 'Kinh Trập',
+    'Xuân Phân', 'Thanh Minh', 'Cốc Vũ', 'Lập Hạ', 'Tiểu Mãn', 'Mang Chủng',
+    'Hạ Chí', 'Tiểu Thử', 'Đại Thử', 'Lập Thu', 'Xử Thử', 'Bạch Lộ',
+    'Thu Phân', 'Hàn Lộ', 'Sương Giáng', 'Lập Đông', 'Tiểu Tuyết', 'Đại Tuyết'];
+const JQ = fs.readFileSync(path.join(ASSETS, 'jieqi.txt'), 'utf8')
+    .trim().split('\n').map(l => l.split(' ').map(Number));
+
+function jdnOf(y, m, d) {
+    const a = Math.floor((14 - m) / 12), yy = y + 4800 - a, mm = m + 12 * a - 3;
+    return d + Math.floor((153 * mm + 2) / 5) + 365 * yy
+        + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+}
+function civilOf(j) {
+    const a = j + 32044, b = Math.floor((4 * a + 3) / 146097), c = a - Math.floor(146097 * b / 4),
+        d = Math.floor((4 * c + 3) / 1461), e = c - Math.floor(1461 * d / 4),
+        m = Math.floor((5 * e + 2) / 153);
+    return [100 * b + d - 4800 + Math.floor(m / 10), m + 3 - 12 * Math.floor(m / 10),
+        e - Math.floor((153 * m + 2) / 5) + 1];
+}
+/** Lệch múi giờ (ms) của tzId tại đúng thời điểm utcMs — có tính DST. */
+function tzOffsetMs(tzId, utcMs) {
+    const f = new Intl.DateTimeFormat('en-US', {
+        timeZone: tzId, hour12: false, year: 'numeric', month: '2-digit',
+        day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+    const p = Object.fromEntries(f.formatToParts(new Date(utcMs)).map(x => [x.type, x.value]));
+    return Date.UTC(+p.year, +p.month - 1, +p.day, (+p.hour) % 24, +p.minute, +p.second) - utcMs;
+}
+/** 24 mục của năm tiết khí chứa `ref`, đã quy sang giờ tzId. */
+function widgetJieQi(ref, tzId) {
+    let lo = 0, hi = JQ.length - 1, at = -1;
+    while (lo <= hi) { const mid = (lo + hi) >> 1; if (JQ[mid][0] <= ref) { at = mid; lo = mid + 1; } else hi = mid - 1; }
+    if (at < 0) return [];
+    let start = at;
+    while (start >= 0 && JQ[start][2] !== 0) start--;
+    if (start < 0 || start + 23 >= JQ.length) return [];
+    const p = n => (n < 10 ? '0' : '') + n;
+    return JQ.slice(start, start + 24).map(r => {
+        const utcMs = (r[0] - 2440588) * 86400000 + r[1] * 60000 - 7 * 3600000;
+        const local = utcMs + tzOffsetMs(tzId, utcMs);
+        let days = Math.floor(local / 86400000);
+        let rem = local - days * 86400000;
+        const [y, m, d] = civilOf(days + 2440588);
+        const mins = Math.floor(rem / 60000);
+        return {
+            name: TK_VI_TABLE[r[2]],
+            date: `${p(d)}-${p(m)}-${y} ${p(Math.floor(mins / 60))}:${p(mins % 60)}`,
+        };
+    });
+}
 
 let chromium;
 try { ({ chromium } = await import('playwright')); }
@@ -86,7 +141,11 @@ for (const city of PICK) {
             }
         }
         window.showTab('qmdj');
-        return { kmdj, cal, name: countryData[city] && countryData[city].name_vi };
+        return {
+            kmdj, cal,
+            name: countryData[city] && countryData[city].name_vi,
+            tzId: countryData[city] && countryData[city].tzId,
+        };
     }, city);
 
     const diffs = [];
@@ -110,13 +169,27 @@ for (const city of PICK) {
     }
     if (errs.length) diffs.push('lỗi JS: ' + errs.join('; '));
 
+    // ── Widget: tra bảng jieqi.txt rồi quy sang múi giờ đang chọn ──
+    const now = new Date();
+    const wid = widgetJieQi(jdnOf(now.getFullYear(), now.getMonth() + 1, now.getDate()), r.tzId);
+    if (wid.length !== 24) {
+        diffs.push(`widget dựng được ${wid.length} mục, cần 24`);
+    } else if (r.cal.length === 24) {
+        for (let i = 0; i < 24; i++) {
+            if (wid[i].name !== r.cal[i].name || wid[i].date !== r.cal[i].date) {
+                diffs.push(`widget mục ${i + 1}: "${wid[i].name} ${wid[i].date}" ` +
+                    `≠ Lịch "${r.cal[i].name} ${r.cal[i].date}"`);
+            }
+        }
+    }
+
     const label = (r.name || city).padEnd(22);
     if (diffs.length) {
         fail++;
         console.log(`  LỆCH  ${label}`);
         diffs.slice(0, 5).forEach(d => console.log('    ' + d));
     } else {
-        console.log(`  ok    ${label} 24 mục giống hệt · đang ở ${r.cal[bi].name} ${r.cal[bi].date}`);
+        console.log(`  ok    ${label} Kỳ Môn = Lịch = widget, 24 mục · đang ở ${r.cal[bi].name} ${r.cal[bi].date}`);
     }
     await ctx.close();
 }
@@ -125,5 +198,5 @@ await browser.close();
 server.close();
 console.log(fail
     ? `\n✗ ${fail}/${PICK.length} ca lệch`
-    : `\n✓ ${PICK.length}/${PICK.length} ca: tab Lịch và Sách Bổ pháp cho cùng một bảng tiết khí`);
+    : `\n✓ ${PICK.length}/${PICK.length} ca: Sách Bổ pháp, tab Lịch và widget cho cùng một bảng tiết khí`);
 process.exit(fail ? 1 : 0);

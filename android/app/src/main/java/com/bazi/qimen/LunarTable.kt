@@ -1,6 +1,7 @@
 package com.bazi.qimen
 
 import android.content.Context
+import java.util.TimeZone
 
 /**
  * Tra âm lịch và can chi cho widget màn hình chính.
@@ -106,6 +107,57 @@ object LunarTable {
             i++
         }
         return out
+    }
+
+    /**
+     * 24 tiết khí của "năm tiết khí" chứa ngày `ref` — đúng dãy mà bảng Sách Bổ
+     * pháp và tab Lịch hiện: bắt đầu từ **Đông Chí** rồi chạy liền 24 mục tới
+     * Đại Tuyết năm sau.
+     *
+     * Bảng jieqi.txt vốn đã là dãy phẳng đã sắp xếp, nên chỉ cần tìm mốc Đông
+     * Chí (chỉ số tên 0) gần nhất không muộn hơn `ref` rồi lấy 24 mục kế tiếp.
+     */
+    fun jieQiYearOf(ref: Int): List<JieQi> {
+        if (!loaded || jqJdn.isEmpty()) return emptyList()
+        // mốc cuối cùng có jdn ≤ ref
+        var lo = 0
+        var hi = jqJdn.size - 1
+        var at = -1
+        while (lo <= hi) {
+            val mid = (lo + hi) ushr 1
+            if (jqJdn[mid] <= ref) { at = mid; lo = mid + 1 } else hi = mid - 1
+        }
+        if (at < 0) return emptyList()
+        // lùi về Đông Chí gần nhất — cùng lắm 23 bước
+        var start = at
+        while (start >= 0 && jqIdx[start] != 0) start--
+        if (start < 0 || start + 23 >= jqJdn.size) return emptyList()
+        return (start until start + 24).map {
+            JieQi(TIET_KHI[jqIdx[it]], jqJdn[it], jqMin[it])
+        }
+    }
+
+    /**
+     * Đổi một mốc tiết khí sang giờ của múi giờ khác.
+     *
+     * jieqi.txt lưu giờ **địa phương ở UTC+7** (xem build_lunar_table.mjs).
+     * Bản thân mốc giao tiết là một thời điểm tuyệt đối, chỉ cách hiển thị mới
+     * đổi theo nơi xem — nên tab Lịch hiện giờ của địa điểm đang chọn thì widget
+     * cũng phải vậy, nếu không hai chỗ lệch nhau tới mấy tiếng cho cùng một
+     * tiết khí. TimeZone.getOffset() tra đúng theo từng thời điểm nên giờ mùa
+     * đông của nước có DST không bị cộng nhầm offset mùa hè.
+     */
+    fun localize(item: JieQi, tz: TimeZone): JieQi {
+        val utcMs = (item.jdn - 2440588L) * 86_400_000L +
+            item.minutes * 60_000L - 7L * 3_600_000L
+        val local = utcMs + tz.getOffset(utcMs)
+        // Chia làm tròn XUỐNG, tự viết: `/` của Kotlin cắt về 0 nên ngày trước
+        // 1970 sẽ lệch một ngày, mà bảng chạy từ 1900. Math.floorDiv chỉ có từ
+        // API 24 — minSdk vừa đúng 24, nhưng khỏi phụ thuộc cho chắc.
+        var days = local / 86_400_000L
+        var rem = local % 86_400_000L
+        if (rem < 0) { days -= 1; rem += 86_400_000L }
+        return JieQi(item.name, (days + 2440588L).toInt(), (rem / 60_000L).toInt())
     }
 
     /** Số ngày Julius (Fliegel–Van Flandern) — giống hệt bản JavaScript. */
