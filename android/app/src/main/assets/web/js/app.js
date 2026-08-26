@@ -891,6 +891,133 @@ function formatUTC8SolarToLocal(solarUTC8, tzId) {
 }
 
 
+/* ══════════════════════════════════════════════════════════════════════
+   RANH GIỚI NGÀY ÂM LỊCH: CHÍNH TÝ THIÊN VĂN
+   ══════════════════════════════════════════════════════════════════════
+
+   Mùng 1 là ngày CHỨA điểm Sóc. Ngày ở đây đếm từ **Chính Tý tới Chính Tý**
+   — tức nửa đêm MẶT TRỜI THẬT (Chính Ngọ − 12h), chứ không phải 00:00 đồng hồ.
+
+   Đây là chuyện QUY ƯỚC, không phải đúng/sai. Lịch pháp Trung–Việt định ngày
+   từ nửa đêm đồng hồ tới nửa đêm đồng hồ tại KINH TUYẾN QUY CHIẾU, và mọi cuốn
+   lịch in đều theo luật ấy. Ứng dụng này chọn nửa đêm THẬT tại nơi người dùng
+   đứng, cùng hệ với Chính Ngọ mà nó vẫn hiển thị.
+
+   Không lấy ranh giới đầu giờ Tý (Chính Ngọ − 13h): đó là quy ước của mệnh lý
+   cho TRỤ NGÀY, và bản thân nó còn hai phái (早子時 / 夜子時). Nửa đêm thật thì
+   chỉ có một.
+
+   Chính Ngọ lệch khỏi 12:00 đồng hồ vì kinh độ, phương trình thời gian và giờ
+   mùa hè cộng lại, nên Chính Tý cũng lệch khỏi 00:00 đúng chừng ấy:
+
+     Hà Nội        Chính Ngọ 12:01 → Chính Tý 00:01  (lệch 1 phút)
+     Paris (CEST)  Chính Ngọ 13:55 → Chính Tý 01:55  (lệch 115 phút)
+
+   Nên ở Việt Nam gần như không đổi gì, còn nơi lệch xa kinh tuyến múi giờ của
+   mình thì chừng 8% số tháng đổi mùng 1.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/** Số phút kể từ 00:00 mà Chính Tý (nửa đêm mặt trời thật) rơi vào. */
+function zi_midnightMinutes(y, m, d, lon, tz) {
+    const lonOffsetMins = (lon - tz * 15) * 4;
+    const eotMins = getEquationOfTime(new Date(Date.UTC(y, m - 1, d, 12, 0, 0)));
+    return -lonOffsetMins - eotMins;              // Chính Ngọ − 12h, có thể âm
+}
+
+/**
+ * Ngày (đếm từ Chính Tý tới Chính Tý) chứa một thời điểm giờ địa phương.
+ * @returns {{y:number,m:number,d:number}}
+ */
+function zi_dayOf(local, lon, tzId) {
+    const y = local.getYear(), m = local.getMonth(), d = local.getDay();
+    const tz = getTimezoneOffset(tzId, new Date(y, m - 1, d, 12));
+    const t = local.getHour() * 60 + local.getMinute();
+    const shift = Math.floor((t - zi_midnightMinutes(y, m, d, lon, tz)) / 1440);
+    if (shift === 0) return { y: y, m: m, d: d };
+    const dt = new Date(y, m - 1, d + shift);
+    return { y: dt.getFullYear(), m: dt.getMonth() + 1, d: dt.getDate() };
+}
+
+/** Đưa một Solar ở mốc UTC+8 về giờ địa phương (Solar, chính xác tới phút). */
+function _localSolarFromJdUTC8(jdUTC8, tzId) {
+    const tz = _tzOffsetAtJdUTC8(jdUTC8, tzId);
+    return Solar.fromJulianDay(jdUTC8 + (tz - 8) / 24);
+}
+
+/**
+ * Mùng 1 của một tháng âm: ngày (Chính Tý → Chính Tý) chứa điểm Sóc.
+ * @param {object} mo  LunarMonth từ LunarYear.getMonths()
+ */
+function zi_mung1(mo, lon, tzId) {
+    const rounded = Solar.fromJulianDay(mo.getFirstJulianDay());
+    const socUTC8 = getPreciseSocSolarUTC8(rounded);
+    const local = _localSolarFromJdUTC8(socUTC8.getJulianDay(), tzId);
+    return zi_dayOf(local, lon, tzId);
+}
+
+/** Số ngày Julius của một ngày dương lịch (Fliegel–Van Flandern). */
+function zi_jdn(y, m, d) {
+    const a = Math.floor((14 - m) / 12), yy = y + 4800 - a, mm = m + 12 * a - 3;
+    return d + Math.floor((153 * mm + 2) / 5) + 365 * yy
+        + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+}
+
+/**
+ * Danh sách tháng âm quanh một năm dương, kèm mùng 1 đã chỉnh theo Chính Tý.
+ * Trả mảng {jdn, month, year, leap} sắp tăng dần.
+ *
+ * Phải đặt ShouXingUtil về mốc địa phương trước khi hỏi lunar.js: cấu trúc
+ * tháng (29/30 ngày, tháng nhuận) vẫn do lunar.js quyết, chỉ MỐC BẮT ĐẦU mới
+ * chỉnh lại theo Chính Tý.
+ */
+const _ziMonthCache = new Map();
+function zi_months(gregYear, lon, tzId, tz) {
+    const key = gregYear + '|' + tzId + '|' + lon;
+    if (_ziMonthCache.has(key)) return _ziMonthCache.get(key);
+    const snap = ShouXingUtil.getTzOffsetHours();
+    const out = [];
+    try {
+        ShouXingUtil.setTzOffsetHours(tz);
+        for (let ly = gregYear - 1; ly <= gregYear + 1; ly++) {
+            for (const mo of LunarYear.fromYear(ly).getMonths()) {
+                if (mo.getYear() !== ly) continue;
+                const g = zi_mung1(mo, lon, tzId);
+                out.push({
+                    jdn: zi_jdn(g.y, g.m, g.d), month: Math.abs(mo.getMonth()),
+                    year: ly, leap: mo.getMonth() < 0,
+                });
+            }
+        }
+    } finally {
+        ShouXingUtil.setTzOffsetHours(snap);
+    }
+    out.sort((a, b) => a.jdn - b.jdn);
+    if (_ziMonthCache.size > 24) _ziMonthCache.clear();
+    _ziMonthCache.set(key, out);
+    return out;
+}
+
+/**
+ * Ngày âm lịch của một ngày dương, theo ranh giới Chính Tý.
+ * @returns {{day:number,month:number,year:number,leap:boolean}|null}
+ */
+function zi_lunarOf(y, m, d, lon, tzId, tz) {
+    const list = zi_months(y, lon, tzId, tz);
+    const j = zi_jdn(y, m, d);
+    let at = -1;
+    for (let i = 0; i < list.length; i++) {
+        if (list[i].jdn <= j) at = i; else break;
+    }
+    if (at < 0) return null;
+    return {
+        day: j - list[at].jdn + 1, month: list[at].month,
+        year: list[at].year, leap: list[at].leap,
+    };
+}
+window.zi_lunarOf = zi_lunarOf;
+window.zi_months = zi_months;
+window.zi_mung1 = zi_mung1;
+
 /** Định dạng chuỗi Không Vong để hiển thị theo ngôn ngữ */
 function formatKVdisp(kv, lang) {
     if (!kv || kv === '-') return '-';
@@ -1433,11 +1560,13 @@ function ab_renderPanel(lunarYear, lunarMonth, tzId, lonDeg, tzH) {
         const socSolar = Solar.fromJulianDay(mo.getFirstJulianDay());
 
         const socStr   = formatPreciseSocLocal(socSolar, tzId);
-        // Mùng 1: ngày dương lịch của firstJulianDay (mốc địa phương)
-        const mung1Str = `${pad(socSolar.getDay())}-${pad(socSolar.getMonth())}-${socSolar.getYear()}`;
-        // Rằm: ngày 15 âm = firstJulianDay + 14 (0-indexed)
-        const ramSolar = Solar.fromJulianDay(mo.getFirstJulianDay() + 14);
-        const ramStr   = `${pad(ramSolar.getDay())}-${pad(ramSolar.getMonth())}-${ramSolar.getYear()}`;
+        // Mùng 1: ngày CHỨA điểm Sóc, đếm từ Chính Tý tới Chính Tý — không
+        // phải ngày dương của firstJulianDay. Xem khối ghi chú về Chính Tý.
+        const g1       = zi_mung1(mo, lonDeg, tzId);
+        const mung1Str = `${pad(g1.d)}-${pad(g1.m)}-${g1.y}`;
+        // Rằm: ngày 15 âm = mùng 1 + 14
+        const ram      = new Date(g1.y, g1.m - 1, g1.d + 14);
+        const ramStr   = `${pad(ram.getDate())}-${pad(ram.getMonth() + 1)}-${ram.getFullYear()}`;
         const isActive = (moNum === lunarMonth);
         const fw = isActive ? ' style="font-weight:700;"' : '';
         const label = isLeap ? `Tháng ${moAbs} (Nhuận)` : `Tháng ${moAbs}`;
@@ -1844,6 +1973,14 @@ function processAll() {
         const lunarDisp = Solar.fromDate(exactDate).getLunar();
         ShouXingUtil.setTzOffsetHours(null);
 
+        // …và mốc bắt đầu tháng còn phải chỉnh theo CHÍNH TÝ nữa: mùng 1 là
+        // ngày chứa điểm Sóc, đếm từ nửa đêm mặt trời thật chứ không phải
+        // 00:00 đồng hồ (xem khối "RANH GIỚI NGÀY ÂM LỊCH" ở trên).
+        // exactDate đã là giờ mặt trời thật nên hỏi bằng chính ngày dương đang
+        // xét: trụ ngày của nó cũng lấy từ mốc giờ Tý ấy.
+        const ziDay = zi_dayOf(Solar.fromYmdHms(y, m, d, h, min, 0), lon, info.tzId);
+        const ziLunar = zi_lunarOf(ziDay.y, ziDay.m, ziDay.d, lon, info.tzId, tz);
+
         // FIX: _readInputBJ() trả về solarBJ ở GIỜ BẮC KINH (UTC+8) — Năm/Tháng
         // Can Chi (baziBJ.getYearGan/Zhi, getMonthGan/Zhi) phụ thuộc vào việc so
         // sánh solarBJ với mốc Lập Xuân (yearGanIndexByLiChun/Exact trong
@@ -1857,10 +1994,16 @@ function processAll() {
         // → Giữ _tzOffsetHours = null (UTC+8) cho cả baziBJ và _getPrevJieQi.
         const { solarBJ, dUTC } = _readInputBJ(y, m, d, h, min, tz);
         const baziBJ  = solarBJ.getLunar().getEightChar();
-        // Ngày-tháng-năm âm lịch (hiển thị + cục Âm Bàn + bảng Sóc) lấy bản
-        // tính ở mốc địa phương; baziLocal vẫn dùng lunarLocal (can chi ngày
-        // là chu kỳ 60 ngày liên tục, không phụ thuộc mốc này).
-        const lunar   = lunarDisp;
+        // Ngày-tháng-năm âm lịch (hiển thị + cục Âm Bàn + bảng Sóc) lấy bản đã
+        // chỉnh theo Chính Tý; baziLocal vẫn dùng lunarLocal (can chi ngày là chu
+        // kỳ 60 ngày liên tục, không phụ thuộc mốc này).
+        // ziLunar chỉ null khi lunar.js không dựng nổi danh sách tháng — lúc ấy
+        // lùi về bản mốc địa phương còn hơn là hỏng cả trang.
+        const lunar = ziLunar ? {
+            getDay:   () => ziLunar.day,
+            getMonth: () => ziLunar.leap ? -ziLunar.month : ziLunar.month,
+            getYear:  () => ziLunar.year,
+        } : lunarDisp;
 
         // Đối tượng bazi tổng hợp (Năm/Tháng từ BJ, Ngày/Giờ từ Local).
         // Giờ Can/Chi (getTimeGan/Zhi/getTime) được ghi đè bằng giá trị thiên văn

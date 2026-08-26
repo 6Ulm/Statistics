@@ -10,7 +10,10 @@
  * 00:37). Cùng một thời điểm, hai cách đọc — nhìn như tính sai.
  *
  * Phép thử mở ứng dụng thật ở nhiều múi giờ và canh ba điều:
- *   1. tab Kỳ Môn: ngày Sóc hiện ra phải TRÙNG ngày dương của mùng 1;
+ *   1. tab Kỳ Môn: mùng 1 phải là ngày CHỨA điểm Sóc, đếm từ CHÍNH TÝ tới
+ *      Chính Tý — nửa đêm mặt trời thật (Chính Ngọ − 12h), không phải 00:00
+ *      đồng hồ. Phép thử tự tính lại mốc ấy từ Astro.solarNoonMinutes, tức đi
+ *      đường khác với zi_dayOf trong app.js chứ không chép lại nó;
  *   2. tab Lịch:   ô mùng 1 phải rơi đúng vào ngày ấy;
  *   3. hai tab phải nói cùng một ngày âm cho cùng một ngày dương;
  *   4. bảng mà ứng dụng ghi ra cho WIDGET (publishLunarCache) phải khớp luôn —
@@ -43,9 +46,18 @@ const browser = await chromium.launch(
     fs.existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {}
 );
 
-// Ngày thử: gồm đúng ca người dùng nêu (Sóc 12/08/2026 17:37 UTC — rơi hai bên
-// nửa đêm tuỳ múi giờ) và vài ca rải rác trong năm.
-const DATES = [[2026, 8, 12], [2026, 8, 13], [2026, 2, 17], [2026, 5, 16], [2025, 12, 20]];
+// Ngày thử. Ba ca đầu là ngày thường; năm ca sau là các tháng mà điểm Sóc rơi
+// SÁT Chính Tý, tức đúng chỗ luật này khác luật nửa đêm đồng hồ — cả hai chiều:
+//   Paris     06/07/2024 Sóc 00:57 → mùng 1 lùi về 05/07 (chưa tới Chính Tý)
+//   Paris     07/04/2027 Sóc 01:51 → mùng 1 lùi về 06/04
+//   Paris     03/04/2030 Sóc 00:02 → mùng 1 lùi về 02/04
+//   Hồng Kông 15/12/2020 Sóc 00:18 → mùng 1 lùi về 14/12
+//   Hà Nội    21/04/2031 Sóc 23:58 → mùng 1 tiến tới 22/04 (đã qua Chính Tý)
+// Không có mấy ca này thì phép thử xanh mà chẳng đụng tới luật mới lần nào.
+const DATES = [
+    [2026, 8, 12], [2026, 8, 13], [2026, 2, 17],
+    [2024, 7, 6], [2027, 4, 7], [2030, 4, 3], [2020, 12, 15], [2031, 4, 21],
+];
 
 const ctx0 = await browser.newContext();
 const p0 = await ctx0.newPage();
@@ -56,7 +68,7 @@ const CITIES = (await p0.evaluate(
 await ctx0.close();
 const PICK = [CITIES[0], ...CITIES.slice(1).filter((_, i) => i % 5 === 0)].slice(0, 6);
 
-let fail = 0, checks = 0;
+let fail = 0, checks = 0, ziCases = 0, outOfRange = 0;
 for (const city of PICK) {
     const ctx = await browser.newContext({ viewport: { width: 412, height: 900 } });
     await ctx.addInitScript(() => { try { localStorage.setItem('defaultLang', 'vi'); } catch (e) {} });
@@ -84,9 +96,25 @@ for (const city of PICK) {
                 .find(t => t.classList.contains('dp-row-active')) ||
                 [...document.querySelectorAll('#ab-tbody tr')]
                     .find(t => new RegExp(`Tháng ${lmon}$`).test(t.cells[0].textContent.trim()));
+            const soc = tr ? tr.cells[1].textContent.trim() : '';
+            // Mốc mùng 1 mong đợi, tính ĐỘC LẬP từ giờ Sóc đang hiện:
+            // Chính Tý = Chính Ngọ − 12h, rồi xem giờ Sóc rơi vào ngày nào.
+            let want = null, inWindow = false;
+            const mm = soc.match(/^(\d{2})-(\d{2})-(\d{4}) (\d{2}):(\d{2})$/);
+            if (mm && window.Astro) {
+                const [, dd, mo2, yy, hh, mi2] = mm.map(Number);
+                const info = countryData[city];
+                const tzS = getTimezoneOffset(info.tzId, new Date(yy, mo2 - 1, dd, 12));
+                const zi = Astro.solarNoonMinutes(yy, mo2, dd, info.lon, tzS) - 720;
+                const t = hh * 60 + mi2;
+                const shift = Math.floor((t - zi) / 1440);
+                const dt = new Date(yy, mo2 - 1, dd + shift);
+                const p2 = n => String(n).padStart(2, '0');
+                want = `${p2(dt.getDate())}-${p2(dt.getMonth() + 1)}-${dt.getFullYear()}`;
+                inWindow = shift !== 0;
+            }
             out.push({
-                y, m, d, lunar,
-                soc: tr ? tr.cells[1].textContent.trim() : '',
+                y, m, d, lunar, soc, want, inWindow,
                 mung1: tr ? tr.cells[2].textContent.trim() : '',
                 ram: tr ? tr.cells[3].textContent.trim() : '',
             });
@@ -117,10 +145,14 @@ for (const city of PICK) {
             bad.push(`${r.d}/${r.m}/${r.y}: không đọc được (âm "${r.lunar}", sóc "${r.soc}")`);
             continue;
         }
-        // 1. Mùng 1 phải là NGÀY CHỨA điểm Sóc — cùng một dòng của bảng.
-        if (r.mung1 !== r.soc.slice(0, 10)) {
-            bad.push(`${r.d}/${r.m}/${r.y}: Sóc ${r.soc} nhưng cột Mùng 1 ghi ${r.mung1}`);
+        // 1. Mùng 1 = ngày chứa điểm Sóc theo TRỤ NGÀY (ranh giới giờ Tý).
+        if (!r.want) {
+            bad.push(`${r.d}/${r.m}/${r.y}: không tính được mốc mong đợi từ Sóc "${r.soc}"`);
+        } else if (r.mung1 !== r.want) {
+            bad.push(`${r.d}/${r.m}/${r.y}: Sóc ${r.soc} → mùng 1 phải là ${r.want}` +
+                ` (theo giờ Tý), nhưng bảng ghi ${r.mung1}`);
         }
+        if (r.inWindow) ziCases++;
         // 2. Rằm = mùng 1 + 14 ngày.
         const [d1, m1, y1] = r.mung1.split('-').map(Number);
         const ram = new Date(y1, m1 - 1, d1 + 14);
@@ -153,8 +185,11 @@ for (const city of PICK) {
         for (let i = 1; i < tbl.length; i++) {
             if (tbl[i][0] <= tbl[i - 1][0]) { bad.push('bảng widget không tăng dần'); break; }
         }
-        // Tra bằng chính cách LunarTable.fromAppCache tra, so với tab Lịch.
+        // Tra bằng CHÍNH cách LunarTable.fromAppCache tra — kể cả phép chặn hai
+        // đầu: bảng chỉ phủ chừng 40 tháng quanh hôm nay, ra ngoài thì trả null
+        // để bảng đóng trong APK lo, chứ không suy bừa.
         const look = j => {
+            if (tbl.length < 2 || j < tbl[0][0] || j >= tbl[tbl.length - 1][0]) return null;
             let lo = 0, hi = tbl.length - 1, idx = -1;
             while (lo <= hi) { const m = (lo + hi) >> 1; if (tbl[m][0] <= j) { idx = m; lo = m + 1; } else hi = m - 1; }
             return idx < 0 ? null : { day: j - tbl[idx][0] + 1, month: tbl[idx][1], leap: tbl[idx][2] === 1 };
@@ -169,7 +204,8 @@ for (const city of PICK) {
             if (c == null) continue;
             const got = look(jd(r.y, r.m, r.d));
             const calDay = parseInt(String(c).split('/')[0], 10);
-            if (!got) { bad.push(`bảng widget không phủ ${r.d}/${r.m}/${r.y}`); continue; }
+            // Ngoài tầm phủ là đúng thiết kế, không phải lỗi.
+            if (!got) { outOfRange++; continue; }
             if (got.day !== calDay) {
                 bad.push(`${r.d}/${r.m}/${r.y}: bảng widget âm ${got.day}, tab Lịch âm ${calDay}`);
             }
@@ -186,6 +222,13 @@ for (const city of PICK) {
 
 await browser.close();
 server.close();
+console.log(`\nSố ca mà Chính Tý ĐẨY mùng 1 lệch khỏi ngày dương của Sóc: ${ziCases}`);
+console.log(`Ngày nằm ngoài tầm phủ của bảng widget (bỏ qua, đúng thiết kế): ${outOfRange}`);
+if (ziCases === 0) {
+    // Xanh mà không đụng tới luật giờ Tý thì phép thử vô nghĩa.
+    console.log('✗ không ca nào chạm ranh giới Chính Tý — bộ ngày thử đã mất tác dụng');
+    fail++;
+}
 console.log(fail
     ? `\n✗ ${fail}/${PICK.length} ca lệch`
     : `\n✓ ${PICK.length}/${PICK.length} ca (${checks} phép so): mùng 1 = ngày chứa Sóc, hai tab khớp nhau`);

@@ -148,7 +148,13 @@ function relevantKey(cc) {
  * Cục Âm Bàn = (chi năm + tháng âm + ngày âm + chi giờ) % 9 nên cũng đổi theo,
  * và bảng Âm Bàn (ab-tbody) hiện cột Mùng 1 / Rằm lấy từ đó.
  *
- * Ở nơi có múi giờ UTC+8 thì hai bản PHẢI trùng khít — đó mới là điều đáng canh.
+ * Từ khi mốc mùng 1 đổi sang CHÍNH TÝ thiên văn (nửa đêm mặt trời thật), khác
+ * biệt xảy ra ở mọi nơi lệch khỏi kinh tuyến múi giờ của mình — kể cả nơi đúng
+ * UTC+8, vì Bắc Kinh ở 116,4°Đ chứ không phải 120°Đ.
+ *
+ * Nên chỗ đáng canh không còn là "bằng 0", mà là HÌNH DẠNG của khác biệt: ngày
+ * âm chỉ được lệch ĐÚNG MỘT NGÀY (hoặc chỉ đổi nhãn tháng, khi mốc kinh tuyến
+ * làm cấu trúc tháng nhuận khác đi). Lệch hơn thế là hỏng thật.
  */
 const LUNAR_DEPENDENT = new Set(['out-lunar-table', 'out-cuc', 'ab-tbody']);
 
@@ -192,7 +198,8 @@ const domB = await boot(fs.readFileSync(path.join(WEB, 'index.html'), 'utf8'),
         platform: () => 'android',
     });
 
-let diffs = 0, compared = 0, deliberate = 0;
+let diffs = 0, compared = 0, deliberate = 0, lunarZi = 0, lunarMeridian = 0, lunarShapeBad = 0;
+const shapeSamples = [];
 const t0 = Date.now();
 const failures = [];
 
@@ -240,9 +247,25 @@ for (let i = 0; i < cases.length; i++) {
     // canh. Lệch khỏi UTC+8 thì ngày âm khác là CÓ CHỦ Ý.
     const tzId = tzIdOf(domB, c.country);
     const tzH = tzId ? tzHoursAt(tzId, c.y, c.m, c.d) : null;
-    const allowLunar = tzH === null || Math.abs(tzH - 8) > 1e-9;
+    const allowLunar = true;   // xem ghi chú ở LUNAR_DEPENDENT
+    const sameMeridian = tzH !== null && Math.abs(tzH - 8) < 1e-9;
     const relevant = relevantKey(c);
     const rawBad = keys.filter(k => relevant(k) && a[k] !== b[k]);
+    // Ngày âm lệch quá một ngày là hỏng thật. Ngày giống nhau mà nhãn tháng khác
+    // thì không phải lệch ngày — đó là cấu trúc tháng nhuận đổi theo mốc kinh
+    // tuyến, chuyện đã biết.
+    const dayOf = v => parseInt(String(v).split('-')[0].trim(), 10);
+    if (a['out-lunar-table'] !== b['out-lunar-table']) {
+        const da = dayOf(a['out-lunar-table']), db = dayOf(b['out-lunar-table']);
+        const gap = Math.abs(da - db);
+        const rollover = (da === 1 && db >= 29) || (db === 1 && da >= 29);
+        if (!(gap <= 1 || rollover)) {
+            lunarShapeBad++;
+            if (shapeSamples.length < 4) {
+                shapeSamples.push(`${JSON.stringify(c)}  gốc=${a['out-lunar-table']}  mới=${b['out-lunar-table']}`);
+            }
+        } else if (sameMeridian) lunarZi++; else lunarMeridian++;
+    }
     const cucChanged = allowLunar && a['out-cuc'] !== b['out-cuc'];
     const bad = !allowLunar ? rawBad : rawBad.filter(k =>
         !LUNAR_DEPENDENT.has(k) && !(cucChanged && CUC_DEPENDENT.has(k)));
@@ -260,7 +283,11 @@ for (let i = 0; i < cases.length; i++) {
 
 console.log(`\n${cases.length} ca · ${compared} trường được so sánh · ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 console.log(`Khác biệt: ${diffs}`);
-console.log(`Ca khác CÓ CHỦ Ý (ngày âm theo mốc địa phương, ngoài UTC+8): ${deliberate}`);
+console.log(`Ca khác CÓ CHỦ Ý (ngày âm + hệ quả): ${deliberate}`);
+console.log(`  ngày âm khác ở nơi đúng UTC+8 (do Chính Tý): ${lunarZi}`);
+console.log(`  ngày âm lệch do đổi MỐC KINH TUYẾN (ngoài UTC+8): ${lunarMeridian}`);
+console.log(`  ngày âm lệch QUÁ MỘT NGÀY (phải bằng 0): ${lunarShapeBad}`);
+shapeSamples.forEach(x => console.log('    ' + x));
 for (const f of failures) {
     console.log(`\nCA LỆCH ${JSON.stringify(f.c)}`);
     for (const d of f.bad) console.log(`  ${d.k}\n    gốc=${d.a}\n    mới=${d.b}`);
@@ -268,6 +295,6 @@ for (const f of failures) {
 console.log('\nCảnh báo (gốc):', warnsA.length ? warnsA.slice(0, 3) : 'không có');
 console.log('Cảnh báo (mới):', warnsB.length ? warnsB.slice(0, 3) : 'không có');
 
-const ok = diffs === 0 && warnsB.length === 0;
+const ok = diffs === 0 && lunarShapeBad === 0 && warnsB.length === 0;
 console.log(ok ? '\n✓ KHỚP HOÀN TOÀN' : '\n✗ CÓ KHÁC BIỆT');
 process.exit(ok ? 0 : 1);

@@ -85,7 +85,39 @@ Phải đặt lại mốc này mỗi lần vẽ: `processAll()` để lại múi
 đang chọn trong biến toàn cục của `lunar.js`, nên nếu đang chọn Paris thì
 26/08/2026 hoá ra 15/7 thay vì 14/7.
 
-## Lịch âm tính theo mốc nào
+## Ngày âm lịch bắt đầu lúc nào
+
+Hai câu hỏi tách rời nhau: **mốc nào** (kinh tuyến nào) và **lúc mấy giờ** (ranh
+giới ngày).
+
+### Ranh giới: Chính Tý, không phải 00:00
+
+Mùng 1 là ngày CHỨA điểm Sóc, và ngày ở đây đếm từ **Chính Tý tới Chính Tý** —
+nửa đêm MẶT TRỜI THẬT (Chính Ngọ − 12h) tại nơi người dùng đứng.
+
+Đây là chuyện **quy ước, không phải đúng/sai**. Lịch pháp Trung–Việt định ngày
+từ nửa đêm đồng hồ tới nửa đêm đồng hồ tại kinh tuyến quy chiếu, và mọi cuốn
+lịch in đều theo luật ấy. Ứng dụng này chọn nửa đêm thật, cùng hệ với Chính Ngọ
+mà nó vẫn hiển thị.
+
+Không lấy ranh giới **đầu giờ Tý** (Chính Ngọ − 13h): đó là quy ước của mệnh lý
+cho trụ ngày, và bản thân nó còn hai phái (早子時 / 夜子時). Nửa đêm thật thì chỉ
+có một.
+
+Chính Ngọ lệch khỏi 12:00 vì kinh độ + phương trình thời gian + giờ mùa hè, nên
+Chính Tý lệch khỏi 00:00 đúng chừng ấy:
+
+| Nơi | Chính Ngọ | Chính Tý | Cửa sổ lệch |
+|---|---|---|---|
+| Hà Nội | 12:01 | **00:01** | 1 phút |
+| Paris (hè) | 13:55 | **01:55** | 115 phút |
+
+Nên ở Việt Nam gần như không đổi gì (12 năm mới có một tháng lệch), còn nơi lệch
+xa kinh tuyến múi giờ của mình thì chừng 8% số tháng đổi mùng 1. Ví dụ Paris:
+Sóc 06/07/2024 lúc 00:57 vẫn còn **trước** Chính Tý, nên mùng 1 là 05/07 chứ
+không phải 06/07.
+
+## Mốc kinh tuyến
 
 Quy tắc: **mùng 1 là ngày CHỨA điểm Sóc**. Nhưng "ngày" nào thì tuỳ mốc quy
 chiếu — và mốc ấy phải trùng với mốc dùng để HIỆN giờ Sóc, nếu không một màn
@@ -108,7 +140,7 @@ Chỉ NGÀY ÂM LỊCH đổi mốc. Năm/Tháng Can Chi vẫn lấy từ `baziB
 và các mốc Tiết, so với `solarBJ` ở giờ Bắc Kinh) và tiết khí vẫn tính ở mốc
 UTC+8 — đó là lý do THẬT của ghi chú cũ, và nó vẫn đúng.
 
-### Cái giá phải trả
+### Cái giá phải trả (đổi mốc kinh tuyến)
 
 Cục Âm Bàn = `(chi năm + tháng âm + ngày âm + chi giờ) % 9`, nên đổi mốc ngày âm
 là đổi cả kết quả Kỳ Môn ở nơi lệch khỏi UTC+8:
@@ -410,10 +442,14 @@ node test_soc_parity.mjs
 ```
 
 Mở ứng dụng ở sáu múi giờ, canh bốn điều: mùng 1 đúng là ngày chứa điểm Sóc
-(cùng một dòng của bảng Âm Bàn), Rằm = mùng 1 + 14, hai tab nói cùng một ngày
-âm, và bảng mà ứng dụng ghi ra cho widget khớp luôn. Lùi `js/app.js` về bản cũ
-thì 3/6 ca đỏ ngay, kèm đúng câu lỗi người dùng báo:
-`Sóc 12-08-2026 19:37 nhưng cột Mùng 1 ghi 13-08-2026`.
+**tính theo Chính Tý**, Rằm = mùng 1 + 14, hai tab nói cùng một ngày âm, và
+bảng mà ứng dụng ghi ra cho widget khớp luôn. Mốc mong đợi được tính lại **độc
+lập** từ `Astro.solarNoonMinutes` chứ không gọi `zi_dayOf` của `app.js`, nên
+sai cùng chiều thì vẫn đỏ.
+
+Bộ ngày thử gồm năm tháng mà điểm Sóc rơi sát Chính Tý, đủ cả hai chiều — và
+phép thử **tự kiểm** rằng ít nhất một ca chạm ranh giới, để nó không lặng lẽ
+hoá vô nghĩa khi đổi ngày thử. Lùi `js/app.js` về bản cũ thì 3/6 ca đỏ ngay.
 
 ### Tiết khí giữa các bảng
 

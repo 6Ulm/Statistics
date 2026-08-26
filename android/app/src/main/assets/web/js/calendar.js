@@ -90,6 +90,17 @@
     var selected = null;       // {y,m,d}
     var lastWeeks = 0;         // số hàng của lưới đang hiện, để đo lại khi gập
 
+    /** Ngày âm theo ranh giới Chính Tý, dùng chung engine với tab Kỳ Môn. */
+    function ziOf(y, m, d) {
+        try {
+            if (typeof zi_lunarOf !== 'function') return null;
+            var info = countryData[getDOM('country').value];
+            if (!info || !info.tzId) return null;
+            var tz = getTimezoneOffset(info.tzId, new Date(y, m - 1, d, 12));
+            return zi_lunarOf(y, m, d, info.lon, info.tzId, tz);
+        } catch (e) { return null; }
+    }
+
     /** Can chi tiếng Việt của một đối tượng Lunar. */
     function dayGanZhi(lunar) {
         var can = CAN_ZH.indexOf(lunar.getDayGan());
@@ -233,8 +244,12 @@
     function cellHtml(y, m, d, idx, outside, tKey) {
         var lunar = Solar.fromYmd(y, m, d).getLunar();
         var gz = dayGanZhi(lunar);
-        var lday = lunar.getDay();
-        var lmon = lunar.getMonth();
+        // Ngày âm lấy theo ranh giới CHÍNH TÝ (xem khối ghi chú trong app.js):
+        // mùng 1 là ngày chứa điểm Sóc, đếm từ nửa đêm mặt trời thật chứ không
+        // phải 00:00. Hỏng thì lùi về số của lunar.js còn hơn để trống cả lịch.
+        var zl = ziOf(y, m, d);
+        var lday = zl ? zl.day : lunar.getDay();
+        var lmon = zl ? (zl.leap ? -zl.month : zl.month) : lunar.getMonth();
         // Mùng 1 thì ghi kèm tháng âm, như lịch giấy: "1/7"
         var lunarTxt = (lday === 1) ? (lday + '/' + Math.abs(lmon) + (lmon < 0 ? 'N' : '')) : String(lday);
 
@@ -458,25 +473,14 @@
             var tz = localTz();
             var now = new Date();
             var rows = [];
-            ShouXingUtil.setTzOffsetHours(tz);
-            // 18 tháng trước tới 18 tháng sau là quá đủ cho một widget lịch.
-            var cur = new Date(now.getFullYear(), now.getMonth() - 19, 1);
-            var seen = {};
-            for (var i = 0; i < 40; i++) {
-                var y = cur.getFullYear(), mo = cur.getMonth() + 1;
-                var dim = new Date(y, mo, 0).getDate();
-                for (var d = 1; d <= dim; d++) {
-                    var l = Solar.fromYmd(y, mo, d).getLunar();
-                    if (l.getDay() !== 1) continue;
-                    var key = l.getYear() + ':' + l.getMonth();
-                    if (seen[key]) continue;
-                    seen[key] = 1;
-                    rows.push(jdnOf(y, mo, d) + ',' + Math.abs(l.getMonth()) +
-                        ',' + (l.getMonth() < 0 ? 1 : 0));
-                }
-                cur.setMonth(cur.getMonth() + 1);
+            // Lấy thẳng danh sách tháng đã chỉnh theo Chính Tý — cùng nguồn với
+            // tab Lịch và tab Kỳ Môn, nên widget không thể lệch với ứng dụng.
+            var info = countryData[getDOM('country').value];
+            if (!info || !info.tzId || typeof zi_months !== 'function') return;
+            var list = zi_months(now.getFullYear(), info.lon, info.tzId, tz);
+            for (var i = 0; i < list.length; i++) {
+                rows.push(list[i].jdn + ',' + list[i].month + ',' + (list[i].leap ? 1 : 0));
             }
-            ShouXingUtil.setTzOffsetHours(null);
             if (rows.length) prefSet(K_LUNAR_CACHE, Math.round(tz * 60) + '|' + rows.join(';'));
         } catch (e) {
             try { ShouXingUtil.setTzOffsetHours(null); } catch (e2) {}
