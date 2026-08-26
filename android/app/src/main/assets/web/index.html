@@ -7,6 +7,7 @@
     <title>Bát Tự &amp; Kỳ Môn — Giờ Mặt Trời thật</title>
     <link rel="stylesheet" href="css/app.css">
     <link rel="stylesheet" href="css/location.css">
+    <link rel="stylesheet" href="css/calendar.css">
 </head>
 <body id="mainBody" class="lang-zh">
 <script>
@@ -314,10 +315,33 @@ if (!CSS || !CSS.supports || !CSS.supports('padding-bottom', 'env(safe-area-inse
 </div>
 
 
+<!-- ══ TAB LỊCH ÂM DƯƠNG ══ -->
+<div id="calView">
+    <div id="calHead">
+        <span class="cal-nav" id="calPrev">‹</span>
+        <span id="calTitle" title="Về tháng hiện tại">LỊCH ÂM THÁNG</span>
+        <span class="cal-nav" id="calNext">›</span>
+    </div>
+    <div id="calGrid"></div>
+    <div id="calDetail"></div>
+    <div id="calJieQi"></div>
+</div>
+
+<!-- ══ THANH TAB DƯỚI MÀN HÌNH ══ -->
+<div id="tabBar">
+    <div id="tabQmdj" class="tab-item tab-active">
+        <span class="tab-ico">▦</span><span class="tab-lbl">Kỳ Môn</span>
+    </div>
+    <div id="tabCal" class="tab-item">
+        <span class="tab-ico">▤</span><span class="tab-lbl">Lịch</span>
+    </div>
+</div>
+
 <script src="js/lunar.js"></script>
 <script src="js/app.js"></script>
 <script src="js/astro.js"></script>
 <script src="js/location.js"></script>
+<script src="js/calendar.js"></script>
 <script src="js/viewport.js"></script>
 </body>
 </html>

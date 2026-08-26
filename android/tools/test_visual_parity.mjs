@@ -43,6 +43,10 @@ function visible(dom){
     const cs=w.getComputedStyle(el);
     if(cs.display==='none'||cs.visibility==='hidden') return;
     if(el.classList.contains('hidden-select')) return;
+    // Thanh tab dưới màn hình và tab Lịch là phần THÊM CÓ CHỦ Ý (người dùng yêu
+    // cầu), không phải sai lệch. Bỏ chúng ra để phép so vẫn canh gác được màn
+    // hình Kỳ Môn — nơi bắt buộc phải giống hệt bản web gốc.
+    if(el.id==='tabBar'||el.id==='calView') return;
     const own=[...el.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('').replace(/\s+/g,' ').trim();
     out.push('  '.repeat(depth)+`<${tag}${el.id?'#'+el.id:''}${el.className&&typeof el.className==='string'?'.'+el.className.trim().split(/\s+/).join('.'):''}>${own?' "'+own+'"':''}`);
     for(const ch of el.children) walk(ch,depth+1);
