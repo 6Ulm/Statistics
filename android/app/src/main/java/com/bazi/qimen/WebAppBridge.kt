@@ -69,6 +69,19 @@ class WebAppBridge(
     @JavascriptInterface
     fun platform(): String = "android"
 
+    /**
+     * Mời hệ thống ghim widget Lịch ra màn hình chính.
+     * @return "ok" nếu đã hiện hộp thoại ghim, "unsupported" nếu máy hoặc
+     *         launcher không cho ghim tự động (người dùng phải tự kéo widget).
+     */
+    @JavascriptInterface
+    fun pinCalendarWidget(): String {
+        val done = java.util.concurrent.atomic.AtomicBoolean(false)
+        main.post { done.set(CalendarWidgetProvider.requestPin(activity)) }
+        // Hộp thoại do hệ thống dựng; ở đây chỉ cần biết máy có hỗ trợ hay không.
+        return if (CalendarWidgetProvider.canPin(activity)) "ok" else "unsupported"
+    }
+
     /* ─────────────── Định vị ─────────────── */
 
     @JavascriptInterface

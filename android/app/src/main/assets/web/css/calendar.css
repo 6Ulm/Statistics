@@ -92,14 +92,17 @@ body.view-cal #calView { display: block; }
 }
 .cal-dow-cell.cal-sun { color: #c62828; }
 
+/* Chiều cao đặt trên MỌI ô, không riêng ô có ngày — nếu không, ô trống đầu
+   tháng co lại và hàng đầu thấp hơn hẳn các hàng sau. */
+.cal-cell { min-height: var(--cal-row-h, 52px); }
 .cal-day {
     padding: 4px 4px 5px;
-    min-height: var(--cal-row-h, 52px);
     cursor: pointer;
     display: flex; flex-direction: column;
 }
 .cal-day:active { background: #fbdde2; }
 .cal-empty { background: #fdf5f6; }
+.cal-dow-cell { min-height: 0; }        /* hàng "Thứ 2…" giữ nguyên chiều cao */
 
 .cal-top {
     display: flex; align-items: baseline; justify-content: space-between;
@@ -157,3 +160,23 @@ table.cal-jq td {
 table.cal-jq tr:last-child td { border-bottom: none; }
 table.cal-jq td:first-child { font-weight: 600; color: var(--text-main, #222); }
 table.cal-jq td:last-child { text-align: right; color: var(--text-dim, #666); }
+
+/* ── Ghim widget lịch ra màn hình chính ── */
+#calPinBtn {
+    display: none;                 /* chỉ hiện khi chạy trong app Android */
+    width: 100%; margin-top: 8px;
+    padding: 8px;
+    border: var(--border-accent, 1.5px solid #007bff);
+    border-radius: 6px;
+    background: var(--accent-light, #e8edff);
+    color: var(--text-main, #222);
+    font-size: 12.5px; font-weight: 600;
+    cursor: pointer;
+}
+#calPinBtn:active { opacity: .7; }
+#calPinNote {
+    display: none;
+    margin-top: 5px; padding: 0 2px;
+    font-size: 11.5px; line-height: 1.45;
+    color: var(--text-dim, #666);
+}

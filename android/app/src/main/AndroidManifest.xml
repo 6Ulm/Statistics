@@ -44,5 +44,24 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Widget lịch âm: xem lịch mà không cần mở ứng dụng. -->
+        <receiver
+            android:name=".CalendarWidgetProvider"
+            android:label="@string/widget_name"
+            android:exported="false">
+            <!--
+              Chỉ hai action này. DATE_CHANGED / TIME_SET / TIMEZONE_CHANGED là
+              broadcast ngầm của hệ thống, mà receiver không exported thì không
+              nhận được — khai thêm chỉ tổ gây hiểu lầm. Việc sang ngày đã có
+              báo thức nửa đêm trong scheduleMidnight() lo.
+            -->
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.bazi.qimen.WIDGET_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/calendar_widget_info" />
+        </receiver>
     </application>
 </manifest>

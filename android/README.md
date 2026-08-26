@@ -58,6 +58,30 @@ và đã chiếm trọn bề ngang — phóng to nữa sẽ tràn ngang, nên gi
 Bàn phím ảo làm `innerHeight` tụt một nửa; module bỏ qua lúc đó để giao diện
 không co lại khi đang gõ tìm thành phố.
 
+## Widget lịch trên màn hình chính
+
+Ghim riêng **lịch âm** ra màn hình chính, không cần mở ứng dụng. Trong tab
+Lịch, bấm **📌 Ghim lịch ra màn hình chính** (Android 8 trở lên; launcher cũ thì
+nhấn giữ màn hình chính → Tiện ích → "Lịch âm"). Chạm vào widget mở thẳng tab
+Lịch, không phải bàn Kỳ Môn.
+
+Widget vẽ bằng RemoteViews nên **không có WebView** — `lunar.js` không với tới
+được. Thay vì chép thuật toán tính điểm Sóc sang Kotlin (dễ lệch với phần còn
+lại của ứng dụng), mọi mốc mùng 1 từ 1900–2100 được tính sẵn bằng chính
+`lunar.js` rồi đóng gói thành bảng tra 43 KB; Kotlin chỉ tìm nhị phân. Can chi
+suy thẳng từ số ngày Julius.
+
+```bash
+node tools/build_lunar_table.mjs   # sinh assets/lunar_months.txt
+node tools/test_lunar_table.mjs    # đối chiếu 73.414 ngày với lunar.js
+```
+
+Bảng tra và cách tra đã đối chiếu **từng ngày một trong 73.414 ngày
+(1900–2100), lệch 0**.
+
+Widget tự vẽ lại sau nửa đêm bằng một báo thức lặp không chính xác — chỉ cần
+đúng ngày, đỡ tốn pin hơn nhiều so với đánh thức nửa tiếng một lần.
+
 ## Vì sao chạy được offline
 
 Không có `android.permission.INTERNET` trong `AndroidManifest.xml` — đây là

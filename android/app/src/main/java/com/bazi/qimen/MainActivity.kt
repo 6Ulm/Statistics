@@ -2,6 +2,7 @@ package com.bazi.qimen
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
@@ -32,6 +33,9 @@ class MainActivity : android.app.Activity() {
     private lateinit var bridge: WebAppBridge
 
     private val requestLocationCode = 4211
+
+    /** Tab cần mở ngay khi trang nạp xong (do widget yêu cầu). */
+    private var pendingTab: String? = null
 
     /** WebView đã bị huỷ (render process chết) — không được đụng vào nữa. */
     private var webViewGone = false
@@ -97,6 +101,10 @@ class MainActivity : android.app.Activity() {
 
             // Tiến trình render của WebView chết thì cả app chết theo nếu không
             // xử lý — dựng lại trang thay vì để hệ thống giết tiến trình.
+            override fun onPageFinished(view: WebView, url: String) {
+                pendingTab?.let { showTab(it); pendingTab = null }
+            }
+
             override fun onRenderProcessGone(
                 view: WebView, detail: android.webkit.RenderProcessGoneDetail
             ): Boolean {
@@ -110,11 +118,28 @@ class MainActivity : android.app.Activity() {
 
         if (isDebuggable()) WebView.setWebContentsDebuggingEnabled(true)
 
+        // Mở từ widget thì vào thẳng tab Lịch. Trang nạp xong mới gọi được JS,
+        // nên phải chờ onPageFinished.
+        val startTab = intent?.getStringExtra(EXTRA_TAB)
+        if (startTab != null) pendingTab = startTab
+
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState)
         } else {
             webView.loadUrl(START_URL)
         }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        val tab = intent?.getStringExtra(EXTRA_TAB) ?: return
+        showTab(tab)
+    }
+
+    private fun showTab(tab: String) {
+        if (webViewGone) return
+        val safe = if (tab == "cal") "cal" else "qmdj"
+        webView.evaluateJavascript("window.showTab && window.showTab('$safe');", null)
     }
 
     private fun isDebuggable(): Boolean =
@@ -182,6 +207,7 @@ class MainActivity : android.app.Activity() {
     }
 
     companion object {
+        const val EXTRA_TAB = "com.bazi.qimen.START_TAB"
         const val ASSET_BASE = "file:///android_asset/web/"
         const val START_URL = ASSET_BASE + "index.html"
         val BACKGROUND = Color.parseColor("#f4f7f9")

@@ -21,6 +21,11 @@
                     zh: ['一', '二', '三', '四', '五', '六', '日'] },
         today:    { vi: 'Hôm nay',    zh: '今天' },
         jieqi:    { vi: 'Tiết khí trong tháng', zh: '本月节气' },
+        pin:      { vi: '📌 Ghim lịch ra màn hình chính', zh: '📌 固定日历到主屏幕' },
+        pinOk:    { vi: 'Hãy xác nhận trên hộp thoại vừa hiện ra.',
+                    zh: '请在弹出的对话框中确认。' },
+        pinManual:{ vi: 'Máy này không cho ghim tự động. Nhấn giữ khoảng trống trên màn hình chính → Tiện ích (Widget) → tìm "Lịch âm".',
+                    zh: '此设备不支持一键固定。请长按主屏幕空白处 → 小部件 → 找到"农历"。' },
     };
     function t(k) {
         var zh = (typeof currentLang !== 'undefined' && currentLang === 'zh');
@@ -51,7 +56,9 @@
 
     // Lề trên/dưới của trang cộng khoảng cách giữa các khối trong tab Lịch.
     var GRID_CHROME = 28;
-    var ROW_MIN = 52, ROW_MAX = 104;
+    // Hàng vừa đủ chứa 3 dòng (ngày dương/âm, can, chi) — cao hơn nữa chỉ tổ
+    // đẩy bảng tiết khí xuống tít dưới đáy.
+    var ROW_MIN = 50, ROW_MAX = 68;
 
     var viewY, viewM;          // tháng đang xem (dương lịch)
     var selected = null;       // {y,m,d}
@@ -218,12 +225,35 @@
     }
     window.showTab = showTab;
 
+    /**
+     * Nút ghim widget Lịch ra màn hình chính. Chỉ hiện khi chạy trong ứng dụng
+     * Android — mở bằng trình duyệt thì không có widget nào để ghim.
+     */
+    function setupPinButton() {
+        var btn = document.getElementById('calPinBtn');
+        var note = document.getElementById('calPinNote');
+        var native = window.QMDJNative;
+        if (!btn || !native || typeof native.pinCalendarWidget !== 'function') return;
+
+        btn.style.display = 'block';
+        btn.addEventListener('click', function () {
+            var res = '';
+            try { res = native.pinCalendarWidget(); } catch (e) { res = 'error'; }
+            note.style.display = 'block';
+            note.textContent = (res === 'ok')
+                ? t('pinOk')
+                : t('pinManual');
+        });
+    }
+
     /** Nhãn tab đổi theo ngôn ngữ. */
     function refreshLabels() {
         var tq = document.getElementById('tabQmdj');
         var tc = document.getElementById('tabCal');
         if (tq) tq.querySelector('.tab-lbl').textContent = t('tabQmdj');
         if (tc) tc.querySelector('.tab-lbl').textContent = t('tabCal');
+        var pin = document.getElementById('calPinBtn');
+        if (pin) pin.textContent = t('pin');
         if (document.body.classList.contains('view-cal')) render();
     }
     window.__calRefreshLabels = refreshLabels;
@@ -255,6 +285,7 @@
             render();
         });
 
+        setupPinButton();
         refreshLabels();
 
         // Đổi ngôn ngữ thì vẽ lại nhãn tab và lưới lịch.

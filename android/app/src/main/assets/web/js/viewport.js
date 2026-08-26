@@ -26,7 +26,9 @@
     var MAX_SCALE = 1.6;
     // Khoảng cách gốc giữa các bảng (app.css) và mức giãn tối đa cho phép.
     var BASE_GAP = 3;
-    var MAX_EXTRA_GAP = 14;
+    // Giãn vừa phải: nhồi hết phần thừa vào khe giữa các bảng thì đáy màn hình
+    // kín nhưng các bảng lại rời rạc, nhìn còn tệ hơn khoảng hở ban đầu.
+    var MAX_EXTRA_GAP = 4;
 
     var lastW = 0, lastH = 0, timer = null;
 
