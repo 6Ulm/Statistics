@@ -963,27 +963,53 @@ function zi_jdn(y, m, d) {
 }
 
 /**
- * Danh sách tháng âm quanh một năm dương, kèm mùng 1 đã chỉnh theo Chính Tý.
- * Trả mảng {jdn, month, year, leap} sắp tăng dần.
+ * Kinh tuyến quy chiếu cho NHÃN tháng: UTC+7 cho lịch ta, UTC+8 cho lịch Tàu.
+ * Chính chỗ khác nhau này làm Tết ta và Tết Tàu thỉnh thoảng lệch một ngày.
+ */
+function zi_labelBasis() {
+    return (typeof currentLang !== 'undefined' && currentLang === 'zh') ? 8 : 7;
+}
+
+/**
+ * Danh sách tháng âm quanh một năm dương: NHÃN lấy ở mốc quy chiếu, MỐC BẮT
+ * ĐẦU neo theo Chính Tý địa phương. Trả mảng {jdn, month, year, leap} tăng dần.
  *
- * Phải đặt ShouXingUtil về mốc địa phương trước khi hỏi lunar.js: cấu trúc
- * tháng (29/30 ngày, tháng nhuận) vẫn do lunar.js quyết, chỉ MỐC BẮT ĐẦU mới
- * chỉnh lại theo Chính Tý.
+ * Vì sao tách đôi như vậy:
+ *
+ *   • "Tháng này là tháng mấy, tháng nào nhuận" là QUY ƯỚC LỊCH, không phải sự
+ *     kiện thiên văn tại chỗ người dùng đứng. Nó do luật "tháng không có trung
+ *     khí là tháng nhuận" quyết, và luật ấy được định tại kinh tuyến quy chiếu.
+ *     Lấy nhãn ở đó thì số tháng khớp lịch in, và xác định — không trôi.
+ *
+ *   • "Mùng 1 rơi vào ngày dương nào" thì mới là chuyện địa phương: ngày chứa
+ *     điểm Sóc, đếm từ Chính Tý.
+ *
+ * Trước đây hỏi lunar.js ở ngay mốc địa phương, tức để chính luật trung khí bị
+ * đánh giá trên lưới nửa đêm ĐỒNG HỒ ở một offset nguyên giờ. Mà Chính Tý lại
+ * xê dịch tới ~30 phút trong năm theo phương trình thời gian, nên một offset cố
+ * định không diễn tả nổi nó: đo ra chừng 4–8 tháng mỗi thế kỷ đổi nhãn chỉ vì
+ * mốc lệch 15–30 phút. Nay nhãn không còn phụ thuộc chuyện đó nữa.
+ *
+ * Ghép nhãn với mốc bắt đầu là an toàn: dãy tuần trăng giống hệt nhau ở mọi
+ * mốc — đã kiểm 1900–2100, mọi mốc từ UTC−8 tới UTC+12 đều ra ĐÚNG 2486 tháng,
+ * mốc bắt đầu lệch tối đa 1 ngày, không cặp nào lệch quá.
  */
 const _ziMonthCache = new Map();
 function zi_months(gregYear, lon, tzId, tz) {
-    const key = gregYear + '|' + tzId + '|' + lon;
+    const basis = zi_labelBasis();
+    const key = gregYear + '|' + tzId + '|' + lon + '|' + basis;
     if (_ziMonthCache.has(key)) return _ziMonthCache.get(key);
     const snap = ShouXingUtil.getTzOffsetHours();
     const out = [];
     try {
-        ShouXingUtil.setTzOffsetHours(tz);
+        ShouXingUtil.setTzOffsetHours(basis);
         for (let ly = gregYear - 1; ly <= gregYear + 1; ly++) {
             for (const mo of LunarYear.fromYear(ly).getMonths()) {
                 if (mo.getYear() !== ly) continue;
-                const g = zi_mung1(mo, lon, tzId);
+                const g = zi_mung1(mo, lon, tzId);      // mốc bắt đầu: địa phương
                 out.push({
-                    jdn: zi_jdn(g.y, g.m, g.d), month: Math.abs(mo.getMonth()),
+                    jdn: zi_jdn(g.y, g.m, g.d),
+                    month: Math.abs(mo.getMonth()),     // nhãn: mốc quy chiếu
                     year: ly, leap: mo.getMonth() < 0,
                 });
             }

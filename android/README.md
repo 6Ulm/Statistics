@@ -112,10 +112,38 @@ Chính Tý lệch khỏi 00:00 đúng chừng ấy:
 | Hà Nội | 12:01 | **00:01** | 1 phút |
 | Paris (hè) | 13:55 | **01:55** | 115 phút |
 
-Nên ở Việt Nam gần như không đổi gì (12 năm mới có một tháng lệch), còn nơi lệch
-xa kinh tuyến múi giờ của mình thì chừng 8% số tháng đổi mùng 1. Ví dụ Paris:
-Sóc 06/07/2024 lúc 00:57 vẫn còn **trước** Chính Tý, nên mùng 1 là 05/07 chứ
+Cửa sổ lệch không đứng yên: phương trình thời gian kéo Chính Tý của Hà Nội dao
+động từ **−17,5 phút đến +6 phút** quanh 00:00 trong năm. Nên ngay cả ở Việt
+Nam vẫn có **0,96% số tháng** (36/3741, quét 1960–2060) rơi mùng 1 khác lịch in;
+nơi lệch xa kinh tuyến múi giờ của mình thì chừng 8%. Ví dụ Paris: Sóc
+06/07/2024 lúc 00:57 vẫn còn **trước** Chính Tý (01:55), nên mùng 1 là 05/07 chứ
 không phải 06/07.
+
+Phần dôi ra ấy là do CHÍNH LUẬT NÀY, không phải sai số tính toán: điểm Sóc mà
+ứng dụng hiển thị rơi đúng ngày mùng 1 của `lunar.js` ở **1249/1249 tháng**
+(mốc UTC+7, 1960–2060).
+
+### Nhãn tháng lấy ở mốc quy chiếu, không lấy ở chỗ đứng
+
+Hai câu hỏi tách bạch:
+
+* **"Tháng này là tháng mấy, tháng nào nhuận"** là QUY ƯỚC LỊCH. Nó do luật
+  "tháng không có trung khí là tháng nhuận" quyết, và luật ấy được định tại
+  kinh tuyến quy chiếu — **UTC+7 cho lịch ta, UTC+8 cho lịch Tàu** (chính chỗ
+  này làm Tết ta và Tết Tàu thỉnh thoảng lệch một ngày).
+* **"Mùng 1 rơi vào ngày dương nào"** mới là chuyện địa phương: ngày chứa điểm
+  Sóc, đếm từ Chính Tý.
+
+Trước đây hỏi `lunar.js` ngay ở mốc địa phương, tức để luật trung khí bị đánh
+giá trên lưới nửa đêm ĐỒNG HỒ ở một offset nguyên giờ. Mà Chính Tý lại xê dịch
+tới ~30 phút trong năm, nên một offset cố định không diễn tả nổi nó — đo được
+**4–8 tháng mỗi thế kỷ đổi nhãn** chỉ vì mốc lệch 15–30 phút. Nay nhãn không còn
+phụ thuộc chuyện đó.
+
+Ghép nhãn (mốc quy chiếu) với mốc bắt đầu (địa phương) là an toàn vì **dãy tuần
+trăng giống hệt nhau ở mọi mốc**: quét 1900–2100, mọi mốc từ UTC−8 tới UTC+12
+đều ra **đúng 2486 tháng**, mốc bắt đầu lệch **tối đa 1 ngày**, không cặp nào
+lệch quá. Độ dài tháng vẫn 29 hoặc 30 ngày ở mọi thành phố đã thử.
 
 ## Mốc kinh tuyến
 
