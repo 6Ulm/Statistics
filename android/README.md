@@ -386,6 +386,25 @@ Chừng ấy nội dung cần chiều cao thật: 6 hàng lịch cộng 13 hàng
 được chia theo đúng tỉ lệ của tab Lịch (hàng lịch cao gấp ~3,7 lần hàng tiết
 khí), rồi kẹp hàng tiết khí trong khoảng 9–18dp.
 
+Bảng tiết khí là một khối **cố định**, không đổi khi lật tháng:
+
+* Phần chia luôn tính theo **6 hàng lịch** (`GRID_WEEKS`) — số hàng của tháng dài
+  nhất — chứ không theo số hàng của tháng đang xem. Tính theo tháng đang xem thì
+  tháng gọn 5 hàng làm bảng phình thêm ~12%: bấm ‹ › một cái là cả khung lẫn cỡ
+  chữ nhảy. Chỗ dôi ra của tháng ngắn đổ vào lưới lịch, nơi ô cao thêm chỉ tốt lên.
+* Hai cột nằm ở **chỗ cố định**: cột tên rộng đúng bằng tên dài nhất (đo bằng
+  `measureText`, y như `width:1%` bên CSS), cột ngày bắt đầu ngay sau nó — giống
+  nhau ở cả hai nửa bảng và ở mọi tháng.
+* **Cỡ chữ hạ xuống cho vừa bề ngang**: lấy cỡ lớn nhất mà "tên dài nhất + mốc
+  ngày giờ dài nhất" vẫn nằm trong nửa bảng (đo bằng chữ đậm, vì dòng đang hiệu
+  lực in đậm và rộng hơn). Trước đây cỡ chữ chỉ tính theo chiều cao hàng, nên
+  trên widget hẹp cột "Dương lịch" tràn qua vách ngăn rồi bị mép widget cắt cụt.
+* **Chừa đệm đáy đúng bằng bán kính góc bo**. Android 12 trở lên tự bo góc mọi
+  widget theo `system_app_widget_background_radius` (One UI để khá rộng); bảng
+  chạm sát mép thì cung tròn ăn mất chữ đầu của hàng cuối (Mang Chủng) và đuôi
+  giờ của nửa phải (Đại Tuyết). Bán kính đọc thẳng từ hệ thống, không dưới 16dp
+  của `widget_bg.xml` và không quá 32dp.
+
 | Cỡ widget | Kết quả |
 |---|---|
 | 4×5 ô (sàn) | đọc được nhưng chữ tiết khí chỉ ~8dp |

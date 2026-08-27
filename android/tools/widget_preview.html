@@ -94,14 +94,19 @@ function drawBody(canvas, wDp, hDp, density, year, month, todayJdn) {
     const daysInMonth=new Date(year,month,0).getDate();
     const weeks=Math.max(1,Math.ceil((lead+daysInMonth)/7));
 
-    const ROW_RATIO = 3.7;
+    const ROW_RATIO = 3.7, GRID_WEEKS = 6;
     const jieQi=jieQiYearOf(jdn(year,month,15));
     const dowH=Math.min(h*0.09, dp(15));
     const jqRows = jieQi.length===24 ? 13 : 0;
+    // Đệm đáy cho góc bo — widget thật đọc bán kính của hệ thống
+    // (system_app_widget_background_radius), không dưới 16dp của widget_bg.xml.
+    const safeBottom = jqRows===0 ? 0 : dp(CORNER_DP);
+    // Chia theo GRID_WEEKS chứ không theo `weeks`: bảng tiết khí phải y hệt
+    // nhau ở mọi tháng, không phình ra ở tháng gọn 5 hàng.
     const jqRowH = jqRows===0 ? 0
-        : Math.min(dp(18), Math.max(dp(9), (h-dowH)/(weeks*ROW_RATIO + jqRows)));
-    const jqH = jqRowH*jqRows + (jqRows?dp(5):0);
-    const gridH=h-dowH-jqH;
+        : Math.min(dp(18), Math.max(dp(9), (h-dowH-safeBottom)/(GRID_WEEKS*ROW_RATIO + jqRows)));
+    const jqH = jqRows===0 ? 0 : jqRowH*jqRows + dp(5) + safeBottom;
+    const gridH=Math.max(0, h-dowH-jqH);
     const cellW=w/7, cellH=gridH/weeks;
 
     c.fillStyle='#FDECEF'; c.fillRect(0,0,w,h);
@@ -166,23 +171,43 @@ function drawBody(canvas, wDp, hDp, density, year, month, todayJdn) {
     for(let i=1;i<7;i++){c.beginPath();c.moveTo(cellW*i,dowH);c.lineTo(cellW*i,dowH+gridH);c.stroke();}
     for(let r=0;r<=weeks;r++){const y=dowH+cellH*r;c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke();}
 
-    if (jqRows) drawJieQi(c, dp, w, dowH+gridH+dp(5), jqRowH, jieQi, todayJdn);
+    if (jqRows) drawJieQi(c, dp, w, dowH+gridH+dp(5), jqRowH, safeBottom, jieQi, todayJdn);
 }
 
 /* ── drawJieQi() của CalendarWidgetProvider.kt ── */
-function drawJieQi(c, dp, w, top, rowH, jieQi, todayJdn) {
-    const txtPx = Math.min(rowH*0.66, dp(12));
-    const padX = dp(5), gap = dp(6), halfW = w/2;
+function drawJieQi(c, dp, w, top, rowH, bottomPad, jieQi, todayJdn) {
+    const padX = dp(5), gap = dp(6), padEnd = dp(7), halfW = w/2;
 
     let active = -1;
     for (let i=0;i<jieQi.length;i++) if (jieQi[i].jdn <= todayJdn) active = i;
 
-    c.font = txtPx+'px sans-serif';
-    let nameW = 0;
-    for (const it of jieQi) nameW = Math.max(nameW, c.measureText(it.name).width);
-    nameW += padX*2;
+    const p=n=>(n<10?'0':'')+n;
+    const dates = jieQi.map(it => {
+        const [jy,jm,jd]=civilOf(it.jdn);
+        return p(jd)+'-'+p(jm)+'-'+jy+' '+p(Math.floor(it.minutes/60))+':'+p(it.minutes%60);
+    });
 
-    const headH = rowH, tableH = headH + rowH*12;
+    // Cỡ chữ lớn nhất mà dòng dài nhất còn nằm gọn trong nửa bảng — đo bằng chữ
+    // ĐẬM vì dòng đang hiệu lực in đậm, rộng hơn dòng thường.
+    const avail = halfW - padX - gap - padEnd;
+    const widest = size => {
+        c.font = 'bold '+size+'px sans-serif';
+        let nw=0, dw=0;
+        for (const it of jieQi) nw = Math.max(nw, c.measureText(it.name).width);
+        for (const d of dates)  dw = Math.max(dw, c.measureText(d).width);
+        return [nw, dw];
+    };
+    const minPx = dp(7);
+    let txtPx = Math.min(rowH*0.66, dp(12));
+    for (let i=0;i<6;i++) {
+        const [nw,dw] = widest(txtPx);
+        if (nw+dw <= avail || txtPx <= minPx) break;
+        txtPx = Math.max(minPx, txtPx*(avail/(nw+dw))*0.99);
+    }
+    const nameW = widest(txtPx)[0];
+    const dateDx = padX + nameW + gap;   // cột ngày: một chỗ cố định cho cả hai nửa
+
+    const headH = rowH, tableH = headH + rowH*12 + bottomPad;
     c.fillStyle='#fff'; c.fillRect(0, top, w, tableH);
 
     c.textAlign='left'; c.textBaseline='alphabetic';
@@ -191,7 +216,7 @@ function drawJieQi(c, dp, w, top, rowH, jieQi, todayJdn) {
     for (let half=0; half<2; half++) {
         const x0 = halfW*half;
         c.fillText('Tiết Khí', x0+padX, headBase);
-        c.fillText('Dương lịch', x0+nameW+gap, headBase);
+        c.fillText('Dương lịch', x0+dateDx, headBase);
     }
     c.strokeStyle='#DDDDDD'; c.lineWidth=dp(1.2);
     c.beginPath(); c.moveTo(0, top+headH); c.lineTo(w, top+headH); c.stroke();
@@ -207,14 +232,15 @@ function drawJieQi(c, dp, w, top, rowH, jieQi, todayJdn) {
             c.font=(on?'bold ':'')+txtPx+'px sans-serif';
             c.fillStyle='#222222';
             c.fillText(it.name, x0+padX, base);
-            const [jy,jm,jd]=civilOf(it.jdn);
-            const p=n=>(n<10?'0':'')+n;
             c.fillStyle = on ? '#222222' : '#666666';
-            c.fillText(p(jd)+'-'+p(jm)+'-'+jy+' '+p(Math.floor(it.minutes/60))+':'+p(it.minutes%60),
-                       x0+nameW+gap, base);
+            c.fillText(dates[k], x0+dateDx, base);
         }
-        c.strokeStyle='#EEEEEE'; c.lineWidth=1;
-        c.beginPath(); c.moveTo(0, y+rowH); c.lineTo(w, y+rowH); c.stroke();
+        // Hàng cuối không kẻ vạch: viền ngoài lo, và phần đệm góc bo bên dưới
+        // sẽ trông như một hàng trống nếu kẻ.
+        if (r < 11) {
+            c.strokeStyle='#EEEEEE'; c.lineWidth=1;
+            c.beginPath(); c.moveTo(0, y+rowH); c.lineTo(w, y+rowH); c.stroke();
+        }
     }
     c.strokeStyle='#DDDDDD'; c.lineWidth=1;
     c.beginPath(); c.moveTo(halfW, top); c.lineTo(halfW, top+tableH); c.stroke();
@@ -222,6 +248,8 @@ function drawJieQi(c, dp, w, top, rowH, jieQi, todayJdn) {
 }
 
 const HEADER_DP = 32;
+// Bán kính góc bo dùng cho bản xem trước; widget thật hỏi hệ thống.
+const CORNER_DP = 16;
 const params = new URLSearchParams(location.search);
 const today = params.get('today') || new Date().toISOString().slice(0,10);
 const [ty,tm,td] = today.split('-').map(Number);

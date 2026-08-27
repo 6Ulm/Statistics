@@ -7,6 +7,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -185,6 +186,29 @@ class CalendarWidgetProvider : AppWidgetProvider() {
     )
 
     /**
+     * Bán kính góc bo thực tế của widget, tính bằng pixel.
+     *
+     * Android 12 trở lên TỰ bo góc mọi widget theo
+     * `system_app_widget_background_radius` (One UI để khá rộng), không cần hỏi
+     * ý ứng dụng; dưới mức đó thì góc là của `widget_bg.xml`, 16dp. Cung tròn ấy
+     * ăn vào hai góc dưới, nên nội dung phải lùi lên đúng ngần này thì hàng cuối
+     * mới còn nguyên chữ. Chặn trên 32dp để một giá trị lạ của máy nào đó không
+     * nuốt mất cả hàng.
+     */
+    private fun cornerInset(context: Context): Float {
+        val sys = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                context.resources.getDimension(
+                    android.R.dimen.system_app_widget_background_radius
+                )
+            } catch (e: Resources.NotFoundException) {
+                0f
+            }
+        } else 0f
+        return maxOf(sys, dp(context, 16f)).coerceAtMost(dp(context, 32f))
+    }
+
+    /**
      * Vẽ lưới lịch + bảng tiết khí. Màu sắc và cách sắp xếp lấy đúng theo tab
      * Lịch: hôm nay là viền đỏ đậm trên nền sáng, ngày của tháng trước/sau tô
      * mờ, can một dòng chi một dòng.
@@ -220,14 +244,25 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             .map { LunarTable.localize(it, tz) }
         val dowH = minOf(h * 0.09f, dp(context, 15f))
         val jqRows = if (jieQi.size == 24) 13 else 0
+
+        // Đáy widget bị góc bo cắt mất một cung tròn. Bảng tiết khí chạm sát
+        // mép thì hàng cuối (Mang Chủng · Đại Tuyết) mất chữ đầu và mất đuôi
+        // giờ, nên chừa sẵn đúng bán kính bo làm đệm đáy.
+        val safeBottom = if (jqRows == 0) 0f else cornerInset(context)
+
+        // Bảng tiết khí phải CỐ ĐỊNH: chia theo GRID_WEEKS (tháng dài nhất) chứ
+        // không theo `weeks` của tháng đang xem. Chia theo `weeks` thì tháng gọn
+        // 5 hàng làm bảng phình ra ~12% — lật tháng một cái là cả khung lẫn cỡ
+        // chữ nhảy, đúng thứ người dùng thấy chướng. Chỗ dôi ra của tháng 5 hàng
+        // đổ vào lưới lịch, nơi ô cao thêm chỉ tốt lên.
         // 6 hàng lịch × 3,7 + 13 hàng tiết khí = 35,2 phần bằng nhau.
         // Kẹp hai đầu: dưới 9dp thì chữ tiết khí không đọc nổi, trên 18dp thì
         // bảng phình ra nuốt mất lưới lịch trên widget cao.
         val jqRowH = if (jqRows == 0) 0f else
-            ((h - dowH) / (weeks * ROW_RATIO + jqRows))
+            ((h - dowH - safeBottom) / (GRID_WEEKS * ROW_RATIO + jqRows))
                 .coerceIn(dp(context, 9f), dp(context, 18f))
-        val jqH = jqRowH * jqRows + (if (jqRows == 0) 0f else dp(context, 5f))
-        val gridH = h - dowH - jqH
+        val jqH = if (jqRows == 0) 0f else jqRowH * jqRows + dp(context, 5f) + safeBottom
+        val gridH = (h - dowH - jqH).coerceAtLeast(0f)
         val cellW = w / 7f
         val cellH = gridH / weeks
 
@@ -340,7 +375,7 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         // ── Bảng tiết khí: 12 hàng × 2 cặp cột, y như tab Lịch ──
         if (jqRows > 0) {
             drawJieQi(context, c, paint, w, dowH + gridH + dp(context, 5f),
-                jqRowH, jieQi, todayJdn)
+                jqRowH, safeBottom, jieQi, todayJdn)
         }
         return bmp
     }
@@ -350,16 +385,22 @@ class CalendarWidgetProvider : AppWidgetProvider() {
      * bảng ở tab Lịch: nền trắng, hàng lẻ tô nhạt, vách ngăn dọc giữa hai nửa,
      * mục đang hiệu lực tô màu nhấn.
      *
-     * Cột tên co đúng bằng chữ (đo bằng measureText, y như `width:1%` bên CSS)
-     * để cột ngày bắt đầu ngay sau nó thay vì bị đẩy sát mép.
+     * Hai cột nằm ở CHỖ CỐ ĐỊNH, giống hệt nhau ở cả hai nửa và ở mọi tháng:
+     * cột tên rộng đúng bằng tên dài nhất (đo bằng measureText, y như
+     * `width:1%` bên CSS), cột ngày bắt đầu ngay sau nó. Cỡ chữ hạ xuống vừa đủ
+     * để dòng dài nhất còn nằm trong nửa bảng — thà chữ nhỏ hơn một chút còn
+     * hơn để mốc ngày giờ tràn qua vách ngăn rồi bị mép widget cắt cụt.
+     *
+     * `bottomPad` là khoảng trắng chừa dưới hàng cuối cho góc bo của widget.
      */
     private fun drawJieQi(
         context: Context, c: Canvas, paint: Paint,
-        w: Int, top: Float, rowH: Float, jieQi: List<LunarTable.JieQi>, todayJdn: Int
+        w: Int, top: Float, rowH: Float, bottomPad: Float,
+        jieQi: List<LunarTable.JieQi>, todayJdn: Int
     ) {
-        val txtPx = minOf(rowH * 0.66f, dp(context, 12f))
-        val padX = dp(context, 5f)
-        val gap = dp(context, 6f)
+        val padX = dp(context, 5f)      // lề trái của mỗi nửa
+        val gap = dp(context, 6f)       // khoảng hở giữa cột tên và cột ngày
+        val padEnd = dp(context, 7f)    // lề phải: không cho chữ dính vách/mép
         val halfW = w / 2f
 
         // Mục đang hiệu lực: mốc CUỐI CÙNG không muộn hơn hôm nay, giống tab
@@ -367,15 +408,23 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         var active = -1
         for (i in jieQi.indices) if (jieQi[i].jdn <= todayJdn) active = i
 
-        // Bề rộng cột tên = tên dài nhất, đo thật.
-        paint.typeface = Typeface.DEFAULT
+        val dates = jieQi.map { dateText(it) }
+
+        // Đo bằng chữ ĐẬM: dòng đang hiệu lực in đậm, rộng hơn dòng thường, nên
+        // cột phải vừa cho nó thì mới vừa cho tất cả.
+        paint.typeface = Typeface.DEFAULT_BOLD
+        val txtPx = fitTextSize(
+            paint, minOf(rowH * 0.66f, dp(context, 12f)), dp(context, 7f),
+            halfW - padX - gap - padEnd, jieQi, dates
+        )
         paint.textSize = txtPx
         var nameW = 0f
         for (item in jieQi) nameW = maxOf(nameW, paint.measureText(item.name))
-        nameW += padX * 2
+        // Cột ngày bắt đầu ở đúng một chỗ: hai nửa và hàng tiêu đề thẳng hàng.
+        val dateDx = padX + nameW + gap
 
         val headH = rowH
-        val tableH = headH + rowH * 12
+        val tableH = headH + rowH * 12 + bottomPad
 
         paint.style = Paint.Style.FILL
         paint.color = Color.WHITE
@@ -389,7 +438,7 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         for (half in 0..1) {
             val x0 = halfW * half
             c.drawText(context.getString(R.string.col_jieqi), x0 + padX, headBase, paint)
-            c.drawText(context.getString(R.string.col_solar), x0 + nameW + gap, headBase, paint)
+            c.drawText(context.getString(R.string.col_solar), x0 + dateDx, headBase, paint)
         }
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = dp(context, 1.2f)
@@ -418,22 +467,18 @@ class CalendarWidgetProvider : AppWidgetProvider() {
                 paint.color = Color.parseColor("#222222")
                 c.drawText(item.name, x0 + padX, base, paint)
 
-                val (jy, jm, jd) = LunarTable.civilOf(item.jdn)
-                paint.typeface = if (on) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
                 paint.color = if (on) Color.parseColor("#222222") else Color.parseColor("#666666")
-                c.drawText(
-                    String.format(
-                        "%02d-%02d-%d %02d:%02d",
-                        jd, jm, jy, item.minutes / 60, item.minutes % 60
-                    ),
-                    x0 + nameW + gap, base, paint
-                )
+                c.drawText(dates[k], x0 + dateDx, base, paint)
             }
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 1f
-            paint.color = Color.parseColor("#EEEEEE")
-            c.drawLine(0f, y + rowH, w.toFloat(), y + rowH, paint)
-            paint.style = Paint.Style.FILL
+            // Vạch dưới hàng cuối là viền ngoài của bảng, không kẻ thêm — kẻ vào
+            // thì phần đệm góc bo bên dưới trông như một hàng trống.
+            if (r < 11) {
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = 1f
+                paint.color = Color.parseColor("#EEEEEE")
+                c.drawLine(0f, y + rowH, w.toFloat(), y + rowH, paint)
+                paint.style = Paint.Style.FILL
+            }
         }
 
         // vách ngăn giữa hai nửa — kẻ suốt cả bảng, kể cả hàng tiêu đề
@@ -444,6 +489,41 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         c.drawRect(0f, top, w.toFloat(), top + tableH, paint)
         paint.style = Paint.Style.FILL
         paint.typeface = Typeface.DEFAULT
+    }
+
+    /** Mốc ngày giờ của một tiết khí, đúng dạng hiện ở tab Lịch. */
+    private fun dateText(item: LunarTable.JieQi): String {
+        val (jy, jm, jd) = LunarTable.civilOf(item.jdn)
+        return String.format(
+            "%02d-%02d-%d %02d:%02d",
+            jd, jm, jy, item.minutes / 60, item.minutes % 60
+        )
+    }
+
+    /**
+     * Cỡ chữ lớn nhất — không quá `start`, không dưới `min` — mà tên tiết khí
+     * dài nhất cộng mốc ngày giờ dài nhất vẫn nằm trong `avail`.
+     *
+     * Chữ không co hoàn toàn tuyến tính theo textSize (hinting, làm tròn pixel)
+     * nên tính tỉ lệ xong phải đo lại; vài vòng là hội tụ.
+     */
+    private fun fitTextSize(
+        paint: Paint, start: Float, min: Float, avail: Float,
+        jieQi: List<LunarTable.JieQi>, dates: List<String>
+    ): Float {
+        var size = start
+        for (i in 0 until 6) {
+            paint.textSize = size
+            var nameW = 0f
+            for (item in jieQi) nameW = maxOf(nameW, paint.measureText(item.name))
+            var dateW = 0f
+            for (d in dates) dateW = maxOf(dateW, paint.measureText(d))
+            val need = nameW + dateW
+            if (need <= avail || size <= min) break
+            // Hạ thêm 1% cho chắc: đo lại ở vòng sau vẫn có thể nhỉnh hơn tỉ lệ.
+            size = maxOf(min, size * (avail / need) * 0.99f)
+        }
+        return size
     }
 
     /* ─────────────── Tự làm mới lúc nửa đêm ─────────────── */
@@ -489,6 +569,13 @@ class CalendarWidgetProvider : AppWidgetProvider() {
 
         /** Hàng lịch cao gấp ngần này lần hàng tiết khí — lấy theo tab Lịch. */
         private const val ROW_RATIO = 3.7f
+
+        /**
+         * Bảng tiết khí luôn chia theo ngần này hàng lịch — số hàng của tháng
+         * DÀI nhất — chứ không theo tháng đang xem, để khung bảng và cỡ chữ
+         * không nhảy mỗi lần bấm ‹ ›.
+         */
+        private const val GRID_WEEKS = 6
 
         /** Chưa chọn địa điểm thì lấy giờ Việt Nam — cùng cơ sở với lịch âm. */
         private const val DEFAULT_TZ = "Asia/Ho_Chi_Minh"
