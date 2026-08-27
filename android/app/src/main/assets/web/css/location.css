@@ -1,0 +1,118 @@
+/* ════════════════════════════════════════════════════════════════
+   location.css — Bảng chọn vị trí + bảng Nhật–Nguyệt
+   Kế thừa biến màu và hình khối của app.css để giữ đúng phong cách.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Overlay & panel (đồng bộ với #drumOverlay/#drumPanel) ── */
+#locOverlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0, 0, 0, .38); z-index: 2000;
+    align-items: flex-end; justify-content: center;
+}
+#locOverlay.open { display: flex; }
+
+#locPanel {
+    width: 100%; max-width: var(--max-w);
+    background: var(--bg-white);
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, .13);
+    padding-bottom: max(env(safe-area-inset-bottom), 8px);
+    animation: slideUp .22s cubic-bezier(.32, .72, 0, 1);
+    display: flex; flex-direction: column;
+    max-height: 88vh;
+}
+
+/* ── Ô tìm kiếm & nút GPS ── */
+#locSearchRow {
+    display: flex; gap: 6px; padding: 8px 12px 6px;
+}
+#locSearch {
+    flex: 1; min-width: 0;
+    padding: 7px 10px;
+    border: var(--border-std); border-radius: 6px;
+    font-size: 13px; color: var(--text-main);
+    background: var(--bg-white);
+    -webkit-appearance: none; appearance: none;
+}
+#locSearch:focus { outline: none; border: var(--border-accent); }
+
+#locGpsBtn {
+    flex-shrink: 0;
+    padding: 7px 10px;
+    border: var(--border-accent); border-radius: 6px;
+    background: var(--accent-light); color: var(--text-main);
+    font-size: 12px; font-weight: 600;
+    cursor: pointer; user-select: none; white-space: nowrap;
+}
+#locGpsBtn:active { opacity: .7; }
+
+#locStatus {
+    display: none;
+    padding: 0 12px 6px; font-size: 12px; color: var(--text-dim);
+}
+
+/* ── Danh sách kết quả ── */
+#locList {
+    flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    border-top: 1px solid var(--border-color);
+    min-height: 180px;
+}
+.loc-sec {
+    position: sticky; top: 0; z-index: 1;
+    padding: 5px 12px;
+    background: var(--bg-alt);
+    font-size: 11px; font-weight: 700; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: .04em;
+    border-bottom: 1px solid var(--border-color);
+}
+.loc-row {
+    display: flex; flex-direction: column; gap: 1px;
+    padding: 7px 12px;
+    border-bottom: 1px solid #f2f2f4;
+    cursor: pointer;
+}
+.loc-row:active { background: var(--accent-light); }
+.loc-name { font-size: 13px; color: var(--text-main); }
+.loc-sub  { font-size: 10.5px; color: var(--text-dim); }
+
+/* ── Nhập toạ độ thủ công ── */
+#locManualToggle {
+    padding: 8px 12px;
+    border-top: 1px solid var(--border-color);
+    font-size: 12.5px; font-weight: 600; color: var(--accent);
+    cursor: pointer; user-select: none;
+}
+#locManualBox {
+    display: none;
+    padding: 0 12px 10px;
+    border-top: 1px solid var(--border-color);
+}
+.loc-field {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 7px;
+}
+.loc-field label {
+    width: 62px; flex-shrink: 0;
+    font-size: 12px; color: var(--text-dim);
+}
+.loc-field input, .loc-field select {
+    flex: 1; min-width: 0;
+    padding: 6px 8px;
+    border: var(--border-std); border-radius: 5px;
+    font-size: 12.5px; color: var(--text-main);
+    background: var(--bg-white);
+}
+#locApply {
+    margin-top: 9px; width: 100%;
+    padding: 8px;
+    border: none; border-radius: 6px;
+    background: var(--accent); color: #fff;
+    font-size: 13px; font-weight: 700;
+    cursor: pointer;
+}
+#locApply:active { opacity: .8; }
+
+/* ── Bảng Nhật – Nguyệt ── */
+#astroPanel .info-pair { min-width: 0; }
+#astroPanel .val-norm  { overflow: hidden; text-overflow: ellipsis; }
+#astroPanel .info-pair-wide { flex: 1.6; }

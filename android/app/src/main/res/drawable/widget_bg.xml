@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Nền thân widget: bo góc dưới, màu nền hồng nhạt như lưới lịch trong app. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#FDECEF" />
+    <corners android:radius="16dp" />
+</shape>

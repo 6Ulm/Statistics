@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Widget chứa CẢ lịch tháng lẫn bảng 24 tiết khí, tức 6 hàng lịch cộng 13 hàng
+    bảng. Chừng ấy nội dung cần chiều cao thật:
+
+      * Mặc định 4×6 ô (targetCellHeight) — cỡ mà chữ đọc thoải mái.
+      * Sàn 4×5 ô (320dp = 70·5 − 30) để còn đặt được trên lưới màn hình chính
+        5 hàng mặc định của One UI. Ở cỡ này chữ tiết khí xuống chừng 8dp, đọc
+        được nhưng nhỏ — kéo cao thêm một hàng là khác hẳn.
+      * Kéo TO ra bao nhiêu cũng được; chữ lớn dần theo.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="320dp"
+    android:minResizeWidth="250dp"
+    android:minResizeHeight="320dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="6"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:initialLayout="@layout/widget_calendar"
+    android:previewLayout="@layout/widget_calendar"
+    android:description="@string/widget_desc"
+    android:updatePeriodMillis="0" />

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8"><title>Xem trước widget Lịch</title><style>
+body{margin:0;background:#79889a;font:14px/1.4 system-ui,sans-serif;padding:16px;
+     display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+figure{margin:0}
+figcaption{color:#fff;font:600 12px system-ui,sans-serif;padding-bottom:5px}
+.widget{border-radius:16px;overflow:hidden;background:#FDECEF;
+        box-shadow:0 3px 10px rgba(0,0,0,.28)}
+.whead{height:32px;display:flex;align-items:center;background:#D32F2F;color:#fff}
+.wnav{width:42px;text-align:center;font-size:19px;line-height:1}
+.wtitle{flex:1;text-align:center;font:700 12px system-ui,sans-serif;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+canvas{display:block}
+</style></head><body>
+<script type="module">
+/* ════════════════════════════════════════════════════════════════════
+   Bản mô phỏng CalendarWidgetProvider.kt để xem widget mà không cần build.
+
+   Canvas của trình duyệt và Canvas của Android dùng cùng một mô hình vẽ
+   (drawText / fillRect / textAlign / textSize) nên hình ra rất sát widget
+   thật. Thanh tiêu đề ở đây là HTML vì trong widget nó cũng là View thật
+   (widget_calendar.xml), không nằm trong bitmap.
+
+   Dữ liệu âm lịch và tiết khí đọc thẳng từ chính hai tệp assets mà widget
+   dùng — sai lệch giữa bản xem trước và widget thật là không thể xảy ra.
+   ════════════════════════════════════════════════════════════════════ */
+
+const CAN = ['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'];
+const CHI = ['Tý','Sửu','Dần','Mão','Thìn','Tỵ','Ngọ','Mùi','Thân','Dậu','Tuất','Hợi'];
+const TIET_KHI = ['Đông Chí','Tiểu Hàn','Đại Hàn','Lập Xuân','Vũ Thủy','Kinh Trập',
+    'Xuân Phân','Thanh Minh','Cốc Vũ','Lập Hạ','Tiểu Mãn','Mang Chủng','Hạ Chí',
+    'Tiểu Thử','Đại Thử','Lập Thu','Xử Thử','Bạch Lộ','Thu Phân','Hàn Lộ',
+    'Sương Giáng','Lập Đông','Tiểu Tuyết','Đại Tuyết'];
+
+function jdn(y,m,d){const a=Math.floor((14-m)/12),yy=y+4800-a,mm=m+12*a-3;
+  return d+Math.floor((153*mm+2)/5)+365*yy+Math.floor(yy/4)-Math.floor(yy/100)+Math.floor(yy/400)-32045;}
+function civilOf(j){const a=j+32044,b=Math.floor((4*a+3)/146097),c=a-Math.floor(146097*b/4),
+  d=Math.floor((4*c+3)/1461),e=c-Math.floor(1461*d/4),m=Math.floor((5*e+2)/153);
+  return [100*b+d-4800+Math.floor(m/10), m+3-12*Math.floor(m/10), e-Math.floor((153*m+2)/5)+1];}
+
+/* ── Đọc đúng hai bảng mà LunarTable.kt đọc ── */
+const base = new URL('assets/', location.href);
+const [lunTxt, jqTxt] = await Promise.all([
+    fetch(new URL('lunar_months.txt', base)).then(r => r.text()),
+    fetch(new URL('jieqi.txt', base)).then(r => r.text()),
+]);
+const lunLines = lunTxt.trim().split('\n');
+const GZ_EPOCH = parseInt(lunLines[0], 10);
+const MONTHS = lunLines.slice(1).map(l => l.split(' ').map(Number));   // [jdn, năm, tháng, nhuận]
+const JQ = jqTxt.trim().split('\n').map(l => l.split(' ').map(Number)); // [jdn, phút, chỉ số tên]
+
+function ganzhi(j){const i=((j-GZ_EPOCH)%60+60)%60;return [CAN[i%10],CHI[i%12]];}
+/** Tra tháng âm chứa ngày j — tìm nhị phân, y như LunarTable.lunarOf. */
+function lunarOf(j){
+    let lo=0, hi=MONTHS.length-1, at=-1;
+    while(lo<=hi){const mid=(lo+hi)>>1; if(MONTHS[mid][0]<=j){at=mid;lo=mid+1;} else hi=mid-1;}
+    if(at<0) return null;
+    return {day: j-MONTHS[at][0]+1, month: MONTHS[at][2], leap: MONTHS[at][3]===1};
+}
+/** 24 tiết khí của năm chứa ngày ref — bắt đầu từ Đông Chí, y như LunarTable. */
+function jieQiYearOf(ref){
+    let lo=0, hi=JQ.length-1, at=-1;
+    while(lo<=hi){const mid=(lo+hi)>>1; if(JQ[mid][0]<=ref){at=mid;lo=mid+1;} else hi=mid-1;}
+    if(at<0) return [];
+    let start=at; while(start>=0 && JQ[start][2]!==0) start--;
+    if(start<0 || start+23>=JQ.length) return [];
+    return JQ.slice(start,start+24).map(r=>localize({name:TIET_KHI[r[2]], jdn:r[0], minutes:r[1]}));
+}
+/** LunarTable.localize — bảng lưu giờ UTC+7, đổi sang múi giờ đang xem. */
+const TZ = new URLSearchParams(location.search).get('tz') || 'Asia/Ho_Chi_Minh';
+function tzOffsetMs(utcMs){
+    const f=new Intl.DateTimeFormat('en-US',{timeZone:TZ,hour12:false,year:'numeric',
+        month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const p=Object.fromEntries(f.formatToParts(new Date(utcMs)).map(x=>[x.type,x.value]));
+    return Date.UTC(+p.year,+p.month-1,+p.day,(+p.hour)%24,+p.minute,+p.second)-utcMs;
+}
+function localize(it){
+    const utcMs=(it.jdn-2440588)*86400000+it.minutes*60000-7*3600000;
+    const local=utcMs+tzOffsetMs(utcMs);
+    const days=Math.floor(local/86400000);
+    return {name:it.name, jdn:days+2440588, minutes:Math.floor((local-days*86400000)/60000)};
+}
+
+/* ── drawBody() của CalendarWidgetProvider.kt ── */
+function drawBody(canvas, wDp, hDp, density, year, month, todayJdn) {
+    const w = Math.round(wDp*density), h = Math.round(hDp*density);
+    canvas.width=w; canvas.height=h;
+    canvas.style.width=wDp+'px'; canvas.style.height=hDp+'px';
+    const c = canvas.getContext('2d');
+    const dp = v => v*density;
+
+    const first=new Date(year,month-1,1);
+    const lead=(first.getDay()+6)%7;
+    const daysInMonth=new Date(year,month,0).getDate();
+    const weeks=Math.max(1,Math.ceil((lead+daysInMonth)/7));
+
+    const ROW_RATIO = 3.7;
+    const jieQi=jieQiYearOf(jdn(year,month,15));
+    const dowH=Math.min(h*0.09, dp(15));
+    const jqRows = jieQi.length===24 ? 13 : 0;
+    const jqRowH = jqRows===0 ? 0
+        : Math.min(dp(18), Math.max(dp(9), (h-dowH)/(weeks*ROW_RATIO + jqRows)));
+    const jqH = jqRowH*jqRows + (jqRows?dp(5):0);
+    const gridH=h-dowH-jqH;
+    const cellW=w/7, cellH=gridH/weeks;
+
+    c.fillStyle='#FDECEF'; c.fillRect(0,0,w,h);
+
+    const dows=['T2','T3','T4','T5','T6','T7','CN'];
+    c.textAlign='center'; c.textBaseline='alphabetic';
+    c.font='bold '+Math.min(dowH*0.62, dp(9))+'px sans-serif';
+    for(let i=0;i<7;i++){
+        c.fillStyle = i===6 ? '#C62828' : '#7A2B33';
+        c.fillText(dows[i], cellW*(i+0.5), dowH*0.70);
+    }
+
+    const dayPx=Math.min(cellH*0.36, dp(17));
+    const lunPx=Math.min(cellH*0.27, dp(11.5));
+    const gzPx =Math.min(cellH*0.25, dp(11));
+    const showGanZhi = cellH >= dayPx + gzPx*2 + dp(6);
+
+    const startJdn=jdn(year,month,1)-lead;
+    for(let idx=0; idx<weeks*7; idx++){
+        const j=startJdn+idx, [cy,cm,cd]=civilOf(j);
+        const outside = cm!==month || cy!==year;
+        const x=cellW*(idx%7), y=dowH+cellH*Math.floor(idx/7);
+        const isToday = j===todayJdn;
+
+        if(isToday){
+            c.fillStyle='#FFFBEA'; c.fillRect(x+1,y+1,cellW-2,cellH-2);
+            c.strokeStyle='#D32F2F'; c.lineWidth=dp(1.6);
+            c.strokeRect(x+2,y+2,cellW-4,cellH-4);
+        } else if(outside){
+            c.fillStyle='#FDF5F6'; c.fillRect(x+1,y+1,cellW-2,cellH-2);
+        }
+
+        const fg = isToday?'#C62828': outside?'#B9A3A7':'#222222';
+        const dim= isToday?'#A06B30': outside?'#C2AEB2':'#6B6B6B';
+
+        c.textAlign='left';
+        c.font='bold '+dayPx+'px sans-serif';
+        c.fillStyle=fg;
+        const dayBase = y + dayPx + dp(3);
+        c.fillText(String(cd), x+cellW*0.09, dayBase);
+
+        c.textAlign='right';
+        c.font=lunPx+'px sans-serif';
+        c.fillStyle=dim;
+        const L=lunarOf(j);
+        c.fillText(L ? (L.day===1 ? L.day+'/'+L.month : String(L.day)) : '', x+cellW*0.93, dayBase);
+
+        if (showGanZhi) {
+            const [can,chi]=ganzhi(j);
+            c.textAlign='center';
+            c.font=(isToday?'bold ':'')+gzPx+'px sans-serif';
+            c.fillStyle = isToday?'#7A4A1C':dim;
+            const rest = cellH - (dayBase - y);
+            const lineGap = gzPx*1.28;
+            const top = dayBase + (rest - (lineGap + gzPx))/2;
+            c.fillText(can, x+cellW/2, top + gzPx*0.75);
+            c.fillText(chi, x+cellW/2, top + gzPx*0.75 + lineGap);
+        }
+    }
+
+    c.strokeStyle='#F3C6CD'; c.lineWidth=1;
+    for(let i=1;i<7;i++){c.beginPath();c.moveTo(cellW*i,dowH);c.lineTo(cellW*i,dowH+gridH);c.stroke();}
+    for(let r=0;r<=weeks;r++){const y=dowH+cellH*r;c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke();}
+
+    if (jqRows) drawJieQi(c, dp, w, dowH+gridH+dp(5), jqRowH, jieQi, todayJdn);
+}
+
+/* ── drawJieQi() của CalendarWidgetProvider.kt ── */
+function drawJieQi(c, dp, w, top, rowH, jieQi, todayJdn) {
+    const txtPx = Math.min(rowH*0.66, dp(12));
+    const padX = dp(5), gap = dp(6), halfW = w/2;
+
+    let active = -1;
+    for (let i=0;i<jieQi.length;i++) if (jieQi[i].jdn <= todayJdn) active = i;
+
+    c.font = txtPx+'px sans-serif';
+    let nameW = 0;
+    for (const it of jieQi) nameW = Math.max(nameW, c.measureText(it.name).width);
+    nameW += padX*2;
+
+    const headH = rowH, tableH = headH + rowH*12;
+    c.fillStyle='#fff'; c.fillRect(0, top, w, tableH);
+
+    c.textAlign='left'; c.textBaseline='alphabetic';
+    c.font='bold '+txtPx+'px sans-serif'; c.fillStyle='#222222';
+    const headBase = top + headH*0.72;
+    for (let half=0; half<2; half++) {
+        const x0 = halfW*half;
+        c.fillText('Tiết Khí', x0+padX, headBase);
+        c.fillText('Dương lịch', x0+nameW+gap, headBase);
+    }
+    c.strokeStyle='#DDDDDD'; c.lineWidth=dp(1.2);
+    c.beginPath(); c.moveTo(0, top+headH); c.lineTo(w, top+headH); c.stroke();
+
+    for (let r=0; r<12; r++) {
+        const y = top + headH + rowH*r;
+        if (r%2===0) { c.fillStyle='#FAFAFA'; c.fillRect(0, y, w, rowH); }
+        for (let half=0; half<2; half++) {
+            const k = r + half*12, it = jieQi[k], x0 = halfW*half, on = k===active;
+            if (on) { c.fillStyle='#E8EDFF'; c.fillRect(x0, y, halfW, rowH); }
+            const base = y + rowH*0.72;
+            c.textAlign='left';
+            c.font=(on?'bold ':'')+txtPx+'px sans-serif';
+            c.fillStyle='#222222';
+            c.fillText(it.name, x0+padX, base);
+            const [jy,jm,jd]=civilOf(it.jdn);
+            const p=n=>(n<10?'0':'')+n;
+            c.fillStyle = on ? '#222222' : '#666666';
+            c.fillText(p(jd)+'-'+p(jm)+'-'+jy+' '+p(Math.floor(it.minutes/60))+':'+p(it.minutes%60),
+                       x0+nameW+gap, base);
+        }
+        c.strokeStyle='#EEEEEE'; c.lineWidth=1;
+        c.beginPath(); c.moveTo(0, y+rowH); c.lineTo(w, y+rowH); c.stroke();
+    }
+    c.strokeStyle='#DDDDDD'; c.lineWidth=1;
+    c.beginPath(); c.moveTo(halfW, top); c.lineTo(halfW, top+tableH); c.stroke();
+    c.strokeRect(0, top, w, tableH);
+}
+
+const HEADER_DP = 32;
+const params = new URLSearchParams(location.search);
+const today = params.get('today') || new Date().toISOString().slice(0,10);
+const [ty,tm,td] = today.split('-').map(Number);
+const todayJdn = jdn(ty,tm,td);
+const view = (params.get('month') || `${ty}-${tm}`).split('-').map(Number);
+
+// Kích thước widget thật trên lưới màn hình chính của Samsung One UI.
+// Sàn là 4×4 ô (xem calendar_widget_info.xml); các cỡ dưới đó đã bị chặn vì ô
+// lịch thấp tới mức can chi tự tắt và số ngày không đọc nổi. Ở đây chỉ xem 4×4
+// và các cỡ KÉO TO ra, vì đó là tất cả những gì người dùng dựng được.
+const SIZES = [
+    [330, 440, '4×5 ô'],
+    [330, 530, '4×6 ô'],
+    [330, 620, '4×7 ô (gần kín màn hình)'],
+    [412, 620, '5×7 ô'],
+];
+for (const [wd,hd,label] of SIZES) {
+    const fig=document.createElement('figure');
+    fig.innerHTML = `<figcaption>${label} — ${wd}×${hd}dp</figcaption>
+        <div class="widget" style="width:${wd}px">
+          <div class="whead"><div class="wnav">‹</div>
+            <div class="wtitle">LỊCH ÂM THÁNG ${view[1]}/${view[0]}</div>
+            <div class="wnav">›</div></div>
+        </div>`;
+    const cv=document.createElement('canvas');
+    fig.querySelector('.widget').append(cv);
+    document.body.append(fig);
+    drawBody(cv, wd, hd-HEADER_DP, 3, view[0], view[1], todayJdn);
+}
+document.body.dataset.ready='1';
+</script>
+</body></html>
