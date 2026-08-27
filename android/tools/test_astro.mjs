@@ -13,6 +13,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ASTRO = path.join(HERE, '..', 'app', 'src', 'main', 'assets', 'web', 'js', 'astro.js');
@@ -20,6 +21,11 @@ const ASTRO = path.join(HERE, '..', 'app', 'src', 'main', 'assets', 'web', 'js',
 const g = globalThis;
 new Function('window', fs.readFileSync(ASTRO, 'utf8'))(g);
 const A = g.Astro;
+
+// lunar.js chỉ dùng cho phần kiểm bất biến của Vọng ở cuối tệp.
+const require_ = createRequire(import.meta.url);
+const { Solar, ShouXingUtil } = require_(
+    path.join(HERE, '..', 'app', 'src', 'main', 'assets', 'web', 'js', 'lunar.js'));
 
 // date, lat, lon, tz, {sunrise, sunset, moonrise, moonset, illum}  ← PyEphem
 const CASES = [
@@ -67,6 +73,35 @@ for (const [name, [y, m, d], , lon, tz] of CASES) {
     const eot = A.equationOfTime(A.jdFromUTC(y, m, d) + (noon - tz * 60) / 1440);
     const tst = A.toTrueSolarMinutes(noon, lon, tz, eot);
     check(name.slice(0, 9), tst, 720, 0.02, 'min');
+}
+
+/* ── Vọng phải là một mốc THIÊN VĂN, không phải Sóc + nửa tuần trăng ──
+   Vọng là lúc hiệu kinh độ Mặt Trăng − Mặt Trời đạt 180°, giải bằng chính
+   nghiệm của Sóc nhưng lệch pha π. Hai bất biến:
+
+     1. Vọng của tuần trăng k phải nằm HẲN trong khoảng (Sóc_k, Sóc_k+1);
+     2. khoảng Sóc→Vọng KHÔNG cố định — quỹ đạo Mặt Trăng là ellip.
+
+   Điều 2 chính là lý do không được cộng 14,765 ngày: quét 1900–2100 thì khoảng
+   ấy trải từ 13,90 tới 15,61 ngày, tức lệch tới ±0,85 ngày so với trung bình. */
+console.log('Vọng: bất biến thiên văn');
+{
+    const soc  = k => ShouXingUtil.shuoHigh(k * 2 * Math.PI, 8);
+    const vong = k => ShouXingUtil.shuoHigh(k * 2 * Math.PI + Math.PI, 8);
+    const kOf = (y, m, d) =>
+        Math.round((Solar.fromYmd(y, m, d).getJulianDay() + 0.5 - Solar.J2000) / 29.5306);
+    let outside = 0, lo = 99, hi = -99;
+    for (let k = kOf(1900, 1, 1); k <= kOf(2100, 1, 1); k++) {
+        const s = soc(k), v = vong(k), s2 = soc(k + 1);
+        if (!(v > s && v < s2)) outside++;
+        const gap = v - s;
+        if (gap < lo) lo = gap;
+        if (gap > hi) hi = gap;
+    }
+    check('Vọng ngoài khoảng Sóc→Sóc', outside, 0, 0, 'tháng');
+    // Trải rộng hơn 1 ngày thì cách cộng nửa tuần trăng chắc chắn sai — canh
+    // để nếu ai đó thay bằng hằng số thì phép thử đỏ ngay.
+    check('trải rộng Sóc→Vọng', hi - lo, 1.7, 0.3, 'ngày');
 }
 
 console.log(`\n${checks - fail}/${checks} phép kiểm đạt.`);
