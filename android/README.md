@@ -395,21 +395,43 @@ Bảng tiết khí là một khối **cố định**, không đổi khi lật th
 * Hai cột nằm ở **chỗ cố định**: cột tên rộng đúng bằng tên dài nhất (đo bằng
   `measureText`, y như `width:1%` bên CSS), cột ngày bắt đầu ngay sau nó — giống
   nhau ở cả hai nửa bảng và ở mọi tháng.
-* **Cỡ chữ hạ xuống cho vừa bề ngang**: lấy cỡ lớn nhất mà "tên dài nhất + mốc
-  ngày giờ dài nhất" vẫn nằm trong nửa bảng (đo bằng chữ đậm, vì dòng đang hiệu
-  lực in đậm và rộng hơn). Trước đây cỡ chữ chỉ tính theo chiều cao hàng, nên
-  trên widget hẹp cột "Dương lịch" tràn qua vách ngăn rồi bị mép widget cắt cụt.
+* **Cỡ chữ lấy hai ràng buộc, không lấy hệ số đoán chừng.** Theo chiều cao:
+  `Paint.FontMetrics` của chính phông đang dùng cho biết một dòng chiếm bao
+  nhiêu, chia ra là được cỡ lớn nhất còn nằm trọn trong hàng — tiếng Việt dấu
+  chồng (Ậ, Ổ, ế) cao hơn Latin trơn, mà `ascent` đã tính sẵn khoản ấy. Theo bề
+  ngang: hạ tiếp cho tới khi "tên dài nhất + mốc ngày giờ dài nhất" nằm gọn
+  trong nửa bảng (đo bằng chữ đậm, vì dòng đang hiệu lực in đậm và rộng hơn).
+  Trần vẫn là 12dp cho khớp bảng ở tab Lịch. Hệ số 0,66 cũ chừa thừa quá tay:
+  trên widget 4×5 của S21 chữ chỉ còn 7,1dp trong khi hàng cao 10,7dp và bề
+  ngang vẫn dư hơn 40dp.
+* **Lề mỗi nửa bảng co giãn**: chật thì bóp về mức tối thiểu (3 · 4 · 4dp) để
+  dành chỗ cho chữ, dư ra bao nhiêu trả lại cho lề tới mức rộng rãi (5 · 6 · 7dp).
+  Trên S21 nửa bảng chỉ rộng ~165dp nên vài dp lề ấy đổi thẳng thành cỡ chữ.
+* Bề rộng cột ngày chốt theo **khuôn `00-00-0000 00:00`**, không theo mốc của
+  năm đang xem, nên cột không nhích khi lật sang năm khác.
 * **Chừa đệm đáy đúng bằng bán kính góc bo**. Android 12 trở lên tự bo góc mọi
   widget theo `system_app_widget_background_radius` (One UI để khá rộng); bảng
   chạm sát mép thì cung tròn ăn mất chữ đầu của hàng cuối (Mang Chủng) và đuôi
   giờ của nửa phải (Đại Tuyết). Bán kính đọc thẳng từ hệ thống, không dưới 16dp
   của `widget_bg.xml` và không quá 32dp.
 
-| Cỡ widget | Kết quả |
-|---|---|
-| 4×5 ô (sàn) | đọc được nhưng chữ tiết khí chỉ ~8dp |
-| **4×6 ô (mặc định)** | chữ thoải mái, lịch vẫn đủ chỗ cho can chi |
-| 4×7 ô trở lên | gần như y hệt tab Lịch |
+Cỡ chữ bảng tiết khí đo trên hai máy đích (`node tools/test_widget_layout.mjs`):
+
+| Máy · cỡ widget | Trước | Sau | Ràng buộc |
+|---|---|---|---|
+| S21 · 4×5 (330×440dp) | 7,1dp | **9,6dp** | chiều cao hàng |
+| S21 · 4×6 (330×530dp) | 8,8dp | **10,6dp** | bề ngang nửa bảng |
+| A51 · 4×5 (380×460dp) | 7,4dp | **10,1dp** | chiều cao hàng |
+| A51 · 4×6 (380×560dp) | 9,3dp | **12,0dp** | chạm trần 12dp |
+
+S21 hẹp hơn A51 (màn hình 360dp so với 412dp) nên **trần thật của S21 là ~10,6dp**:
+nửa bảng chỉ rộng ~165dp, mà "Sương Giáng" cộng "07-12-2026 09:52" đã chiếm gần
+hết. Kéo widget cao thêm không làm chữ to hơn nữa — chỉ đổi cách hiện mốc ngày
+giờ mới gỡ được, mà như thế lại lệch với bảng ở tab Lịch.
+
+Sàn 250dp (`minResizeWidth`, phải tự tay bóp mới có) cho chữ 7,8dp. Không nâng
+sàn ấy bằng manifest được: `minWidth` quá 250dp thì công thức ô của Android đòi
+5 cột, widget hết đặt được lên lưới 4 cột của One UI.
 
 Sàn đặt ở 4×5 để còn đặt được trên lưới màn hình chính 5 hàng mặc định của One
 UI; kéo cao thêm một hàng là khác hẳn.
@@ -419,6 +441,20 @@ từ `qmdj.location` trong SharedPreferences. Bảng `jieqi.txt` lưu giờ ở 
 widget quy đổi lại bằng `TimeZone.getOffset()` — tra theo từng thời điểm, nên
 giờ mùa đông của nước có DST không bị cộng nhầm offset mùa hè. Không có bước
 này thì cùng một tiết khí, widget và ứng dụng lệch nhau tới mấy tiếng.
+
+Bố cục bảng có phép thử riêng, đo số chứ không nhìn ảnh:
+
+```bash
+node tools/test_widget_layout.mjs
+```
+
+Nó dựng `widget_preview.html` ở đúng cấu hình S21 (360dp @3x) và A51 (412dp
+@2,625x), quét dải cỡ widget mà lưới One UI dựng ra, rồi canh năm điều: giá trị
+không tràn qua vách ngăn, chữ không nhỏ dưới ngưỡng đọc được, hàng cuối nằm trên
+cung góc bo, lưới lịch không bị bảng nuốt, và **bảng không đổi khi lật tháng** —
+tháng 4, 5 và 6 hàng lịch phải cho ra cùng một khung, cùng cỡ chữ, cùng vị trí
+cột. Phông của Chromium rộng hơn Roboto nên cỡ chữ đo được là phía an toàn: trên
+máy thật chữ chỉ có thể to hơn con số ấy.
 
 Xem trước widget mà không cần dựng APK:
 

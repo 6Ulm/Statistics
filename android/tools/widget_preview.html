@@ -171,12 +171,22 @@ function drawBody(canvas, wDp, hDp, density, year, month, todayJdn) {
     for(let i=1;i<7;i++){c.beginPath();c.moveTo(cellW*i,dowH);c.lineTo(cellW*i,dowH+gridH);c.stroke();}
     for(let r=0;r<=weeks;r++){const y=dowH+cellH*r;c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke();}
 
-    if (jqRows) drawJieQi(c, dp, w, dowH+gridH+dp(5), jqRowH, safeBottom, jieQi, todayJdn);
+    const jq = jqRows
+        ? drawJieQi(c, dp, w, dowH+gridH+dp(5), jqRowH, safeBottom, jieQi, todayJdn)
+        : null;
+
+    // Số đo trả về cho tools/test_widget_layout.mjs — phép thử cần biết cột nằm
+    // đâu, chữ to bao nhiêu, đáy chừa bao nhiêu, chứ nhìn ảnh thì không đo được.
+    return { wDp, hDp, density, weeks, dowH, jqRowH, jqH, gridH, cellH, safeBottom, jq };
 }
 
 /* ── drawJieQi() của CalendarWidgetProvider.kt ── */
 function drawJieQi(c, dp, w, top, rowH, bottomPad, jieQi, todayJdn) {
-    const padX = dp(5), gap = dp(6), padEnd = dp(7), halfW = w/2;
+    const halfW = w/2;
+    // Lề co giãn: chật thì bóp về mức tối thiểu để dành chỗ cho chữ, rộng thì
+    // nới ra cho thoáng (xem drawJieQi bên Kotlin).
+    const padMin=dp(3), padMax=dp(5), gapMin=dp(4), gapMax=dp(6),
+          endMin=dp(4), endMax=dp(7);
 
     let active = -1;
     for (let i=0;i<jieQi.length;i++) if (jieQi[i].jdn <= todayJdn) active = i;
@@ -189,30 +199,52 @@ function drawJieQi(c, dp, w, top, rowH, bottomPad, jieQi, todayJdn) {
 
     // Cỡ chữ lớn nhất mà dòng dài nhất còn nằm gọn trong nửa bảng — đo bằng chữ
     // ĐẬM vì dòng đang hiệu lực in đậm, rộng hơn dòng thường.
-    const avail = halfW - padX - gap - padEnd;
+    const avail = halfW - padMin - gapMin - endMin;
+    // Cột ngày chốt theo KHUÔN cố định (chữ số Roboto rộng bằng nhau) nên không
+    // nhích khi lật sang năm khác; vẫn so với mốc thật cho chắc.
+    const DATE_TEMPLATE = '00-00-0000 00:00';
     const widest = size => {
         c.font = 'bold '+size+'px sans-serif';
-        let nw=0, dw=0;
+        let nw=0, dw=c.measureText(DATE_TEMPLATE).width;
         for (const it of jieQi) nw = Math.max(nw, c.measureText(it.name).width);
         for (const d of dates)  dw = Math.max(dw, c.measureText(d).width);
         return [nw, dw];
     };
+    // Cỡ chữ theo chiều cao hàng, tính bằng FontMetrics thật (Paint.FontMetrics
+    // bên Kotlin) chứ không nhân hệ số đoán chừng — chữ Việt dấu chồng cao hơn
+    // Latin trơn, ascent đã tính sẵn khoản ấy.
+    const lineRatio = size => {
+        c.font = 'bold '+size+'px sans-serif';
+        const m = c.measureText('Ậy');
+        return (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent) / size;
+    };
     const minPx = dp(7);
-    let txtPx = Math.min(rowH*0.66, dp(12));
+    let txtPx = Math.min(rowH/lineRatio(100), dp(12));
     for (let i=0;i<6;i++) {
         const [nw,dw] = widest(txtPx);
         if (nw+dw <= avail || txtPx <= minPx) break;
         txtPx = Math.max(minPx, txtPx*(avail/(nw+dw))*0.99);
     }
-    const nameW = widest(txtPx)[0];
+    const [nameW, maxDateW] = widest(txtPx);
+    // Chỗ chữ không dùng hết trả lại cho ba khoản lề theo tỉ lệ dư địa.
+    const room = (padMax-padMin) + (gapMax-gapMin) + (endMax-endMin);
+    const slack = Math.max(0, Math.min(room, avail - nameW - maxDateW));
+    const f = room <= 0 ? 0 : slack/room;
+    const padX   = padMin + (padMax-padMin)*f;
+    const gap    = gapMin + (gapMax-gapMin)*f;
+    const padEnd = endMin + (endMax-endMin)*f;
     const dateDx = padX + nameW + gap;   // cột ngày: một chỗ cố định cho cả hai nửa
+    // Đường cơ sở: khối chữ cân giữa hàng theo metrics của chính cỡ chữ ấy.
+    const fmM = (c.font = 'bold '+txtPx+'px sans-serif', c.measureText('Ậy'));
+    const baseDy = (rowH - (fmM.fontBoundingBoxAscent + fmM.fontBoundingBoxDescent)) / 2
+                 + fmM.fontBoundingBoxAscent;
 
     const headH = rowH, tableH = headH + rowH*12 + bottomPad;
     c.fillStyle='#fff'; c.fillRect(0, top, w, tableH);
 
     c.textAlign='left'; c.textBaseline='alphabetic';
     c.font='bold '+txtPx+'px sans-serif'; c.fillStyle='#222222';
-    const headBase = top + headH*0.72;
+    const headBase = top + baseDy;
     for (let half=0; half<2; half++) {
         const x0 = halfW*half;
         c.fillText('Tiết Khí', x0+padX, headBase);
@@ -227,7 +259,7 @@ function drawJieQi(c, dp, w, top, rowH, bottomPad, jieQi, todayJdn) {
         for (let half=0; half<2; half++) {
             const k = r + half*12, it = jieQi[k], x0 = halfW*half, on = k===active;
             if (on) { c.fillStyle='#E8EDFF'; c.fillRect(x0, y, halfW, rowH); }
-            const base = y + rowH*0.72;
+            const base = y + baseDy;
             c.textAlign='left';
             c.font=(on?'bold ':'')+txtPx+'px sans-serif';
             c.fillStyle='#222222';
@@ -245,6 +277,9 @@ function drawJieQi(c, dp, w, top, rowH, bottomPad, jieQi, todayJdn) {
     c.strokeStyle='#DDDDDD'; c.lineWidth=1;
     c.beginPath(); c.moveTo(halfW, top); c.lineTo(halfW, top+tableH); c.stroke();
     c.strokeRect(0, top, w, tableH);
+
+    return { txtPx, nameW, maxDateW, dateDx, padX, gap, padEnd, halfW, top, tableH,
+             bottomPad, baseDy, lineH: fmM.fontBoundingBoxAscent + fmM.fontBoundingBoxDescent };
 }
 
 const HEADER_DP = 32;
@@ -260,12 +295,26 @@ const view = (params.get('month') || `${ty}-${tm}`).split('-').map(Number);
 // Sàn là 4×4 ô (xem calendar_widget_info.xml); các cỡ dưới đó đã bị chặn vì ô
 // lịch thấp tới mức can chi tự tắt và số ngày không đọc nổi. Ở đây chỉ xem 4×4
 // và các cỡ KÉO TO ra, vì đó là tất cả những gì người dùng dựng được.
-const SIZES = [
-    [330, 440, '4×5 ô'],
-    [330, 530, '4×6 ô'],
-    [330, 620, '4×7 ô (gần kín màn hình)'],
-    [412, 620, '5×7 ô'],
-];
+const SIZES = params.get('sizes')
+    // ?sizes=330x440,380x530 — tools/test_widget_layout.mjs dựng ma trận cỡ
+    // widget của từng máy qua đây thay vì phải chép lại bố cục lần nữa.
+    ? params.get('sizes').split(',').map(s => {
+        const [wd, hd] = s.split('x').map(Number);
+        return [wd, hd, `${wd}×${hd}dp`];
+      })
+    : [
+        // Cỡ widget 4 cột trên lưới One UI của hai máy đích. Bề ngang ≈ 0,92×
+        // bề ngang màn hình: S21 (360dp) ra ~330dp, A51 (412dp) ra ~380dp.
+        // Mật độ hai máy khác nhau (3 và 2,625) nhưng bố cục tính theo dp nên
+        // ra gần như y hệt — xem tools/test_widget_layout.mjs.
+        [330, 440, 'S21 · 4×5 ô (sàn)'],
+        [330, 530, 'S21 · 4×6 ô (mặc định)'],
+        [380, 460, 'A51 · 4×5 ô (sàn)'],
+        [380, 560, 'A51 · 4×6 ô (mặc định)'],
+      ];
+// Mật độ màn hình: S21 là 3, A51 là 2,625 — cỡ chữ tính bằng px nên khác nhau.
+const DENSITY = Number(params.get('density')) || 3;
+window.__wlayout = [];
 for (const [wd,hd,label] of SIZES) {
     const fig=document.createElement('figure');
     fig.innerHTML = `<figcaption>${label} — ${wd}×${hd}dp</figcaption>
@@ -277,7 +326,9 @@ for (const [wd,hd,label] of SIZES) {
     const cv=document.createElement('canvas');
     fig.querySelector('.widget').append(cv);
     document.body.append(fig);
-    drawBody(cv, wd, hd-HEADER_DP, 3, view[0], view[1], todayJdn);
+    window.__wlayout.push(
+        drawBody(cv, wd, hd-HEADER_DP, DENSITY, view[0], view[1], todayJdn)
+    );
 }
 document.body.dataset.ready='1';
 </script>

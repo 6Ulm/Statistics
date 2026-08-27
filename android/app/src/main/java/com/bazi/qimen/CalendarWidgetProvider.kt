@@ -398,10 +398,14 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         w: Int, top: Float, rowH: Float, bottomPad: Float,
         jieQi: List<LunarTable.JieQi>, todayJdn: Int
     ) {
-        val padX = dp(context, 5f)      // lề trái của mỗi nửa
-        val gap = dp(context, 6f)       // khoảng hở giữa cột tên và cột ngày
-        val padEnd = dp(context, 7f)    // lề phải: không cho chữ dính vách/mép
         val halfW = w / 2f
+        // Lề của mỗi nửa bảng co giãn: khi chật thì bóp về mức tối thiểu để
+        // dành chỗ cho CHỮ, khi rộng thì nới ra cho thoáng. Trên S21 nửa bảng
+        // chỉ rộng ~165dp mà "Sương Giáng + 07-12-2026 09:52" đã gần kín, nên
+        // vài dp lề ấy đổi được thẳng thành cỡ chữ.
+        val padMin = dp(context, 3f);  val padMax = dp(context, 5f)   // lề trái
+        val gapMin = dp(context, 4f);  val gapMax = dp(context, 6f)   // giữa hai cột
+        val endMin = dp(context, 4f);  val endMax = dp(context, 7f)   // lề phải
 
         // Mục đang hiệu lực: mốc CUỐI CÙNG không muộn hơn hôm nay, giống tab
         // Lịch. Hôm nay nằm ngoài dãy đang hiện thì không tô mục nào.
@@ -410,16 +414,31 @@ class CalendarWidgetProvider : AppWidgetProvider() {
 
         val dates = jieQi.map { dateText(it) }
 
-        // Đo bằng chữ ĐẬM: dòng đang hiệu lực in đậm, rộng hơn dòng thường, nên
-        // cột phải vừa cho nó thì mới vừa cho tất cả.
+        // Đo bằng chữ ĐẬM: dòng đang hiệu lực in đậm, cao và rộng hơn dòng
+        // thường, nên hàng vừa cho nó thì vừa cho tất cả.
         paint.typeface = Typeface.DEFAULT_BOLD
         val txtPx = fitTextSize(
-            paint, minOf(rowH * 0.66f, dp(context, 12f)), dp(context, 7f),
-            halfW - padX - gap - padEnd, jieQi, dates
+            paint, minOf(textSizeForRow(paint, rowH), dp(context, 12f)), dp(context, 7f),
+            halfW - padMin - gapMin - endMin, jieQi, dates
         )
         paint.textSize = txtPx
-        var nameW = 0f
-        for (item in jieQi) nameW = maxOf(nameW, paint.measureText(item.name))
+        // Đường cơ sở: đặt khối chữ CÂN GIỮA hàng theo metrics của chính cỡ chữ
+        // ấy. Hệ số 0,72 cũ là ước chừng — chữ nhỏ thì lệch lên, chữ to thì dấu
+        // của "Đại Tuyết", "Bạch Lộ" thò lên hàng trên.
+        val fm = paint.fontMetrics
+        val baseDy = (rowH - (fm.descent - fm.ascent)) / 2f - fm.ascent
+        val nameW = widestName(paint, jieQi)
+        val dateW = widestDate(paint, dates)
+
+        // Chỗ chữ không dùng hết thì trả lại cho ba khoản lề, chia theo đúng tỉ
+        // lệ dư địa của từng khoản — rộng rãi khi có chỗ, chật khi không.
+        val room = (padMax - padMin) + (gapMax - gapMin) + (endMax - endMin)
+        val slack = (halfW - padMin - gapMin - endMin - nameW - dateW).coerceIn(0f, room)
+        val f = if (room <= 0f) 0f else slack / room
+        val padX = padMin + (padMax - padMin) * f
+        val gap = gapMin + (gapMax - gapMin) * f
+        val padEnd = endMin + (endMax - endMin) * f
+
         // Cột ngày bắt đầu ở đúng một chỗ: hai nửa và hàng tiêu đề thẳng hàng.
         val dateDx = padX + nameW + gap
 
@@ -434,7 +453,7 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         paint.typeface = Typeface.DEFAULT_BOLD
         paint.textAlign = Paint.Align.LEFT
         paint.color = Color.parseColor("#222222")
-        val headBase = top + headH * 0.72f
+        val headBase = top + baseDy
         for (half in 0..1) {
             val x0 = halfW * half
             c.drawText(context.getString(R.string.col_jieqi), x0 + padX, headBase, paint)
@@ -461,7 +480,7 @@ class CalendarWidgetProvider : AppWidgetProvider() {
                     paint.color = Color.parseColor("#E8EDFF")
                     c.drawRect(x0, y, x0 + halfW, y + rowH, paint)
                 }
-                val base = y + rowH * 0.72f
+                val base = y + baseDy
                 paint.textAlign = Paint.Align.LEFT
                 paint.typeface = if (on) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
                 paint.color = Color.parseColor("#222222")
@@ -500,6 +519,44 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         )
     }
 
+    /** Tên tiết khí dài nhất — dãy 24 tên là cố định nên số này không đổi. */
+    private fun widestName(paint: Paint, jieQi: List<LunarTable.JieQi>): Float {
+        var v = 0f
+        for (item in jieQi) v = maxOf(v, paint.measureText(item.name))
+        return v
+    }
+
+    /**
+     * Bề rộng cột ngày. Lấy theo KHUÔN `DATE_TEMPLATE` chứ không chỉ theo mốc
+     * của năm đang xem: chữ số của Roboto rộng bằng nhau nên hai con số bằng
+     * nhau, mà khuôn thì cố định — cột không nhích khi lật sang năm khác. Vẫn
+     * so với mốc thật để phòng phông có chữ số rộng hẹp khác nhau.
+     */
+    private fun widestDate(paint: Paint, dates: List<String>): Float {
+        var v = paint.measureText(DATE_TEMPLATE)
+        for (d in dates) v = maxOf(v, paint.measureText(d))
+        return v
+    }
+
+    /**
+     * Cỡ chữ lớn nhất mà một dòng chữ còn nằm trọn trong hàng cao `rowH`.
+     *
+     * Đo bằng `FontMetrics` của chính phông đang dùng thay vì nhân với một hệ
+     * số đoán chừng: tiếng Việt có dấu chồng (Ậ, Ổ, ế) nên phần trên đường cơ
+     * sở cao hơn hẳn chữ Latin trơn, mà `ascent` đã tính sẵn khoản ấy. Hệ số
+     * 0,66 cũ chừa thừa quá tay — trên widget 4×5 của S21 chữ chỉ còn ~7dp
+     * trong khi hàng cao 10,7dp và bề ngang vẫn thừa hơn 40dp.
+     */
+    private fun textSizeForRow(paint: Paint, rowH: Float): Float {
+        val probe = 100f
+        val old = paint.textSize
+        paint.textSize = probe
+        val fm = paint.fontMetrics
+        paint.textSize = old
+        val lineRatio = (fm.descent - fm.ascent) / probe
+        return if (lineRatio <= 0f) rowH * 0.66f else rowH / lineRatio
+    }
+
     /**
      * Cỡ chữ lớn nhất — không quá `start`, không dưới `min` — mà tên tiết khí
      * dài nhất cộng mốc ngày giờ dài nhất vẫn nằm trong `avail`.
@@ -514,11 +571,7 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         var size = start
         for (i in 0 until 6) {
             paint.textSize = size
-            var nameW = 0f
-            for (item in jieQi) nameW = maxOf(nameW, paint.measureText(item.name))
-            var dateW = 0f
-            for (d in dates) dateW = maxOf(dateW, paint.measureText(d))
-            val need = nameW + dateW
+            val need = widestName(paint, jieQi) + widestDate(paint, dates)
             if (need <= avail || size <= min) break
             // Hạ thêm 1% cho chắc: đo lại ở vòng sau vẫn có thể nhỉnh hơn tỉ lệ.
             size = maxOf(min, size * (avail / need) * 0.99f)
@@ -576,6 +629,9 @@ class CalendarWidgetProvider : AppWidgetProvider() {
          * không nhảy mỗi lần bấm ‹ ›.
          */
         private const val GRID_WEEKS = 6
+
+        /** Khuôn mốc ngày giờ dài nhất — dùng để chốt bề rộng cột "Dương lịch". */
+        private const val DATE_TEMPLATE = "00-00-0000 00:00"
 
         /** Chưa chọn địa điểm thì lấy giờ Việt Nam — cùng cơ sở với lịch âm. */
         private const val DEFAULT_TZ = "Asia/Ho_Chi_Minh"

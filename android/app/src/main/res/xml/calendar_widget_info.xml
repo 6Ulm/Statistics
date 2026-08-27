@@ -5,8 +5,11 @@
 
       * Mặc định 4×6 ô (targetCellHeight) — cỡ mà chữ đọc thoải mái.
       * Sàn 4×5 ô (320dp = 70·5 − 30) để còn đặt được trên lưới màn hình chính
-        5 hàng mặc định của One UI. Ở cỡ này chữ tiết khí xuống chừng 8dp, đọc
-        được nhưng nhỏ — kéo cao thêm một hàng là khác hẳn.
+        5 hàng mặc định của One UI. Ở cỡ này chữ tiết khí chừng 9,6dp trên S21
+        và 10,1dp trên A51 — đọc được, nhưng kéo cao thêm một hàng vẫn hơn.
+
+      * minWidth giữ nguyên 250dp: công thức ô của Android là 70n − 30, quá
+        250dp là đòi 5 cột, widget hết đặt được lên lưới 4 cột.
       * Kéo TO ra bao nhiêu cũng được; chữ lớn dần theo.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
