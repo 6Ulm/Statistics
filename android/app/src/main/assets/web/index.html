@@ -339,8 +339,11 @@ if (!CSS || !CSS.supports || !CSS.supports('padding-bottom', 'env(safe-area-inse
 </div>
 
 <script src="js/lunar.js"></script>
-<script src="js/app.js"></script>
+<!-- astro.js rồi ephem.js phải đứng TRƯỚC app.js: app.js gọi Ephem ngay khi
+     dựng bảng, mà Ephem lại uỷ quyền nghiệm Mặt Trời cho Astro. -->
 <script src="js/astro.js"></script>
+<script src="js/ephem.js"></script>
+<script src="js/app.js"></script>
 <script src="js/location.js"></script>
 <script src="js/calendar.js"></script>
 <script src="js/viewport.js"></script>

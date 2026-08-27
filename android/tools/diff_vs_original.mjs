@@ -165,6 +165,50 @@ const LUNAR_DEPENDENT = new Set(['out-lunar-table', 'out-cuc', 'ab-tbody']);
  */
 const CUC_DEPENDENT = new Set(['board', 'out-tp', 'out-ts']);
 
+/**
+ * Chính Ngọ: bản gốc tính phương trình thời gian tại **12:00 UTC** của ngày
+ * đó, trong khi nó phải được tính tại CHÍNH thời điểm Chính Ngọ địa phương.
+ * Với nơi lệch xa UTC (Nhật +9, Mỹ −5) thì chênh tới 9 giờ, đủ để phương
+ * trình thời gian đổi ~9 giây — thỉnh thoảng lật một phút hiển thị.
+ *
+ * Đã đối chiếu Meeus ví dụ 28.b: hai công thức khớp nhau tới 0,04 giây, và
+ * khi đánh giá tại cùng một thời điểm thì chúng khớp tới 0,00 giây. Nên khác
+ * biệt duy nhất là thời điểm đánh giá, và bản mới mới là bản đúng.
+ *
+ * Cho phép lệch TỐI ĐA MỘT PHÚT — lệch hơn thế vẫn là hồi quy.
+ */
+const CHINH_NGO = 'out-chinhngo';
+
+/**
+ * Trụ GIỜ đổi tại các mốc thời thần, cách nhau 120 phút kể từ đầu giờ Tý
+ * (Chính Ngọ − 13h). Sửa mốc đánh giá EoT dịch Chính Ngọ vài giây, nên một
+ * thời điểm nhập nằm SÁT ranh giới thời thần có thể lật sang chi kế bên.
+ *
+ * Chỉ miễn khi thời điểm nhập cách ranh giới DƯỚI MỘT PHÚT — đó là chữ ký của
+ * ca sát ranh, không phải của một lỗi tính giờ. Xa hơn thế vẫn là hồi quy.
+ */
+const GIO_KEYS = new Set(['ttCanGio', 'ttChiGio', 'ttKVGio', 'ttValGio']);
+/** Bàn Kỳ Môn và tuần thủ dựng TỪ can/chi giờ, nên lật theo. */
+const GIO_DEPENDENT = new Set(['board', 'out-tp', 'out-ts', 'out-tuan', 'out-cuc']);
+function gioMarginMinutes(dom, c) {
+    try {
+        const w = dom.window;
+        const lon = w.eval(`countryData[${JSON.stringify(c.country)}].lon`);
+        const tzId = tzIdOf(dom, c.country);
+        const tz = tzHoursAt(tzId, c.y, c.m, c.d);
+        const ty = w.Astro.solarNoonMinutes(c.y, c.m, c.d, lon, tz) - 780;
+        const pos = (((c.h * 60 + c.mi - ty) % 1440) + 1440) % 1440;
+        return Math.abs(pos - Math.round(pos / 120) * 120);
+    } catch (e) {
+        return Infinity;
+    }
+}
+function chinhNgoGapMinutes(a, b) {
+    const mm = v => { const m = String(v).match(/(\d{1,2}):(\d{2})/); return m ? +m[1] * 60 + +m[2] : null; };
+    const x = mm(a), y = mm(b);
+    return (x === null || y === null) ? Infinity : Math.abs(x - y);
+}
+
 function snap(dom, c) {
     const doc = dom.window.document, w = dom.window;
     if (w.currentLang !== c.lang) w.setLang(c.lang);
@@ -199,6 +243,7 @@ const domB = await boot(fs.readFileSync(path.join(WEB, 'index.html'), 'utf8'),
     });
 
 let diffs = 0, compared = 0, deliberate = 0, lunarZi = 0, lunarMeridian = 0, lunarShapeBad = 0;
+let chinhNgoFixed = 0, gioEdge = 0;
 const shapeSamples = [];
 const t0 = Date.now();
 const failures = [];
@@ -266,9 +311,21 @@ for (let i = 0; i < cases.length; i++) {
             }
         } else if (sameMeridian) lunarZi++; else lunarMeridian++;
     }
+    // Chính Ngọ lệch ≤1 phút là do sửa thời điểm đánh giá EoT — xem CHINH_NGO.
+    const chinhNgoOk = a[CHINH_NGO] === b[CHINH_NGO] ||
+        chinhNgoGapMinutes(a[CHINH_NGO], b[CHINH_NGO]) <= 1;
+    if (a[CHINH_NGO] !== b[CHINH_NGO] && chinhNgoOk) chinhNgoFixed++;
+
+    // Trụ giờ chỉ được lệch khi thời điểm nhập sát ranh giới thời thần.
+    const gioDiffers = [...GIO_KEYS].some(k => a[k] !== b[k]);
+    const gioOk = gioDiffers && gioMarginMinutes(domB, c) < 1;
+    if (gioOk) gioEdge++;
+
     const cucChanged = allowLunar && a['out-cuc'] !== b['out-cuc'];
-    const bad = !allowLunar ? rawBad : rawBad.filter(k =>
-        !LUNAR_DEPENDENT.has(k) && !(cucChanged && CUC_DEPENDENT.has(k)));
+    const bad = (!allowLunar ? rawBad : rawBad.filter(k =>
+        !LUNAR_DEPENDENT.has(k) && !(cucChanged && CUC_DEPENDENT.has(k))))
+        .filter(k => !(k === CHINH_NGO && chinhNgoOk))
+        .filter(k => !(gioOk && (GIO_KEYS.has(k) || GIO_DEPENDENT.has(k))));
     if (rawBad.length !== bad.length) deliberate++;
     if (bad.length) {
         diffs++;
@@ -287,6 +344,8 @@ console.log(`Ca khác CÓ CHỦ Ý (ngày âm + hệ quả): ${deliberate}`);
 console.log(`  ngày âm khác ở nơi đúng UTC+8 (do Chính Tý): ${lunarZi}`);
 console.log(`  ngày âm lệch do đổi MỐC KINH TUYẾN (ngoài UTC+8): ${lunarMeridian}`);
 console.log(`  ngày âm lệch QUÁ MỘT NGÀY (phải bằng 0): ${lunarShapeBad}`);
+console.log(`  Chính Ngọ lệch 1 phút (sửa mốc đánh giá EoT): ${chinhNgoFixed}`);
+console.log(`  trụ giờ lật vì nhập SÁT ranh giới thời thần (<1 phút): ${gioEdge}`);
 shapeSamples.forEach(x => console.log('    ' + x));
 for (const f of failures) {
     console.log(`\nCA LỆCH ${JSON.stringify(f.c)}`);

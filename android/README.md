@@ -242,6 +242,42 @@ là đổi cả kết quả Kỳ Môn ở nơi lệch khỏi UTC+8:
 nơi khác thì miễn cho các trường phụ thuộc ngày âm, và chỉ miễn cho bàn Kỳ Môn
 **khi chính cục đã khác** — cục giống mà bàn khác vẫn là hồi quy.
 
+## Engine thiên văn dùng chung (`js/ephem.js`)
+
+Tab Kỳ Môn và tab Lịch cần cùng những mốc thiên văn — Sóc, Vọng, tiết khí,
+Chính Ngọ — nên tất cả nằm ở **một chỗ**, và cả hai gọi vào đó.
+
+Trước khi gom, có hai vấn đề thật:
+
+* **Phương trình thời gian có HAI bản** — `getEquationOfTime` trong `app.js` và
+  `equationOfTime` trong `astro.js`. Đối chiếu Meeus ví dụ 28.b thì cả hai đều
+  đúng tới **0,04 giây**; chúng lệch nhau vì **thời điểm đánh giá**: bản cũ tính
+  EoT tại **12:00 UTC** của ngày đó thay vì tại chính lúc Chính Ngọ địa phương.
+  Với Nhật (UTC+9) hay Mỹ (UTC−5) thì lệch tới 9 giờ, đủ đổi EoT ~9 giây. Nay
+  chỉ còn một bản, đánh giá đúng chỗ.
+
+* **`LunarYear.fromYear()` chỉ nhớ MỘT năm** (`_CACHE_YEAR`). Mỗi lần vẽ, ứng
+  dụng hỏi 3 năm ở mốc quy chiếu, rồi hỏi lại ở UTC+8 cho bảng tiết khí, rồi lại
+  ở mốc địa phương cho bảng Âm Bàn — lần nào cũng đá văng lần trước. `Ephem` nhớ
+  theo **(năm, mốc)** nên hết cảnh dựng đi dựng lại.
+
+Tab Lịch còn dựng **một bối cảnh cho cả lưới** thay vì lặp lại 42 lần: trước
+đây mỗi ô tự gọi `getDOM`, `getTimezoneOffset` (Intl, đắt) và dựng một `Lunar`
+riêng. Can chi ngày nay suy thẳng từ số ngày Julius (chu kỳ 60 liên tục), mốc
+lấy một lần từ `lunar.js`.
+
+| Đường nóng | Trước | Sau |
+|---|---|---|
+| `processAll` | 15,5 ms | **10,0 ms** |
+| `render()` tab Lịch | 13,9 ms | **5,9 ms** |
+| `zi_months` (nguội) | 31,1 ms | **10,6 ms** |
+| `sb_getJieQiDates` | 9,8 ms | **3,4 ms** |
+
+`tools/test_perf.mjs` canh các số này khỏi tụt lại.
+
+`Ephem` cũng là **chỗ duy nhất** cần thay khi đổi sang bộ tính thiên văn khác:
+`socSolar`, `vongSolar`, `jieQiJdAtBasis`, `solarNoonMinutes` là toàn bộ bề mặt.
+
 ## Tiết khí: một nguyên tắc duy nhất
 
 Tiết khí xuất hiện ở ba chỗ — bảng Sách Bổ pháp (tab Kỳ Môn), bảng Tiết khí

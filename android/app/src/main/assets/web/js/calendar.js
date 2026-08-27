@@ -90,30 +90,62 @@
     var selected = null;       // {y,m,d}
     var lastWeeks = 0;         // số hàng của lưới đang hiện, để đo lại khi gập
 
-    /** Ngày âm theo ranh giới Chính Tý, dùng chung engine với tab Kỳ Môn. */
-    function ziOf(y, m, d) {
+    /**
+     * Bối cảnh cho MỘT lượt vẽ lịch: danh sách tháng âm và mốc can chi, dựng
+     * đúng một lần rồi dùng cho cả 42 ô.
+     *
+     * Trước đây mỗi ô tự gọi getDOM('country'), getTimezoneOffset (Intl, đắt)
+     * và dựng một đối tượng Lunar riêng — 42 lần mỗi lần vẽ, mà 41 lần trong
+     * đó cho ra cùng một câu trả lời.
+     */
+    function buildCtx(anchorY, anchorM) {
         try {
-            if (typeof zi_lunarOf !== 'function') return null;
+            if (typeof zi_months !== 'function') return null;
             var info = countryData[getDOM('country').value];
             if (!info || !info.tzId) return null;
-            var tz = getTimezoneOffset(info.tzId, new Date(y, m - 1, d, 12));
-            return zi_lunarOf(y, m, d, info.lon, info.tzId, tz);
+            var tz = getTimezoneOffset(info.tzId, new Date(anchorY, anchorM - 1, 15, 12));
+            return { list: zi_months(anchorY, info.lon, info.tzId, tz) };
         } catch (e) { return null; }
     }
 
-    /** Can chi tiếng Việt của một đối tượng Lunar. */
-    function dayGanZhi(lunar) {
-        var can = CAN_ZH.indexOf(lunar.getDayGan());
-        var chi = CHI_ZH.indexOf(lunar.getDayZhi());
-        if (can < 0 || chi < 0) return { can: '', chi: '', vi: '', chiVi: '' };
-        var zh = isZH();
-        return {
-            can: zh ? lunar.getDayGan() : CAN_VI[can],
-            chi: zh ? lunar.getDayZhi() : CHI_VI[chi],
-            vi: CAN_VI[can] + ' ' + CHI_VI[chi],
-            chiVi: CHI_VI[chi],
-        };
+    /** Ngày âm của một ngày dương, tra trong bối cảnh đã dựng sẵn. */
+    function ziFromCtx(ctx, jdn) {
+        if (!ctx || !ctx.list) return null;
+        var list = ctx.list, at = -1;
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].jdn <= jdn) at = i; else break;
+        }
+        if (at < 0) return null;
+        return { day: jdn - list[at].jdn + 1, month: list[at].month, leap: list[at].leap };
     }
+
+    /** Số ngày Julius — trùng công thức với zi_jdn bên app.js. */
+    function jdnOfDate(y, m, d) {
+        var a = Math.floor((14 - m) / 12), yy = y + 4800 - a, mm = m + 12 * a - 3;
+        return d + Math.floor((153 * mm + 2) / 5) + 365 * yy
+            + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+    }
+
+    /**
+     * Can chi ngày suy từ số ngày Julius. Mốc lấy MỘT LẦN từ lunar.js ở lượt
+     * vẽ đầu tiên, nên không phải chép cứng hằng số vào đây.
+     */
+    var gzEpoch = null;        // {jdn, can, chi} của một ngày đã biết
+    function ganZhiByJdn(ctx, jdn) {
+        if (gzEpoch === null) {
+            var s0 = Solar.fromYmd(2000, 1, 1);
+            var l0 = s0.getLunar();
+            var c0 = CAN_ZH.indexOf(l0.getDayGan()), z0 = CHI_ZH.indexOf(l0.getDayZhi());
+            if (c0 < 0 || z0 < 0) return { can: '', chi: '' };
+            gzEpoch = { jdn: jdnOfDate(2000, 1, 1), can: c0, chi: z0 };
+        }
+        var n = jdn - gzEpoch.jdn;
+        var can = ((gzEpoch.can + n) % 10 + 10) % 10;
+        var chi = ((gzEpoch.chi + n) % 12 + 12) % 12;
+        var zh = isZH();
+        return { can: zh ? CAN_ZH[can] : CAN_VI[can], chi: zh ? CHI_ZH[chi] : CHI_VI[chi] };
+    }
+
 
     /* Dùng chung kho tuỳ chọn với location.js (native prefs → localStorage). */
     function prefGet(k) {
@@ -165,15 +197,18 @@
         var next = new Date(viewY, viewM, 1);
         var nextY = next.getFullYear(), nextM = next.getMonth() + 1;
 
+        // Một bối cảnh cho cả lưới: danh sách tháng âm + mốc can chi.
+        var ctx = buildCtx(viewY, viewM);
+
         var cells = [];
         for (var i = lead; i > 0; i--) {
-            cells.push(cellHtml(prevY, prevM, prevDays - i + 1, cells.length, true, tKey));
+            cells.push(cellHtml(prevY, prevM, prevDays - i + 1, cells.length, true, tKey, ctx));
         }
         for (var d = 1; d <= daysInMonth; d++) {
-            cells.push(cellHtml(viewY, viewM, d, cells.length, false, tKey));
+            cells.push(cellHtml(viewY, viewM, d, cells.length, false, tKey, ctx));
         }
         for (var nd = 1; cells.length % 7 !== 0; nd++) {
-            cells.push(cellHtml(nextY, nextM, nd, cells.length, true, tKey));
+            cells.push(cellHtml(nextY, nextM, nd, cells.length, true, tKey, ctx));
         }
 
         for (var r = 0; r < cells.length; r += 7) {
@@ -241,13 +276,16 @@
      * @param {number} idx    thứ tự ô trong lưới (để biết cột Chủ nhật)
      * @param {boolean} outside  ngày của tháng trước/sau — tô mờ
      */
-    function cellHtml(y, m, d, idx, outside, tKey) {
-        var lunar = Solar.fromYmd(y, m, d).getLunar();
-        var gz = dayGanZhi(lunar);
+    function cellHtml(y, m, d, idx, outside, tKey, ctx) {
+        var jdn = jdnOfDate(y, m, d);
+        // Can chi ngày là chu kỳ 60 ngày liên tục theo số ngày Julius — suy
+        // thẳng bằng số học, khỏi dựng một đối tượng Lunar cho mỗi ô.
+        var gz = ganZhiByJdn(ctx, jdn);
         // Ngày âm lấy theo ranh giới CHÍNH TÝ (xem khối ghi chú trong app.js):
         // mùng 1 là ngày chứa điểm Sóc, đếm từ nửa đêm mặt trời thật chứ không
         // phải 00:00. Hỏng thì lùi về số của lunar.js còn hơn để trống cả lịch.
-        var zl = ziOf(y, m, d);
+        var zl = ziFromCtx(ctx, jdn);
+        var lunar = zl ? null : Solar.fromYmd(y, m, d).getLunar();
         var lday = zl ? zl.day : lunar.getDay();
         var lmon = zl ? (zl.leap ? -zl.month : zl.month) : lunar.getMonth();
         // Mùng 1 thì ghi kèm tháng âm, như lịch giấy: "1/7"
@@ -335,15 +373,11 @@
         // ĐỊA PHƯƠNG (app.js đặt trước bước 8). `findJieQi` bên trong sb_findY
         // đọc biến toàn cục đó, nên nếu chạy ở mốc UTC+7 của lịch âm thì hai
         // bảng có thể lệch nhau một giờ. Đặt đúng mốc rồi trả lại như cũ.
-        var snap = ShouXingUtil.getTzOffsetHours();
-        var Y, dates;
-        try {
-            ShouXingUtil.setTzOffsetHours(tz);
-            Y = sb_findY(sel.y, sel.m, sel.d, 12, 0, tzId, tz);
-            dates = sb_getJieQiDates(Y, tzId, tz);
-        } finally {
-            ShouXingUtil.setTzOffsetHours(snap);
-        }
+        var res = Ephem.atBasis(tz, function () {
+            var Y = sb_findY(sel.y, sel.m, sel.d, 12, 0, tzId, tz);
+            return { Y: Y, dates: sb_getJieQiDates(Y, tzId, tz) };
+        });
+        var Y = res.Y, dates = res.dates;
 
         // Tiết khí đang hiệu lực = mốc CUỐI CÙNG không muộn hơn ngày đang chọn.
         // Lấy 12:00 trưa làm mốc so: chọn 00:00 thì đúng ngày giao tiết sẽ rơi

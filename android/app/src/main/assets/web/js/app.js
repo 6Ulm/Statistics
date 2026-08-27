@@ -731,48 +731,10 @@ function renderFlipContent(thienCanArr, diaCanArr) {
     return `<div class="flip-cell-inner" data-rows="${totalRows}">${rows.join('')}</div>`;
 }
 
-function getEquationOfTime(date) {
-    // Thuật toán Jean Meeus (Astronomical Algorithms) — sai số ±1–2 giây
-    // Thay thế công thức Fourier 3 số hạng cũ (sai số ±40–60 giây)
-    const JD = date.getTime() / 86400000 + 2440587.5; // Julian Day
-    const T  = (JD - 2451545.0) / 36525;              // Thế kỷ Julius từ J2000.0
-
-    // Kinh độ trung bình Mặt Trời (độ)
-    const L0 = ((280.46646 + 36000.76983 * T + 0.0003032 * T * T) % 360 + 360) % 360;
-
-    // Dị thường trung bình (độ)
-    const M    = ((357.52911 + 35999.05029 * T - 0.0001537 * T * T) % 360 + 360) % 360;
-    const Mrad = M * Math.PI / 180;
-
-    // Phương trình tâm (equation of center)
-    const C = (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(Mrad)
-            + (0.019993 - 0.000101 * T) * Math.sin(2 * Mrad)
-            + 0.000289 * Math.sin(3 * Mrad);
-
-    // Nutation correction (hiệu chỉnh nutation)
-    const omega  = 125.04 - 1934.136 * T;
-    const sunLon = L0 + C;
-    const lambda = sunLon - 0.00569 - 0.00478 * Math.sin(omega * Math.PI / 180);
-
-    // Độ xiên thực của Hoàng Đạo (độ)
-    const epsilon0 = 23.439291111 - 0.013004167 * T - 0.000000164 * T * T + 0.000000504 * T * T * T;
-    const epsilon  = epsilon0 + 0.00256 * Math.cos(omega * Math.PI / 180);
-    const epRad    = epsilon * Math.PI / 180;
-
-    // Độ lệch tâm quỹ đạo Trái Đất
-    const ecc = 0.016708634 - 0.000042037 * T - 0.0000001267 * T * T;
-
-    // Phương trình thời gian (radian → phút)
-    const y       = Math.tan(epRad / 2) ** 2;
-    const L0r     = L0 * Math.PI / 180;
-    const EoT_rad = y * Math.sin(2 * L0r)
-                  - 2 * ecc * Math.sin(Mrad)
-                  + 4 * ecc * y * Math.sin(Mrad) * Math.cos(2 * L0r)
-                  - 0.5 * y * y * Math.sin(4 * L0r)
-                  - 1.25 * ecc * ecc * Math.sin(2 * Mrad);
-
-    return EoT_rad * 4 * (180 / Math.PI); // kết quả: phút
-}
+/* getEquationOfTime() đã bỏ: phương trình thời gian nay chỉ còn MỘT bản, nằm
+   trong astro.js, gọi qua Ephem. Hai bản song song từng lệch nhau tới 8,8
+   giây — mà cả hai đều dùng để tính Chính Ngọ, thứ định ranh giới Chính Tý,
+   tức định mùng 1. */
 
 /* ======================================================================
    HÀM PHỤ MODULE-LEVEL (không tái tạo mỗi lần gọi processAll)
@@ -818,17 +780,7 @@ function solarToCompareNum(s) {
  * @returns {object} Solar object chính xác đến phút (giờ UTC+8)
  */
 function getPreciseSocSolarUTC8(roundedSolar) {
-    const roundedJD = roundedSolar.getJulianDay() + 0.5; // JD nguyên dùng trong calcShuo
-    const w0 = roundedJD - Solar.J2000;
-    const k  = Math.round(w0 / 29.5306);
-    // Gọi THẲNG shuoHigh của lunar.js thay vì chép lại công thức.
-    //
-    // Bản chép cũ là đúng shuoHigh nhưng THIẾU một bước: khi điểm Sóc rơi vào
-    // trong vòng 30 phút quanh nửa đêm, shuoHigh giải lại bằng msaLonT (chính
-    // xác hơn msaLonT2). Mà sát nửa đêm chính là lúc quyết định mùng 1 rơi vào
-    // ngày nào — bỏ bước ấy đi thì sai đúng chỗ nó có hại nhất.
-    return Solar.fromJulianDay(
-        ShouXingUtil.shuoHigh(k * 2 * Math.PI, 8) + Solar.J2000);
+    return Ephem.socSolar(roundedSolar, 8);
 }
 
 /**
@@ -923,9 +875,7 @@ function formatUTC8SolarToLocal(solarUTC8, tzId) {
 
 /** Số phút kể từ 00:00 mà Chính Tý (nửa đêm mặt trời thật) rơi vào. */
 function zi_midnightMinutes(y, m, d, lon, tz) {
-    const lonOffsetMins = (lon - tz * 15) * 4;
-    const eotMins = getEquationOfTime(new Date(Date.UTC(y, m - 1, d, 12, 0, 0)));
-    return -lonOffsetMins - eotMins;              // Chính Ngọ − 12h, có thể âm
+    return Ephem.solarMidnightMinutes(y, m, d, lon, tz);   // có thể âm
 }
 
 /**
@@ -953,8 +903,12 @@ function _localSolarFromJdUTC8(jdUTC8, tzId) {
  * @param {object} mo  LunarMonth từ LunarYear.getMonths()
  */
 function zi_mung1(mo, lon, tzId) {
-    const rounded = Solar.fromJulianDay(mo.getFirstJulianDay());
-    const socUTC8 = getPreciseSocSolarUTC8(rounded);
+    return zi_mung1FromJd(mo.getFirstJulianDay(), lon, tzId);
+}
+
+/** Như zi_mung1 nhưng nhận thẳng số ngày Julius của mùng 1 đã làm tròn. */
+function zi_mung1FromJd(firstJd, lon, tzId) {
+    const socUTC8 = getPreciseSocSolarUTC8(Solar.fromJulianDay(firstJd));
     const local = _localSolarFromJdUTC8(socUTC8.getJulianDay(), tzId);
     return zi_dayOf(local, lon, tzId);
 }
@@ -1003,23 +957,18 @@ function zi_months(gregYear, lon, tzId, tz) {
     const basis = zi_labelBasis();
     const key = gregYear + '|' + tzId + '|' + lon + '|' + basis;
     if (_ziMonthCache.has(key)) return _ziMonthCache.get(key);
-    const snap = ShouXingUtil.getTzOffsetHours();
     const out = [];
-    try {
-        ShouXingUtil.setTzOffsetHours(basis);
-        for (let ly = gregYear - 1; ly <= gregYear + 1; ly++) {
-            for (const mo of LunarYear.fromYear(ly).getMonths()) {
-                if (mo.getYear() !== ly) continue;
-                const g = zi_mung1(mo, lon, tzId);      // mốc bắt đầu: địa phương
-                out.push({
-                    jdn: zi_jdn(g.y, g.m, g.d),
-                    month: Math.abs(mo.getMonth()),     // nhãn: mốc quy chiếu
-                    year: ly, leap: mo.getMonth() < 0,
-                });
-            }
+    for (let ly = gregYear - 1; ly <= gregYear + 1; ly++) {
+        // Ephem nhớ theo (năm, mốc) nên ba năm liền kề không còn đá văng nhau
+        // như khi gọi thẳng LunarYear.fromYear — bộ nhớ đệm của nó chỉ giữ MỘT.
+        for (const mo of Ephem.monthsAtBasis(ly, basis)) {
+            const g = zi_mung1FromJd(mo.jd, lon, tzId);   // mốc bắt đầu: địa phương
+            out.push({
+                jdn: zi_jdn(g.y, g.m, g.d),
+                month: mo.month,                          // nhãn: mốc quy chiếu
+                year: ly, leap: mo.leap,
+            });
         }
-    } finally {
-        ShouXingUtil.setTzOffsetHours(snap);
     }
     out.sort((a, b) => a.jdn - b.jdn);
     if (_ziMonthCache.size > 24) _ziMonthCache.clear();
@@ -1424,11 +1373,8 @@ function sb_getJieQiDates(Y, tzId, defaultTz) {
     // mỗi mốc tự quy đổi sang giờ địa phương bằng formatUTC8SolarToLocal()
     // — hàm này tự tra DST đúng theo THỜI ĐIỂM CỦA CHÍNH MỐC ĐÓ (xem
     // _tzOffsetAtJdUTC8), không dùng offset cố định chung.
-    const _tzSnapshot = ShouXingUtil.getTzOffsetHours();
-    ShouXingUtil.setTzOffsetHours(null);
-    const ly  = LunarYear.fromYear(Y + 1);
-    const jds = ly.getJieQiJulianDays(); // UTC+8, index per JIE_QI_IN_USE
-    ShouXingUtil.setTzOffsetHours(_tzSnapshot);
+    // Ephem nhớ theo (năm, mốc) và tự trả mốc múi giờ toàn cục về nguyên trạng.
+    const jds = Ephem.jieQiJdAtBasis(Y + 1, null); // UTC+8, index per JIE_QI_IN_USE
 
     // index 1..24 = 冬至(Y), 小寒, ..., 大雪(Y)
     const dates = Array.from({ length: 24 }, (_, i) => {
@@ -1502,18 +1448,14 @@ function ab_getTyStart(socSolar, lonDeg, tzH, tzId) {
     // Ngày dương lịch của Sóc theo UTC+8 (đây là ngày lịch cố định)
     const socY = socSolar.getYear(), socM = socSolar.getMonth(), socD = socSolar.getDay();
 
-    // Equation of Time cho ngày Sóc (tính theo UTC trưa = UTC+8 06:00 = UTC 22:00 hôm trước)
-    const eotSoc = getEquationOfTime(new Date(Date.UTC(socY, socM - 1, socD, 12, 0, 0)));
-
-    // Chính Ngọ địa phương (phút từ nửa đêm): 720 − lonOffset − EoT
+    // Chính Ngọ địa phương của NGÀY SÓC (phút từ nửa đêm).
     // FIX DST: tzH truyền vào là offset tại thời điểm nhập — có thể sai cho tháng khác DST
     // (vd user nhập tháng 6 CEST=+2, nhưng tháng 11/12 là CET=+1).
     // Dùng getTimezoneOffset(tzId, date) đúng với ngày Sóc cụ thể, giống tn_getTyTimestamp.
     const effectiveTzH = tzId
         ? getTimezoneOffset(tzId, new Date(socY, socM - 1, socD, 12, 0, 0))
         : tzH;
-    const lonOffSoc = (lonDeg - effectiveTzH * 15) * 4;
-    const noonSoc   = 720 - lonOffSoc - eotSoc;
+    const noonSoc = Ephem.solarNoonMinutes(socY, socM, socD, lonDeg, effectiveTzH);
 
     // Giờ Tý bắt đầu tại Chính Ngọ − 13h = noonMins − 780
     // Giá trị có thể âm (tức là trước nửa đêm, thuộc ngày hôm trước);
@@ -1565,8 +1507,9 @@ function ab_renderPanel(lunarYear, lunarMonth, tzId, lonDeg, tzH) {
     //
     // Đặt cùng một mốc cho cả hai thì cột Mùng 1 (và cột Rằm, vốn là mùng 1 +
     // 14) tự khớp với giờ Sóc đang hiện.
-    const _tzSnapshot = ShouXingUtil.getTzOffsetHours();
-    ShouXingUtil.setTzOffsetHours(tzH);
+    // Mốc múi giờ ĐỊA PHƯƠNG cho cả khối (xem ghi chú dưới); Ephem giữ và trả
+    // lại biến toàn cục giúp, nên không cần tự chụp ảnh nữa.
+    const monthsOfYear = Ephem.monthsAtBasis(lunarYear, tzH);
 
     // FIX (tháng nhuận): trước đây loop `for mo=1..12` gọi
     // Lunar.fromYmd(lunarYear, mo, 1) — với năm có tháng nhuận (vd 2025 có
@@ -1580,19 +1523,16 @@ function ab_renderPanel(lunarYear, lunarMonth, tzId, lonDeg, tzH) {
     // gian gốc của thư viện (đã đúng theo lịch), và so khớp active bằng
     // getMonth() có dấu (lunarMonth truyền vào nay là lunar.getMonth() có
     // dấu, không phải Math.abs()).
-    const ly = LunarYear.fromYear(lunarYear);
-    const monthsOfYear = ly.getMonths().filter(mo => mo.getYear() === lunarYear);
-
     for (const mo of monthsOfYear) {
-        const moNum    = mo.getMonth();           // dương: 1..12, âm: -leapNo (tháng nhuận)
-        const isLeap   = moNum < 0;
-        const moAbs    = Math.abs(moNum);
-        const socSolar = Solar.fromJulianDay(mo.getFirstJulianDay());
+        const isLeap   = mo.leap;
+        const moAbs    = mo.month;
+        const moNum    = isLeap ? -moAbs : moAbs;
+        const socSolar = Solar.fromJulianDay(mo.jd);
 
         const socStr   = formatPreciseSocLocal(socSolar, tzId);
         // Mùng 1: ngày CHỨA điểm Sóc, đếm từ Chính Tý tới Chính Tý — không
         // phải ngày dương của firstJulianDay. Xem khối ghi chú về Chính Tý.
-        const g1       = zi_mung1(mo, lonDeg, tzId);
+        const g1       = zi_mung1FromJd(mo.jd, lonDeg, tzId);
         const mung1Str = `${pad(g1.d)}-${pad(g1.m)}-${g1.y}`;
         // Rằm: ngày 15 âm = mùng 1 + 14
         const ram      = new Date(g1.y, g1.m - 1, g1.d + 14);
@@ -1607,8 +1547,6 @@ function ab_renderPanel(lunarYear, lunarMonth, tzId, lonDeg, tzH) {
             `<td class="dp-num-ab"${fw}>${ramStr}</td>`
         ));
     }
-
-    ShouXingUtil.setTzOffsetHours(_tzSnapshot);
 }
 
 /* ======================================================================
@@ -1934,9 +1872,11 @@ function processAll() {
         const lon        = info.lon;
 
         // ── 3. Chính Ngọ (kinh độ + Equation of Time) ──
+        // Chính Ngọ lấy thẳng từ Ephem để cả ứng dụng chung một con số;
+        // eotMins suy ngược ra vì bước 4 (dịch sang giờ Mặt Trời thật) cần nó.
         const lonOffsetMins = (lon - tz * 15) * 4;
-        const eotMins       = getEquationOfTime(new Date(Date.UTC(y, m - 1, d, 12, 0, 0)));
-        const noonMins      = 720 - lonOffsetMins - eotMins;
+        const noonMins      = Ephem.solarNoonMinutes(y, m, d, lon, tz);
+        const eotMins       = 720 - lonOffsetMins - noonMins;
         const chinhNgoStr   = `${pad(Math.floor(noonMins / 60))}:${pad(Math.floor(noonMins % 60))}`;
         const gmtStr        = `GMT${tz >= 0 ? '+' : ''}${tz}`;
 
@@ -2156,10 +2096,8 @@ function processAll() {
         // theo một mốc khác và giờ Sóc hiện ra lệch hẳn một ngày.
         // socSolar chỉ là ngày đã làm tròn; formatPreciseSocLocal() tính lại
         // thời điểm Sóc chính xác đến phút rồi quy sang giờ địa phương.
-        const _tzSnapshot = ShouXingUtil.getTzOffsetHours();
-        ShouXingUtil.setTzOffsetHours(tz);
-        const socSolar  = Lunar.fromYmd(lunar.getYear(), lunarMonthNum, 1).getSolar();
-        ShouXingUtil.setTzOffsetHours(_tzSnapshot);
+        const socSolar = Ephem.atBasis(tz, () =>
+            Lunar.fromYmd(lunar.getYear(), lunarMonthNum, 1).getSolar());
 
         // FIX (DST): formatPreciseSocLocal/formatUTC8SolarToLocal nay nhận
         // tzId (IANA) và tự xác định offset DST đúng tại CHÍNH thời điểm
