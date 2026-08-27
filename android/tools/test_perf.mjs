@@ -22,42 +22,40 @@ await ctx.addInitScript(()=>{try{localStorage.setItem('defaultLang','vi')}catch(
 const p=await ctx.newPage();
 await p.goto(`http://127.0.0.1:${server.address().port}/index.html`,{waitUntil:'networkidle'});
 await p.waitForTimeout(1000);
-console.log(await p.evaluate(()=>{
-  const t=f=>{const a=performance.now(); f(); return performance.now()-a;};
-  const med=(f,n)=>{const xs=[];for(let i=0;i<n;i++)xs.push(t(f));xs.sort((a,b)=>a-b);return xs[n>>1];};
-  const out=[];
-  // đổi ngày mỗi lần để không ăn cache
-  let d=1;
-  const nextDay=()=>{ d=d%28+1; getDOM('inDay').value=d; };
-  out.push(`  processAll (đổi ngày)      ${med(()=>{nextDay(); processAll();},15).toFixed(1)} ms`);
-  window.showTab('cal');
-  out.push(`  render() tab Lịch          ${med(()=>{window.__calGoto(2026,(d++%12)+1,15);},12).toFixed(1)} ms`);
-  window.showTab('qmdj');
-  // đo riêng từng khối
-  const info=countryData[document.getElementById('country').value];
-  const tz=getTimezoneOffset(info.tzId,new Date(2026,7,13,12));
-  out.push(`  zi_months (1 năm, nguội)   ${med(()=>{ _ziMonthCache.clear(); zi_months(2026+(d++%40), info.lon, info.tzId, tz);},8).toFixed(1)} ms`);
-  out.push(`  zi_months (đã cache)       ${med(()=>zi_months(2026, info.lon, info.tzId, tz),200).toFixed(3)} ms`);
-  out.push(`  sb_getJieQiDates           ${med(()=>sb_getJieQiDates(2020+(d++%40), info.tzId, tz),10).toFixed(1)} ms`);
-  out.push(`  getPreciseSocSolarUTC8 ×30 ${med(()=>{for(let i=0;i<30;i++) getPreciseSocSolarUTC8(Solar.fromYmd(2026,(i%12)+1,1));},20).toFixed(2)} ms`);
-  return out.join('\n');
-}));
+
 const out = await p.evaluate(() => {
   const t=f=>{const a=performance.now(); f(); return performance.now()-a;};
   const med=(f,n)=>{const xs=[];for(let i=0;i<n;i++)xs.push(t(f));xs.sort((a,b)=>a-b);return xs[n>>1];};
+  // NGUỘI: xoá sạch đệm trước MỖI lần đo, nếu không phép đo lẫn lộn trúng đệm
+  // với trượt đệm và con số nhảy gấp bốn giữa hai lần chạy.
+  // sb_getJieQiDates còn bộ nhớ đệm RIÊNG (_sbCache) — không dọn thì phép đo
+  // "nguội" của nó chỉ đo một lần so sánh khoá và ra 0,0 ms.
+  const cold=(f,n)=>med(()=>{
+    if (typeof Ephem !== 'undefined' && Ephem.__clearCaches) Ephem.__clearCaches();
+    if(typeof _ziMonthCache!=='undefined') _ziMonthCache.clear();
+    try { _sbCache = null; } catch(e) {}
+    f();
+  },n);
   const info=countryData[document.getElementById('country').value];
   const tz=getTimezoneOffset(info.tzId,new Date(2026,7,13,12));
   let d=1;
   return {
     processAll: med(()=>{d=d%28+1; getDOM('inDay').value=d; processAll();},15),
     calRender:  (window.showTab('cal'), med(()=>window.__calGoto(2026,(d++%12)+1,15),12)),
-    ziMonths:   (window.showTab('qmdj'), med(()=>{_ziMonthCache.clear(); zi_months(2026+(d++%40), info.lon, info.tzId, tz);},8)),
-    jieQi:      med(()=>sb_getJieQiDates(2020+(d++%40), info.tzId, tz),10),
+    ziMonths:   (window.showTab('qmdj'), cold(()=>zi_months(2026, info.lon, info.tzId, tz),8)),
+    jieQiCold:  cold(()=>sb_getJieQiDates(2026, info.tzId, tz),8),
+    jieQiWarm:  med(()=>sb_getJieQiDates(2026, info.tzId, tz),200),
+    // Đường mà người dùng thật sự chạm vào: đổi ngày, lật tháng. Đo giống hệt
+    // nhau ở cả hai bản nên so được.
   };
 });
-const LIMITS = { processAll: 16, calRender: 10, ziMonths: 17, jieQi: 7 };
+/* Ngưỡng là LƯỚI CHẶN HỒI QUY, không phải phép đo chính xác: máy chạy test lúc
+   bận có thể chậm gấp rưỡi, nên để rộng tay. Đặt sát quá thì nó đỏ vì tiếng ồn
+   chứ không vì code — đã gặp: render() dao động 8,3–11,7 ms giữa các lần chạy. */
+const LIMITS = { processAll: 22, calRender: 16, ziMonths: 28, jieQiCold: 22, jieQiWarm: 0.05 };
 const NAMES = { processAll:'processAll', calRender:'render() tab Lịch',
-                ziMonths:'zi_months (nguội)', jieQi:'sb_getJieQiDates' };
+                ziMonths:'zi_months (nguội)', jieQiCold:'sb_getJieQiDates nguội',
+                jieQiWarm:'sb_getJieQiDates ấm' };
 let bad = 0;
 console.log('\nNgưỡng canh hồi quy:');
 for (const k of Object.keys(LIMITS)) {

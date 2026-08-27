@@ -842,6 +842,20 @@ function formatPreciseSocLocal(roundedSolar, tzId) {
  * @param {object} solarUTC8  Solar object ở mốc UTC+8 (giờ Bắc Kinh)
  * @param {string} tzId       IANA timezone id
  */
+/**
+ * Thời điểm VỌNG (trăng tròn) của tuần trăng chứa `roundedSolar`, quy về giờ
+ * địa phương, chuỗi "DD-MM-YYYY HH:MM".
+ *
+ * Vọng là lúc hiệu kinh độ Mặt Trăng − Mặt Trời đạt 180°, tức cùng nghiệm với
+ * Sóc nhưng lệch pha π. Khoảng cách Sóc→Vọng KHÔNG cố định 14,765 ngày (nửa
+ * tuần trăng trung bình) vì quỹ đạo Mặt Trăng là ellip — tháng 8/2026 chẳng
+ * hạn là 15,45 ngày. Nên phải giải đúng nghiệm, không được cộng thêm nửa tháng.
+ */
+function formatPreciseVongLocal(roundedSolar, tzId) {
+    const vongUTC8 = Ephem.vongSolar(roundedSolar, 8);
+    return _formatJdUTC8ToLocal(vongUTC8.getJulianDay(), tzId);
+}
+
 function formatUTC8SolarToLocal(solarUTC8, tzId) {
     return _formatJdUTC8ToLocal(solarUTC8.getJulianDay(), tzId);
 }
@@ -1530,21 +1544,17 @@ function ab_renderPanel(lunarYear, lunarMonth, tzId, lonDeg, tzH) {
         const socSolar = Solar.fromJulianDay(mo.jd);
 
         const socStr   = formatPreciseSocLocal(socSolar, tzId);
-        // Mùng 1: ngày CHỨA điểm Sóc, đếm từ Chính Tý tới Chính Tý — không
-        // phải ngày dương của firstJulianDay. Xem khối ghi chú về Chính Tý.
-        const g1       = zi_mung1FromJd(mo.jd, lonDeg, tzId);
-        const mung1Str = `${pad(g1.d)}-${pad(g1.m)}-${g1.y}`;
-        // Rằm: ngày 15 âm = mùng 1 + 14
-        const ram      = new Date(g1.y, g1.m - 1, g1.d + 14);
-        const ramStr   = `${pad(ram.getDate())}-${pad(ram.getMonth() + 1)}-${ram.getFullYear()}`;
+        // Vọng: thời điểm trăng tròn THẬT của chính tuần trăng này — không
+        // phải "mùng 1 + 14". Hai cột Mùng 1 và Rằm cũ đều suy ra được từ ngày
+        // âm lịch đang hiện, còn Vọng thì không, nên nó đáng chỗ hơn.
+        const vongStr  = formatPreciseVongLocal(socSolar, tzId);
         const isActive = (moNum === lunarMonth);
         const fw = isActive ? ' style="font-weight:700;"' : '';
         const label = isLeap ? `Tháng ${moAbs} (Nhuận)` : `Tháng ${moAbs}`;
         tbody.appendChild(_mkRow(isActive, moAbs,
             `<td class="dp-c"${fw}>${label}</td>` +
             `<td class="dp-num-ab"${fw}>${socStr}</td>` +
-            `<td class="dp-num-ab"${fw}>${mung1Str}</td>` +
-            `<td class="dp-num-ab"${fw}>${ramStr}</td>`
+            `<td class="dp-num-ab"${fw}>${vongStr}</td>`
         ));
     }
 }

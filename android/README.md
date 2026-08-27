@@ -266,17 +266,34 @@ Tab Lịch còn dựng **một bối cảnh cho cả lưới** thay vì lặp l�
 riêng. Can chi ngày nay suy thẳng từ số ngày Julius (chu kỳ 60 liên tục), mốc
 lấy một lần từ `lunar.js`.
 
-| Đường nóng | Trước | Sau |
-|---|---|---|
-| `processAll` | 15,5 ms | **10,0 ms** |
-| `render()` tab Lịch | 13,9 ms | **5,9 ms** |
-| `zi_months` (nguội) | 31,1 ms | **10,6 ms** |
-| `sb_getJieQiDates` | 9,8 ms | **3,4 ms** |
+`tools/test_perf.mjs` canh các đường nóng khỏi tụt lại. Nó dọn SẠCH mọi bộ nhớ
+đệm trước mỗi phép đo "nguội" — kể cả `_sbCache` riêng của `sb_getJieQiDates` —
+vì phép đo đầu tiên viết ra không làm thế: nó quay vòng qua 40 năm với bộ đệm
+24 mục, nên trộn lẫn trúng đệm với trượt đệm và cho ra con số nhảy gấp bốn giữa
+hai lần chạy. Ngưỡng để rộng tay: chúng là lưới chặn hồi quy, không phải phép
+đo chính xác.
 
-`tools/test_perf.mjs` canh các số này khỏi tụt lại.
+Số đo hiện tại (máy chạy test, đã dọn đệm): `processAll` ~13 ms, `render()` tab
+Lịch ~8,5 ms, `zi_months` nguội ~17 ms, `sb_getJieQiDates` nguội ~5,5 ms và
+~0 ms khi ấm.
 
 `Ephem` cũng là **chỗ duy nhất** cần thay khi đổi sang bộ tính thiên văn khác:
 `socSolar`, `vongSolar`, `jieQiJdAtBasis`, `solarNoonMinutes` là toàn bộ bề mặt.
+
+## Bảng Âm Bàn: Tháng | Sóc | Vọng
+
+Bảng bỏ hai cột **Mùng 1** và **Rằm**, thay bằng **Thời điểm Vọng** (trăng
+tròn). Lý do: mùng 1 và rằm đều suy được từ ngày âm lịch đang hiện ngay bên
+trên, còn thời điểm Vọng thì không — nó là một mốc thiên văn riêng.
+
+Vọng là lúc hiệu kinh độ Mặt Trăng − Mặt Trời đạt **180°**, cùng nghiệm với Sóc
+nhưng lệch pha π (`Ephem.vongSolar`). **Không** được cộng nửa tuần trăng vào
+Sóc: quỹ đạo Mặt Trăng là ellip nên khoảng Sóc→Vọng xê dịch quanh 14,765 ngày —
+tháng 8/2026 chẳng hạn là **15,45 ngày**.
+
+Kiểm chứng độc lập trong `test_soc_parity.mjs`: tại thời điểm Vọng, `astro.js`
+tính Mặt Trăng được chiếu sáng **100,00%**, còn trước và sau đó một ngày là
+98,97% và 98,91% — một cực đại sạch. Phép thử đòi ≥ 99,5% ở mọi ca.
 
 ## Tiết khí: một nguyên tắc duy nhất
 

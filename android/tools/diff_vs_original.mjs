@@ -120,7 +120,13 @@ const TEXT_IDS = [
     'out-cuc', 'out-tuan', 'out-tp', 'out-ts',
     'trn-pttn1', 'trn-pttn2', 'trn-pttn3', 'trn-tk1', 'trn-tk2', 'trn-tk3', 'trn-d-summary',
 ];
-const HTML_IDS = ['board', 'trn-tbody', 'sb-tbody', 'ab-tbody'];
+/* ab-tbody không còn so được với bản gốc: bảng Âm Bàn nay có BA cột
+   (Tháng | Sóc | Vọng) thay cho bốn (Tháng | Sóc | Mùng 1 | Rằm). Mùng 1 và
+   Rằm đều suy được từ ngày âm đang hiện, còn Vọng — thời điểm trăng tròn thật
+   — thì không, nên nó đáng chỗ hơn.
+   Cột Sóc và cột Vọng được canh riêng trong test_soc_parity.mjs, ở đó Vọng
+   còn bị đối chiếu với % chiếu sáng do astro.js tính. */
+const HTML_IDS = ['board', 'trn-tbody', 'sb-tbody'];
 
 /**
  * Bảng riêng của từng phái chỉ được DỰNG LẠI khi đang ở đúng phái đó **và**
@@ -128,7 +134,7 @@ const HTML_IDS = ['board', 'trn-tbody', 'sb-tbody', 'ab-tbody'];
  * Ngoài điều kiện ấy nó giữ nguyên nội dung của ca trước — so vào đó là so rác
  * còn sót lại, và kết quả phụ thuộc thứ tự chạy ca.
  */
-const PANEL_OF = { 'ab-tbody': 'amban', 'sb-tbody': 'bophap', 'trn-tbody': 'trinhuan' };
+const PANEL_OF = { 'sb-tbody': 'bophap', 'trn-tbody': 'trinhuan' };
 const trnPanel = k => k.startsWith('trn-');
 function relevantKey(cc) {
     return k => {
@@ -156,7 +162,7 @@ function relevantKey(cc) {
  * âm chỉ được lệch ĐÚNG MỘT NGÀY (hoặc chỉ đổi nhãn tháng, khi mốc kinh tuyến
  * làm cấu trúc tháng nhuận khác đi). Lệch hơn thế là hỏng thật.
  */
-const LUNAR_DEPENDENT = new Set(['out-lunar-table', 'out-cuc', 'ab-tbody']);
+const LUNAR_DEPENDENT = new Set(['out-lunar-table', 'out-cuc']);
 
 /**
  * Hệ quả kéo theo khi cục đổi: bàn Kỳ Môn được dựng TỪ cục, nên Thiên Bàn /

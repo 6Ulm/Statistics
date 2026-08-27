@@ -24,8 +24,10 @@
     'use strict';
 
     /** Bộ nhớ đệm giới hạn số mục, đủ dùng và không phình vô hạn. */
+    var _allCaches = [];
     function lru(limit, compute) {
         var map = new Map();
+        _allCaches.push(map);
         return function () {
             var key = Array.prototype.join.call(arguments, '|');
             if (map.has(key)) return map.get(key);
@@ -143,6 +145,8 @@
     }
 
     root.Ephem = {
+        /** Xoá mọi bộ nhớ đệm — chỉ dùng để ĐO tốc độ ở trạng thái nguội. */
+        __clearCaches: function () { _allCaches.forEach(function (m) { m.clear(); }); },
         atBasis: atBasis,
         monthsAtBasis: monthsAtBasis,
         jieQiJdAtBasis: jieQiJdAtBasis,

@@ -14,7 +14,8 @@
  *      Chính Tý — nửa đêm mặt trời thật (Chính Ngọ − 12h), không phải 00:00
  *      đồng hồ. Phép thử tự tính lại mốc ấy từ Astro.solarNoonMinutes, tức đi
  *      đường khác với zi_dayOf trong app.js chứ không chép lại nó;
- *   2. tab Lịch:   ô mùng 1 phải rơi đúng vào ngày ấy;
+ *   2. cột Vọng phải đúng là lúc trăng tròn (đối chiếu độc lập bằng % chiếu
+ *      sáng của astro.js, phải ≥ 99,5%);
  *   3. hai tab phải nói cùng một ngày âm cho cùng một ngày dương;
  *   4. bảng mà ứng dụng ghi ra cho WIDGET (publishLunarCache) phải khớp luôn —
  *      widget không chạy được lunar.js nên nó sống bằng bảng này.
@@ -91,12 +92,13 @@ for (const city of PICK) {
             processAll();
             const lunar = (getDOM('out-lunar-table')?.innerText || '').trim();
             const lmon = parseInt((lunar.split('-')[1] || '').trim(), 10);
-            // Bảng Âm Bàn: Tháng | Sóc | Mùng 1 | Rằm — lấy đúng dòng đang tô đậm
+            // Bảng Âm Bàn: Tháng | Sóc | Vọng — lấy đúng dòng đang tô đậm
             const tr = [...document.querySelectorAll('#ab-tbody tr')]
                 .find(t => t.classList.contains('dp-row-active')) ||
                 [...document.querySelectorAll('#ab-tbody tr')]
                     .find(t => new RegExp(`Tháng ${lmon}$`).test(t.cells[0].textContent.trim()));
             const soc = tr ? tr.cells[1].textContent.trim() : '';
+            const vong = tr ? tr.cells[2].textContent.trim() : '';
             // Mốc mùng 1 mong đợi, tính ĐỘC LẬP từ giờ Sóc đang hiện:
             // Chính Tý = Chính Ngọ − 12h, rồi xem giờ Sóc rơi vào ngày nào.
             let want = null, inWindow = false;
@@ -113,11 +115,18 @@ for (const city of PICK) {
                 want = `${p2(dt.getDate())}-${p2(dt.getMonth() + 1)}-${dt.getFullYear()}`;
                 inWindow = shift !== 0;
             }
-            out.push({
-                y, m, d, lunar, soc, want, inWindow,
-                mung1: tr ? tr.cells[2].textContent.trim() : '',
-                ram: tr ? tr.cells[3].textContent.trim() : '',
-            });
+            // % Mặt Trăng được chiếu sáng tại thời điểm Vọng — đường kiểm
+            // ĐỘC LẬP, không đi qua công thức đã dựng ra cột ấy.
+            let vongIll = null;
+            const vm = vong.match(/^(\d{2})-(\d{2})-(\d{4}) (\d{2}):(\d{2})$/);
+            if (vm && window.Astro) {
+                const [, vd, vmo, vy, vh, vmi] = vm.map(Number);
+                const info = countryData[city];
+                const tzV = getTimezoneOffset(info.tzId, new Date(vy, vmo - 1, vd, 12));
+                const jdUTC = (Date.UTC(vy, vmo - 1, vd, vh, vmi) / 86400000 + 2440587.5) - tzV / 24;
+                vongIll = Astro.moonIllumination(jdUTC).fraction;
+            }
+            out.push({ y, m, d, lunar, soc, vong, vongIll, want, inWindow });
         }
         // tab Lịch: ngày âm của chính những ngày dương ấy
         const cal = {};
@@ -145,28 +154,31 @@ for (const city of PICK) {
             bad.push(`${r.d}/${r.m}/${r.y}: không đọc được (âm "${r.lunar}", sóc "${r.soc}")`);
             continue;
         }
-        // 1. Mùng 1 = ngày chứa điểm Sóc theo TRỤ NGÀY (ranh giới giờ Tý).
+        // 1. Mùng 1 = ngày chứa điểm Sóc, đếm từ Chính Tý.
+        //    Bảng Âm Bàn không còn cột Mùng 1, nên suy nó từ NGÀY ÂM đang hiện:
+        //    mùng 1 = ngày đang xét lùi lại (ngày âm − 1) ngày.
+        const first = new Date(r.y, r.m - 1, r.d - (lday - 1));
+        const mung1 = `${p(first.getDate())}-${p(first.getMonth() + 1)}-${first.getFullYear()}`;
         if (!r.want) {
             bad.push(`${r.d}/${r.m}/${r.y}: không tính được mốc mong đợi từ Sóc "${r.soc}"`);
-        } else if (r.mung1 !== r.want) {
+        } else if (mung1 !== r.want) {
             bad.push(`${r.d}/${r.m}/${r.y}: Sóc ${r.soc} → mùng 1 phải là ${r.want}` +
-                ` (theo giờ Tý), nhưng bảng ghi ${r.mung1}`);
+                ` (theo Chính Tý), nhưng ngày âm ${lday} suy ra ${mung1}`);
         }
         if (r.inWindow) ziCases++;
-        // 2. Rằm = mùng 1 + 14 ngày.
-        const [d1, m1, y1] = r.mung1.split('-').map(Number);
-        const ram = new Date(y1, m1 - 1, d1 + 14);
-        const ramStr = `${p(ram.getDate())}-${p(ram.getMonth() + 1)}-${ram.getFullYear()}`;
-        if (r.ram !== ramStr) {
-            bad.push(`${r.d}/${r.m}/${r.y}: Rằm ghi ${r.ram}, mùng 1 ${r.mung1} + 14 = ${ramStr}`);
+
+        // 2. Cột Vọng phải là một THỜI ĐIỂM (có giờ phút, như Sóc) và phải
+        //    đúng lúc trăng tròn — đối chiếu bằng % chiếu sáng của astro.js,
+        //    tức đường khác hẳn công thức đã dựng ra cột ấy.
+        if (!/^\d{2}-\d{2}-\d{4} \d{2}:\d{2}$/.test(r.vong)) {
+            bad.push(`${r.d}/${r.m}/${r.y}: cột Vọng "${r.vong}" không phải thời điểm DD-MM-YYYY HH:MM`);
+        } else if (r.vongIll === null) {
+            bad.push(`${r.d}/${r.m}/${r.y}: không kiểm được % chiếu sáng của Vọng`);
+        } else if (r.vongIll < 0.995) {
+            bad.push(`${r.d}/${r.m}/${r.y}: Vọng ${r.vong} chỉ sáng ` +
+                `${(r.vongIll * 100).toFixed(2)}% — chưa phải trăng tròn`);
         }
-        // 3. Ngày âm của chính ngày đang xét phải khớp khoảng cách tới mùng 1.
-        const gap = Math.round(
-            (Date.UTC(r.y, r.m - 1, r.d) - Date.UTC(y1, m1 - 1, d1)) / 86400000) + 1;
-        if (gap >= 1 && gap !== lday) {
-            bad.push(`${r.d}/${r.m}/${r.y}: âm ${lday} nhưng cách mùng 1 (${r.mung1}) ${gap} ngày`);
-        }
-        // 4. Tab Lịch phải nói cùng ngày âm với tab Kỳ Môn.
+        // 3. Tab Lịch phải nói cùng ngày âm với tab Kỳ Môn.
         const c = cal[`${r.y}-${r.m}-${r.d}`];
         if (c != null) {
             const cday = parseInt(String(c).split('/')[0], 10);
@@ -216,7 +228,7 @@ for (const city of PICK) {
 
     const label = (rows.name || city).padEnd(24);
     if (bad.length) { fail++; console.log(`  LỆCH ${label}`); bad.forEach(b => console.log('    ' + b)); }
-    else console.log(`  ok   ${label} ${DATES.length} ngày · mùng 1 = ngày chứa Sóc, Rằm = +14, hai tab + widget khớp`);
+    else console.log(`  ok   ${label} ${DATES.length} ngày · mùng 1 = ngày chứa Sóc, Vọng = trăng tròn, hai tab + widget khớp`);
     await ctx.close();
 }
 
