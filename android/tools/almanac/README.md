@@ -34,11 +34,28 @@ node ../test_astro_table.mjs         # canh bảng còn đúng và còn được
 này bị chính sách mạng chặn host ấy (403 ở bước CONNECT), nên dùng **DE423**
 (2010, phủ 1800–2200) lấy từ PyPI.
 
-Thay thế này không đáng kể, và đã **đo** chứ không phải phỏng đoán: DE423, DE421
-và DE405 cho ra cùng một mốc trong **≤ 0,014 giây** ở mọi tiết khí và mọi tuần
-trăng đã thử. 1″ hoàng kinh Mặt Trời là 24,4 giây tiết khí, nên chênh lệch cỡ
-mili-giây-cung giữa các bản DE nằm sâu dưới mọi ngưỡng ta quan tâm. Nút thắt độ
-chính xác nằm ở chỗ khác — xem ghi chú về stage 1 dưới đây.
+Không có đường nào khác để lấy DE440 ở đây: PyPI không có gói `de440`,
+`de440s`, `de441`, `de430` hay `de431` — dãy gói ephemeris trên PyPI dừng ở
+DE423.
+
+Thay thế này không đáng kể, và đã **đo** chứ không phải phỏng đoán. Chạy
+`python3 de_spread.py <thư-mục-eph>`: 296 mốc rải khắp 1900–2100, mỗi mốc tính
+bằng cả ba bản DE độc lập:
+
+| so với DE423 (2010) | tiết khí | điểm Sóc | điểm Vọng | lớn nhất |
+|---|---|---|---|---|
+| DE405 (1997) | 29,2 ms | 34,8 ms | 34,1 ms | **34,8 ms** |
+| DE421 (2008) | 20,6 ms | 1,8 ms | 1,9 ms | **20,6 ms** |
+
+Bảng lưu theo bước lượng tử 1e-6 ngày = **86,4 ms**, nên một mốc phải xê dịch
+quá **43,2 ms** thì mới đổi được lấy một chữ số trong `astro_table.js`. Mà trọn
+13 năm tiến hoá của DE — từ DE405 tới DE423, gồm cả phần cải thiện quỹ đạo Mặt
+Trăng nhờ đo laser — chỉ dịch được nhiều nhất 34,8 ms, tức vẫn dưới ngưỡng ấy.
+DE440 (2020) sẽ phải lệch khỏi DE423 hơn **ba lần** toàn bộ khoảng DE405→DE423
+thì mới đổi nổi một giá trị đã lưu.
+
+Nói cách khác: ở bài toán này, đời ephemeris không phải nút thắt. Nút thắt nằm ở
+chỗ khác — xem ghi chú về stage 1 dưới đây.
 
 ## Bốn cái bẫy (giữ nguyên trong `almanac_core.py`)
 
