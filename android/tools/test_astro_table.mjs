@@ -19,7 +19,7 @@ import { fileURLToPath } from 'url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.join(HERE, '..', 'app', 'src', 'main', 'assets', 'web');
 const require = createRequire(import.meta.url);
-const { ShouXingUtil } = require(path.join(WEB, 'js', 'lunar.js'));
+const { LunarYear, ShouXingUtil } = require(path.join(WEB, 'js', 'lunar.js'));
 
 let fail = 0;
 const ok = (cond, msg, extra = '') => {
@@ -84,7 +84,32 @@ for (const [fn, idx, want] of GOLD) {
        `${fn}(${idx})`, `lệch ${got === null ? 'null' : ((got - want) * 86400).toFixed(3) + 's'}`);
 }
 
-console.log('\n5. index.html nạp bảng TRƯỚC lunar.js');
+console.log('\n5. Kết cấu LỊCH không đổi — bảng chỉ được đổi MỐC');
+// Bảng DE423 dịch tiết khí vài giây và điểm Sóc vài phút. Chừng ấy KHÔNG được
+// phép đổi tháng nhuận hay mùng 1: tháng nhuận là tháng không có trung khí, một
+// quy tắc của lunar.js áp lên mốc, và mốc chính xác hơn chỉ làm đầu vào tốt hơn.
+// Dãy dưới đây chốt cứng: mỗi năm 1900-2100 một chữ số, 0 = không nhuận.
+const LEAP_1900_2100 =
+    '8005004002060050020700500400206005003070060040020700500308006004003070050040800600400207005003' +
+    '0800500400207005004090060040020600500301100600500207005003080060040030700500408006004003070050' +
+    '04080060040020';
+{
+    const got = [];
+    for (let y = 1900; y <= 2100; y++) {
+        let L = 0;
+        for (const m of LunarYear.fromYear(y).getMonths()) {
+            if (m.getYear() === y && m.getMonth() < 0) L = -m.getMonth();
+        }
+        got.push(L);
+    }
+    const s = got.join('');
+    ok(s.length === LEAP_1900_2100.length && s === LEAP_1900_2100,
+       'tháng nhuận 1900-2100 y nguyên',
+       s === LEAP_1900_2100 ? `(${got.filter(Boolean).length} năm nhuận)`
+                            : `lệch ở năm ${1900 + [...s].findIndex((c, i) => c !== LEAP_1900_2100[i])}`);
+}
+
+console.log('\n6. index.html nạp bảng TRƯỚC lunar.js');
 const html = fs.readFileSync(path.join(WEB, 'index.html'), 'utf8');
 const iTable = html.indexOf('js/astro_table.js');
 const iLunar = html.indexOf('js/lunar.js');

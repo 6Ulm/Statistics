@@ -345,6 +345,26 @@ khác; chỉ trường giây trong ngày đổi (40 dòng tiết khí, 1.721 dò
 Sửa cỡ vài phút chỉ dời được ranh giới ngày khi mốc rơi sát nửa đêm địa phương,
 và trong 200 năm không có mốc nào rơi đủ sát.
 
+### Bảng chỉ đổi MỐC — tháng nhuận và Bát Tự vẫn theo luật của lunar.js
+
+Bảng chỉ thay các con số; mọi quy tắc suy ra từ chúng vẫn là của `lunar.js`.
+Đã kiểm bằng cách chạy hai lần (có bảng / giấu bảng) rồi so từng ký tự:
+
+* **Kết cấu tháng âm 1900–2100 — giống hệt.** 3.711 dòng gồm số tháng, cờ
+  nhuận và mùng 1 của mọi tháng: lệch 0. Cả 74 năm nhuận rơi vào đúng tháng cũ.
+  `tools/test_astro_table.mjs` chốt cứng dãy tháng nhuận ấy, nên lần sau có ai
+  đổi bảng mà xê dịch tháng nhuận thì phép thử đỏ ngay.
+* **Bát Tự ở giờ bình thường — giống hệt.**
+
+Có **một** chỗ đổi, và không tránh được: người sinh trong đúng **1–3 giây** mà
+mốc giao tiết dịch đi thì trụ tháng (hoặc trụ năm, nếu là Lập Xuân) lật sang trụ
+kia. Quét ±10 giây quanh 432 mốc giao tiết: 135/9.072 truy vấn đổi kết quả, cửa
+sổ rộng 1 giây (trung vị), 3 giây (lớn nhất); ra ngoài ±4 giây thì khớp 100%.
+
+Đấy là hệ quả số học của việc sửa mốc, không phải lỗi: trụ tháng đổi tại đúng
+khoảnh khắc giao tiết, nên mốc dịch bao nhiêu thì cửa sổ lật rộng bấy nhiêu. Và
+giá trị MỚI mới là giá trị đúng — theo đúng nguyên tắc "mốc thì đo" ở trên.
+
 `node tools/test_astro_table.mjs` canh rằng bảng **đang thật sự được dùng**: mất
 tệp bảng hay mất thẻ `<script>` thì ứng dụng không hỏng, nó lặng lẽ rơi về chuỗi
 cũ — im lặng đúng là lý do phải có phép thử ấy.
@@ -417,6 +437,8 @@ lệch với phần còn lại của ứng dụng), mọi mốc mùng 1 và mọ
 ```bash
 node tools/build_lunar_table.mjs   # sinh assets/lunar_months.txt + jieqi.txt
 node tools/test_lunar_table.mjs    # đối chiếu với lunar.js
+node tools/test_astro_table.mjs    # bảng DE423 còn đúng, còn được dùng, và
+                                   # tháng nhuận 1900-2100 chưa xê dịch
 ```
 
 Bảng tra và cách tra đã đối chiếu **từng ngày một trong 73.414 ngày (1900–2100)
@@ -768,21 +790,25 @@ android/
 │   │   ├── LunarTable.kt            tra âm lịch + tiết khí cho widget
 │   │   └── CalendarWidgetProvider.kt  widget màn hình chính
 │   ├── res/                         icon, theme, layout widget, quy tắc sao lưu
-│   ├── assets/lunar_months.txt      mốc mùng 1, 1900–2100 (sinh sẵn)
-│   ├── assets/jieqi.txt             4.823 mốc tiết khí (sinh sẵn)
+│   ├── assets/lunar_months.txt      2.510 mốc Sóc, 1900–2100 (sinh sẵn)
+│   ├── assets/jieqi.txt             4.824 mốc tiết khí (sinh sẵn)
 │   └── assets/web/
 │       ├── index.html               khung trang + bảng chọn vị trí + bảng Nhật–Nguyệt
 │       ├── css/app.css              CSS của bản gốc, giữ nguyên
 │       ├── css/location.css         phần giao diện mới
 │       ├── css/calendar.css         MỚI — thanh tab + lịch âm dương
-│       ├── js/lunar.js              thư viện lịch âm của 6tail, giữ nguyên
+│       ├── js/astro_table.js        MỚI — mốc tiết khí/Sóc/Vọng từ JPL DE423
+│       ├── js/lunar.js              thư viện lịch âm của 6tail — ĐÃ SỬA: ba chỗ
+│       │                            nối tra astro_table.js (xem NOTICE.md)
 │       ├── js/app.js                engine Bát Tự / Kỳ Môn của bản gốc
 │       ├── js/astro.js              MỚI — Mặt Trời & Mặt Trăng theo toạ độ
+│       ├── js/ephem.js              MỚI — engine thiên văn dùng chung hai tab
 │       ├── js/location.js           MỚI — GPS, tra thành phố, toạ độ tay
 │       ├── js/viewport.js           MỚI — vừa khít mọi kích thước màn hình
 │       ├── js/calendar.js           MỚI — tab Lịch: lưới, tiết khí, ghim widget
 │       └── data/cities.txt          34.006 thành phố + múi giờ IANA
 └── tools/                           bộ sinh dữ liệu và kiểm thử
+    └── almanac/                     MỚI — oracle Python sinh astro_table.js
 ```
 
 Ghi công thư viện và dữ liệu bên thứ ba: xem [`NOTICE.md`](NOTICE.md).
