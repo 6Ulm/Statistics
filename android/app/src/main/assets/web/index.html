@@ -337,6 +337,10 @@ if (!CSS || !CSS.supports || !CSS.supports('padding-bottom', 'env(safe-area-inse
     </div>
 </div>
 
+<!-- astro_table.js phải đứng TRƯỚC lunar.js: ShouXingUtil tra bảng này cho
+     tiết khí và điểm Sóc/Vọng, và chỉ lùi về chuỗi giải tích cũ khi
+     không thấy bảng. -->
+<script src="js/astro_table.js"></script>
 <script src="js/lunar.js"></script>
 <!-- astro.js rồi ephem.js phải đứng TRƯỚC app.js: app.js gọi Ephem ngay khi
      dựng bảng, mà Ephem lại uỷ quyền nghiệm Mặt Trời cho Astro. -->

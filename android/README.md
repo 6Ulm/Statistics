@@ -295,6 +295,47 @@ Kiểm chứng độc lập trong `test_soc_parity.mjs`: tại thời điểm V�
 tính Mặt Trăng được chiếu sáng **100,00%**, còn trước và sau đó một ngày là
 98,97% và 98,91% — một cực đại sạch. Phép thử đòi ≥ 99,5% ở mọi ca.
 
+## Mốc thiên văn: bảng DE423, một nguồn duy nhất
+
+Tiết khí, điểm Sóc và điểm Vọng **không còn tính bằng chuỗi giải tích của
+ShouXing** mà tra `assets/web/js/astro_table.js` — bảng sinh sẵn từ JPL DE423 với
+chuỗi tuế sai–chương động IAU 2006/2000A (xem `tools/almanac/`).
+
+Chỉ có ba chỗ nối, tất cả nằm trong `ShouXingUtil`: `qiAccurate`, `qiHigh` và
+`shuoHigh`. Mọi thứ phía sau — `LunarYear`, cấu trúc tháng âm, tháng nhuận,
+`ephem.js`, cả hai tab, và bảng của widget do `build_lunar_table.mjs` sinh ra —
+thừa hưởng giá trị mới mà không phải sửa gì. Ba hàm ấy chỉ được gọi ở nhánh
+**sau 1959**; trước mốc đó `calcQi`/`calcShuo` vẫn tra bảng lịch sử `QI_KB`/
+`SHUO_KB`, và bảng mới không đụng vào — lịch Trung Quốc trước 1959 là **dữ liệu
+đã công bố**, không phải thứ để tính lại.
+
+Bảng ghi mốc theo TT; chỗ nối quy sang giờ dân dụng bằng đúng `dtT` cũ, nên chỉ
+phần thiên văn đổi, cách xử lý ΔT giữ nguyên.
+
+Đo trên toàn dải 1900–2100 (9.798 mốc), so bản cũ với bản mới **trong TT** để ΔT
+triệt tiêu:
+
+| Mốc | trung vị lệch | p95 | lớn nhất | vượt 60 s |
+|---|---|---|---|---|
+| Tiết khí | 0,45 s | 1,37 s | **2,83 s** | 0 / 4.824 |
+| Điểm Sóc | 27,9 s | 103 s | **180 s** | 456 / 2.487 |
+| Điểm Vọng | 28,7 s | 146 s | **234 s** | 601 / 2.487 |
+
+Tức là **tiết khí vốn đã đúng** — chuỗi ShouXing cho tiết khí sai không tới 3
+giây — còn **điểm Sóc và điểm Vọng mới là chỗ sai thật**, tới gần 4 phút. Chính
+`lunar.js` cũng ghi nhận điều đó trong một ghi chú tối ưu cũ ("Sóc chính xác hơn
+~2–3 phút").
+
+Dù vậy, **không một ngày lịch nào đổi**: dựng lại `jieqi.txt` và
+`lunar_months.txt` cho ra 0/4.824 tiết khí và 0/2.510 mùng 1 nhảy sang ngày
+khác; chỉ trường giây trong ngày đổi (40 dòng tiết khí, 1.721 dòng tháng âm).
+Sửa cỡ vài phút chỉ dời được ranh giới ngày khi mốc rơi sát nửa đêm địa phương,
+và trong 200 năm không có mốc nào rơi đủ sát.
+
+`node tools/test_astro_table.mjs` canh rằng bảng **đang thật sự được dùng**: mất
+tệp bảng hay mất thẻ `<script>` thì ứng dụng không hỏng, nó lặng lẽ rơi về chuỗi
+cũ — im lặng đúng là lý do phải có phép thử ấy.
+
 ## Tiết khí: một nguyên tắc duy nhất
 
 Tiết khí xuất hiện ở ba chỗ — bảng Sách Bổ pháp (tab Kỳ Môn), bảng Tiết khí

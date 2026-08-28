@@ -3576,6 +3576,11 @@
         // tzOffsetHours: số giờ lệch UTC của địa điểm (ví dụ: +7 cho VN, +8 cho CN, +1 cho FR)
         // Nếu không truyền vào → dùng _tzOffsetHours toàn cục, hoặc ONE_THIRD nếu chưa set
         var tzDay = this._tzDay(tzOffsetHours);
+        var tab = this._table();
+        if (tab) {
+            var tt = tab.term(Math.round(w / (Math.PI / 12)));
+            if (tt !== null) return this._tableLocal(tt, tzOffsetHours);
+        }
         var t = this.saLonT2(w) * 36525;
         t = t - this.dtT(t) + tzDay;
         var v = ((t + 0.5) % 1) * this.SECOND_PER_DAY;
@@ -3587,6 +3592,20 @@
       shuoHigh:function(w, tzOffsetHours){
         // OPT-3: tương tự qiHigh — áp dụng múi giờ thực cho tính Sóc
         var tzDay = this._tzDay(tzOffsetHours);
+        // w = k·2π là điểm Sóc của tuần trăng k, w = k·2π + π là điểm Vọng.
+        // floor chứ không round: với w âm, k·2π+π phải rơi về đúng tuần trăng
+        // k (ví dụ w/2π = −2,5 là Vọng của tuần trăng −3, không phải −2).
+        var tab = this._table();
+        if (tab) {
+            var kk = w / (2 * Math.PI);
+            var k = Math.floor(kk);
+            var frac = kk - k;
+            var tt = null;
+            if (frac < 0.25) tt = tab.newMoon(k);
+            else if (frac > 0.75) tt = tab.newMoon(k + 1);
+            else tt = tab.fullMoon(k);
+            if (tt !== null) return this._tableLocal(tt, tzOffsetHours);
+        }
         var t = this.msaLonT2(w) * 36525;
         t = t - this.dtT(t) + tzDay;
         var v = ((t + 0.5) % 1) * this.SECOND_PER_DAY;
@@ -3676,10 +3695,42 @@
         }
         return d;
       },
+      /**
+       * Mốc TT trong bảng astro_table.js -> ngày dân dụng địa phương, tính
+       * ĐÚNG như đường cũ vẫn tính: trừ dtT rồi cộng lệch múi giờ. Chỉ phần
+       * THIÊN VĂN đổi; cách quy đổi ΔT giữ nguyên, nên không có chuyện lịch
+       * xê dịch vì đổi mô hình ΔT.
+       */
+      _tableLocal:function(ttDays, tzOffsetHours){
+        return ttDays - this.dtT(ttDays) + this._tzDay(tzOffsetHours);
+      },
+      /**
+       * Bảng tra, hoặc null nếu chưa nạp / ngoài khoảng phủ.
+       *
+       * Trong trình duyệt, astro_table.js nạp bằng thẻ <script> đứng trước tệp
+       * này. Trong Node thì tự require lấy — bằng không mỗi công cụ trong
+       * tools/ lại phải nhớ nạp đúng thứ tự, quên một chỗ là lặng lẽ rơi về
+       * chuỗi giải tích cũ và lệch với bảng đã sinh.
+       */
+      _table:function(){
+        var g = (typeof window !== 'undefined' ? window : globalThis);
+        if (!g.AstroTable && this._tableTried !== true) {
+          this._tableTried = true;
+          try { require('./astro_table.js'); } catch (e) { /* dùng chuỗi cũ */ }
+        }
+        return g.AstroTable || null;
+      },
       qiAccurate:function(w, tzOffsetHours){
         // OPT-3-FULL: dùng _tzDay() — nếu tzOffsetHours không truyền,
         // fallback về _tzOffsetHours toàn cục (set bởi processAll), hoặc
         // ONE_THIRD (UTC+8) nếu chưa từng set. Trước đây hardcode ONE_THIRD.
+        // Bảng DE423 trước: w = n·(π/12) nên n = w/(π/12) là số thứ tự tiết
+        // khí, hoàng kinh biểu kiến 15n°. Ngoài khoảng bảng thì dùng chuỗi cũ.
+        var tab = this._table();
+        if (tab) {
+            var tt = tab.term(Math.round(w / (Math.PI / 12)));
+            if (tt !== null) return this._tableLocal(tt, tzOffsetHours);
+        }
         var t = this.saLonT(w) * 36525;
         return t - this.dtT(t) + this._tzDay(tzOffsetHours);
       },
