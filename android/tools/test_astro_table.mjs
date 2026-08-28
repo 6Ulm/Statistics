@@ -20,6 +20,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.join(HERE, '..', 'app', 'src', 'main', 'assets', 'web');
 const require = createRequire(import.meta.url);
 const { LunarYear, ShouXingUtil } = require(path.join(WEB, 'js', 'lunar.js'));
+require(path.join(WEB, 'js', 'astro.js'));
+const { Astro } = globalThis;
 
 let fail = 0;
 const ok = (cond, msg, extra = '') => {
@@ -84,7 +86,38 @@ for (const [fn, idx, want] of GOLD) {
        `${fn}(${idx})`, `lệch ${got === null ? 'null' : ((got - want) * 86400).toFixed(3) + 's'}`);
 }
 
-console.log('\n5. Kết cấu LỊCH không đổi — bảng chỉ được đổi MỐC');
+console.log('\n5. Phương trình thời gian — nền của Chính Ngọ');
+// EoT là thứ DUY NHẤT Chính Ngọ cần từ thiên văn: phần kinh độ trong công thức
+// là số học thuần tuý, nên một bảng toàn cục phục vụ mọi địa điểm.
+{
+    ok(typeof T.eot === 'function', 'bảng có mục EoT');
+    ok(T.eot(-36600) !== null && T.eot(36900) !== null, 'EoT phủ 1900-2100');
+    ok(T.eot(-99999) === null, 'ngoài khoảng trả null');
+
+    // Mốc trong implementation_prompt.md: EoT = biểu kiến trừ trung bình,
+    // ~ +16,4 phút đầu tháng 11 và ~ -14,2 phút giữa tháng 2.
+    const dayOf = (y, m, d) => {
+        const jd = Date.UTC(y, m - 1, d, 12) / 86400000 + 2440587.5;
+        return jd - 2451545.0;
+    };
+    const nov = T.eot(dayOf(2024, 11, 3));
+    const feb = T.eot(dayOf(2024, 2, 12));
+    ok(Math.abs(nov - 16.4) < 0.2, 'cực đại đầu tháng 11 ~ +16,4 phút',
+       `(${nov.toFixed(2)})`);
+    ok(Math.abs(feb + 14.2) < 0.2, 'cực tiểu giữa tháng 2 ~ -14,2 phút',
+       `(${feb.toFixed(2)})`);
+
+    // astro.js phải THẬT SỰ dùng bảng chứ không lặng lẽ rơi về Meeus.
+    const jd = 2451545.0 + dayOf(2024, 11, 3);
+    const viaAstro = Astro.equationOfTime(jd);
+    ok(Math.abs(viaAstro - T.eot(dayOf(2024, 11, 3))) < 0.001,
+       'Astro.equationOfTime tra bảng', `(lệch ${((viaAstro - nov) * 60).toFixed(3)}s)`);
+    ok(Math.abs(viaAstro - Astro.sunPosition(jd).eot) > 1e-6,
+       'và khác hẳn chuỗi Meeus cũ',
+       `(Meeus lệch ${((Astro.sunPosition(jd).eot - nov) * 60).toFixed(3)}s)`);
+}
+
+console.log('\n6. Kết cấu LỊCH không đổi — bảng chỉ được đổi MỐC');
 // Bảng DE423 dịch tiết khí vài giây và điểm Sóc vài phút. Chừng ấy KHÔNG được
 // phép đổi tháng nhuận hay mùng 1: tháng nhuận là tháng không có trung khí, một
 // quy tắc của lunar.js áp lên mốc, và mốc chính xác hơn chỉ làm đầu vào tốt hơn.
@@ -109,7 +142,7 @@ const LEAP_1900_2100 =
                             : `lệch ở năm ${1900 + [...s].findIndex((c, i) => c !== LEAP_1900_2100[i])}`);
 }
 
-console.log('\n6. index.html nạp bảng TRƯỚC lunar.js');
+console.log('\n7. index.html nạp bảng TRƯỚC lunar.js');
 const html = fs.readFileSync(path.join(WEB, 'index.html'), 'utf8');
 const iTable = html.indexOf('js/astro_table.js');
 const iLunar = html.indexOf('js/lunar.js');

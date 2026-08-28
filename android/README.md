@@ -345,6 +345,43 @@ khác; chỉ trường giây trong ngày đổi (40 dòng tiết khí, 1.721 dò
 Sửa cỡ vài phút chỉ dời được ranh giới ngày khi mốc rơi sát nửa đêm địa phương,
 và trong 200 năm không có mốc nào rơi đủ sát.
 
+### Chính Ngọ: cũng lấy từ DE423, qua phương trình thời gian
+
+Chính Ngọ (trưa Mặt Trời thật) chỉ cần **một** đại lượng thiên văn: phương trình
+thời gian, tức giờ Mặt Trời biểu kiến trừ giờ Mặt Trời trung bình. Phần kinh độ
+trong công thức là số học thuần tuý:
+
+```
+Chính Ngọ (phút kể từ 0h giờ đồng hồ) = 720 − (kinh độ − múi giờ×15)×4 − EoT
+```
+
+EoT là hàm của **thời gian, không phải nơi chốn**, nên MỘT bảng toàn cục phục vụ
+mọi địa điểm — khác hẳn mọc/lặn, vốn phụ thuộc vĩ độ và không tra bảng được.
+Bảng lấy mẫu 4 ngày một, nội suy bậc ba; sai số nội suy lớn nhất 12 ms (bước 8
+ngày cho 172 ms, bước 2 ngày chỉ hơn được 0,65 ms mà tốn gấp đôi).
+
+Đo trên 1.946 mốc rải khắp 1901–2098, so với DE423:
+
+| | trung vị | p95 | lớn nhất |
+|---|---|---|---|
+| Meeus (bản cũ) | 0,900 s | 2,555 s | **3,624 s** |
+| bảng DE423 (mới) | 0,0018 s | 0,0080 s | **0,0133 s** |
+
+Tức Chính Ngọ đi từ sai vài giây xuống sai vài phần trăm giây — đạt mức "dưới
+một giây" mà `implementation_prompt.md` đặt ra. Bảng cũng khớp hai mốc kiểm
+trong tài liệu ấy: cực đại **+16,45 phút** ngày 03-11 và cực tiểu **−14,19 phút**
+ngày 12-02 (tài liệu nêu +16,4 và −14,2).
+
+**Còn một khoản chưa khử: ΔUT1.** EoT tự nó thuần hình học nên không cần biết
+Trái Đất quay nhanh chậm ra sao. Nhưng Chính Ngọ là đại lượng ấy **quy ra giờ
+đồng hồ dân dụng**, mà đồng hồ dân dụng chạy theo UTC còn giờ Mặt Trời trung
+bình chạy theo UT1 — công thức trên ngầm coi UT1 = UTC. Đấy đúng là điều
+*stage 2* của tài liệu nói tới. Phần dư là UT1 − UTC, đo trên 19.955 bản ghi
+IERS được **−0,676 … +0,808 giây**. Không nhét được vào bảng: giá trị ấy không
+đoán trước được cho ngày mai, không tồn tại trước 1972 (khi UTC ra đời), mà ứng
+dụng thì chạy ngoại tuyến, không tải được EOP. Nó cũng nhỏ hơn khoảng 60 lần so
+với đơn vị PHÚT mà ứng dụng hiển thị Chính Ngọ.
+
 ### Bảng chỉ đổi MỐC — tháng nhuận và Bát Tự vẫn theo luật của lunar.js
 
 Bảng chỉ thay các con số; mọi quy tắc suy ra từ chúng vẫn là của `lunar.js`.

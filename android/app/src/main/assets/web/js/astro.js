@@ -74,7 +74,45 @@
     }
 
     /** Phương trình thời gian (phút) tại thời điểm jd. */
-    function equationOfTime(jd) { return sunPosition(jd).eot; }
+    /**
+     * Phương trình thời gian (phút) = giờ Mặt Trời BIỂU KIẾN trừ giờ Mặt Trời
+     * TRUNG BÌNH. Đây là thứ duy nhất Chính Ngọ cần từ thiên văn: phần kinh độ
+     * trong công thức Chính Ngọ là số học thuần tuý, nên MỘT bảng toàn cục dùng
+     * được cho mọi địa điểm.
+     *
+     * Ưu tiên bảng DE423 (astro_table.js, nội suy bậc ba trên mẫu 4 ngày, sai
+     * số 12 ms); không có bảng thì lùi về chuỗi Meeus, sai chừng 1–3 giây.
+     *
+     * Bảng đánh chỉ số theo TT nên phải cộng ΔT vào JD dân dụng. `dtT` của
+     * ShouXingUtil có sẵn khi lunar.js đã nạp; thiếu nó thì bỏ qua, và cái giá
+     * là ~16 ms (EoT đổi ~20 giây mỗi ngày, ΔT chừng 70 giây).
+     */
+    var _triedTable = false;
+
+    function equationOfTime(jd) {
+        var g = (typeof window !== 'undefined' ? window : globalThis);
+        if (!g.AstroTable && !_triedTable) {
+            // Trình duyệt nạp bằng thẻ <script>; trong Node thì tự require, bằng
+            // không mỗi công cụ lại phải nhớ nạp đúng thứ tự (xem
+            // ShouXingUtil._table trong lunar.js, cùng lý do).
+            _triedTable = true;
+            try { require('./astro_table.js'); } catch (e) { /* dùng Meeus */ }
+        }
+        var tab = g.AstroTable;
+        if (tab && tab.eot) {
+            // lunar.js đặt ShouXingUtil lên window trong trình duyệt, nhưng
+            // trong Node thì chỉ xuất qua module.exports — tìm cả hai đường,
+            // bằng không Node tra bảng theo UT còn trình duyệt tra theo TT.
+            var sx = g.ShouXingUtil;
+            if (!sx && typeof require === 'function') {
+                try { sx = require('./lunar.js').ShouXingUtil; } catch (e) { sx = null; }
+            }
+            var dt = (sx && typeof sx.dtT === 'function') ? sx.dtT(jd - 2451545.0) : 0;
+            var v = tab.eot(jd - 2451545.0 + dt);
+            if (v !== null) return v;
+        }
+        return sunPosition(jd).eot;
+    }
 
     /**
      * Giờ Mặt Trời thật (True Solar Time) tương ứng một mốc đồng hồ.

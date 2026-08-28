@@ -33,6 +33,7 @@ import erfa
 
 from almanac_core import ecliptic_longitude, jieqi, phase
 from de_npy import DeNpyEphemeris
+from eot import eot_minutes
 
 J2000 = 2451545.0
 RAD = math.pi / 180.0
@@ -43,6 +44,17 @@ K_MIN, K_MAX = -1245, 1260          # lunations
 N_MIN, N_MAX = -2395, 2455          # solar terms
 JIEQI_EPOCH_D = -286.0              # days from J2000 of the n=0 vernal equinox
 JIEQI_STEP_D = 365.2422 / 24.0      # mean days per solar term
+
+# Equation of time, for Chinh Ngo (local apparent noon). EoT is a function of
+# TIME ONLY -- the observer's longitude enters the noon formula as exact
+# arithmetic, not through the ephemeris -- so one global table serves every
+# location. EoT itself is geometric so the table needs no UT1; but Chinh Ngo in
+# CIVIL time assumes UT1 = UTC, leaving stage 2's residual of up to 0.9 s
+# (measured -0.676 .. +0.808 s over the IERS record) -- see eot.py.
+#
+# 4-day sampling with cubic interpolation is worst-case 12 ms over a year;
+# 8-day would be 172 ms and 2-day only buys 0.65 ms for twice the bytes.
+EOT_MIN_D, EOT_MAX_D, EOT_STEP_D = -36620, 36920, 4
 
 MICRO = 1_000_000                   # store microdays: 1e-6 d = 86.4 ms
 
@@ -73,6 +85,10 @@ def main(pkg_dir: str) -> None:
                              f"root={t} seed={seed} residual={resid:.3e} arcsec")
         terms.append(round(t * MICRO))
 
+    eots: list[int] = []
+    for d in range(EOT_MIN_D, EOT_MAX_D + 1, EOT_STEP_D):
+        eots.append(round(eot_minutes(eph, J2000, float(d)) * 60_000))  # ms
+
     def enc(vals: list[int]) -> str:
         """First differences: they are near-constant, so the text shrinks a lot."""
         out = [str(vals[0])]
@@ -91,37 +107,67 @@ def main(pkg_dir: str) -> None:
       " */\n")
     w("(function (root) {\n    'use strict';\n")
     w(f"    var K_MIN = {K_MIN}, N_MIN = {N_MIN};\n")
+    w(f"    var EOT_MIN = {EOT_MIN_D}, EOT_STEP = {EOT_STEP_D};\n")
     w(f"    var NEW = '{enc(new_moons)}';\n")
     w(f"    var FULL = '{enc(full_moons)}';\n")
     w(f"    var TERM = '{enc(terms)}';\n")
+    w(f"    var EOT = '{enc(eots)}';\n")
     w("""
-    /** Undo the first-difference encoding, once, on first use. */
-    function inflate(s) {
+    /**
+     * Undo the first-difference encoding, once, on first use.
+     *
+     * `div` differs per table: the jieqi and phase tables hold microdays, the
+     * EoT table holds milliseconds. Hard-coding 1e6 here silently scaled the
+     * EoT by 1e6/60000 and put Chinh Ngo minutes out.
+     */
+    function inflate(s, div) {
         var p = s.split(','), out = new Float64Array(p.length), acc = 0;
-        for (var i = 0; i < p.length; i++) { acc += +p[i]; out[i] = acc / 1e6; }
+        for (var i = 0; i < p.length; i++) { acc += +p[i]; out[i] = acc / div; }
         return out;
     }
 
-    var _new = null, _full = null, _term = null;
+    var _new = null, _full = null, _term = null, _eot = null;
 
     root.AstroTable = {
         /** TT days from J2000 of the new moon of lunation k, or null if off-table. */
         newMoon: function (k) {
-            if (!_new) { _new = inflate(NEW); NEW = null; }
+            if (!_new) { _new = inflate(NEW, 1e6); NEW = null; }
             var i = k - K_MIN;
             return (i >= 0 && i < _new.length) ? _new[i] : null;
         },
         /** TT days from J2000 of the full moon of lunation k, or null. */
         fullMoon: function (k) {
-            if (!_full) { _full = inflate(FULL); FULL = null; }
+            if (!_full) { _full = inflate(FULL, 1e6); FULL = null; }
             var i = k - K_MIN;
             return (i >= 0 && i < _full.length) ? _full[i] : null;
         },
         /** TT days from J2000 of solar term n (apparent longitude 15n deg), or null. */
         term: function (n) {
-            if (!_term) { _term = inflate(TERM); TERM = null; }
+            if (!_term) { _term = inflate(TERM, 1e6); TERM = null; }
             var i = n - N_MIN;
             return (i >= 0 && i < _term.length) ? _term[i] : null;
+        },
+        /**
+         * Equation of time in MINUTES (apparent minus mean solar time) at TT
+         * day `d` from J2000, or null off-table.
+         *
+         * Cubic Lagrange through the four samples bracketing d. Cubic and not
+         * linear because EoT swings ~30 s/day near November: linear on a 4-day
+         * step would be ~2 s out, which is the whole error budget.
+         */
+        eot: function (d) {
+            if (!_eot) { _eot = inflate(EOT, 60000); EOT = null; }   // ms -> minutes
+            var f = (d - EOT_MIN) / EOT_STEP, k = Math.floor(f) - 1;
+            if (k < 0 || k + 3 >= _eot.length) return null;
+            var r = 0;
+            for (var i = 0; i < 4; i++) {
+                var term = _eot[k + i];
+                for (var j = 0; j < 4; j++) {
+                    if (i !== j) term *= (f - (k + j)) / (i - j);
+                }
+                r += term;
+            }
+            return r;
         },
     };
 })(typeof window !== 'undefined' ? window : globalThis);
