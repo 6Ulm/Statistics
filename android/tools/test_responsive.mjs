@@ -110,6 +110,25 @@ for (const d of DEVICES) {
                 if (t) trunc.push(t.slice(0, 30));
             }
         }
+        // Bảng tiết khí nằm trong khối cuộn RIÊNG (.cal-jq-body, overflow:auto).
+        // Nội dung rộng hơn khối ấy thì nó cuộn ngang bên trong: trang không
+        // tràn, không ô lá nào bị "…" nuốt, nên hai phép quét trên đều không
+        // thấy — mà người dùng thì mất đuôi cột "Dương lịch". Đo thẳng.
+        let jq = null;
+        const jqBody = document.querySelector('.cal-jq-body');
+        const jqTable = document.querySelector('table.cal-jq');
+        if (jqBody && jqTable && jqBody.clientWidth > 0) {
+            const frame = jqBody.getBoundingClientRect();
+            let over = 0;
+            for (const td of jqTable.querySelectorAll('tr > td:last-child')) {
+                over = Math.max(over, Math.round(td.getBoundingClientRect().right - frame.right));
+            }
+            jq = {
+                scrollOver: jqBody.scrollWidth - jqBody.clientWidth,
+                lastColOver: over,
+            };
+        }
+
         const board = document.getElementById('board');
         // Phải đọc zoom ĐÃ TÍNH: luật `zoom: 1.25` của bản gốc nằm trong CSS,
         // đọc style nội tuyến sẽ luôn thấy rỗng và bỏ lọt lỗi.
@@ -123,6 +142,7 @@ for (const d of DEVICES) {
             boardH: board ? Math.round(board.getBoundingClientRect().height) : 0,
             trunc,
             hidden,
+            jq,
         };
     });
 
@@ -145,6 +165,12 @@ for (const d of DEVICES) {
     if (process.env.TAB === 'cal' && d.h > d.w && d.h >= 640 && r.contentH > r.innerH + 1) {
         problems.push(`tab Lịch tràn dọc ${r.contentH - r.innerH}px (phải vừa một màn hình)`);
     }
+    // Bảng tiết khí phải nằm trọn bề ngang: cuộn ngang trong một bảng 24 dòng
+    // là mất hẳn cột giờ, vì không ai nghĩ tới việc kéo ngang ở đó.
+    if (r.jq) {
+        if (r.jq.scrollOver > 1) problems.push(`bảng tiết khí cuộn ngang ${r.jq.scrollOver}px`);
+        if (r.jq.lastColOver > 1) problems.push(`cột cuối bảng tiết khí thò ${r.jq.lastColOver}px`);
+    }
     // Luật cốt lõi: nội dung đã cao quá màn hình thì TUYỆT ĐỐI không được phóng
     // to thêm. Bản gốc phóng 1,25 lần chỉ vì màn rộng ≥768px, nên điện thoại
     // xoay ngang bị phóng trong khi đã phải cuộn dọc.
@@ -154,7 +180,8 @@ for (const d of DEVICES) {
 
     if (problems.length) { fail++; console.log(`  FAIL ${d.name.padEnd(18)} ${problems.join('; ')}`); }
     else console.log(`  ok   ${d.name.padEnd(18)} zoom ${r.zoom.toFixed(3)}  bàn ${r.boardH}px  ` +
-                     `nội dung ${r.contentH}/${r.innerH}px  không tràn, không cắt chữ`);
+                     `nội dung ${r.contentH}/${r.innerH}px  không tràn, không cắt chữ` +
+                     (r.jq ? `, bảng tiết khí vừa bề ngang` : ''));
 
     await ctx.close();
 }

@@ -624,6 +624,14 @@ Lịch trên điện thoại dựng đứng phải vừa đúng một màn hình
 hiệu `fitGrid()` quên trừ một khối nào đó, mà `viewport.js` sẽ che lỗi ấy bằng
 cách thu nhỏ cả trang xuống đáy 0,95.
 
+Phép thử còn đo riêng **bảng tiết khí trong tab Lịch**. Bảng nằm trong khối cuộn
+của chính nó (`.cal-jq-body`, `overflow:auto`), nên nội dung rộng quá thì nó cuộn
+ngang BÊN TRONG: trang không tràn, không ô lá nào bị "…" nuốt, hai phép quét
+chung đều không thấy — mà người dùng thì mất đuôi cột "Dương lịch". Giờ đo thẳng
+`scrollWidth` của khối ấy và mép phải của cột cuối. Nhân đây cũng xác nhận: ở
+cả bảy kích thước, kể cả S21 (360px) và A51 (412px), bảng **không** tràn — cột
+ngày trong app vốn đã vừa, khác hẳn bảng vẽ tay của widget.
+
 Gỡ `viewport.js` ra thì ca "S21 ngang" lập tức đỏ — nên phép thử này có thật,
 không phải lúc nào cũng xanh. Trước đây nó **đọc `body.style.zoom`** (thuộc tính
 inline, luôn rỗng) nên vẫn xanh với cả bản hỏng; giờ đọc computed style.
