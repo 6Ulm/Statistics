@@ -21,6 +21,7 @@ import java.util.Calendar
 import java.util.TimeZone
 import org.json.JSONException
 import org.json.JSONObject
+import kotlin.math.sqrt
 
 /**
  * Widget màn hình chính: CHỈ lịch âm dương và bảng tiết khí — không có bàn Kỳ
@@ -190,12 +191,10 @@ class CalendarWidgetProvider : AppWidgetProvider() {
      *
      * Android 12 trở lên TỰ bo góc mọi widget theo
      * `system_app_widget_background_radius` (One UI để khá rộng), không cần hỏi
-     * ý ứng dụng; dưới mức đó thì góc là của `widget_bg.xml`, 16dp. Cung tròn ấy
-     * ăn vào hai góc dưới, nên nội dung phải lùi lên đúng ngần này thì hàng cuối
-     * mới còn nguyên chữ. Chặn trên 32dp để một giá trị lạ của máy nào đó không
-     * nuốt mất cả hàng.
+     * ý ứng dụng; dưới mức đó thì góc là của `widget_bg.xml`, 16dp. Chặn trên
+     * 32dp để một giá trị lạ của máy nào đó không nuốt mất cả hàng.
      */
-    private fun cornerInset(context: Context): Float {
+    private fun cornerRadius(context: Context): Float {
         val sys = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             try {
                 context.resources.getDimension(
@@ -206,6 +205,23 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             }
         } else 0f
         return maxOf(sys, dp(context, 16f)).coerceAtMost(dp(context, 32f))
+    }
+
+    /**
+     * Khoảng trắng phải chừa dưới hàng cuối cho góc bo — KHÔNG phải cả bán kính.
+     *
+     * Cung tròn chỉ ăn sâu nhất ở sát mép; chữ thì bắt đầu cách mép `inset`, mà
+     * ở hoành độ ấy cung mới xuống tới `r − √(2r·inset − inset²)`. Với góc 16dp
+     * và chữ bắt đầu ở 4dp thì chỉ 5,4dp chứ không phải 16dp — chừa cả bán kính
+     * là hở ra một dải trắng to vô cớ dưới đáy bảng.
+     *
+     * Cộng thêm chút lề an toàn cho nét chữ và cho việc làm tròn pixel.
+     */
+    private fun cornerBottomPad(context: Context, radius: Float, inset: Float): Float {
+        val margin = dp(context, 1.5f)
+        if (inset >= radius) return margin
+        val depth = radius - sqrt(2f * radius * inset - inset * inset)
+        return depth + margin
     }
 
     /**
@@ -247,8 +263,10 @@ class CalendarWidgetProvider : AppWidgetProvider() {
 
         // Đáy widget bị góc bo cắt mất một cung tròn. Bảng tiết khí chạm sát
         // mép thì hàng cuối (Mang Chủng · Đại Tuyết) mất chữ đầu và mất đuôi
-        // giờ, nên chừa sẵn đúng bán kính bo làm đệm đáy.
-        val safeBottom = if (jqRows == 0) 0f else cornerInset(context)
+        // giờ. Chừa đúng chỗ cung ăn tới Ở HOÀNH ĐỘ CHỮ BẮT ĐẦU — lấy lề hẹp
+        // nhất có thể xảy ra làm trường hợp xấu nhất, vì lề thật chỉ rộng hơn.
+        val safeBottom = if (jqRows == 0) 0f else
+            cornerBottomPad(context, cornerRadius(context), dp(context, PAD_NARROWEST))
 
         // Bảng tiết khí phải CỐ ĐỊNH: chia theo GRID_WEEKS (tháng dài nhất) chứ
         // không theo `weeks` của tháng đang xem. Chia theo `weeks` thì tháng gọn
@@ -403,9 +421,9 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         // dành chỗ cho CHỮ, khi rộng thì nới ra cho thoáng. Trên S21 nửa bảng
         // chỉ rộng ~165dp mà "Sương Giáng + 07-12-2026 09:52" đã gần kín, nên
         // vài dp lề ấy đổi được thẳng thành cỡ chữ.
-        val padMin = dp(context, 3f);  val padMax = dp(context, 5f)   // lề trái
+        val padMin = dp(context, PAD_NARROWEST); val padMax = dp(context, 8f)  // lề trái
         val gapMin = dp(context, 4f);  val gapMax = dp(context, 6f)   // giữa hai cột
-        val endMin = dp(context, 4f);  val endMax = dp(context, 7f)   // lề phải
+        val endMin = dp(context, 5f);  val endMax = dp(context, 10f)  // lề phải
 
         // Mục đang hiệu lực: mốc CUỐI CÙNG không muộn hơn hôm nay, giống tab
         // Lịch. Hôm nay nằm ngoài dãy đang hiện thì không tô mục nào.
@@ -632,6 +650,13 @@ class CalendarWidgetProvider : AppWidgetProvider() {
 
         /** Khuôn mốc ngày giờ dài nhất — dùng để chốt bề rộng cột "Dương lịch". */
         private const val DATE_TEMPLATE = "00-00-0000 00:00"
+
+        /**
+         * Lề hẹp nhất chữ có thể nằm cách mép bảng (khi bảng chật phải bóp lề).
+         * Đệm đáy tránh góc bo tính theo đúng con số này — lề thật chỉ rộng hơn,
+         * mà lề càng rộng thì cung góc càng ăn nông.
+         */
+        private const val PAD_NARROWEST = 4f
 
         /** Chưa chọn địa điểm thì lấy giờ Việt Nam — cùng cơ sở với lịch âm. */
         private const val DEFAULT_TZ = "Asia/Ho_Chi_Minh"

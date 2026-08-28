@@ -100,7 +100,10 @@ function drawBody(canvas, wDp, hDp, density, year, month, todayJdn) {
     const jqRows = jieQi.length===24 ? 13 : 0;
     // Đệm đáy cho góc bo — widget thật đọc bán kính của hệ thống
     // (system_app_widget_background_radius), không dưới 16dp của widget_bg.xml.
-    const safeBottom = jqRows===0 ? 0 : dp(CORNER_DP);
+    // Cung góc chỉ ăn sâu d = r − √(2r·x − x²) ở hoành độ x chữ bắt đầu, không
+    // phải cả bán kính — xem cornerBottomPad() bên Kotlin.
+    const cornerPad = (r, x) => (x >= r ? 0 : r - Math.sqrt(2*r*x - x*x)) + dp(1.5);
+    const safeBottom = jqRows===0 ? 0 : cornerPad(dp(CORNER_DP), dp(PAD_NARROWEST));
     // Chia theo GRID_WEEKS chứ không theo `weeks`: bảng tiết khí phải y hệt
     // nhau ở mọi tháng, không phình ra ở tháng gọn 5 hàng.
     const jqRowH = jqRows===0 ? 0
@@ -185,8 +188,8 @@ function drawJieQi(c, dp, w, top, rowH, bottomPad, jieQi, todayJdn) {
     const halfW = w/2;
     // Lề co giãn: chật thì bóp về mức tối thiểu để dành chỗ cho chữ, rộng thì
     // nới ra cho thoáng (xem drawJieQi bên Kotlin).
-    const padMin=dp(3), padMax=dp(5), gapMin=dp(4), gapMax=dp(6),
-          endMin=dp(4), endMax=dp(7);
+    const padMin=dp(PAD_NARROWEST), padMax=dp(8), gapMin=dp(4), gapMax=dp(6),
+          endMin=dp(5), endMax=dp(10);
 
     let active = -1;
     for (let i=0;i<jieQi.length;i++) if (jieQi[i].jdn <= todayJdn) active = i;
@@ -285,6 +288,8 @@ function drawJieQi(c, dp, w, top, rowH, bottomPad, jieQi, todayJdn) {
 const HEADER_DP = 32;
 // Bán kính góc bo dùng cho bản xem trước; widget thật hỏi hệ thống.
 const CORNER_DP = 16;
+// Lề hẹp nhất chữ có thể nằm cách mép bảng — đệm đáy tính theo con số này.
+const PAD_NARROWEST = 4;
 const params = new URLSearchParams(location.search);
 const today = params.get('today') || new Date().toISOString().slice(0,10);
 const [ty,tm,td] = today.split('-').map(Number);

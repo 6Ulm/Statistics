@@ -404,26 +404,34 @@ Bảng tiết khí là một khối **cố định**, không đổi khi lật th
   Trần vẫn là 12dp cho khớp bảng ở tab Lịch. Hệ số 0,66 cũ chừa thừa quá tay:
   trên widget 4×5 của S21 chữ chỉ còn 7,1dp trong khi hàng cao 10,7dp và bề
   ngang vẫn dư hơn 40dp.
-* **Lề mỗi nửa bảng co giãn**: chật thì bóp về mức tối thiểu (3 · 4 · 4dp) để
-  dành chỗ cho chữ, dư ra bao nhiêu trả lại cho lề tới mức rộng rãi (5 · 6 · 7dp).
-  Trên S21 nửa bảng chỉ rộng ~165dp nên vài dp lề ấy đổi thẳng thành cỡ chữ.
+* **Lề mỗi nửa bảng co giãn**: chật thì bóp về mức tối thiểu (4 · 4 · 5dp) để
+  dành chỗ cho chữ, dư ra bao nhiêu trả lại cho lề tới mức rộng rãi
+  (8 · 6 · 10dp — lề trái · khoảng hở giữa hai cột · lề phải, gần đúng bằng đệm
+  của bảng bên tab Lịch). Trên S21 nửa bảng chỉ rộng ~165dp nên vài dp lề ấy đổi
+  thẳng thành cỡ chữ.
 * Bề rộng cột ngày chốt theo **khuôn `00-00-0000 00:00`**, không theo mốc của
   năm đang xem, nên cột không nhích khi lật sang năm khác.
-* **Chừa đệm đáy đúng bằng bán kính góc bo**. Android 12 trở lên tự bo góc mọi
-  widget theo `system_app_widget_background_radius` (One UI để khá rộng); bảng
-  chạm sát mép thì cung tròn ăn mất chữ đầu của hàng cuối (Mang Chủng) và đuôi
-  giờ của nửa phải (Đại Tuyết). Bán kính đọc thẳng từ hệ thống, không dưới 16dp
-  của `widget_bg.xml` và không quá 32dp.
+* **Đệm đáy tính theo chỗ cung góc thật sự ăn tới, không phải cả bán kính.**
+  Android 12 trở lên tự bo góc mọi widget theo
+  `system_app_widget_background_radius` (One UI để khá rộng); bảng chạm sát mép
+  thì cung tròn ăn mất chữ đầu của hàng cuối (Mang Chủng) và đuôi giờ của nửa
+  phải (Đại Tuyết). Nhưng cung chỉ sâu nhất ở SÁT mép: ở hoành độ *x* mà chữ bắt
+  đầu, nó mới xuống tới `d = r − √(2r·x − x²)`. Với góc 16dp và lề hẹp nhất 4dp
+  thì d = 5,4dp, không phải 16dp — chừa cả bán kính là hở ra một dải trắng vô cớ
+  dưới đáy bảng. Chừa đúng d cộng 1,5dp lề an toàn, tính theo lề HẸP NHẤT có thể
+  xảy ra vì lề thật chỉ rộng hơn, mà lề càng rộng thì cung càng ăn nông.
+  Bán kính đọc thẳng từ hệ thống, không dưới 16dp của `widget_bg.xml` và không
+  quá 32dp.
 
 Cỡ chữ bảng tiết khí đo trên ba máy đích (`node tools/test_widget_layout.mjs`):
 
 | Máy · cỡ widget | Trước | Sau | Ràng buộc |
 |---|---|---|---|
-| S21 · 4×5 (330×440dp) | 7,1dp | **9,6dp** | chiều cao hàng |
-| S21 · 4×6 (330×530dp) | 8,8dp | **10,6dp** | bề ngang nửa bảng |
-| S21 FE · 4×5 (360×450dp) | 7,3dp | **9,8dp** | chiều cao hàng |
-| S21 FE · 4×6 (360×545dp) | 9,0dp | **11,6dp** | bề ngang nửa bảng |
-| A51 · 4×5 (380×460dp) | 7,4dp | **10,1dp** | chiều cao hàng |
+| S21 · 4×5 (330×440dp) | 7,1dp | **9,8dp** | chiều cao hàng |
+| S21 · 4×6 (330×530dp) | 8,8dp | **10,5dp** | bề ngang nửa bảng |
+| S21 FE · 4×5 (360×450dp) | 7,3dp | **10,1dp** | chiều cao hàng |
+| S21 FE · 4×6 (360×545dp) | 9,0dp | **11,5dp** | bề ngang nửa bảng |
+| A51 · 4×5 (380×460dp) | 7,4dp | **10,3dp** | chiều cao hàng |
 | A51 · 4×6 (380×560dp) | 9,3dp | **12,0dp** | chạm trần 12dp |
 
 Ba máy chỉ khác nhau ở bề ngang màn hình (360 · 393 · 412dp) và mật độ
@@ -434,7 +442,7 @@ mốc đều là số thực, chỉ có bề rộng bitmap mới làm tròn.
 
 Ở cỡ 4×6 trở lên, **S21 và S21 FE bị bề ngang chặn** chứ không phải chiều cao:
 nửa bảng rộng ~165dp (S21) và ~180dp (S21 FE), mà "Sương Giáng" cộng
-"07-12-2026 09:52" đã chiếm gần hết, nên trần thật là ~10,6dp và ~11,6dp — kéo
+"07-12-2026 09:52" đã chiếm gần hết, nên trần thật là ~10,5dp và ~11,5dp — kéo
 widget cao thêm không làm chữ to hơn nữa. Chỉ A51 (nửa bảng ~190dp) mới chạm được
 trần 12dp. Muốn phá trần ấy thì phải đổi cách hiện mốc ngày giờ, mà như thế lại
 lệch với bảng ở tab Lịch.
@@ -462,7 +470,8 @@ Nó dựng `widget_preview.html` ở đúng cấu hình S21 (360dp @3x), S21 FE 
 @2,75x) và A51 (412dp @2,625x), quét dải cỡ widget mà lưới One UI dựng ra, rồi
 canh năm điều: giá trị
 không tràn qua vách ngăn, chữ không nhỏ dưới ngưỡng đọc được, hàng cuối nằm trên
-cung góc bo, lưới lịch không bị bảng nuốt, và **bảng không đổi khi lật tháng** —
+cung góc bo mà cũng không hở thừa quá 4dp, lưới lịch không bị bảng nuốt, và
+**bảng không đổi khi lật tháng** —
 tháng 4, 5 và 6 hàng lịch phải cho ra cùng một khung, cùng cỡ chữ, cùng vị trí
 cột. Phông của Chromium rộng hơn Roboto nên cỡ chữ đo được là phía an toàn: trên
 máy thật chữ chỉ có thể to hơn con số ấy.

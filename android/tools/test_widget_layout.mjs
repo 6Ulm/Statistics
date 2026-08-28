@@ -72,8 +72,15 @@ const TODAY = '2026-08-27';
  */
 const MIN_TEXT_DP = 8;
 const FLOOR_TEXT_DP = 7.5;
-/** Bán kính góc bo tối thiểu phải chừa ở đáy (widget_bg.xml). */
-const MIN_CORNER_DP = 16;
+/**
+ * Góc bo của bản xem trước (widget_bg.xml; widget thật hỏi hệ thống, có thể
+ * rộng hơn). Đệm đáy KHÔNG cần cả bán kính — cung tròn chỉ ăn sâu
+ * `r − √(2r·x − x²)` ở hoành độ x mà chữ bắt đầu — nên phép canh dựng lại đúng
+ * công thức ấy thay vì so với một con số chết.
+ */
+const CORNER_DP = 16;
+const PAD_NARROWEST_DP = 4;
+const arcDepth = (r, x) => (x >= r ? 0 : r - Math.sqrt(2 * r * x - x * x));
 /** Lưới lịch phải giữ được ngần này phần thân widget, không cho bảng nuốt hết. */
 const MIN_GRID_SHARE = 0.35;
 
@@ -137,8 +144,17 @@ for (const dev of DEVICES) {
         } else ok();
 
         // 3. Hàng cuối nằm trên cung góc bo, và bảng không vượt đáy bitmap.
-        if (px(q.bottomPad) < MIN_CORNER_DP - 0.01) {
-            bad(`${tag}: đệm đáy chỉ ${px(q.bottomPad).toFixed(1)}dp (< ${MIN_CORNER_DP}dp)`);
+        // Đệm đáy phải phủ được chỗ cung góc ăn tới ở hoành độ chữ bắt đầu.
+        const needPad = arcDepth(CORNER_DP, PAD_NARROWEST_DP);
+        if (px(q.bottomPad) < needPad - 0.01) {
+            bad(`${tag}: đệm đáy ${px(q.bottomPad).toFixed(1)}dp < cung góc ăn `
+                + `${needPad.toFixed(1)}dp — hàng cuối sẽ bị cắt`);
+        } else ok();
+        // ...nhưng cũng không được hở hơn mức cần quá 4dp: chừa thừa là một dải
+        // trắng vô cớ dưới đáy bảng, đúng thứ người dùng kêu.
+        if (px(q.bottomPad) > needPad + 4) {
+            bad(`${tag}: đệm đáy ${px(q.bottomPad).toFixed(1)}dp, thừa `
+                + `${(px(q.bottomPad) - needPad).toFixed(1)}dp so với cung góc`);
         } else ok();
         const hPx = (hDp - 32) * dev.density;
         if (q.top + q.tableH > hPx + 0.5) {
