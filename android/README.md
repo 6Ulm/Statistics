@@ -312,6 +312,19 @@ thừa hưởng giá trị mới mà không phải sửa gì. Ba hàm ấy chỉ
 Bảng ghi mốc theo TT; chỗ nối quy sang giờ dân dụng bằng đúng `dtT` cũ, nên chỉ
 phần thiên văn đổi, cách xử lý ΔT giữ nguyên.
 
+**Nguyên tắc: mốc thì đo, ngày thì tra.** Điểm Sóc, điểm Vọng và tiết khí là
+những sự kiện có thật trên trời — với chúng, chuẩn duy nhất là bầu trời, nên
+tính bằng ephemeris tốt nhất có được. Còn "mùng 1 là ngày nào" thì không phải
+một đại lượng thiên văn: đó là một QUY TẮC áp lên cái mốc ấy, và quy tắc thì
+cần múi giờ với mốc nửa đêm mới ra được ngày. Mốc chính xác hơn làm đầu vào của
+quy tắc tốt hơn — luôn luôn có lợi — nhưng đầu ra vẫn là quy ước.
+
+Hệ quả cho phần trước 1959: **đừng đụng vào `QI_KB` / `SHUO_KB`.** Hai bảng ấy
+không phải phép xấp xỉ bầu trời mà là ghi chép lịch Trung Quốc **đã thật sự
+dùng**, kể cả những quyết định hành chính mà không ephemeris nào dựng lại được.
+Tính lại chúng là lấy một con số đẹp hơn thay cho một sự thật lịch sử — sai theo
+đúng nghĩa. Đó là lý do ba chỗ nối chỉ nằm ở nhánh sau 1959.
+
 Đo trên toàn dải 1900–2100 (9.798 mốc), so bản cũ với bản mới **trong TT** để ΔT
 triệt tiêu:
 
