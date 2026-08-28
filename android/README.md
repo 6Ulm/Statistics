@@ -415,19 +415,29 @@ Bảng tiết khí là một khối **cố định**, không đổi khi lật th
   giờ của nửa phải (Đại Tuyết). Bán kính đọc thẳng từ hệ thống, không dưới 16dp
   của `widget_bg.xml` và không quá 32dp.
 
-Cỡ chữ bảng tiết khí đo trên hai máy đích (`node tools/test_widget_layout.mjs`):
+Cỡ chữ bảng tiết khí đo trên ba máy đích (`node tools/test_widget_layout.mjs`):
 
 | Máy · cỡ widget | Trước | Sau | Ràng buộc |
 |---|---|---|---|
 | S21 · 4×5 (330×440dp) | 7,1dp | **9,6dp** | chiều cao hàng |
 | S21 · 4×6 (330×530dp) | 8,8dp | **10,6dp** | bề ngang nửa bảng |
+| S21 FE · 4×5 (360×450dp) | 7,3dp | **9,8dp** | chiều cao hàng |
+| S21 FE · 4×6 (360×545dp) | 9,0dp | **11,6dp** | bề ngang nửa bảng |
 | A51 · 4×5 (380×460dp) | 7,4dp | **10,1dp** | chiều cao hàng |
 | A51 · 4×6 (380×560dp) | 9,3dp | **12,0dp** | chạm trần 12dp |
 
-S21 hẹp hơn A51 (màn hình 360dp so với 412dp) nên **trần thật của S21 là ~10,6dp**:
-nửa bảng chỉ rộng ~165dp, mà "Sương Giáng" cộng "07-12-2026 09:52" đã chiếm gần
-hết. Kéo widget cao thêm không làm chữ to hơn nữa — chỉ đổi cách hiện mốc ngày
-giờ mới gỡ được, mà như thế lại lệch với bảng ở tab Lịch.
+Ba máy chỉ khác nhau ở bề ngang màn hình (360 · 393 · 412dp) và mật độ
+(3 · 2,75 · 2,625). Bố cục tính hết theo dp và theo `measureText` của chính phông
+đang dùng, nên **không có nhánh riêng cho máy nào** — cùng một luật cho ra ba kết
+quả xếp đúng theo bề ngang. Mật độ lẻ 2,75 của S21 FE cũng không gây lệch: mọi
+mốc đều là số thực, chỉ có bề rộng bitmap mới làm tròn.
+
+Ở cỡ 4×6 trở lên, **S21 và S21 FE bị bề ngang chặn** chứ không phải chiều cao:
+nửa bảng rộng ~165dp (S21) và ~180dp (S21 FE), mà "Sương Giáng" cộng
+"07-12-2026 09:52" đã chiếm gần hết, nên trần thật là ~10,6dp và ~11,6dp — kéo
+widget cao thêm không làm chữ to hơn nữa. Chỉ A51 (nửa bảng ~190dp) mới chạm được
+trần 12dp. Muốn phá trần ấy thì phải đổi cách hiện mốc ngày giờ, mà như thế lại
+lệch với bảng ở tab Lịch.
 
 Sàn 250dp (`minResizeWidth`, phải tự tay bóp mới có) cho chữ 7,8dp. Không nâng
 sàn ấy bằng manifest được: `minWidth` quá 250dp thì công thức ô của Android đòi
@@ -448,8 +458,9 @@ Bố cục bảng có phép thử riêng, đo số chứ không nhìn ảnh:
 node tools/test_widget_layout.mjs
 ```
 
-Nó dựng `widget_preview.html` ở đúng cấu hình S21 (360dp @3x) và A51 (412dp
-@2,625x), quét dải cỡ widget mà lưới One UI dựng ra, rồi canh năm điều: giá trị
+Nó dựng `widget_preview.html` ở đúng cấu hình S21 (360dp @3x), S21 FE (393dp
+@2,75x) và A51 (412dp @2,625x), quét dải cỡ widget mà lưới One UI dựng ra, rồi
+canh năm điều: giá trị
 không tràn qua vách ngăn, chữ không nhỏ dưới ngưỡng đọc được, hàng cuối nằm trên
 cung góc bo, lưới lịch không bị bảng nuốt, và **bảng không đổi khi lật tháng** —
 tháng 4, 5 và 6 hàng lịch phải cho ra cùng một khung, cùng cỡ chữ, cùng vị trí

@@ -42,6 +42,13 @@ const DEVICES = [
                 [330, 440], [330, 530], [330, 620]],
     },
     {
+        // 1080×2340 @2,75x → 393×851dp. Nằm giữa S21 và A51 cả bề ngang lẫn
+        // mật độ, nên là ca canh xem luật co giãn có mượt giữa hai đầu không.
+        name: 'S21 FE', screenDp: 393, density: 2.75,
+        sizes: [[250, 320, 'sàn bóp tay'], [360, 320], [360, 400],
+                [360, 450], [360, 545], [360, 650]],
+    },
+    {
         name: 'A51',  screenDp: 412, density: 2.625,
         sizes: [[250, 320, 'sàn bóp tay'], [380, 320], [380, 400],
                 [380, 460], [380, 560], [380, 680]],

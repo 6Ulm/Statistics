@@ -303,12 +303,15 @@ const SIZES = params.get('sizes')
         return [wd, hd, `${wd}×${hd}dp`];
       })
     : [
-        // Cỡ widget 4 cột trên lưới One UI của hai máy đích. Bề ngang ≈ 0,92×
-        // bề ngang màn hình: S21 (360dp) ra ~330dp, A51 (412dp) ra ~380dp.
-        // Mật độ hai máy khác nhau (3 và 2,625) nhưng bố cục tính theo dp nên
-        // ra gần như y hệt — xem tools/test_widget_layout.mjs.
+        // Cỡ widget 4 cột trên lưới One UI của ba máy đích. Bề ngang ≈ 0,92×
+        // bề ngang màn hình: S21 (360dp) ra ~330dp, S21 FE (393dp) ra ~360dp,
+        // A51 (412dp) ra ~380dp. Mật độ ba máy khác nhau (3 · 2,75 · 2,625)
+        // nhưng bố cục tính theo dp nên ra gần như y hệt — xem
+        // tools/test_widget_layout.mjs.
         [330, 440, 'S21 · 4×5 ô (sàn)'],
         [330, 530, 'S21 · 4×6 ô (mặc định)'],
+        [360, 450, 'S21 FE · 4×5 ô (sàn)'],
+        [360, 545, 'S21 FE · 4×6 ô (mặc định)'],
         [380, 460, 'A51 · 4×5 ô (sàn)'],
         [380, 560, 'A51 · 4×6 ô (mặc định)'],
       ];
