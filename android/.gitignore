@@ -18,3 +18,7 @@ captures/
 node_modules/
 node_modules
 package-lock.json
+
+# Python (bộ sinh bảng trong tools/almanac)
+__pycache__/
+*.pyc
