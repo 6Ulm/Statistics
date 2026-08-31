@@ -1,0 +1,39 @@
+# SPEC.md §2: "Pin every dependency version. No `+`, `latest.release`, or unpinned
+# branches." Every version below is an exact release. scripts/verify-artifacts.sh
+# fails the build on any dynamic version notation appearing in this repository.
+[versions]
+kotlin = "2.0.21"
+kotlinxSerialization = "1.7.3"
+junitJupiter = "5.11.4"
+junitPlatform = "1.11.4"
+# Android-only toolchain. These are declared so the module boundaries of §4.1 are
+# complete and pinned, but the Android modules require the Android SDK and the
+# Android Gradle Plugin, which are unavailable in the Phase 0 CI container
+# (dl.google.com is unreachable). See docs/IMPLEMENTATION_NOTES.md deviation D-1.
+androidGradlePlugin = "8.7.3"
+androidxCoreKtx = "1.15.0"
+androidxLifecycle = "2.8.7"
+androidxActivityCompose = "1.9.3"
+composeBom = "2024.12.01"
+playServicesLocation = "21.3.0"
+room = "2.6.1"
+
+[libraries]
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junitJupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junitPlatform" }
+androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCoreKtx" }
+androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "androidxLifecycle" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidxActivityCompose" }
+androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+androidx-compose-ui = { module = "androidx.compose.ui:ui" }
+androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
+androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
+android-library = { id = "com.android.library", version.ref = "androidGradlePlugin" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

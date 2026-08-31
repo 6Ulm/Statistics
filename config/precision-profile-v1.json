@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "1.0.0",
+  "configVersion": "precision-v1-candidate-1",
+
+  "orientationMaxAgeMs": 100,
+  "orientationInvalidAfterMs": 500,
+  "freshLocationAtStartMaxAgeMs": 60000,
+  "locationAtLockMaxAgeMs": 300000,
+  "usableLocationMaxAgeMs": 1800000,
+  "locationJumpRequiresFreshFixKm": 50.0,
+  "declinationEnvelopeProfessionalMaxDeg": 0.10,
+  "declinationEnvelopeUsableMaxDeg": 0.25,
+
+  "stableWindowMinMs": 2000,
+  "acquisitionTimeoutMs": 10000,
+  "periodicOrientationRequestedHz": 50.0,
+  "minPeriodicSupportSamples": 50,
+  "clHeadingMinSamplesPerStableWindow": 1,
+  "minCircularResultantLength": 0.995,
+  "angularSpeedP95MaxDegPerSec": 3.0,
+  "linearAccelerationP95MaxG": 0.05,
+  "circularResidualP95MaxDeg": 3.0,
+
+  "flatModePitchAbsMaxDeg": 5.0,
+  "flatModeRollAbsMaxDeg": 5.0,
+  "flatFreehandPlacementBound95Deg": 3.0,
+  "wallNormalElevationAbsMaxDeg": 5.0,
+  "wallTopAxisFromVerticalMaxDeg": 5.0,
+  "wallFreehandPlacementBound95Deg": 5.0,
+
+  "targetNearZoneDeg": 5.0,
+  "targetCenteringToleranceDeg": 1.0,
+
+  "providerCrossCheckMaxDeg": 5.0,
+  "referenceSeparationMarginDeg": 2.0,
+  "smallDeclinationAmbiguityMaxDeg": 2.0,
+  "transformAgreementMaxDeg": 2.0,
+
+  "magneticMagnitudeResidualSuspectFraction": 0.20,
+  "magneticMagnitudeResidualDisturbedFraction": 0.50,
+  "inclinationResidualSuspectDeg": 5.0,
+  "inclinationResidualDisturbedDeg": 12.0,
+  "stationaryFieldMadSuspectMicroTesla": 1.5,
+  "stationaryFieldMadDisturbedMicroTesla": 4.0,
+  "pipelineDisagreementSuspectDeg": 5.0,
+  "pipelineDisagreementDisturbedDeg": 10.0,
+  "suspectInterferenceBound95Deg": 3.0,
+  "recoveryCleanWindowMs": 2000,
+
+  "minHorizontalIntensityNanoTesla": 6000.0,
+
+  "unknownDeviceFloor95Deg": 4.0,
+  "professionalBound95MaxDeg": 2.0,
+  "highBound95MaxDeg": 3.0,
+  "usableBound95MaxDeg": 5.0,
+  "lowConfidenceBound95MaxDeg": 10.0,
+
+  "spaceWeatherAdvisoryKpMin": 5.0,
+  "spaceWeatherProfessionalSuppressKpMin": 7.0,
+  "spaceWeatherRejectKpMin": 9.0,
+  "spaceWeatherCacheMaxAgeMs": 21600000,
+
+  "thermalRestrictionBlocksLock": true,
+  "wirelessChargingBlocksGradeAboveUsable": true,
+
+  "precisionScreenOrientation": "PORTRAIT",
+  "requireBoundaryStraddleReporting": true,
+  "geomagneticModelId": "WMM2025",
+  "canonicalAltitudeReference": "WGS84_ELLIPSOID",
+  "declinationSigmaToBound95Factor": 1.96
+}

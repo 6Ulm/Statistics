@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md §2: portrait-locked, foreground only, phones only.
+  §13: background location is never requested.
+  Phase 0 declares the manifest boundary only; the Precision activity arrives in Phase 4.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <uses-feature android:name="android.hardware.sensor.compass" android:required="true" />
+    <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="true" />
+    <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
+
+    <application
+        android:label="Feng Shui Precision Compass"
+        android:supportsRtl="true" />
+</manifest>

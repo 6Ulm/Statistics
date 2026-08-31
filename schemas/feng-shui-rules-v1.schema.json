@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fengshuicompass.example/schemas/feng-shui-rules-v1.schema.json",
+  "title": "Feng Shui rule set v1",
+  "description": "SPEC.md §21.1. The artifact is complete, never an excerpt: exactly 24 unique sectors and 8 unique groups. Structural relationships that JSON Schema cannot express (contiguous indices, resolvable group references, sectorCount*sectorWidthDeg == 360, centerDeg == normalize360(firstSectorCenterDeg + index*sectorWidthDeg)) are asserted by the derived-boundary tests named in docs/TESTING.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion","ruleSetVersion","ruleSetName","referenceSelection","needleOffsetDeg","sectorCount","sectorWidthDeg","firstSectorCenterDeg","sectors","groups"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0.0" },
+    "ruleSetVersion": { "type": "string", "minLength": 1 },
+    "ruleSetName": { "type": "string", "minLength": 1 },
+    "referenceSelection": { "type": "string", "enum": ["TRUE", "MAGNETIC"] },
+    "needleOffsetDeg": { "type": "number", "exclusiveMinimum": -360, "exclusiveMaximum": 360 },
+    "sectorCount": { "type": "integer", "const": 24 },
+    "sectorWidthDeg": { "type": "number", "const": 15.0 },
+    "firstSectorCenterDeg": { "type": "number", "minimum": 0, "exclusiveMaximum": 360 },
+    "sectors": {
+      "type": "array",
+      "minItems": 24,
+      "maxItems": 24,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["index","centerDeg","name","glyph","group","groupGlyph"],
+        "properties": {
+          "index": { "type": "integer", "minimum": 0, "maximum": 23 },
+          "centerDeg": { "type": "number", "minimum": 0, "exclusiveMaximum": 360 },
+          "name": { "type": "string", "pattern": "^[a-z]+$" },
+          "glyph": { "type": "string", "minLength": 1, "maxLength": 1 },
+          "group": { "type": "string", "enum": ["KAN","GEN","ZHEN","XUN","LI","KUN","DUI","QIAN"] },
+          "groupGlyph": { "type": "string", "minLength": 1, "maxLength": 1 }
+        }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name","glyph","cardinal","centerDeg","widthDeg"],
+        "properties": {
+          "name": { "type": "string", "enum": ["KAN","GEN","ZHEN","XUN","LI","KUN","DUI","QIAN"] },
+          "glyph": { "type": "string", "minLength": 1, "maxLength": 1 },
+          "cardinal": { "type": "string", "enum": ["N","NE","E","SE","S","SW","W","NW"] },
+          "centerDeg": { "type": "number", "minimum": 0, "exclusiveMaximum": 360 },
+          "widthDeg": { "type": "number", "const": 45.0 }
+        }
+      }
+    }
+  }
+}

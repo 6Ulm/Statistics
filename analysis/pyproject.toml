@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools==75.6.0", "wheel==0.45.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fscompass-analysis"
+version = "0.1.0"
+description = "SPEC.md §4.1 analysis/: computes reports from exported telemetry, and hosts the third runtime of the §8.1 configuration invariants and the §8.1.1 grade-reachability analysis."
+requires-python = "==3.11.*"
+
+# SPEC.md §2: "Pin every dependency version." Exact pins only; see requirements-lock.txt
+# for the resolved set actually installed by scripts/ci-phase0.sh.
+dependencies = [
+    "jsonschema==4.23.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest==8.3.4",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

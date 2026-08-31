@@ -1,0 +1,6 @@
+# SHA-256 manifest for the vendored NOAA WMM artifacts, in `sha256sum -c` format.
+#
+# Status: NOT_VENDORED. This file is intentionally empty of entries; see UPSTREAM.md.
+# scripts/verify-artifacts.sh treats "no artifacts and no entries" as the declared
+# NOT_VENDORED state, and fails as soon as either side stops being empty without the
+# other matching.

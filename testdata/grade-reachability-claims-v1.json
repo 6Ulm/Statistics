@@ -1,0 +1,122 @@
+{
+  "schemaVersion": "1.0.0",
+  "claimsVersion": "reachability-claims-v1",
+  "appliesToConfigVersion": "precision-v1-candidate-1",
+  "purpose": "SPEC.md §8.1.1 requires a build-time analysis that computes, for every (PlacementMethod, certification state, MagneticState) combination the product claims to support, whether the claimed maximum grade is arithmetically reachable, and fails when the spec text claims a grade the constants forbid. This file is the CLAIM side of that comparison and is authored by hand from the normative spec text cited in each row's specBasis. It MUST NOT be generated from the arithmetic it is checked against, and it MUST NOT be edited to make a failing check pass (§37 rule 12).",
+  "gradeVocabulary": ["PROFESSIONAL", "HIGH", "USABLE", "LOW_CONFIDENCE", "INVALID", "NOT_SUPPORTED"],
+  "notes": [
+    "certificationState CERTIFIED means a §24 CertificationRecord exists for the exact key and supplies deviceFloor95Deg. Because deviceFloor95Deg is an OUTPUT of the Phase 5 benchmark and not an input to it (§8.1.1 'the certification bootstrap'), a CERTIFIED claim is expressed as a claimed grade PLUS the largest device floor that still makes it reachable. The analysis recomputes that floor from the constants and fails on any disagreement.",
+    "placementBoundStatus UNMEASURED means precision-profile-v1.json ships no bound for that placement method. §29.5 and the §35 checklist forbid a grade above USABLE without a measured method, so v1 claims nothing for those methods rather than assuming a value.",
+    "MagneticState DISTURBED, INVALID and UNKNOWN reject outright in v1 (§16, §18.5), so no measurement and therefore no grade is claimed."
+  ],
+  "combinations": [
+    {
+      "id": "flat-freehand-uncertified-clean",
+      "measurementMode": "FLAT_TOP_EDGE",
+      "placementMethod": "FREEHAND",
+      "placementBoundStatus": "CONFIGURED",
+      "certificationState": "UNCERTIFIED",
+      "magneticState": "CLEAN",
+      "claimedMaxGrade": "LOW_CONFIDENCE",
+      "claimedLockReachable": false,
+      "specBasis": "§8.1.1 table row 1: instrument budget 2.0°, unknownDeviceFloor95Deg 4.0° exceeds it, so no Precision Lock is possible on any uncertified device in the ordinary user gesture. §20 Usable row: 'on an uncertified device it cannot'. §22.1 worked example degrades at 7.0°."
+    },
+    {
+      "id": "flat-freehand-uncertified-suspect",
+      "measurementMode": "FLAT_TOP_EDGE",
+      "placementMethod": "FREEHAND",
+      "placementBoundStatus": "CONFIGURED",
+      "certificationState": "UNCERTIFIED",
+      "magneticState": "SUSPECT",
+      "claimedMaxGrade": "LOW_CONFIDENCE",
+      "claimedLockReachable": false,
+      "specBasis": "§8.1.1 table row 3 plus row 1: suspectInterferenceBound95Deg 3.0° alone exceeds the 2.0° freehand instrument budget, and the uncertified floor already forbids a lock."
+    },
+    {
+      "id": "flat-freehand-certified-clean",
+      "measurementMode": "FLAT_TOP_EDGE",
+      "placementMethod": "FREEHAND",
+      "placementBoundStatus": "CONFIGURED",
+      "certificationState": "CERTIFIED",
+      "magneticState": "CLEAN",
+      "claimedMaxGrade": "USABLE",
+      "claimedLockReachable": true,
+      "requiresDeviceFloorAtMostDeg": 2.0,
+      "specBasis": "§20 Usable row: 'Freehand flat reaches this only on a certified device whose floor leaves a 2.0° instrument budget.' §8.1.1: instrument budget = usableBound95MaxDeg - flatFreehandPlacementBound95Deg."
+    },
+    {
+      "id": "flat-freehand-certified-suspect",
+      "measurementMode": "FLAT_TOP_EDGE",
+      "placementMethod": "FREEHAND",
+      "placementBoundStatus": "CONFIGURED",
+      "certificationState": "CERTIFIED",
+      "magneticState": "SUSPECT",
+      "claimedMaxGrade": "LOW_CONFIDENCE",
+      "claimedLockReachable": false,
+      "specBasis": "§8.1.1 table row 3 and §18.5 magnetic-state row: SUSPECT does not merely cap the freehand grade, it prevents locking outright because the 3.0° penalty exceeds the whole 2.0° instrument budget with nothing left for the device floor."
+    },
+    {
+      "id": "wall-freehand-uncertified-clean",
+      "measurementMode": "WALL_FLUSH_BACK",
+      "placementMethod": "WALL_FLUSH_FREEHAND",
+      "placementBoundStatus": "CONFIGURED",
+      "certificationState": "UNCERTIFIED",
+      "magneticState": "CLEAN",
+      "claimedMaxGrade": "LOW_CONFIDENCE",
+      "claimedLockReachable": false,
+      "specBasis": "§8.1.1 table row 2: wall freehand instrument budget is 0.0°, so any positive instrument bound forbids a lock. §20 Low confidence row: 'Freehand wall normally lands here.'"
+    },
+    {
+      "id": "wall-freehand-uncertified-suspect",
+      "measurementMode": "WALL_FLUSH_BACK",
+      "placementMethod": "WALL_FLUSH_FREEHAND",
+      "placementBoundStatus": "CONFIGURED",
+      "certificationState": "UNCERTIFIED",
+      "magneticState": "SUSPECT",
+      "claimedMaxGrade": "INVALID",
+      "claimedLockReachable": false,
+      "specBasis": "§8.1.1 rows 2 and 3 with §20: 4.0° floor + 3.0° suspect penalty + 5.0° wall freehand placement is 12.0°, above lowConfidenceBound95MaxDeg, so there is no measurement at all."
+    },
+    {
+      "id": "wall-freehand-certified-clean",
+      "measurementMode": "WALL_FLUSH_BACK",
+      "placementMethod": "WALL_FLUSH_FREEHAND",
+      "placementBoundStatus": "CONFIGURED",
+      "certificationState": "CERTIFIED",
+      "magneticState": "CLEAN",
+      "claimedMaxGrade": "LOW_CONFIDENCE",
+      "claimedLockReachable": false,
+      "requiresDeviceFloorAtMostDeg": 0.0,
+      "specBasis": "§8.1.1 table row 2: 'WALL_FLUSH_FREEHAND can never lock' — certification cannot help, because the budget is zero and no real device floor is zero."
+    },
+    {
+      "id": "wall-freehand-certified-suspect",
+      "measurementMode": "WALL_FLUSH_BACK",
+      "placementMethod": "WALL_FLUSH_FREEHAND",
+      "placementBoundStatus": "CONFIGURED",
+      "certificationState": "CERTIFIED",
+      "magneticState": "SUSPECT",
+      "claimedMaxGrade": "LOW_CONFIDENCE",
+      "claimedLockReachable": false,
+      "specBasis": "§8.1.1 rows 2 and 3: the wall budget is already zero before the 3.0° suspect penalty."
+    },
+
+    { "id": "flat-freehand-uncertified-disturbed", "measurementMode": "FLAT_TOP_EDGE", "placementMethod": "FREEHAND", "placementBoundStatus": "CONFIGURED", "certificationState": "UNCERTIFIED", "magneticState": "DISTURBED", "claimedMaxGrade": "INVALID", "claimedLockReachable": false, "specBasis": "§16 and §18.5: DISTURBED rejects." },
+    { "id": "flat-freehand-uncertified-unknown", "measurementMode": "FLAT_TOP_EDGE", "placementMethod": "FREEHAND", "placementBoundStatus": "CONFIGURED", "certificationState": "UNCERTIFIED", "magneticState": "UNKNOWN", "claimedMaxGrade": "INVALID", "claimedLockReachable": false, "specBasis": "§16: UNKNOWN cannot produce a true-heading lock at all in v1 (MAGNETIC_FIELD_UNKNOWN)." },
+    { "id": "flat-freehand-uncertified-invalid", "measurementMode": "FLAT_TOP_EDGE", "placementMethod": "FREEHAND", "placementBoundStatus": "CONFIGURED", "certificationState": "UNCERTIFIED", "magneticState": "INVALID", "claimedMaxGrade": "INVALID", "claimedLockReachable": false, "specBasis": "§16 and §18.5: INVALID rejects." },
+    { "id": "flat-freehand-certified-disturbed", "measurementMode": "FLAT_TOP_EDGE", "placementMethod": "FREEHAND", "placementBoundStatus": "CONFIGURED", "certificationState": "CERTIFIED", "magneticState": "DISTURBED", "claimedMaxGrade": "INVALID", "claimedLockReachable": false, "specBasis": "§24.1: a certified device behaving badly is downgraded or rejected." },
+    { "id": "flat-freehand-certified-unknown", "measurementMode": "FLAT_TOP_EDGE", "placementMethod": "FREEHAND", "placementBoundStatus": "CONFIGURED", "certificationState": "CERTIFIED", "magneticState": "UNKNOWN", "claimedMaxGrade": "INVALID", "claimedLockReachable": false, "specBasis": "§16: UNKNOWN refuses a true-heading lock regardless of certification." },
+    { "id": "flat-freehand-certified-invalid", "measurementMode": "FLAT_TOP_EDGE", "placementMethod": "FREEHAND", "placementBoundStatus": "CONFIGURED", "certificationState": "CERTIFIED", "magneticState": "INVALID", "claimedMaxGrade": "INVALID", "claimedLockReachable": false, "specBasis": "§16 and §18.5: INVALID rejects." },
+    { "id": "wall-freehand-uncertified-disturbed", "measurementMode": "WALL_FLUSH_BACK", "placementMethod": "WALL_FLUSH_FREEHAND", "placementBoundStatus": "CONFIGURED", "certificationState": "UNCERTIFIED", "magneticState": "DISTURBED", "claimedMaxGrade": "INVALID", "claimedLockReachable": false, "specBasis": "§16 and §18.5: DISTURBED rejects." },
+    { "id": "wall-freehand-uncertified-unknown", "measurementMode": "WALL_FLUSH_BACK", "placementMethod": "WALL_FLUSH_FREEHAND", "placementBoundStatus": "CONFIGURED", "certificationState": "UNCERTIFIED", "magneticState": "UNKNOWN", "claimedMaxGrade": "INVALID", "claimedLockReachable": false, "specBasis": "§16: UNKNOWN refuses a true-heading lock." },
+    { "id": "wall-freehand-uncertified-invalid", "measurementMode": "WALL_FLUSH_BACK", "placementMethod": "WALL_FLUSH_FREEHAND", "placementBoundStatus": "CONFIGURED", "certificationState": "UNCERTIFIED", "magneticState": "INVALID", "claimedMaxGrade": "INVALID", "claimedLockReachable": false, "specBasis": "§16 and §18.5: INVALID rejects." },
+    { "id": "wall-freehand-certified-disturbed", "measurementMode": "WALL_FLUSH_BACK", "placementMethod": "WALL_FLUSH_FREEHAND", "placementBoundStatus": "CONFIGURED", "certificationState": "CERTIFIED", "magneticState": "DISTURBED", "claimedMaxGrade": "INVALID", "claimedLockReachable": false, "specBasis": "§24.1 and §18.5." },
+    { "id": "wall-freehand-certified-unknown", "measurementMode": "WALL_FLUSH_BACK", "placementMethod": "WALL_FLUSH_FREEHAND", "placementBoundStatus": "CONFIGURED", "certificationState": "CERTIFIED", "magneticState": "UNKNOWN", "claimedMaxGrade": "INVALID", "claimedLockReachable": false, "specBasis": "§16." },
+    { "id": "wall-freehand-certified-invalid", "measurementMode": "WALL_FLUSH_BACK", "placementMethod": "WALL_FLUSH_FREEHAND", "placementBoundStatus": "CONFIGURED", "certificationState": "CERTIFIED", "magneticState": "INVALID", "claimedMaxGrade": "INVALID", "claimedLockReachable": false, "specBasis": "§16 and §18.5." },
+
+    { "id": "flat-jig-any", "measurementMode": "FLAT_TOP_EDGE", "placementMethod": "NONMAGNETIC_ALIGNMENT_JIG", "placementBoundStatus": "UNMEASURED", "certificationState": "ANY", "magneticState": "ANY", "claimedMaxGrade": "NOT_SUPPORTED", "claimedLockReachable": false, "specBasis": "§29.5: the NONMAGNETIC_ALIGNMENT_JIG repeatability bound is a Phase 5 output; without it no measurement can reach HIGH or PROFESSIONAL. §35: 'Placement bounds measured via §29.5, not assumed; no grade above USABLE without a measured method.' precision-profile-v1.json therefore ships no jig placement bound and v1 claims no jig grade." },
+    { "id": "wall-jig-any", "measurementMode": "WALL_FLUSH_BACK", "placementMethod": "NONMAGNETIC_ALIGNMENT_JIG", "placementBoundStatus": "UNMEASURED", "certificationState": "ANY", "magneticState": "ANY", "claimedMaxGrade": "NOT_SUPPORTED", "claimedLockReachable": false, "specBasis": "Same as flat-jig-any." },
+    { "id": "flat-survey-fixture-any", "measurementMode": "FLAT_TOP_EDGE", "placementMethod": "SURVEY_FIXTURE", "placementBoundStatus": "UNMEASURED", "certificationState": "ANY", "magneticState": "ANY", "claimedMaxGrade": "NOT_SUPPORTED", "claimedLockReachable": false, "specBasis": "§27 fixture placement is a benchmark instrument, not a shipped consumer placement method; its bound is not in precision-profile-v1.json." },
+    { "id": "wall-survey-fixture-any", "measurementMode": "WALL_FLUSH_BACK", "placementMethod": "SURVEY_FIXTURE", "placementBoundStatus": "UNMEASURED", "certificationState": "ANY", "magneticState": "ANY", "claimedMaxGrade": "NOT_SUPPORTED", "claimedLockReachable": false, "specBasis": "Same as flat-survey-fixture-any." }
+  ]
+}

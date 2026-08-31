@@ -1,0 +1,316 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fengshuicompass.example/schemas/precision-profile-v1.schema.json",
+  "title": "Precision profile v1",
+  "description": "SPEC.md §8 precision profile. additionalProperties is false and the propertyNames constraint forbids any key matching /calibrationState/i (spelled as ECMA-262 character classes because JSON Schema regexes do not support inline (?i) flags): boundCalibrationState is derived at runtime from a §24 certification lookup and MUST NOT be settable from configuration (§8.1, §19.1, failure mode 32).",
+  "type": "object",
+  "additionalProperties": false,
+  "propertyNames": {
+    "not": {
+      "pattern": "[cC][aA][lL][iI][bB][rR][aA][tT][iI][oO][nN][sS][tT][aA][tT][eE]"
+    }
+  },
+  "required": [
+    "acquisitionTimeoutMs",
+    "angularSpeedP95MaxDegPerSec",
+    "canonicalAltitudeReference",
+    "circularResidualP95MaxDeg",
+    "clHeadingMinSamplesPerStableWindow",
+    "configVersion",
+    "declinationEnvelopeProfessionalMaxDeg",
+    "declinationEnvelopeUsableMaxDeg",
+    "declinationSigmaToBound95Factor",
+    "flatFreehandPlacementBound95Deg",
+    "flatModePitchAbsMaxDeg",
+    "flatModeRollAbsMaxDeg",
+    "freshLocationAtStartMaxAgeMs",
+    "geomagneticModelId",
+    "highBound95MaxDeg",
+    "inclinationResidualDisturbedDeg",
+    "inclinationResidualSuspectDeg",
+    "linearAccelerationP95MaxG",
+    "locationAtLockMaxAgeMs",
+    "locationJumpRequiresFreshFixKm",
+    "lowConfidenceBound95MaxDeg",
+    "magneticMagnitudeResidualDisturbedFraction",
+    "magneticMagnitudeResidualSuspectFraction",
+    "minCircularResultantLength",
+    "minHorizontalIntensityNanoTesla",
+    "minPeriodicSupportSamples",
+    "orientationInvalidAfterMs",
+    "orientationMaxAgeMs",
+    "periodicOrientationRequestedHz",
+    "pipelineDisagreementDisturbedDeg",
+    "pipelineDisagreementSuspectDeg",
+    "precisionScreenOrientation",
+    "professionalBound95MaxDeg",
+    "providerCrossCheckMaxDeg",
+    "recoveryCleanWindowMs",
+    "referenceSeparationMarginDeg",
+    "requireBoundaryStraddleReporting",
+    "schemaVersion",
+    "smallDeclinationAmbiguityMaxDeg",
+    "spaceWeatherAdvisoryKpMin",
+    "spaceWeatherCacheMaxAgeMs",
+    "spaceWeatherProfessionalSuppressKpMin",
+    "spaceWeatherRejectKpMin",
+    "stableWindowMinMs",
+    "stationaryFieldMadDisturbedMicroTesla",
+    "stationaryFieldMadSuspectMicroTesla",
+    "suspectInterferenceBound95Deg",
+    "targetCenteringToleranceDeg",
+    "targetNearZoneDeg",
+    "thermalRestrictionBlocksLock",
+    "transformAgreementMaxDeg",
+    "unknownDeviceFloor95Deg",
+    "usableBound95MaxDeg",
+    "usableLocationMaxAgeMs",
+    "wallFreehandPlacementBound95Deg",
+    "wallNormalElevationAbsMaxDeg",
+    "wallTopAxisFromVerticalMaxDeg",
+    "wirelessChargingBlocksGradeAboveUsable"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "configVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "orientationMaxAgeMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "orientationInvalidAfterMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "freshLocationAtStartMaxAgeMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "locationAtLockMaxAgeMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "usableLocationMaxAgeMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "locationJumpRequiresFreshFixKm": {
+      "type": "number",
+      "minimum": 0
+    },
+    "declinationEnvelopeProfessionalMaxDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "declinationEnvelopeUsableMaxDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "stableWindowMinMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "acquisitionTimeoutMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "periodicOrientationRequestedHz": {
+      "type": "number",
+      "minimum": 0,
+      "exclusiveMinimum": 0
+    },
+    "minPeriodicSupportSamples": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "clHeadingMinSamplesPerStableWindow": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "minCircularResultantLength": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "angularSpeedP95MaxDegPerSec": {
+      "type": "number",
+      "minimum": 0
+    },
+    "linearAccelerationP95MaxG": {
+      "type": "number",
+      "minimum": 0
+    },
+    "circularResidualP95MaxDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "flatModePitchAbsMaxDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "flatModeRollAbsMaxDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "flatFreehandPlacementBound95Deg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "wallNormalElevationAbsMaxDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "wallTopAxisFromVerticalMaxDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "wallFreehandPlacementBound95Deg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "targetNearZoneDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "targetCenteringToleranceDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "providerCrossCheckMaxDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "referenceSeparationMarginDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "smallDeclinationAmbiguityMaxDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "transformAgreementMaxDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "magneticMagnitudeResidualSuspectFraction": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "magneticMagnitudeResidualDisturbedFraction": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "inclinationResidualSuspectDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "inclinationResidualDisturbedDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "stationaryFieldMadSuspectMicroTesla": {
+      "type": "number",
+      "minimum": 0
+    },
+    "stationaryFieldMadDisturbedMicroTesla": {
+      "type": "number",
+      "minimum": 0
+    },
+    "pipelineDisagreementSuspectDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "pipelineDisagreementDisturbedDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "suspectInterferenceBound95Deg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "recoveryCleanWindowMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "minHorizontalIntensityNanoTesla": {
+      "type": "number",
+      "minimum": 0
+    },
+    "unknownDeviceFloor95Deg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "professionalBound95MaxDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "highBound95MaxDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "usableBound95MaxDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "lowConfidenceBound95MaxDeg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "spaceWeatherAdvisoryKpMin": {
+      "type": "number",
+      "minimum": 0
+    },
+    "spaceWeatherProfessionalSuppressKpMin": {
+      "type": "number",
+      "minimum": 0
+    },
+    "spaceWeatherRejectKpMin": {
+      "type": "number",
+      "minimum": 0
+    },
+    "spaceWeatherCacheMaxAgeMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "thermalRestrictionBlocksLock": {
+      "type": "boolean"
+    },
+    "wirelessChargingBlocksGradeAboveUsable": {
+      "type": "boolean"
+    },
+    "precisionScreenOrientation": {
+      "type": "string",
+      "enum": [
+        "PORTRAIT"
+      ]
+    },
+    "requireBoundaryStraddleReporting": {
+      "type": "boolean"
+    },
+    "geomagneticModelId": {
+      "type": "string",
+      "enum": [
+        "WMM2025",
+        "WMMHR2025"
+      ]
+    },
+    "canonicalAltitudeReference": {
+      "type": "string",
+      "enum": [
+        "WGS84_ELLIPSOID"
+      ]
+    },
+    "declinationSigmaToBound95Factor": {
+      "type": "number",
+      "minimum": 0,
+      "exclusiveMinimum": 0
+    }
+  }
+}

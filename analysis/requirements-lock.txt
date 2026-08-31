@@ -1,0 +1,9 @@
+# SPEC.md §2 / §37.2: exact pins, including transitive dependencies, so an analysis run is
+# reproducible from the reproducibility package. Regenerate with:
+#   pip install --no-cache-dir -e '.[test]' && pip freeze
+attrs==25.4.0
+jsonschema==4.23.0
+jsonschema-specifications==2025.9.1
+pytest==8.3.4
+referencing==0.37.0
+rpds-py==0.28.0

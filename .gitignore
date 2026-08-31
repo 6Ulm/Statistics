@@ -1,0 +1,24 @@
+# Build output
+android/.gradle/
+android/build/
+android/*/build/
+android/local.properties
+ios/.build/
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcworkspace/xcuserdata/
+.venv-analysis/
+analysis/**/__pycache__/
+analysis/*.egg-info/
+analysis/src/*.egg-info/
+**/__pycache__/
+.pytest_cache/
+
+# SPEC.md §37 rule 10: never commit secrets, API keys, device identifiers or raw private
+# locations. Captured benchmark telemetry belongs in the archived reproducibility package
+# (§37.2), not in the source tree.
+*.keystore
+*.jks
+google-services.json
+GoogleService-Info.plist
+secrets.properties
+*.jsonl
