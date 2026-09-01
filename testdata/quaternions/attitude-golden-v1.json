@@ -1,0 +1,348 @@
+{
+  "fixtureVersion": "fixtures-v1",
+  "specSections": [
+    "§3",
+    "§11.1",
+    "§14"
+  ],
+  "quaternionComponentOrder": "XYZW",
+  "transformDirection": "DEVICE_TO_REFERENCE",
+  "canonicalFrame": "REFERENCE_ENU",
+  "deviceAxes": {
+    "x": "RIGHT",
+    "y": "PORTRAIT_TOP_EDGE",
+    "z": "OUTWARD_SCREEN_NORMAL"
+  },
+  "modeReferenceVectors": {
+    "FLAT_TOP_EDGE": [
+      0.0,
+      1.0,
+      0.0
+    ],
+    "WALL_FLUSH_BACK": [
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "modeAxisElevationGateKey": {
+    "FLAT_TOP_EDGE": "flatModePitchAbsMaxDeg",
+    "WALL_FLUSH_BACK": "wallNormalElevationAbsMaxDeg"
+  },
+  "cases": [
+    {
+      "id": "flat-top-edge-north",
+      "measurementMode": "FLAT_TOP_EDGE",
+      "matrix": [
+        [
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "expectedHeadingDeg": 0.0,
+      "expectedElevationDeg": 0.0,
+      "quaternionDeviceToReferenceEnuXyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "flat-top-edge-east",
+      "measurementMode": "FLAT_TOP_EDGE",
+      "matrix": [
+        [
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "expectedHeadingDeg": 90.0,
+      "expectedElevationDeg": 0.0,
+      "quaternionDeviceToReferenceEnuXyzw": [
+        0.0,
+        0.0,
+        -0.7071067811865475,
+        0.7071067811865476
+      ]
+    },
+    {
+      "id": "flat-top-edge-south",
+      "measurementMode": "FLAT_TOP_EDGE",
+      "matrix": [
+        [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "expectedHeadingDeg": 180.0,
+      "expectedElevationDeg": 0.0,
+      "quaternionDeviceToReferenceEnuXyzw": [
+        0.0,
+        0.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "id": "flat-top-edge-west",
+      "measurementMode": "FLAT_TOP_EDGE",
+      "matrix": [
+        [
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "expectedHeadingDeg": 270.0,
+      "expectedElevationDeg": 0.0,
+      "quaternionDeviceToReferenceEnuXyzw": [
+        0.0,
+        0.0,
+        0.7071067811865475,
+        0.7071067811865476
+      ]
+    },
+    {
+      "id": "wall-outward-normal-north",
+      "measurementMode": "WALL_FLUSH_BACK",
+      "matrix": [
+        [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ]
+      ],
+      "expectedHeadingDeg": 0.0,
+      "expectedElevationDeg": 0.0,
+      "quaternionDeviceToReferenceEnuXyzw": [
+        0.0,
+        0.7071067811865475,
+        0.7071067811865476,
+        0.0
+      ]
+    },
+    {
+      "id": "wall-outward-normal-east",
+      "measurementMode": "WALL_FLUSH_BACK",
+      "matrix": [
+        [
+          0.0,
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ]
+      ],
+      "expectedHeadingDeg": 90.0,
+      "expectedElevationDeg": 0.0,
+      "quaternionDeviceToReferenceEnuXyzw": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "id": "wall-outward-normal-south",
+      "measurementMode": "WALL_FLUSH_BACK",
+      "matrix": [
+        [
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ]
+      ],
+      "expectedHeadingDeg": 180.0,
+      "expectedElevationDeg": 0.0,
+      "quaternionDeviceToReferenceEnuXyzw": [
+        0.7071067811865475,
+        0.0,
+        0.0,
+        0.7071067811865476
+      ]
+    },
+    {
+      "id": "wall-outward-normal-west",
+      "measurementMode": "WALL_FLUSH_BACK",
+      "matrix": [
+        [
+          0.0,
+          0.0,
+          -1.0
+        ],
+        [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ]
+      ],
+      "expectedHeadingDeg": 270.0,
+      "expectedElevationDeg": 0.0,
+      "quaternionDeviceToReferenceEnuXyzw": [
+        -0.5,
+        0.5,
+        0.5,
+        -0.5
+      ]
+    },
+    {
+      "id": "wall-axis-vertical-singular",
+      "measurementMode": "WALL_FLUSH_BACK",
+      "matrix": [
+        [
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "expectedHeadingDeg": null,
+      "expectedElevationDeg": 90.0,
+      "expectIllConditioned": true,
+      "expectExactlySingular": true,
+      "quaternionDeviceToReferenceEnuXyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "flat-axis-vertical-ill-conditioned",
+      "measurementMode": "FLAT_TOP_EDGE",
+      "matrix": [
+        [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ]
+      ],
+      "expectedHeadingDeg": null,
+      "expectedElevationDeg": 90.0,
+      "expectIllConditioned": true,
+      "expectExactlySingular": false,
+      "quaternionDeviceToReferenceEnuXyzw": [
+        0.0,
+        0.7071067811865475,
+        0.7071067811865476,
+        0.0
+      ]
+    }
+  ],
+  "nativeFrameConversion": [
+    {
+      "id": "core-motion-flat-north",
+      "nativeFrame": "CORE_MOTION_X_TRUE_NORTH_Z_VERTICAL",
+      "verification": "DECLARED_UNVERIFIED",
+      "nativeQuaternionXyzw": [
+        0.0,
+        0.0,
+        -0.7071067811865475,
+        0.7071067811865476
+      ],
+      "expectedCanonicalQuaternionXyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "expectedFlatHeadingDeg": 0.0
+    }
+  ]
+}

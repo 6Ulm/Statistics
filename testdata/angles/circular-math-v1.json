@@ -1,0 +1,280 @@
+{
+  "fixtureVersion": "fixtures-v1",
+  "specSections": [
+    "§3",
+    "§9",
+    "§33.1"
+  ],
+  "declaredAngleToleranceDeg": 1e-06,
+  "workingAngleToleranceDeg": 1e-09,
+  "normalize360": [
+    {
+      "inputDeg": -720.0,
+      "expectedDeg": 0.0
+    },
+    {
+      "inputDeg": -540.0,
+      "expectedDeg": 180.0
+    },
+    {
+      "inputDeg": -360.0,
+      "expectedDeg": 0.0
+    },
+    {
+      "inputDeg": -0.0,
+      "expectedDeg": 0.0
+    },
+    {
+      "inputDeg": 0.0,
+      "expectedDeg": 0.0
+    },
+    {
+      "inputDeg": 1.0,
+      "expectedDeg": 1.0
+    },
+    {
+      "inputDeg": -1.0,
+      "expectedDeg": 359.0
+    },
+    {
+      "inputDeg": 359.9999999,
+      "expectedDeg": 359.9999998999999
+    },
+    {
+      "inputDeg": 360.0,
+      "expectedDeg": 0.0
+    },
+    {
+      "inputDeg": 720.0,
+      "expectedDeg": 0.0
+    },
+    {
+      "inputDeg": 180.0,
+      "expectedDeg": 180.0
+    },
+    {
+      "inputDeg": -179.5,
+      "expectedDeg": 180.5
+    },
+    {
+      "inputDeg": 1000000000.5,
+      "expectedDeg": 280.5
+    }
+  ],
+  "shortestSignedDifferenceDeg": [
+    {
+      "aDeg": 0.0,
+      "bDeg": 180.0,
+      "expectedDeg": 180.0
+    },
+    {
+      "aDeg": 180.0,
+      "bDeg": 0.0,
+      "expectedDeg": 180.0
+    },
+    {
+      "aDeg": 90.0,
+      "bDeg": 270.0,
+      "expectedDeg": 180.0
+    },
+    {
+      "aDeg": 270.0,
+      "bDeg": 90.0,
+      "expectedDeg": 180.0
+    },
+    {
+      "aDeg": 120.0,
+      "bDeg": 300.0,
+      "expectedDeg": 180.0
+    },
+    {
+      "aDeg": 300.0,
+      "bDeg": 120.0,
+      "expectedDeg": 180.0
+    },
+    {
+      "aDeg": 10.0,
+      "bDeg": 350.0,
+      "expectedDeg": 19.999999999999993
+    },
+    {
+      "aDeg": 350.0,
+      "bDeg": 10.0,
+      "expectedDeg": -19.999999999999993
+    },
+    {
+      "aDeg": 1.0,
+      "bDeg": 359.0,
+      "expectedDeg": 1.9999999999999918
+    },
+    {
+      "aDeg": 359.0,
+      "bDeg": 1.0,
+      "expectedDeg": -1.9999999999999918
+    },
+    {
+      "aDeg": 0.0,
+      "bDeg": 0.0,
+      "expectedDeg": 0.0
+    },
+    {
+      "aDeg": 45.0,
+      "bDeg": 44.0,
+      "expectedDeg": 1.0
+    },
+    {
+      "aDeg": 44.0,
+      "bDeg": 45.0,
+      "expectedDeg": -1.0
+    },
+    {
+      "aDeg": 0.0,
+      "bDeg": 90.0,
+      "expectedDeg": -90.0
+    },
+    {
+      "aDeg": 90.0,
+      "bDeg": 0.0,
+      "expectedDeg": 90.0
+    },
+    {
+      "aDeg": -10.0,
+      "bDeg": 350.0,
+      "expectedDeg": 1.4033418597069752e-14
+    },
+    {
+      "aDeg": 720.0,
+      "bDeg": 0.0,
+      "expectedDeg": -2.8066837194139504e-14
+    }
+  ],
+  "shortestTargetDeltaDeg": [
+    {
+      "currentDeg": 359.0,
+      "targetDeg": 1.0,
+      "expectedDeg": 1.9999999999999918
+    },
+    {
+      "currentDeg": 1.0,
+      "targetDeg": 359.0,
+      "expectedDeg": -1.9999999999999918
+    },
+    {
+      "currentDeg": 0.0,
+      "targetDeg": 180.0,
+      "expectedDeg": 180.0
+    },
+    {
+      "currentDeg": 180.0,
+      "targetDeg": 0.0,
+      "expectedDeg": 180.0
+    },
+    {
+      "currentDeg": 90.0,
+      "targetDeg": 275.0,
+      "expectedDeg": -175.00000000000003
+    },
+    {
+      "currentDeg": 350.0,
+      "targetDeg": 10.0,
+      "expectedDeg": 19.999999999999993
+    },
+    {
+      "currentDeg": 10.0,
+      "targetDeg": 350.0,
+      "expectedDeg": -19.999999999999993
+    }
+  ],
+  "absoluteCircularDifferenceDeg": [
+    {
+      "aDeg": 0.0,
+      "bDeg": 180.0,
+      "expectedDeg": 180.0
+    },
+    {
+      "aDeg": 180.0,
+      "bDeg": 0.0,
+      "expectedDeg": 180.0
+    },
+    {
+      "aDeg": 90.0,
+      "bDeg": 270.0,
+      "expectedDeg": 180.0
+    },
+    {
+      "aDeg": 270.0,
+      "bDeg": 90.0,
+      "expectedDeg": 180.0
+    },
+    {
+      "aDeg": 120.0,
+      "bDeg": 300.0,
+      "expectedDeg": 180.0
+    },
+    {
+      "aDeg": 300.0,
+      "bDeg": 120.0,
+      "expectedDeg": 180.0
+    },
+    {
+      "aDeg": 10.0,
+      "bDeg": 350.0,
+      "expectedDeg": 19.999999999999993
+    },
+    {
+      "aDeg": 350.0,
+      "bDeg": 10.0,
+      "expectedDeg": 19.999999999999993
+    },
+    {
+      "aDeg": 1.0,
+      "bDeg": 359.0,
+      "expectedDeg": 1.9999999999999918
+    },
+    {
+      "aDeg": 359.0,
+      "bDeg": 1.0,
+      "expectedDeg": 1.9999999999999918
+    },
+    {
+      "aDeg": 0.0,
+      "bDeg": 0.0,
+      "expectedDeg": 0.0
+    },
+    {
+      "aDeg": 45.0,
+      "bDeg": 44.0,
+      "expectedDeg": 1.0
+    },
+    {
+      "aDeg": 44.0,
+      "bDeg": 45.0,
+      "expectedDeg": 1.0
+    },
+    {
+      "aDeg": 0.0,
+      "bDeg": 90.0,
+      "expectedDeg": 90.0
+    },
+    {
+      "aDeg": 90.0,
+      "bDeg": 0.0,
+      "expectedDeg": 90.0
+    },
+    {
+      "aDeg": -10.0,
+      "bDeg": 350.0,
+      "expectedDeg": 1.4033418597069752e-14
+    },
+    {
+      "aDeg": 720.0,
+      "bDeg": 0.0,
+      "expectedDeg": 2.8066837194139504e-14
+    }
+  ],
+  "rejectedNonFiniteTokens": [
+    "NAN",
+    "POSITIVE_INFINITY",
+    "NEGATIVE_INFINITY"
+  ]
+}

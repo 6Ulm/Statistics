@@ -22,3 +22,6 @@ google-services.json
 GoogleService-Info.plist
 secrets.properties
 *.jsonl
+
+# Kotlin compile-daemon scratch output; not a build input.
+android/.kotlin/

@@ -147,6 +147,22 @@ class ConfigurationInvariantsTest {
     }
 
     @Test
+    @DisplayName("§8.1 INV-11: the event-driven anchor minimum is independent of the periodic rate")
+    fun eventDrivenAnchorMinimumIsIndependentOfTheRate() {
+        // R52: requiring iOS flat to deliver 50 CLHeading events in 2 s, or applying the
+        // periodic freshness rule to a stationary CLHeading value, rejects a perfectly good
+        // measurement. At least one anchor must fall in the window, and the anchor count must
+        // stay strictly below what the periodic stream would produce.
+        val rateDerived = profile.stableWindowMinMs * profile.periodicOrientationRequestedHz / 1000.0
+        assertTrue(profile.clHeadingMinSamplesPerStableWindow >= 1)
+        assertTrue(profile.clHeadingMinSamplesPerStableWindow < rateDerived) {
+            "clHeadingMinSamplesPerStableWindow=${profile.clHeadingMinSamplesPerStableWindow} " +
+                "must stay below the rate-derived periodic count $rateDerived, or the " +
+                "event-driven path inherits the periodic contract by arithmetic."
+        }
+    }
+
+    @Test
     @DisplayName("§8.1: the invariant checker reports a violation when one is introduced")
     fun invariantCheckerIsNotVacuous() {
         // Mutating a copy proves the checker discriminates. The shipped file is untouched;
@@ -155,10 +171,15 @@ class ConfigurationInvariantsTest {
         val broken = profile.copy(
             referenceSeparationMarginDeg = profile.smallDeclinationAmbiguityMaxDeg + 1.0,
             orientationMaxAgeMs = profile.orientationInvalidAfterMs,
+            // The R52 defect, expressed as config: an anchor count derived from the periodic
+            // rate rather than decided independently.
+            clHeadingMinSamplesPerStableWindow =
+                (profile.stableWindowMinMs * profile.periodicOrientationRequestedHz / 1000.0).toInt(),
         )
         val violations = ConfigurationInvariants.check(broken, rawTree)
         val ids = violations.map { it.invariantId }
         assertTrue("INV-02-REFERENCE-SEPARATION-ORDERING" in ids) { "got $ids" }
         assertTrue("INV-08-ORIENTATION-AGE-ORDERING" in ids) { "got $ids" }
+        assertTrue("INV-11-EVENT-DRIVEN-ANCHOR-MINIMUM" in ids) { "got $ids" }
     }
 }

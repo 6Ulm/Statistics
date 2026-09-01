@@ -1,0 +1,106 @@
+{
+  "fixtureVersion": "fixtures-v1",
+  "specSections": [
+    "§19",
+    "§8.1.1",
+    "§22.1"
+  ],
+  "configVersion": "precision-v1-candidate-1",
+  "cases": [
+    {
+      "id": "example-uncertified-flat-freehand-degrades",
+      "note": "R62: the shipped §22.1 example. Fresh confident provider, clean field, verified reference, level device — and still not a Precision Lock, because the unknown-device floor plus freehand placement is 7.0 deg.",
+      "providerReportedBoundTermDeg": 1.8,
+      "sampleBound95Deg": 0.62,
+      "deviceFloor95Deg": 4.0,
+      "placementBound95Deg": 3.0,
+      "expectedBaseHeadingBound95Deg": 4.0,
+      "expectedInstrumentBound95Deg": 4.0,
+      "expectedReportedBound95Deg": 7.0,
+      "expectedGradeLimitedBy": "DEVICE_FLOOR",
+      "expectedMeasurementState": "DEGRADED"
+    },
+    {
+      "id": "provider-term-absent-is-not-zero",
+      "note": "R61: a wall path exposes no documented provider degree error. The term is absent, and the max is taken over present values only — it does not become a 0.0 that could lower the base.",
+      "providerReportedBoundTermDeg": null,
+      "sampleBound95Deg": 0.4,
+      "deviceFloor95Deg": 4.0,
+      "placementBound95Deg": 5.0,
+      "expectedBaseHeadingBound95Deg": 4.0,
+      "expectedInstrumentBound95Deg": 4.0,
+      "expectedReportedBound95Deg": 9.0,
+      "expectedGradeLimitedBy": "PLACEMENT_UNCERTAINTY",
+      "expectedMeasurementState": "DEGRADED"
+    },
+    {
+      "id": "rv-term-cannot-lower-the-floor",
+      "note": "R63: the AOSP-documented 95% rotation-vector term enters the base max unconverted. Because the base is a max, adding it can only leave the base unchanged or increase it.",
+      "providerReportedBoundTermDeg": 2.5,
+      "sampleBound95Deg": 0.5,
+      "deviceFloor95Deg": 4.0,
+      "placementBound95Deg": 3.0,
+      "expectedBaseHeadingBound95Deg": 4.0,
+      "expectedInstrumentBound95Deg": 4.0,
+      "expectedReportedBound95Deg": 7.0,
+      "expectedGradeLimitedBy": "DEVICE_FLOOR",
+      "expectedMeasurementState": "DEGRADED"
+    },
+    {
+      "id": "rv-term-above-the-floor-widens-the-base",
+      "note": "The same term when the provider reports worse uncertainty than the floor.",
+      "providerReportedBoundTermDeg": 6.0,
+      "sampleBound95Deg": 0.5,
+      "deviceFloor95Deg": 4.0,
+      "placementBound95Deg": 3.0,
+      "expectedBaseHeadingBound95Deg": 6.0,
+      "expectedInstrumentBound95Deg": 6.0,
+      "expectedReportedBound95Deg": 9.0,
+      "expectedGradeLimitedBy": "PROVIDER_ERROR",
+      "expectedMeasurementState": "DEGRADED"
+    },
+    {
+      "id": "certified-jig-locks",
+      "note": "A certified floor plus a measured jig placement bound is the only shape that reaches a lock under the shipped constants (§8.1.1 bootstrap).",
+      "providerReportedBoundTermDeg": 1.0,
+      "sampleBound95Deg": 0.5,
+      "deviceFloor95Deg": 1.2,
+      "placementBound95Deg": 0.5,
+      "expectedBaseHeadingBound95Deg": 1.2,
+      "expectedInstrumentBound95Deg": 1.2,
+      "expectedReportedBound95Deg": 1.7,
+      "expectedGradeLimitedBy": "DEVICE_FLOOR",
+      "expectedMeasurementState": "PRECISION_LOCKED"
+    },
+    {
+      "id": "suspect-field-blocks-a-freehand-lock",
+      "note": "§8.1.1 row 3: SUSPECT adds 3.0 deg, which alone exceeds the 2.0 deg flat-freehand instrument budget. The interference and placement terms are both exactly 3.0 here, so gradeLimitedBy resolves by stable enum order (§19) — PLACEMENT_UNCERTAINTY precedes INTERFERENCE_PENALTY. The tie is the point: two runtimes must name the same one.",
+      "providerReportedBoundTermDeg": 1.0,
+      "sampleBound95Deg": 0.5,
+      "deviceFloor95Deg": 1.2,
+      "placementBound95Deg": 3.0,
+      "interferenceBound95Deg": 3.0,
+      "expectedBaseHeadingBound95Deg": 1.2,
+      "expectedInstrumentBound95Deg": 4.2,
+      "expectedReportedBound95Deg": 7.2,
+      "expectedGradeLimitedBy": "PLACEMENT_UNCERTAINTY",
+      "expectedMeasurementState": "DEGRADED"
+    },
+    {
+      "id": "ambiguity-and-declination-terms-add",
+      "note": "§19: the non-base terms are different, additive error sources. The declination term arrives through boundFromSigma exactly once (§19.2).",
+      "providerReportedBoundTermDeg": 1.0,
+      "sampleBound95Deg": 0.5,
+      "deviceFloor95Deg": 1.2,
+      "declinationModelBound95Deg": 0.4,
+      "locationTimeSensitivityBound95Deg": 0.05,
+      "referenceAmbiguityBound95Deg": 1.5,
+      "placementBound95Deg": 0.5,
+      "expectedBaseHeadingBound95Deg": 1.2,
+      "expectedInstrumentBound95Deg": 3.15,
+      "expectedReportedBound95Deg": 3.65,
+      "expectedGradeLimitedBy": "REFERENCE_AMBIGUITY",
+      "expectedMeasurementState": "PRECISION_LOCKED"
+    }
+  ]
+}

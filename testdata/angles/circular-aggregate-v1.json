@@ -1,0 +1,114 @@
+{
+  "fixtureVersion": "fixtures-v1",
+  "specSections": [
+    "§15",
+    "§19"
+  ],
+  "minCircularResultantLength": 0.995,
+  "weights": "UNIFORM",
+  "trimming": "NONE",
+  "windows": [
+    {
+      "id": "tight-cluster",
+      "samples": [
+        84.7,
+        85.3,
+        84.9,
+        85.4,
+        85.0
+      ],
+      "expectedMeanDeg": 85.0599999780672,
+      "expectedResultantLength": 0.9999898867280665,
+      "meanIsDefined": true,
+      "expectedCircularMeanUndefinedUnderGate": false,
+      "expectedResidualsDeg": [
+        0.35999997806719364,
+        0.24000002193280068,
+        0.1599999780671908,
+        0.3400000219328092,
+        0.05999997806719648
+      ],
+      "expectedResidualP95Deg": 0.35999997806719364
+    },
+    {
+      "id": "north-wrap",
+      "samples": [
+        359.0,
+        359.5,
+        0.0,
+        0.5,
+        1.0
+      ],
+      "expectedMeanDeg": 0.0,
+      "expectedResultantLength": 0.999923847288225,
+      "meanIsDefined": true,
+      "expectedCircularMeanUndefinedUnderGate": false,
+      "expectedResidualsDeg": [
+        1.0000000000000029,
+        0.4999999999999829,
+        0.0,
+        0.5,
+        1.0
+      ],
+      "expectedResidualP95Deg": 1.0000000000000029
+    },
+    {
+      "id": "single-sample",
+      "samples": [
+        123.456
+      ],
+      "expectedMeanDeg": 123.45600000000002,
+      "expectedResultantLength": 1.0,
+      "meanIsDefined": true,
+      "expectedCircularMeanUndefinedUnderGate": false,
+      "expectedResidualsDeg": [
+        1.4210854715202004e-14
+      ],
+      "expectedResidualP95Deg": 1.4210854715202004e-14
+    },
+    {
+      "id": "antipodal-pair-undefined-mean",
+      "samples": [
+        0.0,
+        180.0
+      ],
+      "expectedMeanDeg": 90.0,
+      "expectedResultantLength": 6.123233995736766e-17,
+      "meanIsDefined": true,
+      "expectedCircularMeanUndefinedUnderGate": true,
+      "expectedResidualsDeg": [
+        90.0,
+        90.0
+      ],
+      "expectedResidualP95Deg": 90.0
+    },
+    {
+      "id": "four-quadrants-undefined-mean",
+      "samples": [
+        0.0,
+        90.0,
+        180.0,
+        270.0
+      ],
+      "expectedMeanDeg": 129.6008804674209,
+      "expectedResultantLength": 7.204529898187539e-17,
+      "meanIsDefined": true,
+      "expectedCircularMeanUndefinedUnderGate": true,
+      "expectedResidualsDeg": [
+        129.6008804674209,
+        39.60088046742089,
+        50.39911953257911,
+        140.3991195325791
+      ],
+      "expectedResidualP95Deg": 140.3991195325791
+    },
+    {
+      "id": "empty-window",
+      "samples": [],
+      "expectedMeanDeg": null,
+      "expectedResultantLength": 0.0,
+      "meanIsDefined": false,
+      "expectedCircularMeanUndefinedUnderGate": true
+    }
+  ]
+}

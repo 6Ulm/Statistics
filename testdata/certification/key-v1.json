@@ -1,0 +1,51 @@
+{
+  "fixtureVersion": "fixtures-v1",
+  "specSections": [
+    "§24",
+    "§19.1"
+  ],
+  "completeKey": {
+    "certificationSchemaVersion": "certification-v1",
+    "hardwareRuntimeIdentity": "ANDROID:example-runtime-tuple",
+    "sensorRuntimeIdentity": "sha256:6e7dadbedc4e1dc16778e4e1a63cd118ce33d61a0e409cd063332d4e00efc8fc",
+    "osBuildIdentity": "example-exact-build",
+    "providerId": "GOOGLE_FOP",
+    "providerRuntimeIdentity": "GMS:example-exact-version",
+    "providerErrorSource": "GOOGLE_CONSERVATIVE",
+    "locationProviderId": "GOOGLE_FLP",
+    "locationProviderRuntimeIdentity": "GMS:example-exact-version",
+    "measurementMode": "FLAT_TOP_EDGE",
+    "placementMethod": "FREEHAND",
+    "placementProfileHash": "sha256:81a1337acfb20f8c40a31ef2a70233cbaf772314f3e2287eee0db14dabf23c64",
+    "geomagneticModelId": "WMM2025",
+    "geomagneticCoefficientHash": "NOT_VENDORED",
+    "geomagneticErrorModelHash": "NOT_VENDORED",
+    "deviationCorrectionProfileHash": "NONE",
+    "engineDecisionLogicHash": "sha256:64a844e67c0a485dd3ce0cbed2f1c27324b2baaa0e11395928ed3ffe047824c6",
+    "precisionConfigHash": "sha256:e85a0eb4073a38c43828a294db750c7ee3ca5b7a17165b34650c8c40a99fab6f"
+  },
+  "shippedDatabaseRecordCount": 0,
+  "expectedLookupOnShippedDatabase": {
+    "boundCalibrationState": "CANDIDATE",
+    "uncertaintyCoverageEvidenceState": "TARGET_ONLY",
+    "supportedQualityGrade": "USABLE",
+    "deviceFloorSource": "unknownDeviceFloor95Deg"
+  },
+  "keyComponentsThatMustDifferentiate": [
+    "providerErrorSource",
+    "locationProviderRuntimeIdentity",
+    "placementProfileHash",
+    "geomagneticErrorModelHash",
+    "engineDecisionLogicHash",
+    "precisionConfigHash",
+    "measurementMode"
+  ],
+  "rejectedOpenEndedIdentities": [
+    "GMS:21.3.0+",
+    "android-15-*",
+    "latest",
+    "example-build..other-build",
+    ">=1.0.0"
+  ],
+  "notRuntimeObservableSentinel": "NOT_RUNTIME_OBSERVABLE"
+}

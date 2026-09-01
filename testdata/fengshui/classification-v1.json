@@ -1,0 +1,1720 @@
+{
+  "fixtureVersion": "fixtures-v1",
+  "specSections": [
+    "§21.1",
+    "§21.3",
+    "§21.4"
+  ],
+  "ruleSetVersion": "fengshui-v1",
+  "sectorIndexFormula": "floor(normalize360(h - firstSectorCenterDeg + sectorWidthDeg/2) / sectorWidthDeg) mod sectorCount",
+  "boundaryEpsilonDeg": 1e-09,
+  "sectorCases": [
+    {
+      "id": "sector-00-center",
+      "declaredSectorIndex": 0,
+      "headingDeg": 0.0,
+      "expectedSectorIndex": 0,
+      "expectedSectorName": "zi"
+    },
+    {
+      "id": "sector-00-start-boundary",
+      "declaredSectorIndex": 0,
+      "headingDeg": 352.5,
+      "expectedSectorIndex": 0,
+      "expectedSectorName": "zi"
+    },
+    {
+      "id": "sector-00-end-boundary",
+      "declaredSectorIndex": 0,
+      "headingDeg": 7.5,
+      "expectedSectorIndex": 1,
+      "expectedSectorName": "gui"
+    },
+    {
+      "id": "sector-00-start-minus-epsilon",
+      "declaredSectorIndex": 0,
+      "headingDeg": 352.499999999,
+      "expectedSectorIndex": 23,
+      "expectedSectorName": "ren"
+    },
+    {
+      "id": "sector-00-start-plus-epsilon",
+      "declaredSectorIndex": 0,
+      "headingDeg": 352.500000001,
+      "expectedSectorIndex": 0,
+      "expectedSectorName": "zi"
+    },
+    {
+      "id": "sector-00-start-minus-0.1",
+      "declaredSectorIndex": 0,
+      "headingDeg": 352.4,
+      "expectedSectorIndex": 23,
+      "expectedSectorName": "ren"
+    },
+    {
+      "id": "sector-00-start-plus-0.1",
+      "declaredSectorIndex": 0,
+      "headingDeg": 352.6,
+      "expectedSectorIndex": 0,
+      "expectedSectorName": "zi"
+    },
+    {
+      "id": "sector-00-start-minus-1.0",
+      "declaredSectorIndex": 0,
+      "headingDeg": 351.5,
+      "expectedSectorIndex": 23,
+      "expectedSectorName": "ren"
+    },
+    {
+      "id": "sector-00-start-plus-1.0",
+      "declaredSectorIndex": 0,
+      "headingDeg": 353.5,
+      "expectedSectorIndex": 0,
+      "expectedSectorName": "zi"
+    },
+    {
+      "id": "sector-01-center",
+      "declaredSectorIndex": 1,
+      "headingDeg": 15.0,
+      "expectedSectorIndex": 1,
+      "expectedSectorName": "gui"
+    },
+    {
+      "id": "sector-01-start-boundary",
+      "declaredSectorIndex": 1,
+      "headingDeg": 7.5,
+      "expectedSectorIndex": 1,
+      "expectedSectorName": "gui"
+    },
+    {
+      "id": "sector-01-end-boundary",
+      "declaredSectorIndex": 1,
+      "headingDeg": 22.5,
+      "expectedSectorIndex": 2,
+      "expectedSectorName": "chou"
+    },
+    {
+      "id": "sector-01-start-minus-epsilon",
+      "declaredSectorIndex": 1,
+      "headingDeg": 7.499999999000011,
+      "expectedSectorIndex": 0,
+      "expectedSectorName": "zi"
+    },
+    {
+      "id": "sector-01-start-plus-epsilon",
+      "declaredSectorIndex": 1,
+      "headingDeg": 7.500000000999989,
+      "expectedSectorIndex": 1,
+      "expectedSectorName": "gui"
+    },
+    {
+      "id": "sector-01-start-minus-0.1",
+      "declaredSectorIndex": 1,
+      "headingDeg": 7.399999999999977,
+      "expectedSectorIndex": 0,
+      "expectedSectorName": "zi"
+    },
+    {
+      "id": "sector-01-start-plus-0.1",
+      "declaredSectorIndex": 1,
+      "headingDeg": 7.600000000000023,
+      "expectedSectorIndex": 1,
+      "expectedSectorName": "gui"
+    },
+    {
+      "id": "sector-01-start-minus-1.0",
+      "declaredSectorIndex": 1,
+      "headingDeg": 6.5,
+      "expectedSectorIndex": 0,
+      "expectedSectorName": "zi"
+    },
+    {
+      "id": "sector-01-start-plus-1.0",
+      "declaredSectorIndex": 1,
+      "headingDeg": 8.5,
+      "expectedSectorIndex": 1,
+      "expectedSectorName": "gui"
+    },
+    {
+      "id": "sector-02-center",
+      "declaredSectorIndex": 2,
+      "headingDeg": 30.0,
+      "expectedSectorIndex": 2,
+      "expectedSectorName": "chou"
+    },
+    {
+      "id": "sector-02-start-boundary",
+      "declaredSectorIndex": 2,
+      "headingDeg": 22.5,
+      "expectedSectorIndex": 2,
+      "expectedSectorName": "chou"
+    },
+    {
+      "id": "sector-02-end-boundary",
+      "declaredSectorIndex": 2,
+      "headingDeg": 37.5,
+      "expectedSectorIndex": 3,
+      "expectedSectorName": "gen"
+    },
+    {
+      "id": "sector-02-start-minus-epsilon",
+      "declaredSectorIndex": 2,
+      "headingDeg": 22.49999999900001,
+      "expectedSectorIndex": 1,
+      "expectedSectorName": "gui"
+    },
+    {
+      "id": "sector-02-start-plus-epsilon",
+      "declaredSectorIndex": 2,
+      "headingDeg": 22.50000000099999,
+      "expectedSectorIndex": 2,
+      "expectedSectorName": "chou"
+    },
+    {
+      "id": "sector-02-start-minus-0.1",
+      "declaredSectorIndex": 2,
+      "headingDeg": 22.399999999999977,
+      "expectedSectorIndex": 1,
+      "expectedSectorName": "gui"
+    },
+    {
+      "id": "sector-02-start-plus-0.1",
+      "declaredSectorIndex": 2,
+      "headingDeg": 22.600000000000023,
+      "expectedSectorIndex": 2,
+      "expectedSectorName": "chou"
+    },
+    {
+      "id": "sector-02-start-minus-1.0",
+      "declaredSectorIndex": 2,
+      "headingDeg": 21.5,
+      "expectedSectorIndex": 1,
+      "expectedSectorName": "gui"
+    },
+    {
+      "id": "sector-02-start-plus-1.0",
+      "declaredSectorIndex": 2,
+      "headingDeg": 23.5,
+      "expectedSectorIndex": 2,
+      "expectedSectorName": "chou"
+    },
+    {
+      "id": "sector-03-center",
+      "declaredSectorIndex": 3,
+      "headingDeg": 45.0,
+      "expectedSectorIndex": 3,
+      "expectedSectorName": "gen"
+    },
+    {
+      "id": "sector-03-start-boundary",
+      "declaredSectorIndex": 3,
+      "headingDeg": 37.5,
+      "expectedSectorIndex": 3,
+      "expectedSectorName": "gen"
+    },
+    {
+      "id": "sector-03-end-boundary",
+      "declaredSectorIndex": 3,
+      "headingDeg": 52.5,
+      "expectedSectorIndex": 4,
+      "expectedSectorName": "yin"
+    },
+    {
+      "id": "sector-03-start-minus-epsilon",
+      "declaredSectorIndex": 3,
+      "headingDeg": 37.49999999900001,
+      "expectedSectorIndex": 2,
+      "expectedSectorName": "chou"
+    },
+    {
+      "id": "sector-03-start-plus-epsilon",
+      "declaredSectorIndex": 3,
+      "headingDeg": 37.50000000099999,
+      "expectedSectorIndex": 3,
+      "expectedSectorName": "gen"
+    },
+    {
+      "id": "sector-03-start-minus-0.1",
+      "declaredSectorIndex": 3,
+      "headingDeg": 37.39999999999998,
+      "expectedSectorIndex": 2,
+      "expectedSectorName": "chou"
+    },
+    {
+      "id": "sector-03-start-plus-0.1",
+      "declaredSectorIndex": 3,
+      "headingDeg": 37.60000000000002,
+      "expectedSectorIndex": 3,
+      "expectedSectorName": "gen"
+    },
+    {
+      "id": "sector-03-start-minus-1.0",
+      "declaredSectorIndex": 3,
+      "headingDeg": 36.5,
+      "expectedSectorIndex": 2,
+      "expectedSectorName": "chou"
+    },
+    {
+      "id": "sector-03-start-plus-1.0",
+      "declaredSectorIndex": 3,
+      "headingDeg": 38.5,
+      "expectedSectorIndex": 3,
+      "expectedSectorName": "gen"
+    },
+    {
+      "id": "sector-04-center",
+      "declaredSectorIndex": 4,
+      "headingDeg": 60.0,
+      "expectedSectorIndex": 4,
+      "expectedSectorName": "yin"
+    },
+    {
+      "id": "sector-04-start-boundary",
+      "declaredSectorIndex": 4,
+      "headingDeg": 52.5,
+      "expectedSectorIndex": 4,
+      "expectedSectorName": "yin"
+    },
+    {
+      "id": "sector-04-end-boundary",
+      "declaredSectorIndex": 4,
+      "headingDeg": 67.5,
+      "expectedSectorIndex": 5,
+      "expectedSectorName": "jia"
+    },
+    {
+      "id": "sector-04-start-minus-epsilon",
+      "declaredSectorIndex": 4,
+      "headingDeg": 52.49999999900001,
+      "expectedSectorIndex": 3,
+      "expectedSectorName": "gen"
+    },
+    {
+      "id": "sector-04-start-plus-epsilon",
+      "declaredSectorIndex": 4,
+      "headingDeg": 52.50000000099999,
+      "expectedSectorIndex": 4,
+      "expectedSectorName": "yin"
+    },
+    {
+      "id": "sector-04-start-minus-0.1",
+      "declaredSectorIndex": 4,
+      "headingDeg": 52.39999999999998,
+      "expectedSectorIndex": 3,
+      "expectedSectorName": "gen"
+    },
+    {
+      "id": "sector-04-start-plus-0.1",
+      "declaredSectorIndex": 4,
+      "headingDeg": 52.60000000000002,
+      "expectedSectorIndex": 4,
+      "expectedSectorName": "yin"
+    },
+    {
+      "id": "sector-04-start-minus-1.0",
+      "declaredSectorIndex": 4,
+      "headingDeg": 51.5,
+      "expectedSectorIndex": 3,
+      "expectedSectorName": "gen"
+    },
+    {
+      "id": "sector-04-start-plus-1.0",
+      "declaredSectorIndex": 4,
+      "headingDeg": 53.5,
+      "expectedSectorIndex": 4,
+      "expectedSectorName": "yin"
+    },
+    {
+      "id": "sector-05-center",
+      "declaredSectorIndex": 5,
+      "headingDeg": 75.0,
+      "expectedSectorIndex": 5,
+      "expectedSectorName": "jia"
+    },
+    {
+      "id": "sector-05-start-boundary",
+      "declaredSectorIndex": 5,
+      "headingDeg": 67.5,
+      "expectedSectorIndex": 5,
+      "expectedSectorName": "jia"
+    },
+    {
+      "id": "sector-05-end-boundary",
+      "declaredSectorIndex": 5,
+      "headingDeg": 82.5,
+      "expectedSectorIndex": 6,
+      "expectedSectorName": "mao"
+    },
+    {
+      "id": "sector-05-start-minus-epsilon",
+      "declaredSectorIndex": 5,
+      "headingDeg": 67.49999999900001,
+      "expectedSectorIndex": 4,
+      "expectedSectorName": "yin"
+    },
+    {
+      "id": "sector-05-start-plus-epsilon",
+      "declaredSectorIndex": 5,
+      "headingDeg": 67.50000000099999,
+      "expectedSectorIndex": 5,
+      "expectedSectorName": "jia"
+    },
+    {
+      "id": "sector-05-start-minus-0.1",
+      "declaredSectorIndex": 5,
+      "headingDeg": 67.39999999999998,
+      "expectedSectorIndex": 4,
+      "expectedSectorName": "yin"
+    },
+    {
+      "id": "sector-05-start-plus-0.1",
+      "declaredSectorIndex": 5,
+      "headingDeg": 67.60000000000002,
+      "expectedSectorIndex": 5,
+      "expectedSectorName": "jia"
+    },
+    {
+      "id": "sector-05-start-minus-1.0",
+      "declaredSectorIndex": 5,
+      "headingDeg": 66.5,
+      "expectedSectorIndex": 4,
+      "expectedSectorName": "yin"
+    },
+    {
+      "id": "sector-05-start-plus-1.0",
+      "declaredSectorIndex": 5,
+      "headingDeg": 68.5,
+      "expectedSectorIndex": 5,
+      "expectedSectorName": "jia"
+    },
+    {
+      "id": "sector-06-center",
+      "declaredSectorIndex": 6,
+      "headingDeg": 90.0,
+      "expectedSectorIndex": 6,
+      "expectedSectorName": "mao"
+    },
+    {
+      "id": "sector-06-start-boundary",
+      "declaredSectorIndex": 6,
+      "headingDeg": 82.5,
+      "expectedSectorIndex": 6,
+      "expectedSectorName": "mao"
+    },
+    {
+      "id": "sector-06-end-boundary",
+      "declaredSectorIndex": 6,
+      "headingDeg": 97.5,
+      "expectedSectorIndex": 7,
+      "expectedSectorName": "yi"
+    },
+    {
+      "id": "sector-06-start-minus-epsilon",
+      "declaredSectorIndex": 6,
+      "headingDeg": 82.49999999900001,
+      "expectedSectorIndex": 5,
+      "expectedSectorName": "jia"
+    },
+    {
+      "id": "sector-06-start-plus-epsilon",
+      "declaredSectorIndex": 6,
+      "headingDeg": 82.50000000099999,
+      "expectedSectorIndex": 6,
+      "expectedSectorName": "mao"
+    },
+    {
+      "id": "sector-06-start-minus-0.1",
+      "declaredSectorIndex": 6,
+      "headingDeg": 82.39999999999998,
+      "expectedSectorIndex": 5,
+      "expectedSectorName": "jia"
+    },
+    {
+      "id": "sector-06-start-plus-0.1",
+      "declaredSectorIndex": 6,
+      "headingDeg": 82.60000000000002,
+      "expectedSectorIndex": 6,
+      "expectedSectorName": "mao"
+    },
+    {
+      "id": "sector-06-start-minus-1.0",
+      "declaredSectorIndex": 6,
+      "headingDeg": 81.5,
+      "expectedSectorIndex": 5,
+      "expectedSectorName": "jia"
+    },
+    {
+      "id": "sector-06-start-plus-1.0",
+      "declaredSectorIndex": 6,
+      "headingDeg": 83.5,
+      "expectedSectorIndex": 6,
+      "expectedSectorName": "mao"
+    },
+    {
+      "id": "sector-07-center",
+      "declaredSectorIndex": 7,
+      "headingDeg": 105.0,
+      "expectedSectorIndex": 7,
+      "expectedSectorName": "yi"
+    },
+    {
+      "id": "sector-07-start-boundary",
+      "declaredSectorIndex": 7,
+      "headingDeg": 97.5,
+      "expectedSectorIndex": 7,
+      "expectedSectorName": "yi"
+    },
+    {
+      "id": "sector-07-end-boundary",
+      "declaredSectorIndex": 7,
+      "headingDeg": 112.5,
+      "expectedSectorIndex": 8,
+      "expectedSectorName": "chen"
+    },
+    {
+      "id": "sector-07-start-minus-epsilon",
+      "declaredSectorIndex": 7,
+      "headingDeg": 97.49999999900001,
+      "expectedSectorIndex": 6,
+      "expectedSectorName": "mao"
+    },
+    {
+      "id": "sector-07-start-plus-epsilon",
+      "declaredSectorIndex": 7,
+      "headingDeg": 97.50000000099999,
+      "expectedSectorIndex": 7,
+      "expectedSectorName": "yi"
+    },
+    {
+      "id": "sector-07-start-minus-0.1",
+      "declaredSectorIndex": 7,
+      "headingDeg": 97.39999999999998,
+      "expectedSectorIndex": 6,
+      "expectedSectorName": "mao"
+    },
+    {
+      "id": "sector-07-start-plus-0.1",
+      "declaredSectorIndex": 7,
+      "headingDeg": 97.60000000000002,
+      "expectedSectorIndex": 7,
+      "expectedSectorName": "yi"
+    },
+    {
+      "id": "sector-07-start-minus-1.0",
+      "declaredSectorIndex": 7,
+      "headingDeg": 96.5,
+      "expectedSectorIndex": 6,
+      "expectedSectorName": "mao"
+    },
+    {
+      "id": "sector-07-start-plus-1.0",
+      "declaredSectorIndex": 7,
+      "headingDeg": 98.5,
+      "expectedSectorIndex": 7,
+      "expectedSectorName": "yi"
+    },
+    {
+      "id": "sector-08-center",
+      "declaredSectorIndex": 8,
+      "headingDeg": 120.0,
+      "expectedSectorIndex": 8,
+      "expectedSectorName": "chen"
+    },
+    {
+      "id": "sector-08-start-boundary",
+      "declaredSectorIndex": 8,
+      "headingDeg": 112.5,
+      "expectedSectorIndex": 8,
+      "expectedSectorName": "chen"
+    },
+    {
+      "id": "sector-08-end-boundary",
+      "declaredSectorIndex": 8,
+      "headingDeg": 127.5,
+      "expectedSectorIndex": 9,
+      "expectedSectorName": "xun"
+    },
+    {
+      "id": "sector-08-start-minus-epsilon",
+      "declaredSectorIndex": 8,
+      "headingDeg": 112.49999999900001,
+      "expectedSectorIndex": 7,
+      "expectedSectorName": "yi"
+    },
+    {
+      "id": "sector-08-start-plus-epsilon",
+      "declaredSectorIndex": 8,
+      "headingDeg": 112.50000000099999,
+      "expectedSectorIndex": 8,
+      "expectedSectorName": "chen"
+    },
+    {
+      "id": "sector-08-start-minus-0.1",
+      "declaredSectorIndex": 8,
+      "headingDeg": 112.39999999999998,
+      "expectedSectorIndex": 7,
+      "expectedSectorName": "yi"
+    },
+    {
+      "id": "sector-08-start-plus-0.1",
+      "declaredSectorIndex": 8,
+      "headingDeg": 112.60000000000002,
+      "expectedSectorIndex": 8,
+      "expectedSectorName": "chen"
+    },
+    {
+      "id": "sector-08-start-minus-1.0",
+      "declaredSectorIndex": 8,
+      "headingDeg": 111.5,
+      "expectedSectorIndex": 7,
+      "expectedSectorName": "yi"
+    },
+    {
+      "id": "sector-08-start-plus-1.0",
+      "declaredSectorIndex": 8,
+      "headingDeg": 113.5,
+      "expectedSectorIndex": 8,
+      "expectedSectorName": "chen"
+    },
+    {
+      "id": "sector-09-center",
+      "declaredSectorIndex": 9,
+      "headingDeg": 135.0,
+      "expectedSectorIndex": 9,
+      "expectedSectorName": "xun"
+    },
+    {
+      "id": "sector-09-start-boundary",
+      "declaredSectorIndex": 9,
+      "headingDeg": 127.5,
+      "expectedSectorIndex": 9,
+      "expectedSectorName": "xun"
+    },
+    {
+      "id": "sector-09-end-boundary",
+      "declaredSectorIndex": 9,
+      "headingDeg": 142.5,
+      "expectedSectorIndex": 10,
+      "expectedSectorName": "si"
+    },
+    {
+      "id": "sector-09-start-minus-epsilon",
+      "declaredSectorIndex": 9,
+      "headingDeg": 127.49999999900001,
+      "expectedSectorIndex": 8,
+      "expectedSectorName": "chen"
+    },
+    {
+      "id": "sector-09-start-plus-epsilon",
+      "declaredSectorIndex": 9,
+      "headingDeg": 127.50000000099999,
+      "expectedSectorIndex": 9,
+      "expectedSectorName": "xun"
+    },
+    {
+      "id": "sector-09-start-minus-0.1",
+      "declaredSectorIndex": 9,
+      "headingDeg": 127.39999999999998,
+      "expectedSectorIndex": 8,
+      "expectedSectorName": "chen"
+    },
+    {
+      "id": "sector-09-start-plus-0.1",
+      "declaredSectorIndex": 9,
+      "headingDeg": 127.60000000000002,
+      "expectedSectorIndex": 9,
+      "expectedSectorName": "xun"
+    },
+    {
+      "id": "sector-09-start-minus-1.0",
+      "declaredSectorIndex": 9,
+      "headingDeg": 126.5,
+      "expectedSectorIndex": 8,
+      "expectedSectorName": "chen"
+    },
+    {
+      "id": "sector-09-start-plus-1.0",
+      "declaredSectorIndex": 9,
+      "headingDeg": 128.5,
+      "expectedSectorIndex": 9,
+      "expectedSectorName": "xun"
+    },
+    {
+      "id": "sector-10-center",
+      "declaredSectorIndex": 10,
+      "headingDeg": 150.0,
+      "expectedSectorIndex": 10,
+      "expectedSectorName": "si"
+    },
+    {
+      "id": "sector-10-start-boundary",
+      "declaredSectorIndex": 10,
+      "headingDeg": 142.5,
+      "expectedSectorIndex": 10,
+      "expectedSectorName": "si"
+    },
+    {
+      "id": "sector-10-end-boundary",
+      "declaredSectorIndex": 10,
+      "headingDeg": 157.5,
+      "expectedSectorIndex": 11,
+      "expectedSectorName": "bing"
+    },
+    {
+      "id": "sector-10-start-minus-epsilon",
+      "declaredSectorIndex": 10,
+      "headingDeg": 142.499999999,
+      "expectedSectorIndex": 9,
+      "expectedSectorName": "xun"
+    },
+    {
+      "id": "sector-10-start-plus-epsilon",
+      "declaredSectorIndex": 10,
+      "headingDeg": 142.500000001,
+      "expectedSectorIndex": 10,
+      "expectedSectorName": "si"
+    },
+    {
+      "id": "sector-10-start-minus-0.1",
+      "declaredSectorIndex": 10,
+      "headingDeg": 142.39999999999998,
+      "expectedSectorIndex": 9,
+      "expectedSectorName": "xun"
+    },
+    {
+      "id": "sector-10-start-plus-0.1",
+      "declaredSectorIndex": 10,
+      "headingDeg": 142.60000000000002,
+      "expectedSectorIndex": 10,
+      "expectedSectorName": "si"
+    },
+    {
+      "id": "sector-10-start-minus-1.0",
+      "declaredSectorIndex": 10,
+      "headingDeg": 141.5,
+      "expectedSectorIndex": 9,
+      "expectedSectorName": "xun"
+    },
+    {
+      "id": "sector-10-start-plus-1.0",
+      "declaredSectorIndex": 10,
+      "headingDeg": 143.5,
+      "expectedSectorIndex": 10,
+      "expectedSectorName": "si"
+    },
+    {
+      "id": "sector-11-center",
+      "declaredSectorIndex": 11,
+      "headingDeg": 165.0,
+      "expectedSectorIndex": 11,
+      "expectedSectorName": "bing"
+    },
+    {
+      "id": "sector-11-start-boundary",
+      "declaredSectorIndex": 11,
+      "headingDeg": 157.5,
+      "expectedSectorIndex": 11,
+      "expectedSectorName": "bing"
+    },
+    {
+      "id": "sector-11-end-boundary",
+      "declaredSectorIndex": 11,
+      "headingDeg": 172.5,
+      "expectedSectorIndex": 12,
+      "expectedSectorName": "wu"
+    },
+    {
+      "id": "sector-11-start-minus-epsilon",
+      "declaredSectorIndex": 11,
+      "headingDeg": 157.499999999,
+      "expectedSectorIndex": 10,
+      "expectedSectorName": "si"
+    },
+    {
+      "id": "sector-11-start-plus-epsilon",
+      "declaredSectorIndex": 11,
+      "headingDeg": 157.500000001,
+      "expectedSectorIndex": 11,
+      "expectedSectorName": "bing"
+    },
+    {
+      "id": "sector-11-start-minus-0.1",
+      "declaredSectorIndex": 11,
+      "headingDeg": 157.39999999999998,
+      "expectedSectorIndex": 10,
+      "expectedSectorName": "si"
+    },
+    {
+      "id": "sector-11-start-plus-0.1",
+      "declaredSectorIndex": 11,
+      "headingDeg": 157.60000000000002,
+      "expectedSectorIndex": 11,
+      "expectedSectorName": "bing"
+    },
+    {
+      "id": "sector-11-start-minus-1.0",
+      "declaredSectorIndex": 11,
+      "headingDeg": 156.5,
+      "expectedSectorIndex": 10,
+      "expectedSectorName": "si"
+    },
+    {
+      "id": "sector-11-start-plus-1.0",
+      "declaredSectorIndex": 11,
+      "headingDeg": 158.5,
+      "expectedSectorIndex": 11,
+      "expectedSectorName": "bing"
+    },
+    {
+      "id": "sector-12-center",
+      "declaredSectorIndex": 12,
+      "headingDeg": 180.0,
+      "expectedSectorIndex": 12,
+      "expectedSectorName": "wu"
+    },
+    {
+      "id": "sector-12-start-boundary",
+      "declaredSectorIndex": 12,
+      "headingDeg": 172.5,
+      "expectedSectorIndex": 12,
+      "expectedSectorName": "wu"
+    },
+    {
+      "id": "sector-12-end-boundary",
+      "declaredSectorIndex": 12,
+      "headingDeg": 187.5,
+      "expectedSectorIndex": 13,
+      "expectedSectorName": "ding"
+    },
+    {
+      "id": "sector-12-start-minus-epsilon",
+      "declaredSectorIndex": 12,
+      "headingDeg": 172.499999999,
+      "expectedSectorIndex": 11,
+      "expectedSectorName": "bing"
+    },
+    {
+      "id": "sector-12-start-plus-epsilon",
+      "declaredSectorIndex": 12,
+      "headingDeg": 172.500000001,
+      "expectedSectorIndex": 12,
+      "expectedSectorName": "wu"
+    },
+    {
+      "id": "sector-12-start-minus-0.1",
+      "declaredSectorIndex": 12,
+      "headingDeg": 172.39999999999998,
+      "expectedSectorIndex": 11,
+      "expectedSectorName": "bing"
+    },
+    {
+      "id": "sector-12-start-plus-0.1",
+      "declaredSectorIndex": 12,
+      "headingDeg": 172.60000000000002,
+      "expectedSectorIndex": 12,
+      "expectedSectorName": "wu"
+    },
+    {
+      "id": "sector-12-start-minus-1.0",
+      "declaredSectorIndex": 12,
+      "headingDeg": 171.5,
+      "expectedSectorIndex": 11,
+      "expectedSectorName": "bing"
+    },
+    {
+      "id": "sector-12-start-plus-1.0",
+      "declaredSectorIndex": 12,
+      "headingDeg": 173.5,
+      "expectedSectorIndex": 12,
+      "expectedSectorName": "wu"
+    },
+    {
+      "id": "sector-13-center",
+      "declaredSectorIndex": 13,
+      "headingDeg": 195.0,
+      "expectedSectorIndex": 13,
+      "expectedSectorName": "ding"
+    },
+    {
+      "id": "sector-13-start-boundary",
+      "declaredSectorIndex": 13,
+      "headingDeg": 187.5,
+      "expectedSectorIndex": 13,
+      "expectedSectorName": "ding"
+    },
+    {
+      "id": "sector-13-end-boundary",
+      "declaredSectorIndex": 13,
+      "headingDeg": 202.5,
+      "expectedSectorIndex": 14,
+      "expectedSectorName": "wei"
+    },
+    {
+      "id": "sector-13-start-minus-epsilon",
+      "declaredSectorIndex": 13,
+      "headingDeg": 187.499999999,
+      "expectedSectorIndex": 12,
+      "expectedSectorName": "wu"
+    },
+    {
+      "id": "sector-13-start-plus-epsilon",
+      "declaredSectorIndex": 13,
+      "headingDeg": 187.500000001,
+      "expectedSectorIndex": 13,
+      "expectedSectorName": "ding"
+    },
+    {
+      "id": "sector-13-start-minus-0.1",
+      "declaredSectorIndex": 13,
+      "headingDeg": 187.39999999999998,
+      "expectedSectorIndex": 12,
+      "expectedSectorName": "wu"
+    },
+    {
+      "id": "sector-13-start-plus-0.1",
+      "declaredSectorIndex": 13,
+      "headingDeg": 187.60000000000002,
+      "expectedSectorIndex": 13,
+      "expectedSectorName": "ding"
+    },
+    {
+      "id": "sector-13-start-minus-1.0",
+      "declaredSectorIndex": 13,
+      "headingDeg": 186.5,
+      "expectedSectorIndex": 12,
+      "expectedSectorName": "wu"
+    },
+    {
+      "id": "sector-13-start-plus-1.0",
+      "declaredSectorIndex": 13,
+      "headingDeg": 188.5,
+      "expectedSectorIndex": 13,
+      "expectedSectorName": "ding"
+    },
+    {
+      "id": "sector-14-center",
+      "declaredSectorIndex": 14,
+      "headingDeg": 210.0,
+      "expectedSectorIndex": 14,
+      "expectedSectorName": "wei"
+    },
+    {
+      "id": "sector-14-start-boundary",
+      "declaredSectorIndex": 14,
+      "headingDeg": 202.5,
+      "expectedSectorIndex": 14,
+      "expectedSectorName": "wei"
+    },
+    {
+      "id": "sector-14-end-boundary",
+      "declaredSectorIndex": 14,
+      "headingDeg": 217.5,
+      "expectedSectorIndex": 15,
+      "expectedSectorName": "kun"
+    },
+    {
+      "id": "sector-14-start-minus-epsilon",
+      "declaredSectorIndex": 14,
+      "headingDeg": 202.499999999,
+      "expectedSectorIndex": 13,
+      "expectedSectorName": "ding"
+    },
+    {
+      "id": "sector-14-start-plus-epsilon",
+      "declaredSectorIndex": 14,
+      "headingDeg": 202.500000001,
+      "expectedSectorIndex": 14,
+      "expectedSectorName": "wei"
+    },
+    {
+      "id": "sector-14-start-minus-0.1",
+      "declaredSectorIndex": 14,
+      "headingDeg": 202.39999999999998,
+      "expectedSectorIndex": 13,
+      "expectedSectorName": "ding"
+    },
+    {
+      "id": "sector-14-start-plus-0.1",
+      "declaredSectorIndex": 14,
+      "headingDeg": 202.60000000000002,
+      "expectedSectorIndex": 14,
+      "expectedSectorName": "wei"
+    },
+    {
+      "id": "sector-14-start-minus-1.0",
+      "declaredSectorIndex": 14,
+      "headingDeg": 201.5,
+      "expectedSectorIndex": 13,
+      "expectedSectorName": "ding"
+    },
+    {
+      "id": "sector-14-start-plus-1.0",
+      "declaredSectorIndex": 14,
+      "headingDeg": 203.5,
+      "expectedSectorIndex": 14,
+      "expectedSectorName": "wei"
+    },
+    {
+      "id": "sector-15-center",
+      "declaredSectorIndex": 15,
+      "headingDeg": 225.0,
+      "expectedSectorIndex": 15,
+      "expectedSectorName": "kun"
+    },
+    {
+      "id": "sector-15-start-boundary",
+      "declaredSectorIndex": 15,
+      "headingDeg": 217.5,
+      "expectedSectorIndex": 15,
+      "expectedSectorName": "kun"
+    },
+    {
+      "id": "sector-15-end-boundary",
+      "declaredSectorIndex": 15,
+      "headingDeg": 232.5,
+      "expectedSectorIndex": 16,
+      "expectedSectorName": "shen"
+    },
+    {
+      "id": "sector-15-start-minus-epsilon",
+      "declaredSectorIndex": 15,
+      "headingDeg": 217.499999999,
+      "expectedSectorIndex": 14,
+      "expectedSectorName": "wei"
+    },
+    {
+      "id": "sector-15-start-plus-epsilon",
+      "declaredSectorIndex": 15,
+      "headingDeg": 217.500000001,
+      "expectedSectorIndex": 15,
+      "expectedSectorName": "kun"
+    },
+    {
+      "id": "sector-15-start-minus-0.1",
+      "declaredSectorIndex": 15,
+      "headingDeg": 217.39999999999998,
+      "expectedSectorIndex": 14,
+      "expectedSectorName": "wei"
+    },
+    {
+      "id": "sector-15-start-plus-0.1",
+      "declaredSectorIndex": 15,
+      "headingDeg": 217.60000000000002,
+      "expectedSectorIndex": 15,
+      "expectedSectorName": "kun"
+    },
+    {
+      "id": "sector-15-start-minus-1.0",
+      "declaredSectorIndex": 15,
+      "headingDeg": 216.5,
+      "expectedSectorIndex": 14,
+      "expectedSectorName": "wei"
+    },
+    {
+      "id": "sector-15-start-plus-1.0",
+      "declaredSectorIndex": 15,
+      "headingDeg": 218.5,
+      "expectedSectorIndex": 15,
+      "expectedSectorName": "kun"
+    },
+    {
+      "id": "sector-16-center",
+      "declaredSectorIndex": 16,
+      "headingDeg": 240.0,
+      "expectedSectorIndex": 16,
+      "expectedSectorName": "shen"
+    },
+    {
+      "id": "sector-16-start-boundary",
+      "declaredSectorIndex": 16,
+      "headingDeg": 232.5,
+      "expectedSectorIndex": 16,
+      "expectedSectorName": "shen"
+    },
+    {
+      "id": "sector-16-end-boundary",
+      "declaredSectorIndex": 16,
+      "headingDeg": 247.5,
+      "expectedSectorIndex": 17,
+      "expectedSectorName": "geng"
+    },
+    {
+      "id": "sector-16-start-minus-epsilon",
+      "declaredSectorIndex": 16,
+      "headingDeg": 232.499999999,
+      "expectedSectorIndex": 15,
+      "expectedSectorName": "kun"
+    },
+    {
+      "id": "sector-16-start-plus-epsilon",
+      "declaredSectorIndex": 16,
+      "headingDeg": 232.500000001,
+      "expectedSectorIndex": 16,
+      "expectedSectorName": "shen"
+    },
+    {
+      "id": "sector-16-start-minus-0.1",
+      "declaredSectorIndex": 16,
+      "headingDeg": 232.39999999999998,
+      "expectedSectorIndex": 15,
+      "expectedSectorName": "kun"
+    },
+    {
+      "id": "sector-16-start-plus-0.1",
+      "declaredSectorIndex": 16,
+      "headingDeg": 232.60000000000002,
+      "expectedSectorIndex": 16,
+      "expectedSectorName": "shen"
+    },
+    {
+      "id": "sector-16-start-minus-1.0",
+      "declaredSectorIndex": 16,
+      "headingDeg": 231.5,
+      "expectedSectorIndex": 15,
+      "expectedSectorName": "kun"
+    },
+    {
+      "id": "sector-16-start-plus-1.0",
+      "declaredSectorIndex": 16,
+      "headingDeg": 233.5,
+      "expectedSectorIndex": 16,
+      "expectedSectorName": "shen"
+    },
+    {
+      "id": "sector-17-center",
+      "declaredSectorIndex": 17,
+      "headingDeg": 255.0,
+      "expectedSectorIndex": 17,
+      "expectedSectorName": "geng"
+    },
+    {
+      "id": "sector-17-start-boundary",
+      "declaredSectorIndex": 17,
+      "headingDeg": 247.5,
+      "expectedSectorIndex": 17,
+      "expectedSectorName": "geng"
+    },
+    {
+      "id": "sector-17-end-boundary",
+      "declaredSectorIndex": 17,
+      "headingDeg": 262.5,
+      "expectedSectorIndex": 18,
+      "expectedSectorName": "you"
+    },
+    {
+      "id": "sector-17-start-minus-epsilon",
+      "declaredSectorIndex": 17,
+      "headingDeg": 247.499999999,
+      "expectedSectorIndex": 16,
+      "expectedSectorName": "shen"
+    },
+    {
+      "id": "sector-17-start-plus-epsilon",
+      "declaredSectorIndex": 17,
+      "headingDeg": 247.500000001,
+      "expectedSectorIndex": 17,
+      "expectedSectorName": "geng"
+    },
+    {
+      "id": "sector-17-start-minus-0.1",
+      "declaredSectorIndex": 17,
+      "headingDeg": 247.39999999999998,
+      "expectedSectorIndex": 16,
+      "expectedSectorName": "shen"
+    },
+    {
+      "id": "sector-17-start-plus-0.1",
+      "declaredSectorIndex": 17,
+      "headingDeg": 247.60000000000002,
+      "expectedSectorIndex": 17,
+      "expectedSectorName": "geng"
+    },
+    {
+      "id": "sector-17-start-minus-1.0",
+      "declaredSectorIndex": 17,
+      "headingDeg": 246.5,
+      "expectedSectorIndex": 16,
+      "expectedSectorName": "shen"
+    },
+    {
+      "id": "sector-17-start-plus-1.0",
+      "declaredSectorIndex": 17,
+      "headingDeg": 248.5,
+      "expectedSectorIndex": 17,
+      "expectedSectorName": "geng"
+    },
+    {
+      "id": "sector-18-center",
+      "declaredSectorIndex": 18,
+      "headingDeg": 270.0,
+      "expectedSectorIndex": 18,
+      "expectedSectorName": "you"
+    },
+    {
+      "id": "sector-18-start-boundary",
+      "declaredSectorIndex": 18,
+      "headingDeg": 262.5,
+      "expectedSectorIndex": 18,
+      "expectedSectorName": "you"
+    },
+    {
+      "id": "sector-18-end-boundary",
+      "declaredSectorIndex": 18,
+      "headingDeg": 277.5,
+      "expectedSectorIndex": 19,
+      "expectedSectorName": "xin"
+    },
+    {
+      "id": "sector-18-start-minus-epsilon",
+      "declaredSectorIndex": 18,
+      "headingDeg": 262.499999999,
+      "expectedSectorIndex": 17,
+      "expectedSectorName": "geng"
+    },
+    {
+      "id": "sector-18-start-plus-epsilon",
+      "declaredSectorIndex": 18,
+      "headingDeg": 262.500000001,
+      "expectedSectorIndex": 18,
+      "expectedSectorName": "you"
+    },
+    {
+      "id": "sector-18-start-minus-0.1",
+      "declaredSectorIndex": 18,
+      "headingDeg": 262.4,
+      "expectedSectorIndex": 17,
+      "expectedSectorName": "geng"
+    },
+    {
+      "id": "sector-18-start-plus-0.1",
+      "declaredSectorIndex": 18,
+      "headingDeg": 262.6,
+      "expectedSectorIndex": 18,
+      "expectedSectorName": "you"
+    },
+    {
+      "id": "sector-18-start-minus-1.0",
+      "declaredSectorIndex": 18,
+      "headingDeg": 261.5,
+      "expectedSectorIndex": 17,
+      "expectedSectorName": "geng"
+    },
+    {
+      "id": "sector-18-start-plus-1.0",
+      "declaredSectorIndex": 18,
+      "headingDeg": 263.5,
+      "expectedSectorIndex": 18,
+      "expectedSectorName": "you"
+    },
+    {
+      "id": "sector-19-center",
+      "declaredSectorIndex": 19,
+      "headingDeg": 285.0,
+      "expectedSectorIndex": 19,
+      "expectedSectorName": "xin"
+    },
+    {
+      "id": "sector-19-start-boundary",
+      "declaredSectorIndex": 19,
+      "headingDeg": 277.5,
+      "expectedSectorIndex": 19,
+      "expectedSectorName": "xin"
+    },
+    {
+      "id": "sector-19-end-boundary",
+      "declaredSectorIndex": 19,
+      "headingDeg": 292.5,
+      "expectedSectorIndex": 20,
+      "expectedSectorName": "xu"
+    },
+    {
+      "id": "sector-19-start-minus-epsilon",
+      "declaredSectorIndex": 19,
+      "headingDeg": 277.499999999,
+      "expectedSectorIndex": 18,
+      "expectedSectorName": "you"
+    },
+    {
+      "id": "sector-19-start-plus-epsilon",
+      "declaredSectorIndex": 19,
+      "headingDeg": 277.500000001,
+      "expectedSectorIndex": 19,
+      "expectedSectorName": "xin"
+    },
+    {
+      "id": "sector-19-start-minus-0.1",
+      "declaredSectorIndex": 19,
+      "headingDeg": 277.4,
+      "expectedSectorIndex": 18,
+      "expectedSectorName": "you"
+    },
+    {
+      "id": "sector-19-start-plus-0.1",
+      "declaredSectorIndex": 19,
+      "headingDeg": 277.6,
+      "expectedSectorIndex": 19,
+      "expectedSectorName": "xin"
+    },
+    {
+      "id": "sector-19-start-minus-1.0",
+      "declaredSectorIndex": 19,
+      "headingDeg": 276.5,
+      "expectedSectorIndex": 18,
+      "expectedSectorName": "you"
+    },
+    {
+      "id": "sector-19-start-plus-1.0",
+      "declaredSectorIndex": 19,
+      "headingDeg": 278.5,
+      "expectedSectorIndex": 19,
+      "expectedSectorName": "xin"
+    },
+    {
+      "id": "sector-20-center",
+      "declaredSectorIndex": 20,
+      "headingDeg": 300.0,
+      "expectedSectorIndex": 20,
+      "expectedSectorName": "xu"
+    },
+    {
+      "id": "sector-20-start-boundary",
+      "declaredSectorIndex": 20,
+      "headingDeg": 292.5,
+      "expectedSectorIndex": 20,
+      "expectedSectorName": "xu"
+    },
+    {
+      "id": "sector-20-end-boundary",
+      "declaredSectorIndex": 20,
+      "headingDeg": 307.5,
+      "expectedSectorIndex": 21,
+      "expectedSectorName": "qian"
+    },
+    {
+      "id": "sector-20-start-minus-epsilon",
+      "declaredSectorIndex": 20,
+      "headingDeg": 292.499999999,
+      "expectedSectorIndex": 19,
+      "expectedSectorName": "xin"
+    },
+    {
+      "id": "sector-20-start-plus-epsilon",
+      "declaredSectorIndex": 20,
+      "headingDeg": 292.500000001,
+      "expectedSectorIndex": 20,
+      "expectedSectorName": "xu"
+    },
+    {
+      "id": "sector-20-start-minus-0.1",
+      "declaredSectorIndex": 20,
+      "headingDeg": 292.4,
+      "expectedSectorIndex": 19,
+      "expectedSectorName": "xin"
+    },
+    {
+      "id": "sector-20-start-plus-0.1",
+      "declaredSectorIndex": 20,
+      "headingDeg": 292.6,
+      "expectedSectorIndex": 20,
+      "expectedSectorName": "xu"
+    },
+    {
+      "id": "sector-20-start-minus-1.0",
+      "declaredSectorIndex": 20,
+      "headingDeg": 291.5,
+      "expectedSectorIndex": 19,
+      "expectedSectorName": "xin"
+    },
+    {
+      "id": "sector-20-start-plus-1.0",
+      "declaredSectorIndex": 20,
+      "headingDeg": 293.5,
+      "expectedSectorIndex": 20,
+      "expectedSectorName": "xu"
+    },
+    {
+      "id": "sector-21-center",
+      "declaredSectorIndex": 21,
+      "headingDeg": 315.0,
+      "expectedSectorIndex": 21,
+      "expectedSectorName": "qian"
+    },
+    {
+      "id": "sector-21-start-boundary",
+      "declaredSectorIndex": 21,
+      "headingDeg": 307.5,
+      "expectedSectorIndex": 21,
+      "expectedSectorName": "qian"
+    },
+    {
+      "id": "sector-21-end-boundary",
+      "declaredSectorIndex": 21,
+      "headingDeg": 322.5,
+      "expectedSectorIndex": 22,
+      "expectedSectorName": "hai"
+    },
+    {
+      "id": "sector-21-start-minus-epsilon",
+      "declaredSectorIndex": 21,
+      "headingDeg": 307.499999999,
+      "expectedSectorIndex": 20,
+      "expectedSectorName": "xu"
+    },
+    {
+      "id": "sector-21-start-plus-epsilon",
+      "declaredSectorIndex": 21,
+      "headingDeg": 307.500000001,
+      "expectedSectorIndex": 21,
+      "expectedSectorName": "qian"
+    },
+    {
+      "id": "sector-21-start-minus-0.1",
+      "declaredSectorIndex": 21,
+      "headingDeg": 307.4,
+      "expectedSectorIndex": 20,
+      "expectedSectorName": "xu"
+    },
+    {
+      "id": "sector-21-start-plus-0.1",
+      "declaredSectorIndex": 21,
+      "headingDeg": 307.6,
+      "expectedSectorIndex": 21,
+      "expectedSectorName": "qian"
+    },
+    {
+      "id": "sector-21-start-minus-1.0",
+      "declaredSectorIndex": 21,
+      "headingDeg": 306.5,
+      "expectedSectorIndex": 20,
+      "expectedSectorName": "xu"
+    },
+    {
+      "id": "sector-21-start-plus-1.0",
+      "declaredSectorIndex": 21,
+      "headingDeg": 308.5,
+      "expectedSectorIndex": 21,
+      "expectedSectorName": "qian"
+    },
+    {
+      "id": "sector-22-center",
+      "declaredSectorIndex": 22,
+      "headingDeg": 330.0,
+      "expectedSectorIndex": 22,
+      "expectedSectorName": "hai"
+    },
+    {
+      "id": "sector-22-start-boundary",
+      "declaredSectorIndex": 22,
+      "headingDeg": 322.5,
+      "expectedSectorIndex": 22,
+      "expectedSectorName": "hai"
+    },
+    {
+      "id": "sector-22-end-boundary",
+      "declaredSectorIndex": 22,
+      "headingDeg": 337.5,
+      "expectedSectorIndex": 23,
+      "expectedSectorName": "ren"
+    },
+    {
+      "id": "sector-22-start-minus-epsilon",
+      "declaredSectorIndex": 22,
+      "headingDeg": 322.499999999,
+      "expectedSectorIndex": 21,
+      "expectedSectorName": "qian"
+    },
+    {
+      "id": "sector-22-start-plus-epsilon",
+      "declaredSectorIndex": 22,
+      "headingDeg": 322.500000001,
+      "expectedSectorIndex": 22,
+      "expectedSectorName": "hai"
+    },
+    {
+      "id": "sector-22-start-minus-0.1",
+      "declaredSectorIndex": 22,
+      "headingDeg": 322.4,
+      "expectedSectorIndex": 21,
+      "expectedSectorName": "qian"
+    },
+    {
+      "id": "sector-22-start-plus-0.1",
+      "declaredSectorIndex": 22,
+      "headingDeg": 322.6,
+      "expectedSectorIndex": 22,
+      "expectedSectorName": "hai"
+    },
+    {
+      "id": "sector-22-start-minus-1.0",
+      "declaredSectorIndex": 22,
+      "headingDeg": 321.5,
+      "expectedSectorIndex": 21,
+      "expectedSectorName": "qian"
+    },
+    {
+      "id": "sector-22-start-plus-1.0",
+      "declaredSectorIndex": 22,
+      "headingDeg": 323.5,
+      "expectedSectorIndex": 22,
+      "expectedSectorName": "hai"
+    },
+    {
+      "id": "sector-23-center",
+      "declaredSectorIndex": 23,
+      "headingDeg": 345.0,
+      "expectedSectorIndex": 23,
+      "expectedSectorName": "ren"
+    },
+    {
+      "id": "sector-23-start-boundary",
+      "declaredSectorIndex": 23,
+      "headingDeg": 337.5,
+      "expectedSectorIndex": 23,
+      "expectedSectorName": "ren"
+    },
+    {
+      "id": "sector-23-end-boundary",
+      "declaredSectorIndex": 23,
+      "headingDeg": 352.5,
+      "expectedSectorIndex": 0,
+      "expectedSectorName": "zi"
+    },
+    {
+      "id": "sector-23-start-minus-epsilon",
+      "declaredSectorIndex": 23,
+      "headingDeg": 337.499999999,
+      "expectedSectorIndex": 22,
+      "expectedSectorName": "hai"
+    },
+    {
+      "id": "sector-23-start-plus-epsilon",
+      "declaredSectorIndex": 23,
+      "headingDeg": 337.500000001,
+      "expectedSectorIndex": 23,
+      "expectedSectorName": "ren"
+    },
+    {
+      "id": "sector-23-start-minus-0.1",
+      "declaredSectorIndex": 23,
+      "headingDeg": 337.4,
+      "expectedSectorIndex": 22,
+      "expectedSectorName": "hai"
+    },
+    {
+      "id": "sector-23-start-plus-0.1",
+      "declaredSectorIndex": 23,
+      "headingDeg": 337.6,
+      "expectedSectorIndex": 23,
+      "expectedSectorName": "ren"
+    },
+    {
+      "id": "sector-23-start-minus-1.0",
+      "declaredSectorIndex": 23,
+      "headingDeg": 336.5,
+      "expectedSectorIndex": 22,
+      "expectedSectorName": "hai"
+    },
+    {
+      "id": "sector-23-start-plus-1.0",
+      "declaredSectorIndex": 23,
+      "headingDeg": 338.5,
+      "expectedSectorIndex": 23,
+      "expectedSectorName": "ren"
+    }
+  ],
+  "straddleCases": [
+    {
+      "headingDeg": 189.0,
+      "reportedBound95Deg": 7.0,
+      "note": "the §22.1 example: 7.0 deg straddles the 187.5 boundary",
+      "expectedSectorIndices": [
+        12,
+        13
+      ],
+      "expectedSectorNames": [
+        "wu",
+        "ding"
+      ],
+      "expectedBoundaryStraddled": true,
+      "classificationPossible": true
+    },
+    {
+      "headingDeg": 0.0,
+      "reportedBound95Deg": 0.0,
+      "note": "a zero bound is one sector",
+      "expectedSectorIndices": [
+        0
+      ],
+      "expectedSectorNames": [
+        "zi"
+      ],
+      "expectedBoundaryStraddled": false,
+      "classificationPossible": true
+    },
+    {
+      "headingDeg": 0.0,
+      "reportedBound95Deg": 1.0,
+      "note": "north wrap, symmetric across 0/360",
+      "expectedSectorIndices": [
+        0
+      ],
+      "expectedSectorNames": [
+        "zi"
+      ],
+      "expectedBoundaryStraddled": false,
+      "classificationPossible": true
+    },
+    {
+      "headingDeg": 352.5,
+      "reportedBound95Deg": 0.0,
+      "note": "exactly on the boundary separating ren and zi",
+      "expectedSectorIndices": [
+        0
+      ],
+      "expectedSectorNames": [
+        "zi"
+      ],
+      "expectedBoundaryStraddled": false,
+      "classificationPossible": true
+    },
+    {
+      "headingDeg": 352.5,
+      "reportedBound95Deg": 0.5,
+      "note": "straddling that boundary",
+      "expectedSectorIndices": [
+        23,
+        0
+      ],
+      "expectedSectorNames": [
+        "ren",
+        "zi"
+      ],
+      "expectedBoundaryStraddled": true,
+      "classificationPossible": true
+    },
+    {
+      "headingDeg": 7.5,
+      "reportedBound95Deg": 0.0,
+      "note": "exactly on a boundary belongs to the sector it starts",
+      "expectedSectorIndices": [
+        1
+      ],
+      "expectedSectorNames": [
+        "gui"
+      ],
+      "expectedBoundaryStraddled": false,
+      "classificationPossible": true
+    },
+    {
+      "headingDeg": 100.0,
+      "reportedBound95Deg": 7.5,
+      "note": "a bound above 7.5 guarantees at least two sectors",
+      "expectedSectorIndices": [
+        6,
+        7
+      ],
+      "expectedSectorNames": [
+        "mao",
+        "yi"
+      ],
+      "expectedBoundaryStraddled": true,
+      "classificationPossible": true
+    },
+    {
+      "headingDeg": 100.0,
+      "reportedBound95Deg": 20.0,
+      "note": "above 15 deg guarantees at least three",
+      "expectedSectorIndices": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "expectedSectorNames": [
+        "jia",
+        "mao",
+        "yi",
+        "chen"
+      ],
+      "expectedBoundaryStraddled": true,
+      "classificationPossible": true
+    },
+    {
+      "headingDeg": 10.0,
+      "reportedBound95Deg": 179.0,
+      "note": "nearly the whole circle: both endpoints land in the same sector, which a walk-until-equal implementation would report as one sector instead of 24",
+      "expectedSectorIndices": [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "expectedSectorNames": [
+        "ding",
+        "wei",
+        "kun",
+        "shen",
+        "geng",
+        "you",
+        "xin",
+        "xu",
+        "qian",
+        "hai",
+        "ren",
+        "zi",
+        "gui",
+        "chou",
+        "gen",
+        "yin",
+        "jia",
+        "mao",
+        "yi",
+        "chen",
+        "xun",
+        "si",
+        "bing",
+        "wu"
+      ],
+      "expectedBoundaryStraddled": true,
+      "classificationPossible": true
+    },
+    {
+      "headingDeg": 10.0,
+      "reportedBound95Deg": 180.0,
+      "note": "2*bound == 360: no classification is possible",
+      "expectedSectorIndices": [],
+      "expectedSectorNames": [],
+      "expectedBoundaryStraddled": true,
+      "classificationPossible": false
+    },
+    {
+      "headingDeg": 10.0,
+      "reportedBound95Deg": 200.0,
+      "note": "2*bound > 360: no classification is possible",
+      "expectedSectorIndices": [],
+      "expectedSectorNames": [],
+      "expectedBoundaryStraddled": true,
+      "classificationPossible": false
+    }
+  ]
+}

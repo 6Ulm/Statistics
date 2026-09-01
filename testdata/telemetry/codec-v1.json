@@ -1,0 +1,49 @@
+{
+  "fixtureVersion": "fixtures-v1",
+  "specSections": [
+    "§22",
+    "§22.2"
+  ],
+  "rejectedDocuments": [
+    {
+      "id": "nonfinite-nan",
+      "line": "{\"schemaVersion\":\"1.0.0\",\"payload\":{\"trueHeadingDeg\":NaN}}",
+      "reason": "JSON has no NaN literal"
+    },
+    {
+      "id": "nonfinite-infinity",
+      "line": "{\"schemaVersion\":\"1.0.0\",\"payload\":{\"trueHeadingDeg\":Infinity}}",
+      "reason": "JSON has no Infinity literal"
+    },
+    {
+      "id": "snake-case-property-key",
+      "line": "{\"schema_version\":\"1.0.0\",\"payload\":{}}",
+      "reason": "property keys are lowerCamelCase"
+    },
+    {
+      "id": "upper-camel-property-key",
+      "line": "{\"SchemaVersion\":\"1.0.0\",\"payload\":{}}",
+      "reason": "property keys are lowerCamelCase"
+    }
+  ],
+  "roundTripDoubles": [
+    0.1,
+    0.30000000000000004,
+    189.0,
+    1e-07,
+    123456789.12345679,
+    -0.0,
+    359.9999998999999
+  ],
+  "commaDecimalLocales": [
+    "de_DE.UTF-8",
+    "fr_FR.UTF-8",
+    "pt_BR.UTF-8"
+  ],
+  "unknownEventTypes": [
+    "engineOutput",
+    "ENGINE_OUTPUT",
+    "engine output",
+    "not_an_event"
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "fixtureVersion": "fixtures-v1",
+  "specSections": [
+    "§11",
+    "§30.5"
+  ],
+  "configVersion": "precision-v1-candidate-1",
+  "cases": [
+    {
+      "id": "true-verified",
+      "measurementMode": "FLAT_TOP_EDGE",
+      "gAxisDeg": 189.0,
+      "mAxisDeg": 180.71,
+      "declinationDeg": 8.29,
+      "precheckState": "CLEAN_FOR_REFERENCE",
+      "expectedResolvedReference": "TRUE_VERIFIED",
+      "expectedCorrectionDeg": 0.0,
+      "expectedReferenceAmbiguityBound95Deg": 0.0,
+      "expectedCanonicalTrueHeadingDeg": 189.0
+    },
+    {
+      "id": "true-corrected-from-magnetic",
+      "measurementMode": "FLAT_TOP_EDGE",
+      "gAxisDeg": 180.71,
+      "mAxisDeg": 180.71,
+      "declinationDeg": 8.29,
+      "precheckState": "CLEAN_FOR_REFERENCE",
+      "expectedResolvedReference": "TRUE_CORRECTED_FROM_MAGNETIC",
+      "expectedCorrectionDeg": 8.29,
+      "expectedReferenceAmbiguityBound95Deg": 0.0,
+      "expectedCanonicalTrueHeadingDeg": 189.0,
+      "note": "Failure mode 21: declination appears exactly once. A second application here would give 197.29, a plausible bearing 2*d from the truth."
+    },
+    {
+      "id": "small-declination-ambiguity",
+      "measurementMode": "WALL_FLUSH_BACK",
+      "gAxisDeg": 100.0,
+      "mAxisDeg": 100.0,
+      "declinationDeg": 1.5,
+      "precheckState": "CLEAN_FOR_REFERENCE",
+      "expectedResolvedReference": "TRUE_WITH_AMBIGUITY_BOUND",
+      "expectedCorrectionDeg": 0.0,
+      "expectedReferenceAmbiguityBound95Deg": 1.5,
+      "expectedCanonicalTrueHeadingDeg": 100.0
+    },
+    {
+      "id": "true-verified-at-large-declination",
+      "measurementMode": "FLAT_TOP_EDGE",
+      "gAxisDeg": 100.0,
+      "mAxisDeg": 92.0,
+      "declinationDeg": 8.0,
+      "precheckState": "CLEAN_FOR_REFERENCE",
+      "expectedResolvedReference": "TRUE_VERIFIED",
+      "expectedCorrectionDeg": 0.0,
+      "expectedReferenceAmbiguityBound95Deg": 0.0,
+      "expectedCanonicalTrueHeadingDeg": 100.0,
+      "note": "The separation the hypothesis test relies on: |d| = 8 deg is well above referenceSeparationMarginDeg, so the two hypotheses are distinguishable."
+    },
+    {
+      "id": "unverified-both-hypotheses-far",
+      "measurementMode": "FLAT_TOP_EDGE",
+      "gAxisDeg": 100.0,
+      "mAxisDeg": 140.0,
+      "declinationDeg": 8.0,
+      "precheckState": "CLEAN_FOR_REFERENCE",
+      "expectedResolvedReference": "UNVERIFIED",
+      "expectedCorrectionDeg": 0.0,
+      "expectedReferenceAmbiguityBound95Deg": 0.0,
+      "expectedCanonicalTrueHeadingDeg": null
+    },
+    {
+      "id": "precheck-not-clean-refuses-to-resolve",
+      "measurementMode": "FLAT_TOP_EDGE",
+      "gAxisDeg": 189.0,
+      "mAxisDeg": 180.71,
+      "declinationDeg": 8.29,
+      "precheckState": "NOT_CLEAN_FOR_REFERENCE",
+      "expectedResolvedReference": "UNVERIFIED",
+      "expectedCorrectionDeg": 0.0,
+      "expectedReferenceAmbiguityBound95Deg": 0.0,
+      "expectedCanonicalTrueHeadingDeg": null,
+      "expectedResidualsAbsent": true,
+      "note": "R59: the engine does not manufacture a Google pipeline reference in order to compute the evidence that would have resolved it."
+    },
+    {
+      "id": "north-wrap-true-corrected",
+      "measurementMode": "FLAT_TOP_EDGE",
+      "gAxisDeg": 355.0,
+      "mAxisDeg": 355.0,
+      "declinationDeg": 8.29,
+      "precheckState": "CLEAN_FOR_REFERENCE",
+      "expectedResolvedReference": "TRUE_CORRECTED_FROM_MAGNETIC",
+      "expectedCorrectionDeg": 8.29,
+      "expectedReferenceAmbiguityBound95Deg": 0.0,
+      "expectedCanonicalTrueHeadingDeg": 3.2900000000000205
+    }
+  ]
+}

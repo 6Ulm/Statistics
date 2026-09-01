@@ -62,6 +62,44 @@ public enum SharedArtifacts {
         try url("testdata/grade-reachability-claims-v1.json", from: file)
     }
 
+    // ---------------------------------------------------------------------------------
+    // The frozen `fixtures-v1` shared contract (SPEC.md §37.1).
+    //
+    // "give both agents the same files and tolerances, with neither editing shared fixtures
+    // unilaterally; a contract change requires one reviewed change set, regenerated fixtures,
+    // both test suites, and a new fixture version".
+    // ---------------------------------------------------------------------------------
+
+    public static let fixtureVersion = "fixtures-v1"
+
+    public static func circularMathFixtureURL(from file: StaticString = #filePath) throws -> URL {
+        try url("testdata/angles/circular-math-v1.json", from: file)
+    }
+
+    public static func estimatorsFixtureURL(from file: StaticString = #filePath) throws -> URL {
+        try url("testdata/angles/estimators-v1.json", from: file)
+    }
+
+    public static func circularAggregateFixtureURL(from file: StaticString = #filePath) throws -> URL {
+        try url("testdata/angles/circular-aggregate-v1.json", from: file)
+    }
+
+    public static func attitudeGoldenFixtureURL(from file: StaticString = #filePath) throws -> URL {
+        try url("testdata/quaternions/attitude-golden-v1.json", from: file)
+    }
+
+    public static func fengShuiClassificationFixtureURL(from file: StaticString = #filePath) throws -> URL {
+        try url("testdata/fengshui/classification-v1.json", from: file)
+    }
+
+    public static func fengShuiReferenceTransformFixtureURL(from file: StaticString = #filePath) throws -> URL {
+        try url("testdata/fengshui/reference-transform-v1.json", from: file)
+    }
+
+    public static func fixturesManifestURL(from file: StaticString = #filePath) throws -> URL {
+        try url("testdata/fixtures-v1.manifest.json", from: file)
+    }
+
     public static func exampleEngineOutputEventURL(from file: StaticString = #filePath) throws -> URL {
         try url("testdata/telemetry-event-engine-output-v1.example.json", from: file)
     }

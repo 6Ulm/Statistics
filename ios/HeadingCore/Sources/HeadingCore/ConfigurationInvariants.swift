@@ -156,6 +156,32 @@ public enum ConfigurationInvariants {
                 + "\(profile.spaceWeatherRejectKpMin)"
         )
 
+        // §36 Phase 1: "config parser/validator including periodic-vs-event-driven sampling
+        // invariants". INV-07 bounds the *periodic* stream against the requested rate; this one
+        // guards the other half, which R52 records as a Critical failure: requiring iOS flat to
+        // deliver 50 CLHeading events in 2 s, or applying the periodic freshness rule to a
+        // stationary CLHeading value, rejects a perfectly good measurement. The anchor minimum
+        // is therefore a small positive count that is *independent* of
+        // periodicOrientationRequestedHz — if it were ever derived from the rate, the
+        // event-driven path would inherit the periodic contract by arithmetic instead of by
+        // decision.
+        let rateDerivedPeriodicCount =
+            Double(profile.stableWindowMinMs) * profile.periodicOrientationRequestedHz / 1000.0
+        require(
+            "INV-11-EVENT-DRIVEN-ANCHOR-MINIMUM",
+            profile.clHeadingMinSamplesPerStableWindow >= 1
+                && Double(profile.clHeadingMinSamplesPerStableWindow) < rateDerivedPeriodicCount,
+            requirement: "1 <= clHeadingMinSamplesPerStableWindow < "
+                + "stableWindowMinMs * periodicOrientationRequestedHz / 1000",
+            prevents: "CLHeading is event-driven, not a guaranteed 50 Hz stream (§12, R52). At "
+                + "least one valid anchor must fall inside the stable window, and the anchor "
+                + "count must stay strictly below what the periodic stream would produce, so the "
+                + "event-driven path never silently inherits the periodic sampling contract.",
+            detail: "clHeadingMinSamplesPerStableWindow="
+                + "\(profile.clHeadingMinSamplesPerStableWindow), rate-derived periodic count="
+                + "\(rateDerivedPeriodicCount)"
+        )
+
         return violations
     }
 }

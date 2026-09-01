@@ -53,12 +53,18 @@ if grep -qE '^distributionUrl=.*gradle-[0-9]+\.[0-9]+(\.[0-9]+)?-(bin|all)\.zip$
 else
   fail "$wrapper does not pin an exact Gradle distribution"
 fi
-if grep -q '^distributionSha256Sum=' "$wrapper"; then
-  ok "distributionSha256Sum present"
+# §2 "Pin every dependency version" is satisfied by the exact distributionUrl; the checksum is
+# the supply-chain half. Phase 1 resolved deviation D-4, so this is now a hard failure rather
+# than a warning: the wrapper itself verifies the digest on every download, so a missing entry
+# silently removes that check.
+sha_line=$(grep '^distributionSha256Sum=' "$wrapper" || true)
+if [[ -z "$sha_line" ]]; then
+  fail "$wrapper has no distributionSha256Sum. The wrapper verifies the downloaded" \
+       "distribution against this digest; without it the integrity check is absent (D-4)."
+elif [[ ! "${sha_line#distributionSha256Sum=}" =~ ^[0-9a-f]{64}$ ]]; then
+  fail "$wrapper distributionSha256Sum is not a 64-character lowercase hex SHA-256"
 else
-  # Version pinning is satisfied by the exact distributionUrl; the checksum is additional
-  # supply-chain integrity. See docs/IMPLEMENTATION_NOTES.md deviation D-4.
-  warn "$wrapper has no distributionSha256Sum (open Phase 0 item, deviation D-4)"
+  ok "$sha_line"
 fi
 
 echo

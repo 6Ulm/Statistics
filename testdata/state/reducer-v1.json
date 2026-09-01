@@ -1,0 +1,334 @@
+{
+  "fixtureVersion": "fixtures-v1",
+  "specSections": [
+    "§18.2",
+    "§18.5"
+  ],
+  "sequences": [
+    {
+      "id": "cold-start-to-degraded",
+      "events": [
+        {
+          "type": "SESSION_STARTED"
+        },
+        {
+          "type": "LOCATION_ACQUIRED"
+        },
+        {
+          "type": "ORIENTATION_STREAM_READY"
+        },
+        {
+          "type": "CALIBRATION_CHECK_COMPLETED"
+        },
+        {
+          "type": "MAGNETIC_STATE_OBSERVED",
+          "magneticState": "CLEAN"
+        },
+        {
+          "type": "POSE_VALID"
+        },
+        {
+          "type": "STABILITY_SATISFIED"
+        },
+        {
+          "type": "BOUND_COMPOSED",
+          "reportedBound95Deg": 7.0,
+          "lockCeilingDeg": 5.0,
+          "lowConfidenceCeilingDeg": 10.0
+        }
+      ],
+      "expectedFinalState": "DEGRADED",
+      "expectedFinalEffects": [
+        "RECORD_STATE_TRANSITION",
+        "CLEAR_ACQUISITION_TIMEOUT",
+        "EMIT_DEGRADED_MEASUREMENT"
+      ],
+      "expectedLockHeld": false
+    },
+    {
+      "id": "certified-jig-locks",
+      "events": [
+        {
+          "type": "SESSION_STARTED"
+        },
+        {
+          "type": "LOCATION_ACQUIRED"
+        },
+        {
+          "type": "ORIENTATION_STREAM_READY"
+        },
+        {
+          "type": "CALIBRATION_CHECK_COMPLETED"
+        },
+        {
+          "type": "MAGNETIC_STATE_OBSERVED",
+          "magneticState": "CLEAN"
+        },
+        {
+          "type": "POSE_VALID"
+        },
+        {
+          "type": "STABILITY_SATISFIED"
+        },
+        {
+          "type": "BOUND_COMPOSED",
+          "reportedBound95Deg": 1.7,
+          "lockCeilingDeg": 5.0,
+          "lowConfidenceCeilingDeg": 10.0
+        }
+      ],
+      "expectedFinalState": "PRECISION_LOCKED",
+      "expectedFinalEffects": [
+        "RECORD_STATE_TRANSITION",
+        "CLEAR_ACQUISITION_TIMEOUT",
+        "EMIT_LOCKED_MEASUREMENT"
+      ],
+      "expectedLockHeld": true
+    },
+    {
+      "id": "bound-above-low-confidence-is-invalid",
+      "events": [
+        {
+          "type": "SESSION_STARTED"
+        },
+        {
+          "type": "LOCATION_ACQUIRED"
+        },
+        {
+          "type": "ORIENTATION_STREAM_READY"
+        },
+        {
+          "type": "CALIBRATION_CHECK_COMPLETED"
+        },
+        {
+          "type": "MAGNETIC_STATE_OBSERVED",
+          "magneticState": "CLEAN"
+        },
+        {
+          "type": "POSE_VALID"
+        },
+        {
+          "type": "BOUND_COMPOSED",
+          "reportedBound95Deg": 12.0,
+          "lockCeilingDeg": 5.0,
+          "lowConfidenceCeilingDeg": 10.0
+        }
+      ],
+      "expectedFinalState": "INVALID",
+      "expectedFinalEffects": [
+        "RECORD_STATE_TRANSITION",
+        "RESET_AGGREGATION_WINDOW",
+        "EMIT_NO_MEASUREMENT"
+      ],
+      "expectedLockHeld": false
+    },
+    {
+      "id": "timeout-emits-no-measurement",
+      "note": "Failure mode 26: a timeout goes to TIMED_OUT and emits no measurement. It must not freeze the last number as a lock.",
+      "events": [
+        {
+          "type": "SESSION_STARTED"
+        },
+        {
+          "type": "LOCATION_ACQUIRED"
+        },
+        {
+          "type": "ORIENTATION_STREAM_READY"
+        },
+        {
+          "type": "CALIBRATION_CHECK_COMPLETED"
+        },
+        {
+          "type": "MAGNETIC_STATE_OBSERVED",
+          "magneticState": "CLEAN"
+        },
+        {
+          "type": "POSE_VALID"
+        },
+        {
+          "type": "ACQUISITION_TIMED_OUT"
+        }
+      ],
+      "expectedFinalState": "TIMED_OUT",
+      "expectedFinalEffects": [
+        "RECORD_STATE_TRANSITION",
+        "RESET_AGGREGATION_WINDOW",
+        "EMIT_NO_MEASUREMENT"
+      ],
+      "expectedLockHeld": false
+    },
+    {
+      "id": "disturbed-invalidates-a-live-lock",
+      "events": [
+        {
+          "type": "SESSION_STARTED"
+        },
+        {
+          "type": "LOCATION_ACQUIRED"
+        },
+        {
+          "type": "ORIENTATION_STREAM_READY"
+        },
+        {
+          "type": "CALIBRATION_CHECK_COMPLETED"
+        },
+        {
+          "type": "MAGNETIC_STATE_OBSERVED",
+          "magneticState": "CLEAN"
+        },
+        {
+          "type": "POSE_VALID"
+        },
+        {
+          "type": "STABILITY_SATISFIED"
+        },
+        {
+          "type": "BOUND_COMPOSED",
+          "reportedBound95Deg": 1.7,
+          "lockCeilingDeg": 5.0,
+          "lowConfidenceCeilingDeg": 10.0
+        },
+        {
+          "type": "MAGNETIC_STATE_OBSERVED",
+          "magneticState": "DISTURBED"
+        }
+      ],
+      "expectedFinalState": "INVALID",
+      "expectedFinalEffects": [
+        "RECORD_STATE_TRANSITION",
+        "RESET_AGGREGATION_WINDOW",
+        "EMIT_NO_MEASUREMENT"
+      ],
+      "expectedLockHeld": false
+    },
+    {
+      "id": "unknown-magnetic-state-cannot-lock",
+      "events": [
+        {
+          "type": "SESSION_STARTED"
+        },
+        {
+          "type": "LOCATION_ACQUIRED"
+        },
+        {
+          "type": "ORIENTATION_STREAM_READY"
+        },
+        {
+          "type": "CALIBRATION_CHECK_COMPLETED"
+        },
+        {
+          "type": "MAGNETIC_STATE_OBSERVED",
+          "magneticState": "UNKNOWN"
+        }
+      ],
+      "expectedFinalState": "INVALID",
+      "expectedFinalEffects": [
+        "RECORD_STATE_TRANSITION",
+        "RESET_AGGREGATION_WINDOW",
+        "EMIT_NO_MEASUREMENT"
+      ],
+      "expectedLockHeld": false
+    },
+    {
+      "id": "backgrounding-resets-the-window",
+      "events": [
+        {
+          "type": "SESSION_STARTED"
+        },
+        {
+          "type": "LOCATION_ACQUIRED"
+        },
+        {
+          "type": "ORIENTATION_STREAM_READY"
+        },
+        {
+          "type": "CALIBRATION_CHECK_COMPLETED"
+        },
+        {
+          "type": "MAGNETIC_STATE_OBSERVED",
+          "magneticState": "CLEAN"
+        },
+        {
+          "type": "POSE_VALID"
+        },
+        {
+          "type": "STABILITY_SATISFIED"
+        },
+        {
+          "type": "BOUND_COMPOSED",
+          "reportedBound95Deg": 1.7,
+          "lockCeilingDeg": 5.0,
+          "lowConfidenceCeilingDeg": 10.0
+        },
+        {
+          "type": "APP_BACKGROUNDED"
+        }
+      ],
+      "expectedFinalState": "INVALID",
+      "expectedFinalEffects": [
+        "RECORD_STATE_TRANSITION",
+        "RESET_AGGREGATION_WINDOW",
+        "EMIT_NO_MEASUREMENT"
+      ],
+      "expectedLockHeld": false
+    },
+    {
+      "id": "screen-rotation-invalidates-the-window",
+      "events": [
+        {
+          "type": "SESSION_STARTED"
+        },
+        {
+          "type": "LOCATION_ACQUIRED"
+        },
+        {
+          "type": "ORIENTATION_STREAM_READY"
+        },
+        {
+          "type": "CALIBRATION_CHECK_COMPLETED"
+        },
+        {
+          "type": "MAGNETIC_STATE_OBSERVED",
+          "magneticState": "CLEAN"
+        },
+        {
+          "type": "POSE_VALID"
+        },
+        {
+          "type": "SCREEN_ORIENTATION_CHANGED"
+        }
+      ],
+      "expectedFinalState": "INVALID",
+      "expectedFinalEffects": [
+        "RECORD_STATE_TRANSITION",
+        "RESET_AGGREGATION_WINDOW",
+        "EMIT_NO_MEASUREMENT"
+      ],
+      "expectedLockHeld": false
+    },
+    {
+      "id": "provider-initialization-is-not-calibration",
+      "note": "§18.4 / failure mode 37: the sensor may be perfectly calibrated; the fusion has simply not observed enough rotation to bound its own error.",
+      "events": [
+        {
+          "type": "SESSION_STARTED"
+        },
+        {
+          "type": "LOCATION_ACQUIRED"
+        },
+        {
+          "type": "ORIENTATION_STREAM_READY"
+        },
+        {
+          "type": "PROVIDER_INITIALIZATION_REQUIRED"
+        }
+      ],
+      "expectedFinalState": "PROVIDER_INITIALIZING",
+      "expectedFinalEffects": [
+        "RECORD_STATE_TRANSITION",
+        "RESET_AGGREGATION_WINDOW"
+      ],
+      "expectedLockHeld": false
+    }
+  ]
+}

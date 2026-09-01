@@ -3,6 +3,20 @@ package com.fengshuicompass.headingcore.grade
 import com.fengshuicompass.headingcore.config.PrecisionProfile
 
 /**
+ * SPEC.md §6 vocabulary re-exported into this package.
+ *
+ * Phase 0 declared `PlacementMethod` and `MagneticState` here because §8.1.1's reachability
+ * analysis was the only consumer. Phase 1 gives §6 a single home in
+ * `com.fengshuicompass.headingcore.model`, and §6 allows exactly one vocabulary — so these are
+ * aliases to that home rather than second declarations. A second enum with the same case names
+ * is how two parts of one runtime end up disagreeing about a wire value.
+ */
+public typealias PlacementMethod = com.fengshuicompass.headingcore.model.PlacementMethod
+
+/** See [PlacementMethod]: an alias to the single §6 declaration, not a second one. */
+public typealias MagneticState = com.fengshuicompass.headingcore.model.MagneticState
+
+/**
  * SPEC.md §6 `QualityGrade`, plus the two sentinel values the §8.1.1 reachability
  * analysis needs to express a claim about a combination.
  *
@@ -20,23 +34,6 @@ public enum class QualityGrade {
 
     /** Higher ordinal means a weaker grade, so a smaller ordinal is a stronger claim. */
     public fun isStrongerThan(other: QualityGrade): Boolean = ordinal < other.ordinal
-}
-
-/** SPEC.md §6 `PlacementMethod`. */
-public enum class PlacementMethod {
-    FREEHAND,
-    WALL_FLUSH_FREEHAND,
-    NONMAGNETIC_ALIGNMENT_JIG,
-    SURVEY_FIXTURE,
-}
-
-/** SPEC.md §6 `MagneticState`. */
-public enum class MagneticState {
-    CLEAN,
-    SUSPECT,
-    DISTURBED,
-    INVALID,
-    UNKNOWN,
 }
 
 /**

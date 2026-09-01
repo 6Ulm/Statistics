@@ -1,0 +1,111 @@
+{
+  "fixtureVersion": "fixtures-v1",
+  "specSections": [
+    "§16",
+    "§11"
+  ],
+  "configVersion": "precision-v1-candidate-1",
+  "inclinationCases": [
+    {
+      "id": "northern-hemisphere-field-points-down",
+      "upMicroTesla": -43.9,
+      "magnitudeMicroTesla": 48.7,
+      "expectedMeasuredInclinationPositiveDownDeg": 64.34765128127616
+    },
+    {
+      "id": "southern-hemisphere-field-points-up",
+      "upMicroTesla": 43.9,
+      "magnitudeMicroTesla": 48.7,
+      "expectedMeasuredInclinationPositiveDownDeg": -64.34765128127616
+    },
+    {
+      "id": "magnetic-equator-zero-inclination",
+      "upMicroTesla": 0.0,
+      "magnitudeMicroTesla": 32.0,
+      "expectedMeasuredInclinationPositiveDownDeg": 0.0
+    },
+    {
+      "id": "clamped-beyond-unit-ratio",
+      "upMicroTesla": -48.7,
+      "magnitudeMicroTesla": 48.7,
+      "expectedMeasuredInclinationPositiveDownDeg": 90.0
+    }
+  ],
+  "classifierCases": [
+    {
+      "id": "clean-all-features-present",
+      "relativeMagnitudeResidual": 0.0167,
+      "inclinationResidualDeg": 0.9,
+      "stationaryFieldMadMicroTesla": 0.31,
+      "pipelineAgreementDeg": 0.54,
+      "expectedMagneticState": "CLEAN",
+      "expectedPrecheckState": "CLEAN_FOR_REFERENCE"
+    },
+    {
+      "id": "moving-device-stationary-mad-absent",
+      "relativeMagnitudeResidual": 0.0167,
+      "inclinationResidualDeg": 0.9,
+      "stationaryFieldMadMicroTesla": null,
+      "pipelineAgreementDeg": 0.54,
+      "expectedMagneticState": "UNKNOWN",
+      "expectedPrecheckState": "UNKNOWN"
+    },
+    {
+      "id": "single-pipeline-agreement-absent",
+      "relativeMagnitudeResidual": 0.0167,
+      "inclinationResidualDeg": 0.9,
+      "stationaryFieldMadMicroTesla": 0.31,
+      "pipelineAgreementDeg": null,
+      "expectedMagneticState": "UNKNOWN",
+      "expectedPrecheckState": "CLEAN_FOR_REFERENCE"
+    },
+    {
+      "id": "rotated-field-normal-magnitude",
+      "note": "Failure mode 23: a disturbance that rotates the field vector with almost no magnitude change. Magnitude alone would call this clean.",
+      "relativeMagnitudeResidual": 0.01,
+      "inclinationResidualDeg": 14.0,
+      "stationaryFieldMadMicroTesla": 0.4,
+      "pipelineAgreementDeg": 1.0,
+      "expectedMagneticState": "DISTURBED",
+      "expectedPrecheckState": "NOT_CLEAN_FOR_REFERENCE"
+    },
+    {
+      "id": "suspect-magnitude-only",
+      "relativeMagnitudeResidual": 0.2,
+      "inclinationResidualDeg": 0.5,
+      "stationaryFieldMadMicroTesla": 0.4,
+      "pipelineAgreementDeg": 1.0,
+      "expectedMagneticState": "SUSPECT",
+      "expectedPrecheckState": "NOT_CLEAN_FOR_REFERENCE"
+    },
+    {
+      "id": "pipeline-disagreement-disturbed",
+      "relativeMagnitudeResidual": 0.01,
+      "inclinationResidualDeg": 0.5,
+      "stationaryFieldMadMicroTesla": 0.4,
+      "pipelineAgreementDeg": 10.0,
+      "expectedMagneticState": "DISTURBED",
+      "expectedPrecheckState": "CLEAN_FOR_REFERENCE",
+      "note": "R59: pipeline disagreement disturbs the final state but the precheck never reads it, so the dependency order stays acyclic."
+    },
+    {
+      "id": "negative-inclination-residual-uses-absolute-value",
+      "relativeMagnitudeResidual": 0.01,
+      "inclinationResidualDeg": -13.0,
+      "stationaryFieldMadMicroTesla": 0.4,
+      "pipelineAgreementDeg": 1.0,
+      "expectedMagneticState": "DISTURBED",
+      "expectedPrecheckState": "NOT_CLEAN_FOR_REFERENCE"
+    },
+    {
+      "id": "saturated-sensor-is-invalid",
+      "relativeMagnitudeResidual": 0.01,
+      "inclinationResidualDeg": 0.5,
+      "stationaryFieldMadMicroTesla": 0.4,
+      "pipelineAgreementDeg": 1.0,
+      "sensorSaturated": true,
+      "expectedMagneticState": "INVALID",
+      "expectedPrecheckState": "NOT_CLEAN_FOR_REFERENCE"
+    }
+  ]
+}

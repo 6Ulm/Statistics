@@ -1,0 +1,32 @@
+{
+  "fixtureVersion": "fixtures-v1",
+  "specSections": [
+    "§37.1"
+  ],
+  "note": "Frozen before platform work diverges. Neither platform agent edits these unilaterally; a contract change requires one reviewed change set, regenerated fixtures, both test suites, and a new fixture version.",
+  "declaredAngleToleranceDeg": 1e-06,
+  "artifacts": {
+    "config/feng-shui-rules-v1.json": "sha256:d4f26003d72adb892ce4868abcfb3a5c8403850f29d111a55f2aad9f71270493",
+    "config/precision-profile-v1.json": "sha256:e85a0eb4073a38c43828a294db750c7ee3ca5b7a17165b34650c8c40a99fab6f",
+    "schemas/feng-shui-rules-v1.schema.json": "sha256:41a60b7ec22e2bf81ca47330ccaa81425f67d27ba6b2b7c1d415712c58d755f4",
+    "schemas/precision-profile-v1.schema.json": "sha256:e219a73a8dcdb3d52f116f60d0a0336f9741bad84d3ccb9cccc0e93a22d61a29",
+    "schemas/session-manifest-v1.schema.json": "sha256:c35bad663d2c544f15e3e84b67ecccd4928b9b680548e94ce80eccba31146509",
+    "schemas/telemetry-event-v1.schema.json": "sha256:ea3c609db677e02b62465629760c2f0aa5ae33d92fb1d06cd184475e795b65f6",
+    "testdata/grade-reachability-claims-v1.json": "sha256:f2b8772f7db5a1eaf91080b65fb13e193d7ec3da87e30db55e9c6f466701d284",
+    "testdata/session-manifest-v1.example.json": "sha256:154cdc996d28382d54dd64e9df48ba35a6952115534aff8119b3b68f30844445",
+    "testdata/telemetry-event-engine-output-v1.example.json": "sha256:ead48cf670cdd09d5643c4aad32dcb908c60317c0cad0e3770101fc61ed884d9",
+    "testdata/angles/circular-math-v1.json": "sha256:247532232f86ac6febb346c1b291a17ccc1f7d676eeeccf1d4b608d7fd57f734",
+    "testdata/angles/estimators-v1.json": "sha256:65abf0acb573bdce20508209f2db510180a9c3a3334e5f02d84b3b86c7e2722f",
+    "testdata/angles/circular-aggregate-v1.json": "sha256:e597ba036f078037493e5276ba7b7c416516774173a27e3afc73a1355e0f0d54",
+    "testdata/quaternions/attitude-golden-v1.json": "sha256:1b176ddc7af5c20558a87247eb27026b5cff14ba3b4e9f6229af4b57ab8bf7af",
+    "testdata/fengshui/classification-v1.json": "sha256:3e39a7c4bca69873c2919bc7fd13c14ed8c3f2a6b2932fb6547e501b226e7d66",
+    "testdata/fengshui/reference-transform-v1.json": "sha256:9a82ce104d4e3e968e95382d0e418fcc750fdfebf499a20e603bf6f4549c51dd",
+    "testdata/uncertainty/composition-v1.json": "sha256:f313ce5616f3c300cc2cf5cfd6bb80372063ee619e56addc448b9a9364dd5983",
+    "testdata/magnetic/classification-v1.json": "sha256:ce9a12721e03894db836e50bc3312f1a3045c6f993cc4fe8723a7c9def36909b",
+    "testdata/reference/resolution-v1.json": "sha256:869659699f051cce9d17911f287eafd26cf25199aea047d6aa15be583472ee93",
+    "testdata/state/reducer-v1.json": "sha256:d7fcaa9878fb7424dc49d0d53a28fc89cbfdc94891b8e83a241cb626f8a97d0d",
+    "testdata/certification/key-v1.json": "sha256:5df0a5e41149c78044df79628f9fe0a1e6274ae587c00fed1d1794dbd0b91a31",
+    "testdata/telemetry/codec-v1.json": "sha256:124a3bec034a26385c0fdfc9dcd06404fa9b15b0cae358e67a1bd34f52871475",
+    "third_party/noaa-wmm/sha256.txt": "sha256:5abc93baf810ee32b2084e1cb90dfd70229337496cc8e4180901db3062783d0d"
+  }
+}
