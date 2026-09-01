@@ -95,7 +95,9 @@ schema validation, R62, §2 pinned versions) still runs. Phase 1 adds:
   resetting the window, and `PROVIDER_INITIALIZING` distinct from `CALIBRATION_CHECK`.
 - **§8.1 INV-11** — the periodic-vs-event-driven sampling invariant (R52).
 - **§37.1** — the `fixtures-v1` freeze: a hash manifest covering every shared artifact, every
-  hash checked against the bytes on disk, and the generator proven to reproduce its output.
+  hash checked against the bytes on disk, and the generator proven to reproduce its output. The
+  git tag of the same name could not be pushed from this environment (deviation D-8); the
+  manifest, not the tag, is what the tests check.
 
 ### Discrimination tests
 

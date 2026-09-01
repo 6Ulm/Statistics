@@ -147,6 +147,26 @@ generated. The Python test **skips with an explicit message** rather than passin
 no comma-decimal locale exists; the Kotlin test sets `Locale.GERMANY` directly and needs no
 system locale. A CI host must have one for the Python half of that check to run.
 
+### D-8 — the `fixtures-v1` git tag exists locally but could not be pushed
+
+*Rule touched:* §37.1, "tag that baseline `fixtures-v1`".
+
+The tag was created (`git tag -a fixtures-v1`) and every push of it is refused with a clean
+`HTTP 403` from the remote, repeatedly. This is a ref-scope restriction on this session's
+credentials rather than a network fault: pushing a commit to
+`claude/feng-shui-compass-phase-1-gjqejy` succeeds immediately before and after the refused tag
+push, and the agent proxy logs no denial for `github.com` at those times.
+
+The load-bearing half of the freeze is committed and checkable regardless of the tag:
+`testdata/fixtures-v1.manifest.json` records a SHA-256 for every frozen artifact,
+`analysis/tests/test_fixtures_freeze.py` verifies each hash against the bytes on disk, and
+`scripts/generate-shared-fixtures.py --check` proves the derived fixtures are reproducible. The
+tag is a human-readable pointer to commit `9f59314`, not the mechanism.
+
+*Obligation:* whoever has tag-push rights should run
+`git tag -a fixtures-v1 <commit> && git push origin fixtures-v1` before the iOS and Android
+agents diverge, so §37.1's named baseline is resolvable by name.
+
 ### D-7 — §6 vocabulary consolidated into one package (Kotlin)
 
 *Rule touched:* §6, "There is exactly **one** measurement-state vocabulary" and one enum
