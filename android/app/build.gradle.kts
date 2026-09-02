@@ -31,7 +31,14 @@ android {
             )
         }
         debug {
+            // applicationId riêng => bản debug và bản release là HAI ứng dụng
+            // nằm cạnh nhau trên máy, gỡ cái này không đụng cái kia. Tên hiển
+            // thị được đặt lại trong src/debug/res/values/strings.xml để trên
+            // màn hình chính không còn hai biểu tượng giống hệt nhau.
             applicationIdSuffix = ".debug"
+            // Settings → Apps hiện "1.1-debug" thay vì "1.1": nhìn là biết ngay
+            // đang mở bản nào.
+            versionNameSuffix = "-debug"
         }
     }
 
