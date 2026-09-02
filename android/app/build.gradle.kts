@@ -13,8 +13,12 @@ android {
         applicationId = "com.bazi.qimen"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // TĂNG versionCode mỗi lần dựng bản mới đem cài lên máy. Để nguyên thì
+        // trong Settings → Apps hai bản trông y hệt nhau, mà cài đè thất bại
+        // (thường do khác chữ ký) lại nhìn giống hệt cài thành công — không có
+        // cách nào biết máy đang chạy bản nào.
+        versionCode = 2
+        versionName = "1.1"
     }
 
     buildTypes {
