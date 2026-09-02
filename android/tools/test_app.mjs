@@ -142,6 +142,22 @@ w.setLang('vi');            // can chi tiếng Việt
 await new Promise(r => setTimeout(r, 200));
 w.showTab('cal');
 await new Promise(r => setTimeout(r, 200));
+
+// "Hôm nay tô đỏ" chỉ đúng khi đang ở tháng hiện tại — canh trước khi lật đi.
+check('hôm nay được tô đỏ', String(doc.querySelectorAll('.cal-today').length), '1');
+
+// Chốt vào THÁNG 8/2026 rồi mới canh. Mọi mốc dưới đây là ngày âm và can chi
+// cố định — canh được chặt hơn hẳn mấy phép canh chung chung — nhưng chúng chỉ
+// đúng cho đúng tháng ấy. Trước đây phép thử dựa vào "tháng hiện tại" nên tự vỡ
+// lúc 0h ngày 01-09-2026: lịch nhảy sang tháng 9 (35 ô, 30 ngày) trong khi mọi
+// con số vẫn viết cho tháng 8. Lật bằng chính hai nút ‹ › của giao diện.
+{
+    const now = new Date();
+    const delta = (2026 - now.getFullYear()) * 12 + (8 - (now.getMonth() + 1));
+    const nav = doc.getElementById(delta < 0 ? 'calPrev' : 'calNext');
+    for (let i = 0; i < Math.abs(delta); i++) nav.click();
+    await new Promise(r => setTimeout(r, 200));
+}
 const cells = [...doc.querySelectorAll('.cal-day')];
 check('lưới kín 42 ô, không ô trống', `${cells.length}/${doc.querySelectorAll('.cal-empty').length}`, '42/0');
 const inMonth = cells.filter(c => !c.classList.contains('cal-out'));
@@ -161,7 +177,6 @@ const gz = c => [...c.querySelector('.cal-gz').children].map(x => x.textContent)
 check('01/08 âm + can chi', c1.querySelector('.cal-lunar').textContent + ' ' + gz(c1), '19 Đinh Mùi');
 check('13/08 mùng 1 tháng 7', c13.querySelector('.cal-lunar').textContent + ' ' + gz(c13), '1/7 Kỷ Mùi');
 check('26/08 can chi', c26.querySelector('.cal-lunar').textContent + ' ' + gz(c26), '14 Nhâm Thân');
-check('hôm nay được tô đỏ', String(doc.querySelectorAll('.cal-today').length), '1');
 w.showTab('qmdj');
 await new Promise(r => setTimeout(r, 200));
 
