@@ -58,6 +58,40 @@ và đã chiếm trọn bề ngang — phóng to nữa sẽ tràn ngang, nên gi
 Bàn phím ảo làm `innerHeight` tụt một nửa; module bỏ qua lúc đó để giao diện
 không co lại khi đang gõ tìm thành phố.
 
+## Hàng điều khiển và hàng dùng chung
+
+Tab Kỳ Môn chỉ còn **một** hàng điều khiển: ngày giờ · phái · ô "Đầy đủ". Ngôn
+ngữ và địa điểm tách hẳn ra một hàng riêng nằm **dưới hai tab**, trong cùng
+`#bottomDock` với chúng, nên hiện ở **cả hai tab** và đổi ở đâu cũng có tác dụng
+như nhau.
+
+Ngôn ngữ và phái vốn là hai dãy nút (2 nút + 3 nút) chiếm gần trọn một hàng; nay
+mỗi thứ gói vào **một ô** giống hệt ô địa điểm — ô hiện mục đang chọn, chạm vào
+thì mở bảng trượt từ đáy (`#optOverlay`, dùng chung cho cả hai). Ba ô cạnh nhau
+thì mở ra cùng một thứ.
+
+Vài chỗ phải để ý:
+
+* **Ô phái rộng đúng bằng nhãn dài nhất**, không phải nhãn đang hiện — nếu không
+  ô co giãn mỗi lần đổi phái. Không đếm được bằng số ký tự (chữ Hán và chữ Việt
+  không cùng một thước), nên xếp chồng nhãn đang hiện với ba nhãn ẩn trong cùng
+  một ô lưới: bề rộng cột là bề rộng nhãn rộng nhất, tự đúng cả khi đổi ngôn ngữ.
+  Phần thừa dồn cho ô ngày giờ (trên S21: 55px → 208px tiếng Việt, 243px tiếng
+  Trung).
+* **Ô ngày giờ và ô "Đầy đủ" giữ nguyên bề rộng chữ của mình.** Cho ô ngày giờ
+  co được thì nó bị bóp còn `0-09-2026 18:3`; ép cỡ chữ nhỏ đi thì "Sách Bổ" bị
+  cắt còn chữ "S" khi đang ở tiếng Việt. Đo trên 360/393/412px × hai ngôn ngữ:
+  không ô nào bị cắt, mà cỡ chữ vẫn y như cũ.
+* **`#optOverlay` phải nằm trong danh sách chừa của `body.view-cal`.** Luật ẩn
+  của tab Lịch xoá mọi con của `<body>` trừ danh sách ấy, mà bảng chọn lại là
+  con của `<body>` — quên thì ô ngôn ngữ ở hàng dùng chung mở ra một bảng vô
+  hình, đúng cái cảnh mà hàng dùng chung sinh ra để phục vụ.
+* **Địa điểm phải kéo được tab Lịch vẽ lại.** Ô này trước chỉ có ở tab Kỳ Môn
+  nên không đổi được khi đang xem lịch; nay `calendar.js` bọc `processAll()` để
+  vẽ lại khi đang ở tab Lịch (`applyLoc` gọi `processAll` sau khi áp vị trí).
+* **`--tabbar-h` đo cả `#bottomDock`**, không riêng `#tabBar` — bỏ sót hàng dùng
+  chung thì đáy trang bị thanh che mất đúng chiều cao một hàng.
+
 ## Tab Lịch
 
 Thanh tab đáy màn hình có hai mục: **Kỳ Môn** (bàn Kỳ Môn, đúng như bản web
@@ -492,6 +526,22 @@ theo múi giờ" — suy như vậy còn lệch ~0,35% số tháng và ~1% nhãn
 UTC+7. Bảng đóng sẵn vẫn giữ làm đường lùi (đúng tuyệt đối ở UTC+7, và vẫn hơn
 hẳn cách cũ là chốt cứng mùng 1, vốn lệch tới 16% ở UTC+2).
 
+### Hai bảng, hai đơn vị — chỗ đã sai một lần
+
+`jieqi.txt` ghi cột 2 là **phút** trong ngày (≤ 1439); `lunar_months.txt` ghi
+**giây** (≤ 86 399). `LunarTable.monthStart` từng dùng lại `localize()` — vốn
+viết cho `jieqi.txt` nên nhân 60 000 — cho mốc Sóc, tức nhân thừa đúng 60 lần.
+Mùng 1 vì thế trôi `floor(giây/1440)` ngày, tới 59 ngày: 2 481/2 510 tháng lệch
+và 340 chỗ mất tính tăng dần nên tìm nhị phân cũng sai theo. Sai ở **cả mốc gốc
+UTC+7**, không riêng múi giờ xa.
+
+Con bọ chỉ lộ ra khi widget phải dùng đường lùi, vì đường chính (bảng do ứng
+dụng ghi ra) vẫn đúng — và `test_lunar_table.mjs` thì vẫn xanh, do bản sao
+JavaScript trong đó nhân đúng 1000: **bản sao đã lặng lẽ trôi khỏi thứ nó mô
+phỏng**. Nay phép thử soi thẳng vào mã Kotlin — đơn vị của từng bảng,
+`monthStart` không được đi qua `localize` — và kiểm cả dải giá trị thật trong
+hai tệp dữ liệu, nên một bản sao lệch nữa sẽ đỏ chứ không im.
+
 Widget hiện **cả 24 tiết khí của năm**, xếp hai cột 12 — đúng hình dạng bảng ở
 tab Lịch, kể cả vách ngăn giữa hai nửa và ô tô màu cho tiết khí đang hiệu lực.
 
@@ -769,6 +819,24 @@ Gỡ `viewport.js` ra thì ca "S21 ngang" lập tức đỏ — nên phép thử
 không phải lúc nào cũng xanh. Trước đây nó **đọc `body.style.zoom`** (thuộc tính
 inline, luôn rỗng) nên vẫn xanh với cả bản hỏng; giờ đọc computed style.
 
+### Hàng dùng chung và hai ô chọn
+
+```bash
+node test_shared_bar.mjs
+```
+
+Canh bốn nhóm: **vị trí** (hàng dùng chung nằm dưới hai tab, đúng một hàng, hiện
+ở cả hai tab, thanh dưới vẫn dính đáy và không đè lên nội dung); **bề rộng**
+(không ô nào bị cắt chữ, trang không tràn ngang, ở 360/393/412px × hai ngôn
+ngữ); **đồng bộ** (đổi ngôn ngữ lẫn địa điểm từ tab Lịch thì tab Kỳ Môn theo, và
+ngược lại); **hai ô chọn** (đủ mục, đúng thứ tự cũ, đánh dấu đúng mục đang chọn,
+bấm Hủy không đổi gì, chọn thật thì cả ô lẫn engine lẫn bảng chi tiết đổi theo,
+nút Back đóng bảng) — cộng phần chia bề rộng: ô phái giữ nguyên bề rộng qua cả
+ba phái, và ô ngày giờ phải rộng hơn hẳn, tức nó là ô **ăn** phần thừa chứ không
+phải ô bị bóp.
+
+Chính phép thử này bắt được lỗi `#optOverlay` bị luật ẩn của tab Lịch xoá mất.
+
 ### Mùng 1 và điểm Sóc
 
 ```bash
@@ -830,10 +898,12 @@ android/
 │   ├── assets/lunar_months.txt      2.510 mốc Sóc, 1900–2100 (sinh sẵn)
 │   ├── assets/jieqi.txt             4.824 mốc tiết khí (sinh sẵn)
 │   └── assets/web/
-│       ├── index.html               khung trang + bảng chọn vị trí + bảng Nhật–Nguyệt
+│       ├── index.html               khung trang + bảng chọn (vị trí, ngôn ngữ,
+│       │                            phái) + bảng Nhật–Nguyệt
 │       ├── css/app.css              CSS của bản gốc, giữ nguyên
 │       ├── css/location.css         phần giao diện mới
-│       ├── css/calendar.css         MỚI — thanh tab + lịch âm dương
+│       ├── css/calendar.css         MỚI — thanh dưới (tab + hàng dùng chung)
+│       │                            + lịch âm dương
 │       ├── js/astro_table.js        MỚI — mốc tiết khí/Sóc/Vọng từ JPL DE423
 │       ├── js/lunar.js              thư viện lịch âm của 6tail — ĐÃ SỬA: ba chỗ
 │       │                            nối tra astro_table.js (xem NOTICE.md)
