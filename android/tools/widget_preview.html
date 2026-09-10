@@ -46,16 +46,25 @@ const [lunTxt, jqTxt] = await Promise.all([
 ]);
 const lunLines = lunTxt.trim().split('\n');
 const GZ_EPOCH = parseInt(lunLines[0], 10);
-const MONTHS = lunLines.slice(1).map(l => l.split(' ').map(Number));   // [jdn, năm, tháng, nhuận]
+// [jdn điểm Sóc ở UTC+7, GIÂY trong ngày, năm âm, tháng âm, nhuận]
+const MONTHS = lunLines.slice(1).map(l => l.split(' ').map(Number));
 const JQ = jqTxt.trim().split('\n').map(l => l.split(' ').map(Number)); // [jdn, phút, chỉ số tên]
 
 function ganzhi(j){const i=((j-GZ_EPOCH)%60+60)%60;return [CAN[i%10],CHI[i%12]];}
+/**
+ * Mùng 1 của tháng thứ i, xét ở múi giờ đang xem — y như LunarTable.monthStart.
+ * Cột 2 của lunar_months.txt là GIÂY (jieqi.txt mới là phút), nên nhân 1000.
+ */
+function monthStart(i){
+    const utcMs=(MONTHS[i][0]-2440588)*86400000+MONTHS[i][1]*1000-7*3600000;
+    return Math.floor((utcMs+tzOffsetMs(utcMs))/86400000)+2440588;
+}
 /** Tra tháng âm chứa ngày j — tìm nhị phân, y như LunarTable.lunarOf. */
 function lunarOf(j){
     let lo=0, hi=MONTHS.length-1, at=-1;
-    while(lo<=hi){const mid=(lo+hi)>>1; if(MONTHS[mid][0]<=j){at=mid;lo=mid+1;} else hi=mid-1;}
+    while(lo<=hi){const mid=(lo+hi)>>1; if(monthStart(mid)<=j){at=mid;lo=mid+1;} else hi=mid-1;}
     if(at<0) return null;
-    return {day: j-MONTHS[at][0]+1, month: MONTHS[at][2], leap: MONTHS[at][3]===1};
+    return {day: j-monthStart(at)+1, month: MONTHS[at][3], leap: MONTHS[at][4]===1};
 }
 /** 24 tiết khí của năm chứa ngày ref — bắt đầu từ Đông Chí, y như LunarTable. */
 function jieQiYearOf(ref){

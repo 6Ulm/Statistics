@@ -216,6 +216,48 @@ ShouXingUtil.setTzOffsetHours(7);
 console.log(`Đã so ${jqChecked.toLocaleString()} mốc tiết khí · lệch ${jqBad}`);
 bad += jqBad;
 
+/* ── Đơn vị của hai bảng: canh cho bản sao trên đây khỏi trôi khỏi Kotlin ──
+   `jieqi.txt` ghi PHÚT trong ngày, `lunar_months.txt` ghi GIÂY. Đã có lúc
+   LunarTable.monthStart dùng lại localize() (vốn nhân cho 60_000) cho mốc Sóc,
+   nên mùng 1 trôi tới 59 ngày mà phép thử này vẫn xanh — vì bản sao JS ở trên
+   nhân đúng 1000. Từ đây soi thẳng vào mã Kotlin. */
+{
+    const kt = fs.readFileSync(path.join(HERE, '..', 'app', 'src', 'main', 'java',
+        'com', 'bazi', 'qimen', 'LunarTable.kt'), 'utf8');
+    // Cắt từ chỗ khai báo tới khai báo kế tiếp — hứng được cả thân ngoặc nhọn
+    // lẫn thân biểu thức `= ...` (chính kiểu thân đã giấu con bọ ngày trước).
+    const body = m => {
+        const at = kt.indexOf('fun ' + m + '(');
+        if (at < 0) return null;
+        const rest = kt.slice(at + 4);
+        const end = rest.search(/\n    (\/\*\*|fun |private fun |@|val |var )/);
+        return end < 0 ? rest : rest.slice(0, end);
+    };
+    const checks = [
+        ['jieqi.txt là PHÚT: localize nhân 60_000',
+            () => /minutes \* 60_000L/.test(body('localize') || '')],
+        ['lunar_months.txt là GIÂY: monthStart nhân 1000',
+            () => /socSec\[i\] \* 1000L/.test(body('monthStart') || '')],
+        ['monthStart không đi qua localize (sai đơn vị 60 lần)',
+            () => !/localize\s*\(/.test(body('monthStart') || 'localize(')],
+        ['bảng đọc vào biến tên socSec, không phải socMin',
+            () => /socSec\[i - 1\] = p\[1\]/.test(kt) && !/socMin/.test(kt)],
+    ];
+    for (const [what, f] of checks) {
+        let ok = false;
+        try { ok = f(); } catch (e) { ok = false; }
+        if (!ok) { console.log(`  ✗ LunarTable.kt: ${what}`); bad++; }
+    }
+    // Và đơn vị trong chính hai tệp dữ liệu phải khớp cái tên gọi.
+    const jqMax = Math.max(...jqLines.map(l => +l.split(' ')[1]));
+    const socMax = Math.max(...socSec);
+    if (jqMax >= 1440) { console.log(`  ✗ jieqi.txt: cột 2 = ${jqMax}, không phải phút`); bad++; }
+    if (socMax < 1440 || socMax >= 86400) {
+        console.log(`  ✗ lunar_months.txt: cột 2 = ${socMax}, không phải giây`); bad++;
+    }
+    console.log(`Đơn vị hai bảng khớp Kotlin: phút ≤ ${jqMax} · giây ≤ ${socMax}`);
+}
+
 console.log(`Đã so ${checked.toLocaleString()} ngày × 6 mốc múi giờ (1901–2099)`);
 console.log(`Lệch ở mốc gốc UTC+7: ${perTz[7].d + perTz[7].l}`);
 console.log(`Lệch: ${bad}`);

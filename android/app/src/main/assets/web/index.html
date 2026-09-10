@@ -16,7 +16,7 @@ if (typeof Intl === 'undefined' || typeof Intl.DateTimeFormat === 'undefined') {
     window.getTimezoneOffset = function() { return 0; };
 }
 // Fix CSS env() không hỗ trợ trên Samsung cũ
-if (!CSS || !CSS.supports || !CSS.supports('padding-bottom', 'env(safe-area-inset-bottom)')) {
+if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom', 'env(safe-area-inset-bottom)')) {
     document.documentElement.style.setProperty('--safe-area-bottom', '0px');
 }
 </script>

@@ -8,6 +8,7 @@
     "test": "node test_astro.mjs && node test_app.mjs"
   },
   "devDependencies": {
-    "jsdom": "^25.0.0"
+    "jsdom": "^25.0.0",
+    "playwright": "^1.63.0"
   }
 }

@@ -42,7 +42,7 @@ object LunarTable {
         "Thu Phân", "Hàn Lộ", "Sương Giáng", "Lập Đông", "Tiểu Tuyết", "Đại Tuyết"
     )
 
-    private var socMin: IntArray = IntArray(0)
+    private var socSec: IntArray = IntArray(0)
     private var jqJdn: IntArray = IntArray(0)
     private var jqMin: IntArray = IntArray(0)
     private var jqIdx: IntArray = IntArray(0)
@@ -57,11 +57,11 @@ object LunarTable {
                 val n = lines.size - 1
                 starts = IntArray(n); lYear = IntArray(n)
                 lMonth = IntArray(n); lLeap = BooleanArray(n)
-                socMin = IntArray(n)
+                socSec = IntArray(n)
                 for (i in 1..n) {
                     val p = lines[i].split(' ')
                     starts[i - 1] = p[0].toInt()      // JDN điểm Sóc ở mốc UTC+7
-                    socMin[i - 1] = p[1].toInt()      // phút trong ngày, mốc UTC+7
+                    socSec[i - 1] = p[1].toInt()      // GIÂY trong ngày, mốc UTC+7
                     lYear[i - 1] = p[2].toInt()
                     lMonth[i - 1] = p[3].toInt()
                     lLeap[i - 1] = p[4] == "1"
@@ -261,9 +261,22 @@ object LunarTable {
     private fun jdnToMillis(jdn: Int): Long =
         (jdn - 2440588L) * 86_400_000L + 43_200_000L
 
-    /** Ngày dương (JDN) của mùng 1 tháng thứ `i`, xét ở múi giờ `tz`. */
-    private fun monthStart(i: Int, tz: TimeZone): Int =
-        localize(JieQi("", starts[i], socMin[i]), tz).jdn
+    /**
+     * Ngày dương (JDN) của mùng 1 tháng thứ `i`, xét ở múi giờ `tz`.
+     *
+     * KHÔNG dùng lại [localize] được: `jieqi.txt` ghi PHÚT trong ngày còn
+     * `lunar_months.txt` ghi GIÂY, nên đưa qua đó thì mốc Sóc bị nhân sai 60
+     * lần và mùng 1 trôi đi tới 59 ngày — kể cả ở đúng mốc UTC+7.
+     */
+    private fun monthStart(i: Int, tz: TimeZone): Int {
+        val utcMs = (starts[i] - 2440588L) * 86_400_000L +
+            socSec[i] * 1000L - 7L * 3_600_000L
+        val local = utcMs + tz.getOffset(utcMs)
+        // Chia làm tròn XUỐNG như trong localize: `/` của Kotlin cắt về 0.
+        var days = local / 86_400_000L
+        if (local % 86_400_000L < 0) days -= 1
+        return (days + 2440588L).toInt()
+    }
 
     /** Can chi của ngày, suy thẳng từ JDN (không phụ thuộc múi giờ). */
     fun ganZhiOf(jdn: Int): Pair<String, String> {
