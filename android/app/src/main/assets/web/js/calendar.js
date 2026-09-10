@@ -583,5 +583,23 @@
             wrapped.__calWrapped = true;
             window.toggleLang = wrapped;
         }
+
+        // Ô địa điểm giờ nằm ở #sharedBar, dùng chung hai tab — nên đổi được
+        // ngay khi đang mở tab Lịch. Lịch vốn đọc countryData lúc vẽ, nhưng
+        // không tự biết là vừa đổi; vẽ lại theo mỗi lần engine tính lại thì cả
+        // hai tab luôn nói cùng một địa điểm. (applyLoc trong location.js gọi
+        // processAll sau khi áp vị trí mới.)
+        if (typeof processAll === 'function' && !processAll.__calRecalcWrapped) {
+            var origCalc = processAll;
+            var wrappedCalc = function () {
+                var r = origCalc.apply(this, arguments);
+                if (document.body.classList.contains('view-cal')) {
+                    try { render(); } catch (err) { console.warn('calendar:', err); }
+                }
+                return r;
+            };
+            wrappedCalc.__calRecalcWrapped = true;
+            window.processAll = wrappedCalc;
+        }
     });
 })();

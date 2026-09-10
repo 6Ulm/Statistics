@@ -82,16 +82,18 @@ for (const d of DEVICES) {
     }
 
     const r = await page.evaluate(() => {
-        // Thanh tab cố định nổi trên mọi thứ; phần tử nào thò xuống dưới mép
-        // trên của nó là bị che, người dùng không bấm được.
+        // Thanh dưới cố định nổi trên mọi thứ; phần tử nào thò xuống dưới mép
+        // trên của nó là bị che, người dùng không bấm được. Đo cả #bottomDock
+        // chứ không riêng #tabBar: hàng ngôn ngữ + địa điểm nằm dưới hai tab
+        // trong cùng thanh ấy, nên mép trên phải che được cả hàng đó.
         const hidden = [];
-        const bar = document.getElementById('tabBar');
+        const bar = document.getElementById('bottomDock') || document.getElementById('tabBar');
         if (bar) {
             const top = bar.getBoundingClientRect().top;
             // KHÔNG quét <body> (id mainBody): hộp của nó vốn kéo tới đáy màn
             // hình vì có padding-bottom bằng chiều cao thanh tab — luôn "thò
             // xuống", mà đó chính là cách chừa chỗ cho thanh tab.
-            for (const el of document.querySelectorAll('#calView > *, #mainBody > *:not(#tabBar)')) {
+            for (const el of document.querySelectorAll('#calView > *, #mainBody > *:not(#bottomDock)')) {
                 const cs = getComputedStyle(el);
                 if (cs.display === 'none' || cs.visibility === 'hidden') continue;
                 const b = el.getBoundingClientRect();

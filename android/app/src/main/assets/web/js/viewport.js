@@ -52,11 +52,15 @@
         body.style.zoom = '';
         body.style.gap = BASE_GAP + 'px';
 
-        // Thanh tab cố định che mất phần đáy, nên phải chừa ĐÚNG chiều cao của
+        // Thanh dưới cố định che mất phần đáy, nên phải chừa ĐÚNG chiều cao của
         // nó. Phải đo SAU khi bỏ zoom: đo lúc còn zoom thì con số là px đã
         // phóng, mà --tabbar-h lại được dùng như px chưa phóng — sai lệch đó
         // đủ để phép co giãn vượt quá màn hình vài pixel.
-        var bar = document.getElementById('tabBar');
+        //
+        // Đo cả #bottomDock chứ không riêng #tabBar: hàng ngôn ngữ + địa điểm
+        // nằm DƯỚI hai tab trong cùng thanh ấy, bỏ sót nó thì đáy trang bị
+        // thanh che mất đúng chiều cao một hàng.
+        var bar = document.getElementById('bottomDock') || document.getElementById('tabBar');
         if (bar) {
             var barH = Math.round(bar.getBoundingClientRect().height);
             if (barH > 0) document.documentElement.style.setProperty('--tabbar-h', barH + 'px');

@@ -22,15 +22,6 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
 </script>
 
 <div class="controls">
-    <!-- Language toggle -->
-    <div class="control-item gap-md">
-        <div id="langToggleWrap" class="toggle-row" style="flex:1;margin-bottom:0;">
-            <div id="langBtn_zh" onclick="setLang('zh')" class="method-toggle method-toggle-active toggle-btn">中文</div>
-            <div id="langBtn_vi" onclick="setLang('vi')" class="method-toggle toggle-btn toggle-btn-right">Tiếng Việt</div>
-        </div>
-
-    </div>
-
     <!-- Hidden selects – kept for JS compatibility -->
     <select id="inDay"        class="hidden-select"></select>
     <select id="inMonth"      class="hidden-select"></select>
@@ -44,20 +35,13 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
         <option value="trinhuan">Trí Nhuận</option>
     </select>
 
-    <!-- Row 1: Date+Time | Country | Default -->
-    <div class="control-item gap-md">
+    <!-- Một hàng duy nhất: ngày giờ · Trí Nhuận/Âm Bàn/Sách Bổ · Đầy đủ.
+         Ngôn ngữ và địa điểm đã dời xuống #sharedBar để dùng chung hai tab. -->
+    <div class="control-item gap-md" id="qmRow">
         <div id="dateDisplayBtn" onclick="openDatePicker()" class="picker-btn">
             <span id="dateDisplayText">—</span>
         </div>
-        <div id="countryDisplayBtn" onclick="openCountryPicker()" class="picker-btn">
-            <span id="countryDisplayText" class="picker-text">—</span>
-        </div>
-
-    </div>
-
-    <!-- Row 2: Method toggle buttons -->
-    <div class="control-item gap-md">
-      <div id="methodToggleWrap" class="toggle-row" style="flex:1;margin-bottom:0;">
+      <div id="methodToggleWrap" class="toggle-row">
             <div id="methodBtn_trinhuan" onclick="selectMethod('trinhuan')" class="method-toggle toggle-btn">
                 <span id="lblMethodTriNhuan">Trí Nhuận</span>
             </div>
@@ -69,8 +53,9 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
             <div id="methodBtn_bophap" onclick="selectMethod('bophap')" class="method-toggle toggle-btn toggle-btn-right">
                 <span id="lblMethodBoPháp">Sách Bổ</span>
             </div>
-        </div>        <label id="cobanToggleWrap" style="display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;font-size:13px;color:var(--text-main,#333);user-select:none;margin-left:6px;">
-            <input type="checkbox" id="chkHienThiCoBan" onchange="applyCobanFilter()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent,#5c7cfa);">
+        </div>
+        <label id="cobanToggleWrap">
+            <input type="checkbox" id="chkHienThiCoBan" onchange="applyCobanFilter()">
             <span id="lblHienThiCoBan">Đầy đủ</span>
         </label>
     </div>
@@ -327,13 +312,28 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
     <div id="calPinNote"></div>
 </div>
 
-<!-- ══ THANH TAB DƯỚI MÀN HÌNH ══ -->
-<div id="tabBar">
-    <div id="tabQmdj" class="tab-item tab-active">
-        <span class="tab-ico">▦</span><span class="tab-lbl">Kỳ Môn</span>
+<!-- ══ THANH DƯỚI MÀN HÌNH: tab + hàng dùng chung ══ -->
+<div id="bottomDock">
+    <div id="tabBar">
+        <div id="tabQmdj" class="tab-item tab-active">
+            <span class="tab-ico">▦</span><span class="tab-lbl">Kỳ Môn</span>
+        </div>
+        <div id="tabCal" class="tab-item">
+            <span class="tab-ico">▤</span><span class="tab-lbl">Lịch</span>
+        </div>
     </div>
-    <div id="tabCal" class="tab-item">
-        <span class="tab-ico">▤</span><span class="tab-lbl">Lịch</span>
+
+    <!-- Ngôn ngữ + địa điểm: nằm DƯỚI hai tab và dùng chung cho cả hai, nên
+         đổi ở đâu thì cả Kỳ Môn lẫn Lịch cùng cập nhật (xem syncOnLocation
+         trong calendar.js). -->
+    <div id="sharedBar">
+        <div id="langToggleWrap" class="toggle-row">
+            <div id="langBtn_zh" onclick="setLang('zh')" class="method-toggle method-toggle-active toggle-btn">中文</div>
+            <div id="langBtn_vi" onclick="setLang('vi')" class="method-toggle toggle-btn toggle-btn-right">Tiếng Việt</div>
+        </div>
+        <div id="countryDisplayBtn" onclick="openCountryPicker()" class="picker-btn">
+            <span id="countryDisplayText" class="picker-text">—</span>
+        </div>
     </div>
 </div>
 

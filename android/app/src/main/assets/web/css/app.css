@@ -315,6 +315,31 @@
         #countryDisplayBtn { flex: 0.9; }
         .picker-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+        /* ── Hàng điều khiển duy nhất của tab Kỳ Môn ──
+           Ngày giờ · Trí Nhuận/Âm Bàn/Sách Bổ · Đầy đủ, tất cả trên MỘT hàng.
+           Ba nhóm này cộng lại rộng hơn màn S21 (360px) khi đang ở tiếng Việt
+           — nhãn Việt dài gần gấp đôi nhãn Trung — nên cỡ chữ co theo bề ngang
+           màn hình. Co chữ thì vẫn đọc được cả ba; để nguyên thì "Sách Bổ" bị
+           cắt còn mỗi chữ "S". */
+        #qmRow { flex-wrap: nowrap; }
+        /* Ngày giờ và ô Đầy đủ giữ đúng bề rộng chữ của mình; phần thừa dồn
+           hết cho ba nút phái. Để ngày giờ co được thì nó bị bóp còn "0-09-2026
+           18:3" trong khi ba nút phái chiếm 235/336px cho vỏn vẹn ba nhãn. */
+        #qmRow #dateDisplayBtn { flex: 0 0 auto; white-space: nowrap; padding: 3px 5px; }
+        #qmRow #methodToggleWrap { flex: 1 1 0; min-width: 0; margin-bottom: 0; }
+        #qmRow .toggle-btn { padding: 4px 3px; white-space: nowrap; }
+        #cobanToggleWrap {
+            display: flex; align-items: center; gap: 4px;
+            flex: 0 0 auto; margin-left: 4px;
+            cursor: pointer; white-space: nowrap; user-select: none;
+            font-size: 13px;
+            color: var(--text-main, #333);
+        }
+        #chkHienThiCoBan {
+            width: 15px; height: 15px; flex-shrink: 0;
+            cursor: pointer; accent-color: var(--accent, #5c7cfa);
+        }
+
         /* ── Method Toggle ── */
         .method-toggle        { background: var(--bg-white); color: var(--text-main); }
         .method-toggle-active { background: var(--accent); color: var(--bg-white) !important; font-weight: 600; }

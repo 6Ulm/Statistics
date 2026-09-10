@@ -2,17 +2,34 @@
    calendar.css — Thanh tab dưới màn hình + lịch âm dương
    ════════════════════════════════════════════════════════════════ */
 
-/* ── Thanh tab cố định đáy màn hình ── */
-#tabBar {
+/* ── Thanh dưới cố định đáy màn hình: hàng tab, rồi hàng dùng chung ── */
+#bottomDock {
     position: fixed;
     left: 0; right: 0; bottom: 0;
     z-index: 1500;
-    display: flex;
     background: var(--bg-white, #fff);
     border-top: 1px solid var(--border-color, #ddd);
     box-shadow: 0 -2px 10px rgba(0, 0, 0, .07);
     padding-bottom: env(safe-area-inset-bottom, 0);
 }
+#tabBar {
+    display: flex;
+    background: var(--bg-white, #fff);
+}
+
+/* Ngôn ngữ + địa điểm: một hàng, nằm dưới hai tab, hiện ở CẢ hai tab. */
+#sharedBar {
+    display: flex; align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    border-top: 1px solid var(--border-color, #ddd);
+    background: var(--bg-white, #fff);
+}
+/* Ba ô chia nhau đúng một hàng: 中文 · Tiếng Việt · địa điểm. */
+#sharedBar #langToggleWrap  { flex: 1.15; width: auto; margin-bottom: 0; }
+#sharedBar #countryDisplayBtn { flex: .85; min-width: 0; }
+/* Nhãn "Tiếng Việt" dài hơn hẳn 中文 — cho phép co lại thay vì đẩy tràn. */
+#sharedBar .toggle-btn { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* Thanh tab thấp thôi — nó ăn vào chiều cao vốn đã chật của màn Kỳ Môn. */
 .tab-item {
     flex: 1;
@@ -36,13 +53,14 @@
     background: var(--accent-light, #e8edff);
 }
 
-/* Chừa đúng chiều cao thật của thanh tab — không hơn. viewport.js đo thanh
-   rồi ghi vào biến này; 0px chỉ là giá trị tạm trước khi kịp đo. */
+/* Chừa đúng chiều cao thật của thanh dưới (tab + hàng dùng chung) — không hơn.
+   viewport.js đo thanh rồi ghi vào biến này; 0px chỉ là giá trị tạm trước khi
+   kịp đo. */
 body { padding-bottom: var(--tabbar-h, 0px); }
 
 /* ── Chuyển tab: ẩn toàn bộ màn hình Kỳ Môn ── */
 #calView { display: none; width: 100%; max-width: var(--max-w, 400px); }
-body.view-cal > *:not(#calView):not(#tabBar):not(#locOverlay):not(#drumOverlay) {
+body.view-cal > *:not(#calView):not(#bottomDock):not(#locOverlay):not(#drumOverlay) {
     display: none !important;
 }
 body.view-cal #calView { display: block; }
