@@ -302,6 +302,8 @@ for (const d of DEVICES) {
                 seen.push(await page.evaluate(() => ({
                     date: +document.getElementById('dateDisplayBtn').getBoundingClientRect().width.toFixed(1),
                     meth: +document.getElementById('methodDisplayBtn').getBoundingClientRect().width.toFixed(1),
+                    dateH: +document.getElementById('dateDisplayBtn').getBoundingClientRect().height.toFixed(1),
+                    methH: +document.getElementById('methodDisplayBtn').getBoundingClientRect().height.toFixed(1),
                     // Nhãn đang hiện phải vừa trong ô, không bị cắt.
                     fits: (() => {
                         const t = document.getElementById('methodDisplayText');
@@ -331,6 +333,10 @@ for (const d of DEVICES) {
             // chắc là phần lề quanh chữ thật sự có.
             ok(`${tag}: ô phái nới rộng quanh nhãn`, seen[0].meth >= seen[0].label * 1.35,
                 `ô ${seen[0].meth} vs nhãn ${seen[0].label}`);
+            // Nới RỘNG, không nới CAO: `zoom` phóng cả hai chiều, nên ba nhãn
+            // ẩn phải bị ép height:0, nếu không ô phái cao hơn ô ngày giờ.
+            ok(`${tag}: ô phái CAO BẰNG ô ngày giờ`, Math.abs(seen[0].methH - seen[0].dateH) < 1.5,
+                `phái ${seen[0].methH}px vs ngày giờ ${seen[0].dateH}px`);
             await ctx.close();
         }
     }

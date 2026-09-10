@@ -81,6 +81,8 @@ Vài chỗ phải để ý:
   cả hai ngôn ngữ mà không phải đo bằng JavaScript. Đo thì hỏng: hàng này bị ẩn
   khi đang ở tab Lịch, đúng lúc ô ngôn ngữ dùng chung có thể đổi ngôn ngữ.
   Lề ngang nhân cùng hệ số (6px → 9px) để nới cả Ô chứ không riêng phần chữ.
+  Ba nhãn ẩn phải bị ép `height: 0`: `zoom` phóng **cả hai chiều**, để nguyên
+  thì ô phái cao hơn ô ngày giờ 4–6px — nới rộng chứ không nới cao.
   Phần thừa dồn cho ô ngày giờ (trên S21: 55px → 179px tiếng Việt, 226px tiếng
   Trung; ô phái 59px → 88px và 36px → 53px).
 * **Ô ngày giờ và ô "Đầy đủ" giữ nguyên bề rộng chữ của mình.** Cho ô ngày giờ

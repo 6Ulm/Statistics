@@ -344,6 +344,9 @@
         .opt-ghost {
             visibility: hidden; white-space: nowrap; pointer-events: none;
             zoom: var(--sizer-scale);
+            /* CHỈ góp bề RỘNG. `zoom` phóng cả hai chiều, nên để nguyên thì ô
+               phái cao hơn ô ngày giờ 4-6px — cao lên là thứ không ai xin. */
+            height: 0; line-height: 0; overflow: hidden;
         }
         #cobanToggleWrap {
             display: flex; align-items: center; gap: 4px;
