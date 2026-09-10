@@ -711,7 +711,7 @@
         // Thứ tự đóng: hộp thoại phủ toàn màn hình trước, rồi mới tới bảng
         // Nhật–Nguyệt nằm trong trang. Đóng ngược lại sẽ để lại hộp thoại
         // che kín màn hình mà người dùng tưởng đã bấm Back rồi.
-        var ids = ['locOverlay', 'drumOverlay'];
+        var ids = ['optOverlay', 'locOverlay', 'drumOverlay'];
         for (var i = 0; i < ids.length; i++) {
             var ov = getDOM(ids[i]);
             if (ov && ov.classList.contains('open')) { ov.classList.remove('open'); return true; }

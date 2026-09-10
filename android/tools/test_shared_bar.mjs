@@ -42,6 +42,14 @@ function check(what, got, want) {
     ok ? pass++ : fail++;
     console.log(`  ${ok ? 'ok  ' : '✗ SAI'} ${what.padEnd(46)} ${ok ? '' : `được "${got}", cần "${want}"`}`);
 }
+/** Chọn một mục qua bảng chọn — thay cho việc bấm thẳng vào nút như trước. */
+async function pick(page, boxId, value) {
+    await page.click('#' + boxId);
+    await page.waitForSelector('#optOverlay.open .opt-row[data-value="' + value + '"]', { timeout: 4000 });
+    await page.click('.opt-row[data-value="' + value + '"]');
+    await page.waitForTimeout(700);
+}
+
 function ok(what, cond, detail) {
     cond ? pass++ : fail++;
     console.log(`  ${cond ? 'ok  ' : '✗ SAI'} ${what.padEnd(46)} ${cond ? '' : (detail || '')}`);
@@ -91,15 +99,14 @@ for (const d of DEVICES) {
         const page = await ctx.newPage();
         await page.goto(base, { waitUntil: 'networkidle' });
         await page.waitForTimeout(800);
-        await page.click('#langBtn_' + lang);
-        await page.waitForTimeout(700);
+        await pick(page, 'langDisplayBtn', lang);
 
         const m = await page.evaluate(() => {
             const clipped = [];
-            const ids = ['dateDisplayBtn', 'methodToggleWrap', 'cobanToggleWrap',
-                         'langBtn_zh', 'langBtn_vi', 'countryDisplayBtn',
-                         'lblMethodTriNhuan', 'lblMethodAmBan', 'lblMethodBoPháp',
-                         'lblHienThiCoBan', 'dateDisplayText', 'countryDisplayText'];
+            const ids = ['dateDisplayBtn', 'methodDisplayBtn', 'cobanToggleWrap',
+                         'langDisplayBtn', 'countryDisplayBtn',
+                         'lblHienThiCoBan', 'dateDisplayText',
+                         'countryDisplayText', 'methodDisplayText', 'langDisplayText'];
             for (const id of ids) {
                 const e = document.getElementById(id);
                 if (!e) { clipped.push(id + '(thiếu)'); continue; }
@@ -177,11 +184,11 @@ for (const d of DEVICES) {
     await page.waitForTimeout(900);
 
     console.log('\nĐồng bộ hai tab: NGÔN NGỮ đổi từ tab Lịch');
-    await page.click('#langBtn_zh'); await page.waitForTimeout(600);
+    await pick(page, 'langDisplayBtn', 'zh');
     await page.click('#tabCal');     await page.waitForTimeout(700);
     check('lịch đang là tiếng Trung', await page.textContent('#tabCal .tab-lbl'), '日历');
     // Đổi ngôn ngữ NGAY TRONG tab Lịch.
-    await page.click('#langBtn_vi'); await page.waitForTimeout(800);
+    await pick(page, 'langDisplayBtn', 'vi');
     check('nhãn tab đổi ngay tại tab Lịch', await page.textContent('#tabCal .tab-lbl'), 'Lịch');
     const calVi = await page.textContent('#calTitle');
     ok('tiêu đề lịch sang tiếng Việt', /THÁNG/i.test(calVi), calVi);
@@ -221,9 +228,60 @@ for (const d of DEVICES) {
     ok('múi giờ đã thật sự đổi', gmtBefore !== gmtAfter, `trước ${gmtBefore}, sau ${gmtAfter}`);
 
     console.log('\nĐồng bộ hai tab: đổi từ tab Kỳ Môn thì tab Lịch theo');
-    await page.click('#langBtn_zh'); await page.waitForTimeout(700);
+    await pick(page, 'langDisplayBtn', 'zh');
     await page.click('#tabCal');     await page.waitForTimeout(700);
     check('lịch quay lại tiếng Trung', await page.textContent('#tabCal .tab-lbl'), '日历');
+    await ctx.close();
+}
+
+/* ── 5. Hai ô chọn mới: mở, đánh dấu mục đang chọn, Hủy thì không đổi ── */
+{
+    const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const page = await ctx.newPage();
+    await page.goto(base, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(900);
+
+    console.log('\nÔ chọn ngôn ngữ và ô chọn phái');
+    // Cả hai ô phải mở ra CÙNG một kiểu bảng như ô địa điểm.
+    await pick(page, 'langDisplayBtn', 'vi');
+    check('ô ngôn ngữ hiện mục đã chọn', await page.textContent('#langDisplayText'), 'Tiếng Việt');
+    check('ô phái theo ngôn ngữ mới', await page.textContent('#methodDisplayText'), 'Âm Bàn');
+
+    await page.click('#methodDisplayBtn');
+    await page.waitForSelector('#optOverlay.open', { timeout: 4000 });
+    const sheet = await page.evaluate(() => {
+        const rows = [...document.querySelectorAll('#optList .opt-row')];
+        return {
+            n: rows.length,
+            labels: rows.map(r => r.querySelector('.opt-name').textContent),
+            active: rows.filter(r => r.classList.contains('opt-row-active'))
+                        .map(r => r.getAttribute('data-value')),
+            title: document.getElementById('optTitle').textContent,
+        };
+    });
+    check('bảng phái có đủ ba mục', sheet.n, 3);
+    check('đúng thứ tự cũ', sheet.labels.join(' · '), 'Trí Nhuận · Âm Bàn · Sách Bổ');
+    check('đánh dấu đúng mục đang chọn', sheet.active.join(','), 'amban');
+    check('tiêu đề bảng theo ngôn ngữ', sheet.title, 'Phái');
+
+    // Hủy thì KHÔNG được đổi gì.
+    await page.click('#optCancel'); await page.waitForTimeout(500);
+    check('bấm Hủy thì bảng đóng', await page.evaluate(() => document.getElementById('optOverlay').classList.contains('open')), 'false');
+    check('bấm Hủy thì phái giữ nguyên', await page.inputValue('#methodSelect'), 'amban');
+
+    // Chọn thật thì đổi cả ô, cả engine, cả bảng chi tiết.
+    await pick(page, 'methodDisplayBtn', 'bophap');
+    check('chọn Sách Bổ: ô hiện đúng', await page.textContent('#methodDisplayText'), 'Sách Bổ');
+    check('chọn Sách Bổ: engine nhận', await page.inputValue('#methodSelect'), 'bophap');
+    check('chọn Sách Bổ: bảng chi tiết đổi theo',
+        await page.evaluate(() => getComputedStyle(document.getElementById('sachboPanel')).display), 'block');
+
+    // Nút Back của Android phải đóng bảng chọn, không thoát ứng dụng.
+    await page.click('#langDisplayBtn');
+    await page.waitForSelector('#optOverlay.open', { timeout: 4000 });
+    const handled = await page.evaluate(() => window.__onBackPressed());
+    check('nút Back đóng bảng chọn', String(handled), 'true');
+    check('bảng chọn đã đóng', await page.evaluate(() => document.getElementById('optOverlay').classList.contains('open')), 'false');
     await ctx.close();
 }
 

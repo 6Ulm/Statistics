@@ -41,18 +41,8 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
         <div id="dateDisplayBtn" onclick="openDatePicker()" class="picker-btn">
             <span id="dateDisplayText">—</span>
         </div>
-      <div id="methodToggleWrap" class="toggle-row">
-            <div id="methodBtn_trinhuan" onclick="selectMethod('trinhuan')" class="method-toggle toggle-btn">
-                <span id="lblMethodTriNhuan">Trí Nhuận</span>
-            </div>
-
-            <div id="methodBtn_amban"  onclick="selectMethod('amban')"  class="method-toggle method-toggle-active toggle-btn toggle-btn-right">
-                <span id="lblMethodAmBan">Âm Bàn</span>
-            </div>
-
-            <div id="methodBtn_bophap" onclick="selectMethod('bophap')" class="method-toggle toggle-btn toggle-btn-right">
-                <span id="lblMethodBoPháp">Sách Bổ</span>
-            </div>
+        <div id="methodDisplayBtn" onclick="openMethodPicker()" class="picker-btn">
+            <span id="methodDisplayText" class="picker-text">—</span>
         </div>
         <label id="cobanToggleWrap">
             <input type="checkbox" id="chkHienThiCoBan" onchange="applyCobanFilter()">
@@ -264,6 +254,20 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
   </div>
 </div>
 
+<!-- ══ BẢNG CHỌN MỘT MỤC (ngôn ngữ / phái) ══
+     Cùng kiểu bảng trượt từ đáy như bảng chọn vị trí, để ba ô cạnh nhau mở ra
+     cùng một thứ. Danh sách do openOptionPicker() trong app.js dựng. -->
+<div id="optOverlay">
+    <div id="optPanel">
+        <div class="drum-header">
+            <span class="drum-cancel" id="optCancel">Hủy</span>
+            <span class="drum-title"  id="optTitle">Chọn</span>
+            <span style="width:34px;"></span>
+        </div>
+        <div id="optList"></div>
+    </div>
+</div>
+
 <!-- ══ BẢNG CHỌN VỊ TRÍ (GPS / thành phố / toạ độ) ══ -->
 <div id="locOverlay">
     <div id="locPanel">
@@ -327,9 +331,8 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
          đổi ở đâu thì cả Kỳ Môn lẫn Lịch cùng cập nhật (xem syncOnLocation
          trong calendar.js). -->
     <div id="sharedBar">
-        <div id="langToggleWrap" class="toggle-row">
-            <div id="langBtn_zh" onclick="setLang('zh')" class="method-toggle method-toggle-active toggle-btn">中文</div>
-            <div id="langBtn_vi" onclick="setLang('vi')" class="method-toggle toggle-btn toggle-btn-right">Tiếng Việt</div>
+        <div id="langDisplayBtn" onclick="openLangPicker()" class="picker-btn">
+            <span id="langDisplayText" class="picker-text">—</span>
         </div>
         <div id="countryDisplayBtn" onclick="openCountryPicker()" class="picker-btn">
             <span id="countryDisplayText" class="picker-text">—</span>

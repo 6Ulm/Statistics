@@ -323,11 +323,10 @@
            cắt còn mỗi chữ "S". */
         #qmRow { flex-wrap: nowrap; }
         /* Ngày giờ và ô Đầy đủ giữ đúng bề rộng chữ của mình; phần thừa dồn
-           hết cho ba nút phái. Để ngày giờ co được thì nó bị bóp còn "0-09-2026
-           18:3" trong khi ba nút phái chiếm 235/336px cho vỏn vẹn ba nhãn. */
+           hết cho ô chọn phái. Để ngày giờ co được thì nó bị bóp còn
+           "0-09-2026 18:3". */
         #qmRow #dateDisplayBtn { flex: 0 0 auto; white-space: nowrap; padding: 3px 5px; }
-        #qmRow #methodToggleWrap { flex: 1 1 0; min-width: 0; margin-bottom: 0; }
-        #qmRow .toggle-btn { padding: 4px 3px; white-space: nowrap; }
+        #qmRow #methodDisplayBtn { flex: 1 1 0; min-width: 0; }
         #cobanToggleWrap {
             display: flex; align-items: center; gap: 4px;
             flex: 0 0 auto; margin-left: 4px;

@@ -252,7 +252,8 @@ const uiDict = {
         tietkhi: "Tiết khí:", cuc: "Cục:", don: "Độn:", tuan: "Tuần thủ:",
         tp: "Trực Phù:", ts: "Trực Sử:", dm: "Mã:", kv: "Nạp âm:",
         donD: "Dương", donA: "Âm", solarDate: "Lịch dương:",
-        methodAmBan: "Âm Bàn", methodBoPhap: "Sách Bổ", methodTriNhuan: "Trí Nhuận", coban: "Đầy đủ"
+        methodAmBan: "Âm Bàn", methodBoPhap: "Sách Bổ", methodTriNhuan: "Trí Nhuận", coban: "Đầy đủ",
+        langName: "Tiếng Việt", pickLang: "Ngôn ngữ", pickMethod: "Phái", cancel: "Hủy"
     },
     zh: {
         header: "输入信息", chinhNgo: "正午时间:", gmt: "时区:",
@@ -260,7 +261,8 @@ const uiDict = {
         tietkhi: "节气:", cuc: "局数:", don: "遁:", tuan: "旬首:",
         tp: "值符:", ts: "值使:", dm: "马:", kv: "纳音:",
         donD: "阳", donA: "阴", solarDate: "公历:",
-        methodAmBan: "阴盘", methodBoPhap: "拆补", methodTriNhuan: "置润", coban: "完整"
+        methodAmBan: "阴盘", methodBoPhap: "拆补", methodTriNhuan: "置润", coban: "完整",
+        langName: "中文", pickLang: "语言", pickMethod: "排盘法", cancel: "取消"
     }
 };
 
@@ -348,9 +350,6 @@ function toggleLang() {
         lblChinhNgo: u.chinhNgo, lblLunarInTable: u.lunar, lblViaDay: u.viaDay,
         lblTietkhi:  u.tietkhi,  lblCuc:   u.cuc,    lblTuan: u.tuan,
         lblTP:       u.tp,       lblTS:    u.ts,
-        lblMethodAmBan:  u.methodAmBan,
-        lblMethodBoPháp: u.methodBoPhap,
-        lblMethodTriNhuan: u.methodTriNhuan,
         lblHienThiCoBan: u.coban,
         lblTTNamTxt:   isZH ? '年' : 'Năm',
         lblTTThangTxt: isZH ? '月' : 'Tháng',
@@ -385,6 +384,11 @@ function toggleLang() {
         if (info) opt.text = info[langKey];
     }
 
+    // Ngôn ngữ và phái giờ là hai Ô CHỌN chứ không phải dãy nút, nên nhãn của
+    // chúng phải viết lại — không còn nút nào mang sẵn chữ để đổi tại chỗ.
+    updateLangDisplay();
+    updateMethodDisplay();
+
     if (getDOM('board').style.display !== 'none') processAll();
     if (typeof updateCountryDisplay === 'function') updateCountryDisplay();
     // Toggle legend language
@@ -400,9 +404,7 @@ function setLang(lang) {
     if (currentLang === lang) return;
     // Temporarily set to opposite so toggleLang() flips to the target
     currentLang = lang === 'zh' ? 'vi' : 'zh';
-    toggleLang();
-    getDOM('langBtn_vi').classList.toggle('method-toggle-active', lang === 'vi');
-    getDOM('langBtn_zh').classList.toggle('method-toggle-active', lang === 'zh');
+    toggleLang();                       // đã tự làm mới nhãn ô chọn ngôn ngữ
     // Always save lang to localStorage
     safeStorage.setItem('defaultLang', lang);
 }
@@ -449,9 +451,7 @@ function updateTuTru(yPillar, mPillar, dPillar, hPillar) {
 
 function selectMethod(val) {
     getDOM('methodSelect').value = val;
-    getDOM('methodBtn_amban')   .classList.toggle('method-toggle-active', val === 'amban');
-    getDOM('methodBtn_bophap')  .classList.toggle('method-toggle-active', val === 'bophap');
-    getDOM('methodBtn_trinhuan').classList.toggle('method-toggle-active', val === 'trinhuan');
+    updateMethodDisplay();
     const notZH = currentLang !== 'zh';
     const trnPanel = getDOM('trinhuanPanel');
     if (trnPanel) trnPanel.style.display = (val === 'trinhuan' && notZH) ? 'block' : 'none';
@@ -463,6 +463,96 @@ function selectMethod(val) {
     safeStorage.setItem('defaultMethod', val);
     if (typeof Solar !== 'undefined') processAll();
 }
+
+/* ─────────────── Ô chọn: ngôn ngữ và phái ───────────────
+   Trước đây là hai dãy nút (2 nút ngôn ngữ, 3 nút phái) chiếm gần trọn một
+   hàng. Nay mỗi thứ gói vào MỘT ô giống hệt ô địa điểm: ô hiện mục đang chọn,
+   chạm vào thì mở bảng trượt từ đáy để chọn. */
+
+/** Tên phái đang chọn, theo ngôn ngữ đang dùng. */
+function methodLabel(val) {
+    const u = uiDict[currentLang];
+    if (val === 'trinhuan') return u.methodTriNhuan;
+    if (val === 'bophap')   return u.methodBoPhap;
+    return u.methodAmBan;
+}
+
+function updateLangDisplay() {
+    const el = getDOM('langDisplayText');
+    if (el) el.textContent = uiDict[currentLang].langName;
+}
+
+function updateMethodDisplay() {
+    const el = getDOM('methodDisplayText');
+    const sel = getDOM('methodSelect');
+    if (el && sel) el.textContent = methodLabel(sel.value);
+}
+
+/**
+ * Bảng chọn một mục, dùng chung cho ngôn ngữ và phái.
+ *
+ * `options` là [{value, label}]; `onPick` chỉ được gọi khi người dùng thật sự
+ * chọn một mục — bấm Hủy hay chạm ra ngoài thì không đổi gì.
+ */
+function openOptionPicker(title, options, current, onPick) {
+    const ov = getDOM('optOverlay');
+    if (!ov) return;
+    getDOM('optTitle').textContent = title;
+    getDOM('optCancel').textContent = uiDict[currentLang].cancel;
+
+    const list = getDOM('optList');
+    list.innerHTML = '';
+    for (const o of options) {
+        const row = document.createElement('div');
+        row.className = 'opt-row' + (o.value === current ? ' opt-row-active' : '');
+        row.setAttribute('data-value', o.value);
+
+        const name = document.createElement('span');
+        name.className = 'opt-name';
+        name.textContent = o.label;
+        row.appendChild(name);
+
+        const tick = document.createElement('span');
+        tick.className = 'opt-tick';
+        tick.textContent = o.value === current ? '✓' : '';
+        row.appendChild(tick);
+
+        row.addEventListener('click', function () {
+            closeOptionPicker();
+            onPick(o.value);
+        });
+        list.appendChild(row);
+    }
+    ov.classList.add('open');
+}
+
+function closeOptionPicker() {
+    const ov = getDOM('optOverlay');
+    if (ov) ov.classList.remove('open');
+}
+
+function openLangPicker() {
+    openOptionPicker(uiDict[currentLang].pickLang, [
+        { value: 'zh', label: uiDict.zh.langName },
+        { value: 'vi', label: uiDict.vi.langName },
+    ], currentLang, setLang);
+}
+
+function openMethodPicker() {
+    // Giữ nguyên thứ tự cũ của ba nút: Trí Nhuận · Âm Bàn · Sách Bổ.
+    openOptionPicker(uiDict[currentLang].pickMethod, [
+        { value: 'trinhuan', label: methodLabel('trinhuan') },
+        { value: 'amban',    label: methodLabel('amban') },
+        { value: 'bophap',   label: methodLabel('bophap') },
+    ], getDOM('methodSelect').value, selectMethod);
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const ov = getDOM('optOverlay');
+    if (ov) ov.addEventListener('click', function (e) { if (e.target === this) closeOptionPicker(); });
+    const cancel = getDOM('optCancel');
+    if (cancel) cancel.addEventListener('click', closeOptionPicker);
+});
 
 function applyCobanFilter() {
     const checked = getDOM('chkHienThiCoBan').checked;

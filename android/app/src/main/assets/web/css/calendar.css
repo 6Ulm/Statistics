@@ -25,11 +25,9 @@
     border-top: 1px solid var(--border-color, #ddd);
     background: var(--bg-white, #fff);
 }
-/* Ba ô chia nhau đúng một hàng: 中文 · Tiếng Việt · địa điểm. */
-#sharedBar #langToggleWrap  { flex: 1.15; width: auto; margin-bottom: 0; }
-#sharedBar #countryDisplayBtn { flex: .85; min-width: 0; }
-/* Nhãn "Tiếng Việt" dài hơn hẳn 中文 — cho phép co lại thay vì đẩy tràn. */
-#sharedBar .toggle-btn { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Hai ô chia nhau đúng một hàng: ngôn ngữ · địa điểm. */
+#sharedBar #langDisplayBtn    { flex: 1; min-width: 0; }
+#sharedBar #countryDisplayBtn { flex: 1; min-width: 0; }
 /* Thanh tab thấp thôi — nó ăn vào chiều cao vốn đã chật của màn Kỳ Môn. */
 .tab-item {
     flex: 1;
@@ -60,7 +58,9 @@ body { padding-bottom: var(--tabbar-h, 0px); }
 
 /* ── Chuyển tab: ẩn toàn bộ màn hình Kỳ Môn ── */
 #calView { display: none; width: 100%; max-width: var(--max-w, 400px); }
-body.view-cal > *:not(#calView):not(#bottomDock):not(#locOverlay):not(#drumOverlay) {
+/* #optOverlay phải nằm trong danh sách chừa: ô ngôn ngữ ở hàng dùng chung mở
+   được ngay tại tab Lịch, mà bảng chọn của nó lại là con của <body>. */
+body.view-cal > *:not(#calView):not(#bottomDock):not(#locOverlay):not(#drumOverlay):not(#optOverlay) {
     display: none !important;
 }
 body.view-cal #calView { display: block; }
