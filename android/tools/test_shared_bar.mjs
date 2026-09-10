@@ -305,7 +305,17 @@ for (const d of DEVICES) {
                     // Nhãn đang hiện phải vừa trong ô, không bị cắt.
                     fits: (() => {
                         const t = document.getElementById('methodDisplayText');
-                        return t.scrollWidth <= t.clientWidth + 1;
+                        const b = document.getElementById('methodDisplayBtn');
+                        return t.scrollWidth <= t.clientWidth + 1 &&
+                               b.scrollWidth <= b.clientWidth + 1;
+                    })(),
+                    // Bề rộng THẬT của chữ, đo bằng phạm vi chọn — khác bề
+                    // rộng hộp, vì <span> giãn kín ô lưới.
+                    label: (() => {
+                        const t = document.getElementById('methodDisplayText');
+                        const r = document.createRange();
+                        r.selectNodeContents(t);
+                        return +r.getBoundingClientRect().width.toFixed(1);
                     })(),
                 })));
             }
@@ -314,8 +324,13 @@ for (const d of DEVICES) {
             ok(`${tag}: ô phái không đổi bề rộng theo phái`, widths.length === 1, widths.join(' / '));
             ok(`${tag}: nhãn phái nào cũng vừa ô`, seen.every(x => x.fits));
             // Ô ngày giờ phải là ô ĂN phần thừa, không phải ô bị bóp.
-            ok(`${tag}: ngày giờ rộng hơn hẳn ô phái`, seen[0].date > seen[0].meth * 2,
+            ok(`${tag}: ngày giờ vẫn rộng hơn ô phái`, seen[0].date > seen[0].meth,
                 `ngày giờ ${seen[0].date} vs phái ${seen[0].meth}`);
+            // Ô phái nới thêm 50% bằng zoom trên ba nhãn ẩn (xem .opt-ghost).
+            // Nếu WebView bỏ qua zoom thì ô co về bề rộng chữ trần — canh cho
+            // chắc là phần lề quanh chữ thật sự có.
+            ok(`${tag}: ô phái nới rộng quanh nhãn`, seen[0].meth >= seen[0].label * 1.35,
+                `ô ${seen[0].meth} vs nhãn ${seen[0].label}`);
             await ctx.close();
         }
     }

@@ -76,8 +76,13 @@ Vài chỗ phải để ý:
   ô co giãn mỗi lần đổi phái. Không đếm được bằng số ký tự (chữ Hán và chữ Việt
   không cùng một thước), nên xếp chồng nhãn đang hiện với ba nhãn ẩn trong cùng
   một ô lưới: bề rộng cột là bề rộng nhãn rộng nhất, tự đúng cả khi đổi ngôn ngữ.
-  Phần thừa dồn cho ô ngày giờ (trên S21: 55px → 208px tiếng Việt, 243px tiếng
-  Trung).
+  Ô còn nới thêm **50%** quanh nhãn: `zoom` trên ba nhãn ẩn — khác `transform`,
+  `zoom` đổi kích thước dùng để dựng bố cục nên cột lưới nở theo, tỉ lệ đúng cho
+  cả hai ngôn ngữ mà không phải đo bằng JavaScript. Đo thì hỏng: hàng này bị ẩn
+  khi đang ở tab Lịch, đúng lúc ô ngôn ngữ dùng chung có thể đổi ngôn ngữ.
+  Lề ngang nhân cùng hệ số (6px → 9px) để nới cả Ô chứ không riêng phần chữ.
+  Phần thừa dồn cho ô ngày giờ (trên S21: 55px → 179px tiếng Việt, 226px tiếng
+  Trung; ô phái 59px → 88px và 36px → 53px).
 * **Ô ngày giờ và ô "Đầy đủ" giữ nguyên bề rộng chữ của mình.** Cho ô ngày giờ
   co được thì nó bị bóp còn `0-09-2026 18:3`; ép cỡ chữ nhỏ đi thì "Sách Bổ" bị
   cắt còn chữ "S" khi đang ở tiếng Việt. Đo trên 360/393/412px × hai ngôn ngữ:

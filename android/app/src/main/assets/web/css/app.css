@@ -327,13 +327,24 @@
            "0-09-2026 18:3". */
         /* Ô ngày giờ ăn hết phần thừa; ô phái chỉ vừa đúng nhãn dài nhất. */
         #qmRow #dateDisplayBtn { flex: 1 1 auto; white-space: nowrap; padding: 3px 5px; }
-        #qmRow #methodDisplayBtn { flex: 0 0 auto; }
+        #qmRow #methodDisplayBtn { flex: 0 0 auto; padding-inline: 9px; }
         /* Xếp chồng nhãn đang hiện với ba nhãn ẩn trong CÙNG một ô lưới:
            bề rộng cột = bề rộng nhãn rộng nhất, nên ô không co giãn theo phái
-           đang chọn. */
-        .opt-sizer { display: grid; }
+           đang chọn.
+
+           Ô rộng thêm 50%: `zoom` trên ba nhãn ẩn — khác `transform`, nó ĐỔI
+           kích thước dùng để dựng bố cục, nên cột lưới nở theo. Cách này tỉ lệ
+           đúng cho cả hai ngôn ngữ (chữ Hán ngắn hơn chữ Việt) và không cần đo
+           bằng JavaScript — mà đo thì sai, vì hàng này bị ẩn khi đang ở tab
+           Lịch, đúng lúc ô ngôn ngữ dùng chung có thể đổi ngôn ngữ.
+           Lề ngang nhân theo cùng hệ số (6px → 9px) để cả Ô rộng thêm 50%,
+           không riêng phần chữ. */
+        .opt-sizer { display: grid; --sizer-scale: 1.5; }
         .opt-sizer > * { grid-area: 1 / 1; }
-        .opt-ghost { visibility: hidden; white-space: nowrap; pointer-events: none; }
+        .opt-ghost {
+            visibility: hidden; white-space: nowrap; pointer-events: none;
+            zoom: var(--sizer-scale);
+        }
         #cobanToggleWrap {
             display: flex; align-items: center; gap: 4px;
             flex: 0 0 auto; margin-left: 4px;
