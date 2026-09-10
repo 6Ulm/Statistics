@@ -41,8 +41,18 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
         <div id="dateDisplayBtn" onclick="openDatePicker()" class="picker-btn">
             <span id="dateDisplayText">—</span>
         </div>
+        <!-- Ô phái rộng đúng bằng nhãn DÀI NHẤT trong ba phái, không hơn.
+             Ba <span> ẩn dưới đây xếp chồng cùng ô lưới với nhãn đang hiện,
+             nên bề rộng ô = bề rộng nhãn rộng nhất — tự đúng khi đổi ngôn ngữ,
+             không phải đoán bằng số ký tự (đằng nào chữ Hán cũng không tính
+             theo ký tự được). Phần thừa vì thế dồn cho ô ngày giờ. -->
         <div id="methodDisplayBtn" onclick="openMethodPicker()" class="picker-btn">
-            <span id="methodDisplayText" class="picker-text">—</span>
+            <span class="opt-sizer">
+                <span id="methodDisplayText" class="picker-text">—</span>
+                <span class="opt-ghost" aria-hidden="true"></span>
+                <span class="opt-ghost" aria-hidden="true"></span>
+                <span class="opt-ghost" aria-hidden="true"></span>
+            </span>
         </div>
         <label id="cobanToggleWrap">
             <input type="checkbox" id="chkHienThiCoBan" onchange="applyCobanFilter()">

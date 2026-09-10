@@ -485,7 +485,13 @@ function updateLangDisplay() {
 function updateMethodDisplay() {
     const el = getDOM('methodDisplayText');
     const sel = getDOM('methodSelect');
-    if (el && sel) el.textContent = methodLabel(sel.value);
+    if (!el || !sel) return;
+    el.textContent = methodLabel(sel.value);
+    // Ba nhãn ẩn giữ cho ô rộng đúng bằng nhãn dài nhất, kể cả sau khi đổi
+    // ngôn ngữ — xem .opt-sizer trong app.css.
+    const ghosts = getDOM('methodDisplayBtn').querySelectorAll('.opt-ghost');
+    const all = ['trinhuan', 'amban', 'bophap'];
+    ghosts.forEach((g, i) => { g.textContent = all[i] ? methodLabel(all[i]) : ''; });
 }
 
 /**

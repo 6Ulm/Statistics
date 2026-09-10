@@ -285,6 +285,42 @@ for (const d of DEVICES) {
     await ctx.close();
 }
 
+/* ── 6. Chia bề rộng: ô phái vừa đúng nhãn dài nhất, phần thừa cho ngày giờ ── */
+{
+    console.log('\nChia bề rộng hàng Kỳ Môn');
+    for (const d of [{ name: 'S21', w: 360 }, { name: 'A51', w: 412 }]) {
+        for (const lang of ['zh', 'vi']) {
+            const ctx = await browser.newContext({ viewport: { width: d.w, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+            const page = await ctx.newPage();
+            await page.goto(base, { waitUntil: 'networkidle' });
+            await page.waitForTimeout(900);
+            await pick(page, 'langDisplayBtn', lang);
+
+            const seen = [];
+            for (const m of ['trinhuan', 'amban', 'bophap']) {
+                await pick(page, 'methodDisplayBtn', m);
+                seen.push(await page.evaluate(() => ({
+                    date: +document.getElementById('dateDisplayBtn').getBoundingClientRect().width.toFixed(1),
+                    meth: +document.getElementById('methodDisplayBtn').getBoundingClientRect().width.toFixed(1),
+                    // Nhãn đang hiện phải vừa trong ô, không bị cắt.
+                    fits: (() => {
+                        const t = document.getElementById('methodDisplayText');
+                        return t.scrollWidth <= t.clientWidth + 1;
+                    })(),
+                })));
+            }
+            const tag = `${d.name} ${d.w}px · ${lang}`;
+            const widths = [...new Set(seen.map(x => x.meth))];
+            ok(`${tag}: ô phái không đổi bề rộng theo phái`, widths.length === 1, widths.join(' / '));
+            ok(`${tag}: nhãn phái nào cũng vừa ô`, seen.every(x => x.fits));
+            // Ô ngày giờ phải là ô ĂN phần thừa, không phải ô bị bóp.
+            ok(`${tag}: ngày giờ rộng hơn hẳn ô phái`, seen[0].date > seen[0].meth * 2,
+                `ngày giờ ${seen[0].date} vs phái ${seen[0].meth}`);
+            await ctx.close();
+        }
+    }
+}
+
 await browser.close();
 server.close();
 

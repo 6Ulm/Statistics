@@ -325,8 +325,15 @@
         /* Ngày giờ và ô Đầy đủ giữ đúng bề rộng chữ của mình; phần thừa dồn
            hết cho ô chọn phái. Để ngày giờ co được thì nó bị bóp còn
            "0-09-2026 18:3". */
-        #qmRow #dateDisplayBtn { flex: 0 0 auto; white-space: nowrap; padding: 3px 5px; }
-        #qmRow #methodDisplayBtn { flex: 1 1 0; min-width: 0; }
+        /* Ô ngày giờ ăn hết phần thừa; ô phái chỉ vừa đúng nhãn dài nhất. */
+        #qmRow #dateDisplayBtn { flex: 1 1 auto; white-space: nowrap; padding: 3px 5px; }
+        #qmRow #methodDisplayBtn { flex: 0 0 auto; }
+        /* Xếp chồng nhãn đang hiện với ba nhãn ẩn trong CÙNG một ô lưới:
+           bề rộng cột = bề rộng nhãn rộng nhất, nên ô không co giãn theo phái
+           đang chọn. */
+        .opt-sizer { display: grid; }
+        .opt-sizer > * { grid-area: 1 / 1; }
+        .opt-ghost { visibility: hidden; white-space: nowrap; pointer-events: none; }
         #cobanToggleWrap {
             display: flex; align-items: center; gap: 4px;
             flex: 0 0 auto; margin-left: 4px;
