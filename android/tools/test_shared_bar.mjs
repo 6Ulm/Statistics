@@ -342,6 +342,79 @@ for (const d of DEVICES) {
     }
 }
 
+/* ── 7. Canh theo vạch cột của bảng Tứ Trụ ──
+   Khe giữa ô ngày giờ và ô phái phải rơi đúng vạch Tháng|Ngày; mép phải ô địa
+   điểm phải dừng đúng vạch Ngày|Giờ. Hai hàng này nằm ở hai hộp khác nhau
+   (.controls lọt vào 6px, thanh dưới thì cố định nên không ăn đệm của body),
+   nên chỉ cần một bên đổi đệm là lệch ngay — canh bằng số đo, không bằng mắt. */
+{
+    console.log('\nCanh theo vạch cột bảng Tứ Trụ');
+    for (const d of [{ name: 'S21', w: 360 }, { name: 'S21 FE', w: 393 },
+                     { name: 'A51', w: 412 }, { name: 'rộng', w: 520 }]) {
+        for (const lang of ['zh', 'vi']) {
+            const ctx = await browser.newContext({ viewport: { width: d.w, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+            const page = await ctx.newPage();
+            await page.goto(base, { waitUntil: 'networkidle' });
+            await page.waitForTimeout(1000);
+            await pick(page, 'langDisplayBtn', lang);
+
+            const r = await page.evaluate(() => {
+                const th = [...document.querySelectorAll('#tuTruPanel thead th')]
+                    .map(x => x.getBoundingClientRect());
+                const box = id => document.getElementById(id).getBoundingClientRect();
+                const dt = box('dateDisplayBtn'), mb = box('methodDisplayBtn');
+                return {
+                    seam: (dt.right + mb.left) / 2,   // tâm khe giữa hai ô
+                    edgeTN: th[1].right,              // vạch Tháng | Ngày
+                    phap: box('countryDisplayBtn').right,
+                    edgeNG: th[2].right,              // vạch Ngày | Giờ
+                    // Nửa phải của hàng vẫn phải đủ chỗ cho ô phái và ô Đầy đủ.
+                    fits: document.getElementById('qmRow').scrollWidth <=
+                          document.getElementById('qmRow').clientWidth + 1,
+                };
+            });
+            const tag = `${d.name} ${d.w}px · ${lang}`;
+            // Ngưỡng 1px: bảng Tứ Trụ dùng border-collapse nên vạch dày 1px,
+            // tâm vạch và mép ô lệch nhau tối đa nửa viền.
+            ok(`${tag}: khe trùng vạch Tháng|Ngày`, Math.abs(r.seam - r.edgeTN) <= 1,
+                `khe ${r.seam.toFixed(1)} vs vạch ${r.edgeTN.toFixed(1)}`);
+            ok(`${tag}: mép phải ô địa điểm trùng vạch Ngày|Giờ`, Math.abs(r.phap - r.edgeNG) <= 1,
+                `mép ${r.phap.toFixed(1)} vs vạch ${r.edgeNG.toFixed(1)}`);
+            ok(`${tag}: nửa phải vẫn đủ chỗ`, r.fits);
+            await ctx.close();
+        }
+    }
+}
+
+/* ── 8. Không còn khoảng hở ở đáy màn Kỳ Môn ──
+   Tỉ lệ phóng bị chặn bởi BỀ NGANG, nên trên máy cao phần dôi chiều cao nằm
+   chết ngay trên thanh dưới (S21 FE: 39px, A51: 82px). viewport.js rót phần ấy
+   vào các khe giữa các bảng — canh cho nó thật sự rót. */
+{
+    console.log('\nKhoảng hở ở đáy màn Kỳ Môn');
+    for (const d of [{ name: 'S21', w: 360, h: 740 }, { name: 'S21 FE', w: 393, h: 790 },
+                     { name: 'S21 Ultra', w: 384, h: 794 }, { name: 'A51', w: 412, h: 852 }]) {
+        const ctx = await browser.newContext({ viewport: { width: d.w, height: d.h }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+        const page = await ctx.newPage();
+        await page.goto(base, { waitUntil: 'networkidle' });
+        await page.waitForTimeout(1400);
+        const r = await page.evaluate(() => {
+            const dock = document.getElementById('bottomDock').getBoundingClientRect();
+            const kids = [...document.body.children].filter(e => {
+                const cs = getComputedStyle(e);
+                return cs.display !== 'none' && cs.position !== 'fixed';
+            });
+            const last = kids[kids.length - 1].getBoundingClientRect();
+            return { gap: dock.top - last.bottom,
+                     over: document.documentElement.scrollHeight > window.innerHeight + 1 };
+        });
+        ok(`${d.name} ${d.w}×${d.h}: hở ≤ 16px trên thanh dưới`, r.gap <= 16,
+            `hở ${r.gap.toFixed(1)}px`);
+        ok(`${d.name}: vẫn không tràn dọc`, !r.over);
+        await ctx.close();
+    }
+}
+
 await browser.close();
 server.close();
 

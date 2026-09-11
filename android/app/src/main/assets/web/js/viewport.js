@@ -24,10 +24,11 @@
     var MIN_SCALE = 0.95;
     // Không phóng quá to trên máy tính bảng / điện thoại gập.
     var MAX_SCALE = 1.6;
-    // Khoảng cách giữa các bảng: đúng như bản web gốc, không nới thêm.
-    // Từng thử chia phần thừa chiều cao vào các khe cho kín đáy màn hình,
-    // nhưng các bảng rời rạc trông tệ hơn hẳn khoảng hở ở đáy.
+    // Khoảng cách giữa các bảng khi chưa chia gì thêm — đúng như bản web gốc.
     var BASE_GAP = 3;
+    // Trần của khe sau khi rót phần thừa vào. Không có trần thì trên máy cao
+    // (A51: dôi 82px cho 4 khe) các bảng rời rạc hẳn ra, xấu hơn cả khoảng hở.
+    var GAP_MAX = 21;
 
     var lastW = 0, lastH = 0, timer = null;
 
@@ -106,6 +107,27 @@
             if (realH <= availH) break;
             scale = Math.max(MIN_SCALE, scale * (availH / realH) - 0.002);
             body.style.zoom = scale.toFixed(3);
+        }
+
+        // ── Rót phần thừa chiều cao vào các khe ──
+        // Phóng to bị CHẶN BỞI BỀ NGANG: trên S21 FE tỉ lệ đã kịch 1,0 vì rộng,
+        // trong khi chiều cao còn dôi 39px (A51: 82px) nằm chết ở đáy màn hình
+        // ngay trên thanh dưới. Bàn Kỳ Môn là lưới vuông nên không cao thêm
+        // được nếu không rộng thêm, vậy chỗ duy nhất nhận được phần dôi ấy là
+        // khe giữa các bảng.
+        var kids = [];
+        for (var g = 0; g < body.children.length; g++) {
+            var el = body.children[g];
+            var cs = getComputedStyle(el);
+            if (cs.display !== 'none' && cs.position !== 'fixed') kids.push(el);
+        }
+        if (kids.length > 1) {
+            var used = body.getBoundingClientRect().height;
+            var spare = (availH - used) / (parseFloat(body.style.zoom) || 1);
+            if (spare > 1) {
+                var gap = Math.min(GAP_MAX, BASE_GAP + spare / (kids.length - 1));
+                body.style.gap = gap.toFixed(1) + 'px';
+            }
         }
 
         lastW = availW;

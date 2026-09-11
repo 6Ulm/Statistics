@@ -35,7 +35,15 @@ object LunarTable {
      */
     fun langOf(context: Context): String =
         context.getSharedPreferences("qmdj_prefs", Context.MODE_PRIVATE)
-            .getString("qmdj.lang", "vi") ?: "vi"
+            .getString("qmdj.lang", DEFAULT_LANG) ?: DEFAULT_LANG
+
+    /**
+     * Mặc định phải là "zh" vì ỨNG DỤNG mặc định tiếng Trung (initLang trong
+     * app.js). Để "vi" thì ngay sau khi cài mới — trước khi người dùng động
+     * vào ô ngôn ngữ, tức trước khi có ai ghi khoá qmdj.lang — ứng dụng hiện
+     * tiếng Trung còn widget hiện tiếng Việt.
+     */
+    private const val DEFAULT_LANG = "zh"
 
     /** Ngày âm lịch của một ngày dương lịch. */
     data class LunarDay(val day: Int, val month: Int, val year: Int, val leap: Boolean)

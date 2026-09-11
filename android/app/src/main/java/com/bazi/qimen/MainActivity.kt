@@ -145,6 +145,21 @@ class MainActivity : android.app.Activity() {
     private fun isDebuggable(): Boolean =
         (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
+    /**
+     * Rời ứng dụng thì vẽ lại widget — đúng lúc người dùng sắp nhìn thấy nó.
+     *
+     * Trang web vốn đã gọi refreshCalendarWidget mỗi lần đổi ngôn ngữ hoặc địa
+     * điểm, nhưng thế là treo toàn bộ việc đồng bộ vào MỘT lời gọi: lỡ một
+     * nhịp (trang chưa nạp xong, đổi bằng đường khác, broadcast rơi) là widget
+     * kẹt ở bản vẽ cũ tới tận nửa đêm, mà người dùng thì không có cách nào ép
+     * nó vẽ lại ngoài bấm ‹ ›. Vẽ lại ở onStop thì bất kể đường nào dẫn tới
+     * thay đổi, cứ về màn hình chính là widget đã đúng.
+     */
+    override fun onStop() {
+        super.onStop()
+        CalendarWidgetProvider.refreshNow(this)
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         if (!webViewGone) webView.saveState(outState)

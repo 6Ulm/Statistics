@@ -220,6 +220,53 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     await ctx.close();
 }
 
+/* ── 5. Hợp đồng đồng bộ widget — soi thẳng vào mã Kotlin ──
+   Widget vẽ bằng Kotlin, mà ở đây không chạy được Kotlin: phần kiểm ở trên chỉ
+   chứng minh được NỬA phía JavaScript (ghi khoá, gọi cầu). Nửa kia từng hỏng
+   mà cả bộ kiểm thử vẫn xanh, nên đọc thẳng mã nguồn cho từng mắt xích. */
+{
+    console.log('\nHợp đồng đồng bộ widget (đọc mã Kotlin)');
+    const read = p => fs.readFileSync(path.join(HERE, '..', p), 'utf8');
+    const lunarKt = read('app/src/main/java/com/bazi/qimen/LunarTable.kt');
+    const provKt  = read('app/src/main/java/com/bazi/qimen/CalendarWidgetProvider.kt');
+    const bridge  = read('app/src/main/java/com/bazi/qimen/WebAppBridge.kt');
+    const mainKt  = read('app/src/main/java/com/bazi/qimen/MainActivity.kt');
+    const manifest= read('app/src/main/AndroidManifest.xml');
+    const appJs   = read('app/src/main/assets/web/js/app.js');
+    const calJs   = read('app/src/main/assets/web/js/calendar.js');
+
+    // Mặc định hai bên PHẢI trùng nhau: ngay sau khi cài mới, chưa ai ghi khoá
+    // qmdj.lang, mà ứng dụng đã hiện một thứ tiếng rồi.
+    const appDefault = (/const initLang = .*?: '(vi|zh)'/.exec(appJs) || [])[1];
+    const ktDefault = (/DEFAULT_LANG = "(vi|zh)"/.exec(lunarKt) || [])[1];
+    ok('mặc định ngôn ngữ của app đọc được', !!appDefault, String(appDefault));
+    check('widget mặc định cùng thứ tiếng với app', ktDefault, appDefault);
+
+    // Từng chỗ widget vẽ chữ phải theo ngôn ngữ, không được chốt cứng.
+    ok('tiêu đề widget theo ngôn ngữ', /if \(zh\) "农历/.test(provKt));
+    ok('thứ trong tuần theo ngôn ngữ', /if \(zh\) arrayOf\("一"/.test(provKt));
+    // Đối số zh nằm sau một lời gọi lồng nhau — mẫu không được dừng ở ")" đầu.
+    ok('tên tiết khí theo ngôn ngữ', /jieQiYearOf\(.*\bzh\)/.test(provKt));
+    ok('can chi theo ngôn ngữ', /ganZhiOf\(jdn, zh\)/.test(provKt));
+    ok('tiêu đề hai cột theo ngôn ngữ', /if \(zh\) "节气"/.test(provKt));
+    ok('đọc khoá qmdj.lang', /LunarTable\.langOf\(context\)/.test(provKt));
+
+    // Đường báo cho widget vẽ lại.
+    ok('cầu native có refreshCalendarWidget', /@JavascriptInterface\s+fun refreshCalendarWidget/.test(bridge));
+    ok('provider có refreshNow', /fun refreshNow\(context: Context\)/.test(provKt));
+    ok('manifest khai báo WIDGET_REFRESH', /com\.bazi\.qimen\.WIDGET_REFRESH/.test(manifest));
+    ok('onReceive xử lý ACTION_REFRESH', /ACTION_REFRESH -> refreshAll/.test(provKt));
+    // Không treo toàn bộ việc đồng bộ vào một lời gọi từ trang web.
+    ok('rời ứng dụng thì widget vẽ lại', /fun onStop\(\)[\s\S]{0,160}refreshNow\(this\)/.test(mainKt));
+
+    // Phía JavaScript: đổi ngôn ngữ VÀ đổi địa điểm đều phải báo.
+    ok('đổi ngôn ngữ thì gọi refreshCalendarWidget',
+        /function publishLang\(\)[\s\S]{0,400}refreshCalendarWidget/.test(calJs));
+    ok('publishLang được gọi khi đổi nhãn', /\n\s*publishLang\(\);/.test(calJs));
+    ok('đổi địa điểm cũng gọi refreshCalendarWidget',
+        (calJs.match(/refreshCalendarWidget/g) || []).length >= 2);
+}
+
 await browser.close();
 server.close();
 console.log(`\n${pass} đạt · ${fail} hỏng`);

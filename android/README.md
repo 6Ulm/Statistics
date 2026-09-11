@@ -156,6 +156,16 @@ ngôn ngữ đang chọn vào khoá `qmdj.lang` (`publishLang` trong `calendar.j
 gọi `refreshCalendarWidget`; `LunarTable.langOf` đọc khoá ấy và widget đổi cả
 tiêu đề, thứ trong tuần, tên tiết khí, tiêu đề hai cột lẫn can chi.
 
+**Mặc định hai bên phải trùng nhau.** Ứng dụng mặc định tiếng Trung (`initLang`
+trong `app.js`), nên `LunarTable.DEFAULT_LANG` cũng phải là `"zh"` — để `"vi"`
+thì ngay sau khi cài mới, trước khi ai kịp ghi khoá, ứng dụng hiện tiếng Trung
+còn widget hiện tiếng Việt. `test_cal_sections.mjs` đọc cả hai mặc định từ mã
+nguồn rồi so.
+
+**Không treo việc đồng bộ vào một lời gọi.** `MainActivity.onStop` cũng vẽ lại
+widget: lỡ một nhịp nào đó (trang chưa nạp xong, broadcast rơi) thì cứ rời ứng
+dụng về màn hình chính là widget đã đúng.
+
 Phải gọi cho widget vẽ lại chứ không chỉ ghi khoá: widget chỉ tự vẽ lại lúc nửa
 đêm hoặc khi người dùng bấm ‹ ›, nên nếu chỉ ghi thì đổi sang tiếng Trung trong
 ứng dụng mà lịch đã ghim vẫn tiếng Việt hàng giờ liền. Đổi **địa điểm** cũng
@@ -163,6 +173,38 @@ gọi, vì giờ giao tiết và bảng tháng của widget đều theo nơi đa
 
 Xem trước bản tiếng Trung mà không cần dựng APK:
 `node tools/shot_widget.mjs` rồi mở `widget_preview.html?lang=zh`.
+
+## Canh theo vạch cột của bảng Tứ Trụ
+
+Khe giữa ô ngày giờ và ô phái rơi đúng vạch **Tháng|Ngày**; mép phải ô địa điểm
+dừng đúng vạch **Ngày|Giờ**.
+
+Hai hàng ấy nằm trong hai hộp khác nhau: `.controls` lọt vào 6px (đệm 5 + viền
+1) so với bảng Tứ Trụ, còn thanh dưới thì `position: fixed` nên không ăn đệm của
+`<body>` — phải dựng lại đúng hộp ấy (`max-width: calc(var(--max-w) + 12px)`,
+đệm 6, `margin: 0 auto`). Sau đó bề rộng hàng là `w = W − 12`, nên muốn tâm khe
+nằm ở `L + W/2` thì ô ngày giờ rộng đúng `calc(50% − 2px)` (2px là nửa khe 4px).
+Mép phải ô địa điểm lùi về 75% bằng một ô đệm `calc(25% − 6px)` — trừ 6px để cái
+khe đứng trước nó cũng nằm trong phần tư cuối.
+
+Đo được lệch 0,0px ở khe và ≤ 0,3px ở mép phải, trên 360/393/412/520px × hai
+ngôn ngữ (ngưỡng canh là 1px: bảng Tứ Trụ dùng `border-collapse` nên vạch dày
+1px).
+
+Trên máy hẹp nhất (S21, 360px) ô ngày giờ chốt ở 50% khiến nửa phải chỉ còn
+~166px, trong khi ô phái nới 1,5 lần cộng ô "Đầy đủ" cần ~189px. Dưới 375px hệ
+số nới hạ còn 1,1 và lề ngang còn 7px — nhãn vẫn hiện trọn, chỉ thoáng ít hơn.
+
+## Không để hở đáy màn Kỳ Môn
+
+Tỉ lệ phóng của `viewport.js` bị chặn bởi **bề ngang**: trên S21 FE nó đã kịch
+1,0 vì rộng, trong khi chiều cao còn dôi 39px (A51: 82px) nằm chết ngay trên
+thanh dưới. Bàn Kỳ Môn là lưới vuông nên không cao thêm được nếu không rộng
+thêm, vậy chỗ duy nhất nhận được phần dôi ấy là **khe giữa các bảng**: sau khi
+chốt tỉ lệ, phần thừa được chia đều vào các khe, kẹp trần ở 21px (không có trần
+thì trên máy cao các bảng rời rạc hẳn ra, xấu hơn cả khoảng hở).
+
+Kết quả: S21, S21 FE và S21 Ultra khít đáy (hở ≤ 0,3px), A51 còn 10px.
 
 ## Ngày âm lịch bắt đầu lúc nào
 

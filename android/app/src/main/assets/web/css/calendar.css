@@ -18,16 +18,30 @@
 }
 
 /* Ngôn ngữ + địa điểm: một hàng, nằm dưới hai tab, hiện ở CẢ hai tab. */
+/* Hộp của hàng này phải TRÙNG hộp của các bảng trong trang thì mới canh được
+   theo vạch cột của bảng Tứ Trụ. Các bảng rộng min(màn hình − 12, --max-w) và
+   nằm giữa; thanh dưới thì cố định nên không ăn đệm của <body>, phải tự dựng
+   lại: rộng tối đa --max-w + 12, đệm 6 mỗi bên, margin auto. */
 #sharedBar {
     display: flex; align-items: center;
     gap: 6px;
-    padding: 6px 8px;
+    width: 100%;
+    max-width: calc(var(--max-w) + 12px);
+    margin: 0 auto;
+    padding: 6px;
     border-top: 1px solid var(--border-color, #ddd);
     background: var(--bg-white, #fff);
 }
 /* Hai ô chia nhau đúng một hàng: ngôn ngữ · địa điểm. */
 #sharedBar #langDisplayBtn    { flex: 1; min-width: 0; }
 #sharedBar #countryDisplayBtn { flex: 1; min-width: 0; }
+/* Mép phải ô địa điểm dừng đúng ở vạch ngăn Ngày|Giờ, tức 75% bề rộng bảng.
+   Chèn một ô đệm chiếm phần tư cuối: trừ đi 6px để cái khe đứng TRƯỚC nó cũng
+   nằm trong phần tư ấy, nhờ vậy mép phải rơi đúng 75% chứ không phải 75% − 6. */
+#sharedBar::after {
+    content: '';
+    flex: 0 0 calc(25% - 6px);
+}
 /* Thanh tab thấp thôi — nó ăn vào chiều cao vốn đã chật của màn Kỳ Môn. */
 .tab-item {
     flex: 1;
@@ -193,8 +207,30 @@ body.view-cal #calView { display: block; }
     cursor: pointer; user-select: none;
 }
 .cal-sec-head:active { background: var(--bg-alt, #e4e4ea); }
-.cal-sec-title { font-size: 13px; font-weight: 700; color: var(--text-main, #222); }
-.cal-sec-chev  { font-size: 12px; color: var(--text-dim, #777); }
+.cal-sec-title { font-size: 13px; font-weight: 700; }
+.cal-sec-chev  { font-size: 12px; }
+
+/* Hai mục khác màu hẳn nhau để liếc một cái là biết đang mở mục nào: Tiết khí
+   theo đỏ của đầu lịch (#d32f2f), Lịch âm theo chàm. Mỗi mục tô cả chữ, dấu
+   mũi, nền nhạt và một vạch dọc bên trái, chứ không chỉ đổi màu chữ — nền và
+   vạch còn nhận ra được khi mục đã gập lại. */
+#calSecJq .cal-sec-head {
+    background: #fdeeee;
+    border-color: #f0c4c4;
+    border-left: 3px solid #d32f2f;
+}
+#calSecJq .cal-sec-title { color: #b71c1c; }
+#calSecJq .cal-sec-chev  { color: #d32f2f; }
+#calSecJq.cal-sec-open .cal-sec-body { border-color: #f0c4c4; }
+
+#calSecAm .cal-sec-head {
+    background: #eef1fd;
+    border-color: #c4cbf0;
+    border-left: 3px solid #3949ab;
+}
+#calSecAm .cal-sec-title { color: #283593; }
+#calSecAm .cal-sec-chev  { color: #3949ab; }
+#calSecAm.cal-sec-open .cal-sec-body { border-color: #c4cbf0; }
 /* Mục đang mở: nối liền thanh tiêu đề với thân, thành một khối. */
 .cal-sec-open .cal-sec-head { border-radius: 6px 6px 0 0; border-bottom: none; }
 .cal-sec-body { display: none; }
@@ -224,11 +260,14 @@ table.cal-jq thead th {
     background: var(--bg-white, #fff);
     border-bottom: 1.5px solid var(--border-color, #ddd);
 }
-/* Cột can chi tháng: hẹp đúng bằng chữ, căn phải cho thẳng cột. */
+/* Cột can chi tháng: hẹp đúng bằng chữ, CĂN GIỮA. */
 table.cal-jq .cal-jq-gz {
-    width: 1%; white-space: nowrap; text-align: right;
+    width: 1%; white-space: nowrap; text-align: center;
     color: var(--text-main, #333);
 }
+/* .dp-table cho mọi <th> căn trái; th.c là ngoại lệ căn giữa. Chỉ TIÊU ĐỀ —
+   giá trị ngày giờ vẫn căn trái để các cột thẳng hàng nhau. */
+table.cal-jq thead th.c { text-align: center; }
 /* Cột tên co đúng bằng chữ (width:1% là mẹo bảo trình duyệt thu về bề rộng nội
    dung tối thiểu), cột ngày ăn phần còn lại và căn TRÁI. Trước đây ngày căn
    phải nên tiêu đề "Dương lịch" (căn trái, như mọi th của .dp-table) không

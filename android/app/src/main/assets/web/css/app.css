@@ -325,8 +325,13 @@
         /* Ngày giờ và ô Đầy đủ giữ đúng bề rộng chữ của mình; phần thừa dồn
            hết cho ô chọn phái. Để ngày giờ co được thì nó bị bóp còn
            "0-09-2026 18:3". */
-        /* Ô ngày giờ ăn hết phần thừa; ô phái chỉ vừa đúng nhãn dài nhất. */
-        #qmRow #dateDisplayBtn { flex: 1 1 auto; white-space: nowrap; }
+        /* Mép phải ô ngày giờ đặt sao cho KHE giữa nó và ô phái rơi đúng lên
+           vạch ngăn Tháng|Ngày của bảng Tứ Trụ ngay bên dưới.
+           .controls lọt vào trong 6px (đệm 5 + viền 1) so với bảng Tứ Trụ, nên
+           bề rộng hàng w = W − 12 với W là bề rộng bảng. Muốn tâm khe nằm ở
+           L + W/2 thì ô ngày giờ phải rộng 0,5·w − 2 — tức đúng
+           calc(50% − 2px), với 2px là nửa khe 4px. */
+        #qmRow #dateDisplayBtn { flex: 0 0 calc(50% - 2px); white-space: nowrap; }
         #qmRow #methodDisplayBtn { flex: 0 0 auto; padding-inline: 9px; }
         /* Xếp chồng nhãn đang hiện với ba nhãn ẩn trong CÙNG một ô lưới:
            bề rộng cột = bề rộng nhãn rộng nhất, nên ô không co giãn theo phái
@@ -358,6 +363,16 @@
         #chkHienThiCoBan {
             width: 17px; height: 17px; flex-shrink: 0;
             cursor: pointer; accent-color: var(--accent, #5c7cfa);
+        }
+
+        /* Máy hẹp nhất (S21: 360px): ô ngày giờ chốt ở 50% nên nửa phải chỉ còn
+           ~166px, mà ô phái nới 1,5 lần cộng ô "Đầy đủ" cần tới ~189px — tràn
+           26px. Hạ hệ số nới và lề ngang một nấc cho vừa; nhãn vẫn hiện trọn,
+           chỉ là quanh chữ thoáng ít hơn so với máy rộng hơn. */
+        @media (max-width: 375px) {
+            #qmRow .opt-sizer { --sizer-scale: 1.1; }
+            #qmRow #methodDisplayBtn { padding-inline: 7px; }
+            #cobanToggleWrap { margin-left: 2px; gap: 3px; }
         }
 
         /* ── Method Toggle ── */

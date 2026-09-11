@@ -374,7 +374,7 @@
             '<table class="dp-table cal-jq"><thead><tr>' +
             '<th>' + t('colTk') + '</th>' +
             '<th>' + t('colDate') + '</th>' +
-            '<th class="cal-jq-last">' + t('colGz') + '</th>' +
+            '<th class="c cal-jq-last">' + t('colGz') + '</th>' +
             '</tr></thead><tbody id="calJqBody">' + rows + '</tbody></table>';
         setTimeout(scrollToActiveJieQi, 40);
         return true;
@@ -509,8 +509,8 @@
             box.innerHTML =
                 '<table class="dp-table cal-jq"><thead><tr>' +
                 '<th>' + t('colMonth') + '</th>' +
-                '<th>' + t('colSoc') + '</th>' +
-                '<th class="cal-jq-last">' + t('colVong') + '</th>' +
+                '<th class="c">' + t('colSoc') + '</th>' +
+                '<th class="c cal-jq-last">' + t('colVong') + '</th>' +
                 '</tr></thead><tbody>' + rows + '</tbody></table>';
         } catch (e) {
             console.warn('calAmBan:', e);
