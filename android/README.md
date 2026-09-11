@@ -17,7 +17,7 @@ true-solar-time and real lunar data for any coordinate on Earth.*
 | Múi giờ | theo danh sách cứng | IANA đầy đủ, có DST, suy được từ toạ độ khi offline |
 | Mặt Trời | chỉ Chính Ngọ | Chính Ngọ, mọc/lặn, độ dài ngày, xích vĩ, lệch giờ MT thật |
 | Mặt Trăng | điểm Sóc (bảng Âm Bàn) | thêm mọc/lặn, pha, % chiếu sáng, Sóc kế tiếp theo giờ địa phương |
-| Màn hình | — | **giống hệt bản gốc**; bảng Nhật–Nguyệt ẩn, chạm "Chính Ngọ" mới hiện |
+| Màn hình | — | **giống hệt bản gốc** |
 | Mạng | tải trong trình duyệt | **không có quyền INTERNET** |
 
 Engine Bát Tự / Kỳ Môn **không bị sửa một dòng nào**. Lớp vị trí mới ghi toạ độ
@@ -25,15 +25,6 @@ Engine Bát Tự / Kỳ Môn **không bị sửa một dòng nào**. Lớp vị 
 `processAll()` và toàn bộ ba phái (Trí Nhuận / Sách Bổ / Âm Bàn) chạy y hệt cũ,
 chỉ khác là kinh độ và múi giờ giờ đây là của đúng nơi người dùng chọn.
 Bộ kiểm thử đối chiếu từng lá số với bản web gốc để bảo đảm điều đó.
-
-## Bảng Nhật–Nguyệt
-
-Màn hình chính phải giống **y hệt** bản web gốc, nên bảng Mặt Trời / Mặt Trăng
-mặc định **ẩn**. Chạm vào ô **Chính Ngọ** để mở hoặc đóng — Chính Ngọ chính là
-giờ Mặt Trời thật mà bảng này diễn giải chi tiết. Lựa chọn được ghi nhớ.
-
-Nút Back đóng theo thứ tự: hộp thoại phủ toàn màn hình trước, rồi mới tới bảng
-Nhật–Nguyệt, cuối cùng mới thoát ứng dụng.
 
 ## Vừa khít màn hình
 
@@ -125,6 +116,53 @@ dùng UTC+8) — đó chính là lý do Tết ta và Tết Tàu thỉnh thoảng
 Phải đặt lại mốc này mỗi lần vẽ: `processAll()` để lại múi giờ của địa điểm
 đang chọn trong biến toàn cục của `lunar.js`, nên nếu đang chọn Paris thì
 26/08/2026 hoá ra 15/7 thay vì 14/7.
+
+## Hai mục gập được của tab Lịch
+
+Dưới lưới lịch là hai mục, mở/đóng **độc lập** nên mở được cả hai cùng lúc;
+trạng thái nhớ qua các lần mở ứng dụng.
+
+**Tiết khí** — một dãy **24 hàng liền**, ba cột: tên · ngày giờ · **can chi
+tháng**. Trước đây bảng chia đôi thành hai nhóm 12 cho vừa một màn hình; nay có
+thêm cột thứ ba nên xếp thẳng một dãy rồi cho cuộn, đọc theo thứ tự thời gian
+cũng tự nhiên hơn.
+
+Can chi tháng lấy **từ chính engine** (`lunar.js`), không tự suy từ chỉ số tiết
+khí: can tháng phụ thuộc can năm, mà năm can chi lại đổi ở Lập Xuân — dựng lại
+luật ấy bằng tay là mời thêm một nguồn lệch nữa với tab Kỳ Môn. Mỗi trụ tháng
+phủ đúng **hai** mục liền nhau (tiết mở tháng, rồi khí nằm giữa tháng), nên hai
+hàng lặp cùng một giá trị là đúng chứ không thừa.
+
+Hàm nhận thẳng **ngày Julius ở mốc UTC+8**, không nhận chuỗi giờ địa phương.
+Quy ngược chuỗi ấy cần offset đúng của **chính mốc đó**, trong khi offset của
+bảng là của ngày đang chọn — ở nước có DST hai thứ lệch nhau một giờ suốt nửa
+năm, đủ để Lập Xuân rơi về tháng Sửu thay vì mở tháng Dần. Mà can chi tháng vốn
+là đại lượng ở UTC+8, nên đi thẳng.
+
+**Lịch âm** — đúng bảng chi tiết của Âm Bàn pháp ở tab Kỳ Môn (Tháng âm · Sóc ·
+Vọng), dựng lại bằng **cùng những hàm ấy** (`Ephem.monthsAtBasis`,
+`formatPreciseSocLocal`, `formatPreciseVongLocal`) để hai tab không thể lệch —
+`test_cal_sections.mjs` so từng dòng một.
+
+Chiều cao: `fitGrid()` trừ phần cố định rồi chia phần còn lại cho những mục đang
+mở. Vừa đủ chỗ thì mỗi mục lấy đúng chiều cao thật; chật thì chia **theo tỉ lệ
+chiều cao thật**, nên mục dài (24 tiết khí) được phần lớn hơn mục ngắn (12–13
+tháng âm) thay vì cưa đôi rồi mục ngắn thừa chỗ còn mục dài cuộn mỏi tay.
+
+## Widget theo kịp ngôn ngữ
+
+Widget vẽ bằng Kotlin nên không dùng được từ điển của trang web. Ứng dụng ghi
+ngôn ngữ đang chọn vào khoá `qmdj.lang` (`publishLang` trong `calendar.js`) rồi
+gọi `refreshCalendarWidget`; `LunarTable.langOf` đọc khoá ấy và widget đổi cả
+tiêu đề, thứ trong tuần, tên tiết khí, tiêu đề hai cột lẫn can chi.
+
+Phải gọi cho widget vẽ lại chứ không chỉ ghi khoá: widget chỉ tự vẽ lại lúc nửa
+đêm hoặc khi người dùng bấm ‹ ›, nên nếu chỉ ghi thì đổi sang tiếng Trung trong
+ứng dụng mà lịch đã ghim vẫn tiếng Việt hàng giờ liền. Đổi **địa điểm** cũng
+gọi, vì giờ giao tiết và bảng tháng của widget đều theo nơi đang chọn.
+
+Xem trước bản tiếng Trung mà không cần dựng APK:
+`node tools/shot_widget.mjs` rồi mở `widget_preview.html?lang=zh`.
 
 ## Ngày âm lịch bắt đầu lúc nào
 
@@ -848,6 +886,23 @@ phải ô bị bóp.
 
 Chính phép thử này bắt được lỗi `#optOverlay` bị luật ẩn của tab Lịch xoá mất.
 
+### Hai mục của tab Lịch và ngôn ngữ của widget
+
+```bash
+node test_cal_sections.mjs
+```
+
+Bốn nhóm: mục **Tiết khí** (đúng 24 hàng liền, ba ô mỗi hàng, không còn vách
+ngăn chia đôi, cột can chi không ô nào trống và mỗi trụ tháng phủ đúng hai mục);
+mục **Lịch âm** (so **từng dòng một** với bảng chi tiết Âm Bàn pháp ở tab Kỳ
+Môn); **gập/mở** (mở được cả hai, đóng mục này không đụng mục kia, mục dài thì
+cuộn được, trang không tràn dọc, trạng thái được nhớ); **ngôn ngữ** (đổi ngôn
+ngữ thì khoá `qmdj.lang` đổi theo VÀ widget được bảo vẽ lại — cầu native được
+giả lập để đếm số lần gọi).
+
+`test_jieqi_parity.mjs` canh thêm cột can chi: dòng đang hiệu lực phải khớp đúng
+trụ tháng mà tab Kỳ Môn đang hiện, ở cả năm múi giờ.
+
 ### Mùng 1 và điểm Sóc
 
 ```bash
@@ -910,7 +965,7 @@ android/
 │   ├── assets/jieqi.txt             4.824 mốc tiết khí (sinh sẵn)
 │   └── assets/web/
 │       ├── index.html               khung trang + bảng chọn (vị trí, ngôn ngữ,
-│       │                            phái) + bảng Nhật–Nguyệt
+│       │                            phái)
 │       ├── css/app.css              CSS của bản gốc, giữ nguyên
 │       ├── css/location.css         phần giao diện mới
 │       ├── css/calendar.css         MỚI — thanh dưới (tab + hàng dùng chung)

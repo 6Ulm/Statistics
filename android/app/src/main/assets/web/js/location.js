@@ -25,7 +25,6 @@
     var CUSTOM_KEY = '__loc';
     var K_LOC = 'qmdj.location';
     var K_RECENT = 'qmdj.recent';
-    var K_ASTRO = 'qmdj.astroOpen';
     var MAX_RECENT = 8;
 
     /* ─────────────── Lưu trữ (native prefs → localStorage) ─────────────── */
@@ -506,159 +505,9 @@
         closePicker();
     }
 
-    /* ─────────────── Bảng Nhật – Nguyệt ─────────────── */
-
-    var AT = {
-        sun:     { vi: 'Mặt Trời',   zh: '太阳' },
-        moon:    { vi: 'Mặt Trăng',  zh: '月亮' },
-        rise:    { vi: 'mọc',        zh: '出' },
-        set:     { vi: 'lặn',        zh: '落' },
-        daylen:  { vi: 'Ngày dài',   zh: '昼长' },
-        phase:   { vi: 'Pha',        zh: '月相' },
-        lit:     { vi: 'sáng',       zh: '照度' },
-        newmoon: { vi: 'Sóc kế',     zh: '下次朔' },
-        coord:   { vi: 'Toạ độ',     zh: '坐标' },
-        offset:  { vi: 'Lệch giờ MT thật', zh: '真太阳时差' },
-        polarD:  { vi: 'Ngày vùng cực (không lặn)', zh: '极昼' },
-        polarN:  { vi: 'Đêm vùng cực (không mọc)',  zh: '极夜' },
-        noRise:  { vi: 'không mọc',  zh: '不出' },
-        noSet:   { vi: 'không lặn',  zh: '不落' }
-    };
-    function at(k) { return AT[k][isZH() ? 'zh' : 'vi']; }
-
-    // Mặc định ĐÓNG: màn hình chính phải giống hệt bản web gốc, không thêm gì.
-    // Chạm vào ô "Chính Ngọ" để mở/đóng — Chính Ngọ chính là giờ Mặt Trời thật
-    // mà bảng này diễn giải chi tiết.
-    var astroOpen = prefGet(K_ASTRO) === '1';
-
-    function toggleAstroPanel() {
-        astroOpen = !astroOpen;
-        prefSet(K_ASTRO, astroOpen ? '1' : '0');
-        var panel = getDOM('astroPanel');
-        if (panel) panel.style.display = astroOpen ? 'block' : 'none';
-    }
-
-    function fmtDur(mins) {
-        if (mins === null || mins === undefined) return '—';
-        var h = Math.floor(mins / 60), mi = Math.round(mins % 60);
-        return h + 'h' + (mi < 10 ? '0' : '') + mi;
-    }
-
-    /** Phút-trong-ngày, đánh dấu (+1) nếu rơi sang ngày hôm sau. */
-    function fmtT(mins) {
-        if (mins === null || mins === undefined) return '—';
-        var s = Astro.fmtMins(mins);
-        return mins >= 1440 ? s + ' (+1)' : (mins < 0 ? s + ' (−1)' : s);
-    }
-
-    /**
-     * Vẽ bảng Nhật–Nguyệt cho ngày & vị trí đang chọn.
-     * Gọi ngay sau processAll() để dùng đúng bộ input hiện hành.
-     */
-    function renderAstroPanel() {
-        var panel = getDOM('astroPanel');
-        if (!panel || typeof Astro === 'undefined') return;
-        var key = getDOM('country').value;
-        var info = countryData[key];
-        if (!info) return;
-
-        var y = parseInt(getDOM('inYear').value, 10);
-        var m = parseInt(getDOM('inMonth').value, 10);
-        var d = parseInt(getDOM('inDay').value, 10);
-        var lat = typeof info.lat === 'number' ? info.lat : 0;
-        var lon = info.lon;
-        var tzH = getTimezoneOffset(info.tzId, new Date(y, m - 1, d, 12));
-
-        var st = Astro.sunTimes(y, m, d, lat, lon, tzH);
-        var mt = Astro.moonTimes(y, m, d, lat, lon, tzH);
-        var jdNoon = Astro.jdFromUTC(y, m, d, 12, 0, 0) - tzH / 24;
-        var ill = Astro.moonIllumination(jdNoon);
-
-        // Sóc kế tiếp, đổi sang giờ địa phương của vị trí đã chọn.
-        var nm = Astro.nearestPhase(jdNoon, 0);
-        if (nm < jdNoon) nm = Astro.nearestPhase(jdNoon + 20, 0);
-        var nmLocal = new Date(Astro.msFromJd(nm));
-
-        var sunTxt = st.polarDay ? at('polarD')
-                   : st.polarNight ? at('polarN')
-                   : at('rise') + ' ' + fmtT(st.sunrise) + ' · ' + at('set') + ' ' + fmtT(st.sunset);
-        var moonTxt = mt.alwaysUp ? at('noSet')
-                    : mt.alwaysDown ? at('noRise')
-                    : at('rise') + ' ' + (mt.moonrise === null ? at('noRise') : fmtT(mt.moonrise)) +
-                      ' · ' + at('set') + ' ' + (mt.moonset === null ? at('noSet') : fmtT(mt.moonset));
-
-        // Lệch giữa giờ đồng hồ và giờ Mặt Trời thật (kinh độ + phương trình thời gian)
-        var offMins = (lon - tzH * 15) * 4 + st.equationOfTime;
-        var offTxt = (offMins >= 0 ? '+' : '−') + Math.abs(offMins).toFixed(1) + (isZH() ? '分' : ' phút');
-
-        setTxt('lblAstroSun', at('sun') + ':');
-        setTxt('out-astro-sun', sunTxt);
-        setTxt('lblAstroDaylen', at('daylen') + ':');
-        setTxt('out-astro-daylen', st.polarDay ? '24h' : st.polarNight ? '0h' : fmtDur(st.dayLength));
-        setTxt('lblAstroMoon', at('moon') + ':');
-        setTxt('out-astro-moon', moonTxt);
-        setTxt('lblAstroPhase', at('phase') + ':');
-        setTxt('out-astro-phase', Astro.moonPhaseName(jdNoon, isZH() ? 'zh' : 'vi') +
-            ' (' + Math.round(ill.fraction * 100) + '% ' + at('lit') + ')');
-        setTxt('lblAstroNewMoon', at('newmoon') + ':');
-        setTxt('out-astro-newmoon', fmtDateTimeInTz(nmLocal, info.tzId));
-        setTxt('lblAstroCoord', at('coord') + ':');
-        setTxt('out-astro-coord', fmtCoord(lat, lon));
-        setTxt('lblAstroOffset', at('offset') + ':');
-        setTxt('out-astro-offset', offTxt);
-
-        panel.style.display = astroOpen ? 'block' : 'none';
-    }
-
-    function setTxt(id, s) { var el = getDOM(id); if (el) el.textContent = s; }
-
-    function fmtDateTimeInTz(date, tzId) {
-        try {
-            return new Intl.DateTimeFormat('en-GB', {
-                timeZone: tzId, day: '2-digit', month: '2-digit',
-                hour: '2-digit', minute: '2-digit', hour12: false
-            }).format(date).replace(',', '');
-        } catch (e) {
-            return date.toISOString().slice(5, 16).replace('T', ' ');
-        }
-    }
-
     /* ─────────────── Khởi tạo ─────────────── */
 
     document.addEventListener('DOMContentLoaded', function () {
-        // Bọc processAll để vẽ thêm bảng Nhật–Nguyệt sau mỗi lần tính.
-        if (typeof processAll === 'function' && !processAll.__wrapped) {
-            var orig = processAll;
-            var wrapped = function () {
-                var r = orig.apply(this, arguments);
-                try { renderAstroPanel(); } catch (e) { console.warn('astro panel:', e); }
-                return r;
-            };
-            wrapped.__wrapped = true;
-            window.processAll = wrapped;
-        }
-
-        // Đổi ngôn ngữ khi bảng chưa vẽ thì toggleLang() không gọi processAll(),
-        // nhãn Nhật–Nguyệt sẽ kẹt ở ngôn ngữ cũ — vẽ lại cho chắc.
-        if (typeof toggleLang === 'function' && !toggleLang.__wrapped) {
-            var origLang = toggleLang;
-            var wrappedLang = function () {
-                var r = origLang.apply(this, arguments);
-                if (getDOM('astroPanel') && getDOM('astroPanel').style.display === 'block') {
-                    try { renderAstroPanel(); } catch (e) { console.warn('astro panel:', e); }
-                }
-                return r;
-            };
-            wrappedLang.__wrapped = true;
-            window.toggleLang = wrappedLang;
-        }
-
-        var chinhNgo = document.querySelector('.info-pair-chinhngo');
-        if (chinhNgo) {
-            chinhNgo.style.cursor = 'pointer';
-            chinhNgo.addEventListener('click', toggleAstroPanel);
-        }
-
         getDOM('locGpsBtn').addEventListener('click', onGpsClick);
         getDOM('locCancel').addEventListener('click', closePicker);
         getDOM('locOverlay').addEventListener('click', function (e) { if (e.target === this) closePicker(); });
@@ -716,7 +565,6 @@
             var ov = getDOM(ids[i]);
             if (ov && ov.classList.contains('open')) { ov.classList.remove('open'); return true; }
         }
-        if (astroOpen) { toggleAstroPanel(); return true; }
         return false;
     };
 
@@ -724,7 +572,6 @@
     window.QMDJLocation = {
         apply: applyLoc, makeLoc: makeLoc, current: function () { return currentLoc; },
         requestGPS: requestGPS, guessTz: guessTz, loadCities: loadCities,
-        searchCities: searchCities, nearestCity: nearestCity,
-        renderAstroPanel: renderAstroPanel
+        searchCities: searchCities, nearestCity: nearestCity
     };
 })();

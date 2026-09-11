@@ -179,14 +179,32 @@ body.view-cal #calView { display: block; }
    bảng hiện thẳng. Chiều cao do fitGrid() chia — nó biết lưới lịch chiếm bao
    nhiêu, phần còn lại của màn hình đổ hết vào đây; màn hình thấp thì bảng tự
    cuộn và hàng tiêu đề dính lại. */
-#calJieQi { margin-top: 6px; }
-.cal-jq-body {
-    max-height: var(--cal-jq-h, 34vh);
+/* ── Hai mục gập được: Tiết khí, rồi Lịch âm ──
+   Mở/đóng ĐỘC LẬP nên có thể mở cả hai cùng lúc; chiều cao do fitGrid chia,
+   mục nào không đủ chỗ thì tự cuộn dọc trong khung của nó. */
+#calSections { margin-top: 6px; }
+.cal-sec + .cal-sec { margin-top: 5px; }
+.cal-sec-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 10px;
+    background: var(--bg-white, #fff);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 6px;
+    cursor: pointer; user-select: none;
+}
+.cal-sec-head:active { background: var(--bg-alt, #e4e4ea); }
+.cal-sec-title { font-size: 13px; font-weight: 700; color: var(--text-main, #222); }
+.cal-sec-chev  { font-size: 12px; color: var(--text-dim, #777); }
+/* Mục đang mở: nối liền thanh tiêu đề với thân, thành một khối. */
+.cal-sec-open .cal-sec-head { border-radius: 6px 6px 0 0; border-bottom: none; }
+.cal-sec-body { display: none; }
+.cal-sec-open .cal-sec-body {
+    display: block;
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     background: var(--bg-white, #fff);
     border: 1px solid var(--border-color, #ddd);
-    border-radius: 6px;
+    border-radius: 0 0 6px 6px;
 }
 
 /* Bảng dùng lại .dp-table của bảng Sách Bổ pháp — chỉ chỉnh đệm cho hợp khung
@@ -206,8 +224,11 @@ table.cal-jq thead th {
     background: var(--bg-white, #fff);
     border-bottom: 1.5px solid var(--border-color, #ddd);
 }
-/* Vách ngăn giữa hai nửa bảng — cũng đúng chỗ Dương Độn chuyển sang Âm Độn. */
-.cal-jq-split { border-left: 1px solid var(--border-color, #ddd); }
+/* Cột can chi tháng: hẹp đúng bằng chữ, căn phải cho thẳng cột. */
+table.cal-jq .cal-jq-gz {
+    width: 1%; white-space: nowrap; text-align: right;
+    color: var(--text-main, #333);
+}
 /* Cột tên co đúng bằng chữ (width:1% là mẹo bảo trình duyệt thu về bề rộng nội
    dung tối thiểu), cột ngày ăn phần còn lại và căn TRÁI. Trước đây ngày căn
    phải nên tiêu đề "Dương lịch" (căn trái, như mọi th của .dp-table) không
@@ -226,7 +247,7 @@ table.cal-jq .cal-jq-last { padding-right: 10px; }
 /* Máy rất hẹp (320px): hai cột kép không đủ chỗ cho "Sương Giáng 23-10-2026
    11:37" nên bảng phải cuộn ngang. Hạ cỡ chữ một nấc là vừa, đỡ hơn hẳn so với
    bắt người dùng kéo ngang. */
-@media (max-width: 345px) {
+@media (max-width: 375px) {
     table.cal-jq { font-size: 11px; }
     table.cal-jq .dp-num { font-size: 10px; }
     table.cal-jq td, table.cal-jq thead th { padding-left: 4px; padding-right: 4px; }
@@ -253,9 +274,3 @@ table.cal-jq .cal-jq-on {
     cursor: pointer;
 }
 #calPinBtn:active { opacity: .7; }
-#calPinNote {
-    display: none;
-    margin-top: 5px; padding: 0 2px;
-    font-size: 11.5px; line-height: 1.45;
-    color: var(--text-dim, #666);
-}

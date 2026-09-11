@@ -127,22 +127,21 @@ for (const city of PICK) {
             date: tr.cells[1].textContent.trim(),
             on: tr.classList.contains('dp-row-active'),
         }));
-        // Bảng tab Lịch: 12 dòng × 2 cặp cột; cặp trái là mục 0–11, phải 12–23.
+        // Can chi THÁNG mà tab Kỳ Môn đang hiện — cột can chi của bảng tiết
+        // khí phải khớp đúng giá trị này ở dòng đang hiệu lực.
+        const kmMonth = document.getElementById('ttCanThang').textContent.trim() +
+            ' ' + document.getElementById('ttChiThang').textContent.trim();
+        // Bảng tab Lịch: một dãy 24 dòng, ba cột (tên · ngày giờ · can chi).
         window.showTab('cal');
-        const rows = [...document.querySelectorAll('#calJqBody tr')];
-        const cal = [];
-        for (const half of [0, 2]) {
-            for (const tr of rows) {
-                cal.push({
-                    name: tr.cells[half].textContent.trim(),
-                    date: tr.cells[half + 1].textContent.trim(),
-                    on: tr.cells[half].classList.contains('cal-jq-on'),
-                });
-            }
-        }
+        const cal = [...document.querySelectorAll('#calJqBody tr')].map(tr => ({
+            name: tr.cells[0].textContent.trim(),
+            date: tr.cells[1].textContent.trim(),
+            gz:   tr.cells[2].textContent.trim(),
+            on:   tr.cells[0].classList.contains('cal-jq-on'),
+        }));
         window.showTab('qmdj');
         return {
-            kmdj, cal,
+            kmdj, cal, kmMonth,
             name: countryData[city] && countryData[city].name_vi,
             tzId: countryData[city] && countryData[city].tzId,
         };
@@ -167,6 +166,22 @@ for (const city of PICK) {
     if (ai >= 0 && bi >= 0 && Math.abs(ai - bi) > 1) {
         diffs.push(`mục tô đậm lệch: Kỳ Môn ${ai + 1} (${r.kmdj[ai].name}), Lịch ${bi + 1} (${r.cal[bi].name})`);
     }
+    // Cột can chi tháng: mọi dòng phải có giá trị, hai dòng liền nhau của cùng
+    // một tháng phải trùng nhau (tiết mở tháng, khí nằm giữa tháng), và dòng
+    // đang hiệu lực phải khớp đúng trụ tháng mà tab Kỳ Môn đang hiện.
+    if (r.cal.length === 24) {
+        const empty = r.cal.filter(x => !x.gz).length;
+        if (empty) diffs.push(`cột can chi trống ${empty}/24 dòng`);
+        for (let i = 1; i < 24; i += 2) {
+            if (r.cal[i].gz !== r.cal[i + 1 < 24 ? i + 1 : i].gz && i + 1 < 24) {
+                diffs.push(`can chi tháng đứt đoạn ở mục ${i + 1}-${i + 2}: ` +
+                    `"${r.cal[i].gz}" ≠ "${r.cal[i + 1].gz}"`);
+            }
+        }
+        if (bi >= 0 && r.cal[bi].gz !== r.kmMonth) {
+            diffs.push(`can chi tháng: Lịch "${r.cal[bi].gz}" ≠ Kỳ Môn "${r.kmMonth}"`);
+        }
+    }
     if (errs.length) diffs.push('lỗi JS: ' + errs.join('; '));
 
     // ── Widget: tra bảng jieqi.txt rồi quy sang múi giờ đang chọn ──
@@ -189,7 +204,8 @@ for (const city of PICK) {
         console.log(`  LỆCH  ${label}`);
         diffs.slice(0, 5).forEach(d => console.log('    ' + d));
     } else {
-        console.log(`  ok    ${label} Kỳ Môn = Lịch = widget, 24 mục · đang ở ${r.cal[bi].name} ${r.cal[bi].date}`);
+        console.log(`  ok    ${label} Kỳ Môn = Lịch = widget, 24 mục · đang ở ` +
+            `${r.cal[bi].name} ${r.cal[bi].date} · trụ tháng ${r.cal[bi].gz}`);
     }
     await ctx.close();
 }

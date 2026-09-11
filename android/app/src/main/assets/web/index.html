@@ -170,25 +170,6 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
     </div>
 </div>
 
-<!-- ══ BẢNG NHẬT – NGUYỆT THEO VỊ TRÍ THẬT ══ -->
-<div class="info-panel" id="astroPanel" style="display:none;">
-    <div class="info-line info-line-nowrap">
-        <span class="info-pair info-pair-wide"><span class="lbl" id="lblAstroSun">Mặt Trời:</span><span class="val-norm" id="out-astro-sun"></span></span>
-        <span class="info-pair"><span class="lbl" id="lblAstroDaylen">Ngày dài:</span><span class="val-norm" id="out-astro-daylen"></span></span>
-    </div>
-    <div class="info-line info-line-nowrap">
-        <span class="info-pair info-pair-wide"><span class="lbl" id="lblAstroMoon">Mặt Trăng:</span><span class="val-norm" id="out-astro-moon"></span></span>
-        <span class="info-pair"><span class="lbl" id="lblAstroNewMoon">Sóc kế:</span><span class="val-norm" id="out-astro-newmoon"></span></span>
-    </div>
-    <div class="info-line info-line-nowrap">
-        <span class="info-pair info-pair-wide"><span class="lbl" id="lblAstroPhase">Pha:</span><span class="val-norm" id="out-astro-phase"></span></span>
-        <span class="info-pair"><span class="lbl" id="lblAstroCoord">Toạ độ:</span><span class="val-norm" id="out-astro-coord"></span></span>
-    </div>
-    <div class="info-line info-line-nowrap">
-        <span class="info-pair"><span class="lbl" id="lblAstroOffset">Lệch giờ MT thật:</span><span class="val-norm" id="out-astro-offset"></span></span>
-    </div>
-</div>
-
 <!-- ══ TRÍ NHUẬN PHÁP — PTTN INFO PANEL (collapsible) ══ -->
 <div id="trinhuanPanel" class="dp-panel">
   <div id="trinhuanHeader" class="dp-header" onclick="toggleDetailPanel('trinhuan')">
@@ -321,9 +302,27 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
         <span class="cal-nav" id="calNext">›</span>
     </div>
     <div id="calGrid"></div>
-    <div id="calJieQi"></div>
+
+    <!-- Hai mục gập được, mở/đóng độc lập nên có thể mở CẢ HAI cùng lúc; mục
+         nào dài quá thì tự cuộn trong khung của nó. -->
+    <div id="calSections">
+        <div class="cal-sec" id="calSecJq">
+            <div class="cal-sec-head" id="calJqHead">
+                <span class="cal-sec-title" id="calJqTitle">Tiết khí</span>
+                <span class="cal-sec-chev" id="calJqChev">▾</span>
+            </div>
+            <div class="cal-sec-body" id="calJieQi"></div>
+        </div>
+        <div class="cal-sec" id="calSecAm">
+            <div class="cal-sec-head" id="calAmHead">
+                <span class="cal-sec-title" id="calAmTitle">Lịch âm</span>
+                <span class="cal-sec-chev" id="calAmChev">▾</span>
+            </div>
+            <div class="cal-sec-body" id="calAmBan"></div>
+        </div>
+    </div>
+
     <button type="button" id="calPinBtn">📌 Ghim lịch ra màn hình chính</button>
-    <div id="calPinNote"></div>
 </div>
 
 <!-- ══ THANH DƯỚI MÀN HÌNH: tab + hàng dùng chung ══ -->

@@ -25,9 +25,18 @@ canvas{display:block}
    dùng — sai lệch giữa bản xem trước và widget thật là không thể xảy ra.
    ════════════════════════════════════════════════════════════════════ */
 
-const CAN = ['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'];
-const CHI = ['Tý','Sửu','Dần','Mão','Thìn','Tỵ','Ngọ','Mùi','Thân','Dậu','Tuất','Hợi'];
-const TIET_KHI = ['Đông Chí','Tiểu Hàn','Đại Hàn','Lập Xuân','Vũ Thủy','Kinh Trập',
+/* Ngôn ngữ: ?lang=zh xem trước bản tiếng Trung, y như LunarTable.langOf đọc
+   khoá qmdj.lang mà ứng dụng ghi ra. */
+const ZH = new URLSearchParams(location.search).get('lang') === 'zh';
+
+const CAN = ZH ? ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸']
+               : ['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'];
+const CHI = ZH ? ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥']
+               : ['Tý','Sửu','Dần','Mão','Thìn','Tỵ','Ngọ','Mùi','Thân','Dậu','Tuất','Hợi'];
+const TIET_KHI = ZH
+  ? ['冬至','小寒','大寒','立春','雨水','惊蛰','春分','清明','谷雨','立夏','小满','芒种',
+     '夏至','小暑','大暑','立秋','处暑','白露','秋分','寒露','霜降','立冬','小雪','大雪']
+  : ['Đông Chí','Tiểu Hàn','Đại Hàn','Lập Xuân','Vũ Thủy','Kinh Trập',
     'Xuân Phân','Thanh Minh','Cốc Vũ','Lập Hạ','Tiểu Mãn','Mang Chủng','Hạ Chí',
     'Tiểu Thử','Đại Thử','Lập Thu','Xử Thử','Bạch Lộ','Thu Phân','Hàn Lộ',
     'Sương Giáng','Lập Đông','Tiểu Tuyết','Đại Tuyết'];
@@ -123,7 +132,8 @@ function drawBody(canvas, wDp, hDp, density, year, month, todayJdn) {
 
     c.fillStyle='#FDECEF'; c.fillRect(0,0,w,h);
 
-    const dows=['T2','T3','T4','T5','T6','T7','CN'];
+    const dows = ZH ? ['一','二','三','四','五','六','日']
+                    : ['T2','T3','T4','T5','T6','T7','CN'];
     c.textAlign='center'; c.textBaseline='alphabetic';
     c.font='bold '+Math.min(dowH*0.62, dp(9))+'px sans-serif';
     for(let i=0;i<7;i++){
@@ -259,8 +269,8 @@ function drawJieQi(c, dp, w, top, rowH, bottomPad, jieQi, todayJdn) {
     const headBase = top + baseDy;
     for (let half=0; half<2; half++) {
         const x0 = halfW*half;
-        c.fillText('Tiết Khí', x0+padX, headBase);
-        c.fillText('Dương lịch', x0+dateDx, headBase);
+        c.fillText(ZH ? '节气' : 'Tiết Khí', x0+padX, headBase);
+        c.fillText(ZH ? '公历' : 'Dương lịch', x0+dateDx, headBase);
     }
     c.strokeStyle='#DDDDDD'; c.lineWidth=dp(1.2);
     c.beginPath(); c.moveTo(0, top+headH); c.lineTo(w, top+headH); c.stroke();
@@ -337,7 +347,8 @@ for (const [wd,hd,label] of SIZES) {
     fig.innerHTML = `<figcaption>${label} — ${wd}×${hd}dp</figcaption>
         <div class="widget" style="width:${wd}px">
           <div class="whead"><div class="wnav">‹</div>
-            <div class="wtitle">LỊCH ÂM THÁNG ${view[1]}/${view[0]}</div>
+            <div class="wtitle">${ZH ? `农历 ${view[0]}年${view[1]}月`
+                                              : `LỊCH ÂM THÁNG ${view[1]}/${view[0]}`}</div>
             <div class="wnav">›</div></div>
         </div>`;
     const cv=document.createElement('canvas');

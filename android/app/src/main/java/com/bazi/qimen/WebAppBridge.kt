@@ -74,6 +74,18 @@ class WebAppBridge(
      * @return "ok" nếu đã hiện hộp thoại ghim, "unsupported" nếu máy hoặc
      *         launcher không cho ghim tự động (người dùng phải tự kéo widget).
      */
+    /**
+     * Vẽ lại mọi widget Lịch đang ghim.
+     *
+     * Widget đọc ngôn ngữ và địa điểm từ kho tuỳ chọn; không có lời gọi này thì
+     * nó giữ nguyên bản vẽ cũ tới tận nửa đêm (hoặc tới khi người dùng bấm ‹ ›),
+     * nên đổi sang tiếng Trung trong ứng dụng mà lịch đã ghim vẫn tiếng Việt.
+     */
+    @JavascriptInterface
+    fun refreshCalendarWidget() {
+        main.post { CalendarWidgetProvider.refreshNow(activity) }
+    }
+
     @JavascriptInterface
     fun pinCalendarWidget(): String {
         val done = java.util.concurrent.atomic.AtomicBoolean(false)

@@ -116,8 +116,12 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         val year = cal.get(Calendar.YEAR)
         val month = cal.get(Calendar.MONTH) + 1
 
+        val zh = LunarTable.langOf(context) == "zh"
         val views = RemoteViews(context.packageName, R.layout.widget_calendar)
-        views.setTextViewText(R.id.widgetTitle, "LỊCH ÂM THÁNG $month/$year")
+        views.setTextViewText(
+            R.id.widgetTitle,
+            if (zh) "农历 ${year}年${month}月" else "LỊCH ÂM THÁNG $month/$year"
+        )
         views.setImageViewBitmap(
             R.id.widgetImage,
             drawBody(context, wDp, (hDp - HEADER_DP).coerceAtLeast(90), year, month)
@@ -256,7 +260,8 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         // Giờ giao tiết hiện theo múi giờ của ĐỊA ĐIỂM ĐANG CHỌN trong ứng
         // dụng, giống hệt tab Lịch — widget không có bảng chọn nơi riêng.
         val tz = selectedTimeZone(context)
-        val jieQi = LunarTable.jieQiYearOf(LunarTable.jdn(year, month, 15))
+        val zh = LunarTable.langOf(context) == "zh"
+        val jieQi = LunarTable.jieQiYearOf(LunarTable.jdn(year, month, 15), zh)
             .map { LunarTable.localize(it, tz) }
         val dowH = minOf(h * 0.09f, dp(context, 15f))
         val jqRows = if (jieQi.size == 24) 13 else 0
@@ -288,7 +293,8 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), paint)
 
         // hàng thứ
-        val dows = arrayOf("T2", "T3", "T4", "T5", "T6", "T7", "CN")
+        val dows = if (zh) arrayOf("一", "二", "三", "四", "五", "六", "日")
+                   else arrayOf("T2", "T3", "T4", "T5", "T6", "T7", "CN")
         paint.typeface = Typeface.DEFAULT_BOLD
         paint.textAlign = Paint.Align.CENTER
         paint.textSize = minOf(dowH * 0.62f, dp(context, 9f))
@@ -359,7 +365,7 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             c.drawText(lunarTxt, x + cellW * 0.93f, dayBase, paint)
 
             if (showGanZhi) {
-                val (can, chi) = LunarTable.ganZhiOf(jdn)
+                val (can, chi) = LunarTable.ganZhiOf(jdn, zh)
                 paint.textAlign = Paint.Align.CENTER
                 paint.textSize = gzPx
                 paint.color = if (isToday) Color.parseColor("#7A4A1C") else dim
@@ -393,7 +399,7 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         // ── Bảng tiết khí: 12 hàng × 2 cặp cột, y như tab Lịch ──
         if (jqRows > 0) {
             drawJieQi(context, c, paint, w, dowH + gridH + dp(context, 5f),
-                jqRowH, safeBottom, jieQi, todayJdn)
+                jqRowH, safeBottom, jieQi, todayJdn, zh)
         }
         return bmp
     }
@@ -414,7 +420,7 @@ class CalendarWidgetProvider : AppWidgetProvider() {
     private fun drawJieQi(
         context: Context, c: Canvas, paint: Paint,
         w: Int, top: Float, rowH: Float, bottomPad: Float,
-        jieQi: List<LunarTable.JieQi>, todayJdn: Int
+        jieQi: List<LunarTable.JieQi>, todayJdn: Int, zh: Boolean
     ) {
         val halfW = w / 2f
         // Lề của mỗi nửa bảng co giãn: khi chật thì bóp về mức tối thiểu để
@@ -472,10 +478,14 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         paint.textAlign = Paint.Align.LEFT
         paint.color = Color.parseColor("#222222")
         val headBase = top + baseDy
+        // Tiêu đề hai cột cũng theo ngôn ngữ đang chọn — để nguyên chuỗi tiếng
+        // Việt thì ở bản tiếng Trung "Dương lịch" dài hơn cột và đè lên nhau.
+        val colName = if (zh) "节气" else context.getString(R.string.col_jieqi)
+        val colDate = if (zh) "公历" else context.getString(R.string.col_solar)
         for (half in 0..1) {
             val x0 = halfW * half
-            c.drawText(context.getString(R.string.col_jieqi), x0 + padX, headBase, paint)
-            c.drawText(context.getString(R.string.col_solar), x0 + dateDx, headBase, paint)
+            c.drawText(colName, x0 + padX, headBase, paint)
+            c.drawText(colDate, x0 + dateDx, headBase, paint)
         }
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = dp(context, 1.2f)
@@ -666,6 +676,16 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
             val manager = AppWidgetManager.getInstance(context) ?: return false
             return manager.isRequestPinAppWidgetSupported
+        }
+
+        /**
+         * Vẽ lại ngay mọi widget đang ghim — ứng dụng gọi sau khi đổi ngôn ngữ
+         * hoặc địa điểm (xem WebAppBridge.refreshCalendarWidget).
+         */
+        fun refreshNow(context: Context) {
+            context.sendBroadcast(
+                Intent(context, CalendarWidgetProvider::class.java).setAction(ACTION_REFRESH)
+            )
         }
 
         fun requestPin(context: Context): Boolean {

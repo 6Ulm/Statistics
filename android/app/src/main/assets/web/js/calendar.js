@@ -22,11 +22,14 @@
         today:    { vi: 'Hôm nay',    zh: '今天' },
         colTk:    { vi: 'Tiết Khí',   zh: '节气' },
         colDate:  { vi: 'Dương lịch', zh: '公历' },
+        colGz:    { vi: 'Can chi',    zh: '月柱' },
+        secJq:    { vi: 'Tiết khí',   zh: '节气' },
+        secAm:    { vi: 'Lịch âm',    zh: '农历' },
+        colMonth: { vi: 'Tháng âm',   zh: '农历月' },
+        colSoc:   { vi: 'Sóc',        zh: '朔' },
+        colVong:  { vi: 'Vọng',       zh: '望' },
+        leap:     { vi: 'Nhuận',      zh: '闰' },
         pin:      { vi: '📌 Ghim lịch ra màn hình chính', zh: '📌 固定日历到主屏幕' },
-        pinOk:    { vi: 'Hãy xác nhận trên hộp thoại vừa hiện ra.',
-                    zh: '请在弹出的对话框中确认。' },
-        pinManual:{ vi: 'Máy này không cho ghim tự động. Nhấn giữ khoảng trống trên màn hình chính → Tiện ích (Widget) → tìm "Lịch âm".',
-                    zh: '此设备不支持一键固定。请长按主屏幕空白处 → 小部件 → 找到"农历"。' },
     };
     function t(k) {
         var zh = (typeof currentLang !== 'undefined' && currentLang === 'zh');
@@ -82,9 +85,17 @@
     // Dự phòng khi chưa đo được bảng tiết khí (lần vẽ đầu): 12 hàng hai cột cao
     // chừng ngần này.
     var JQ_FALLBACK = 300;
+    /** Mục đang mở không bao giờ thấp hơn chừng này — thấp quá thì vô dụng. */
+    var SEC_MIN = 96;
 
     /** Khoá kho tuỳ chọn: bảng tháng âm cho widget (xem publishLunarCache). */
     var K_LUNAR_CACHE = 'qmdj.lunarCache';
+    /** Hai mục gập được của tab Lịch — mở/đóng độc lập, nhớ qua các lần mở app. */
+    var K_SEC_JQ = 'qmdj.calSecJq';
+    var K_SEC_AM = 'qmdj.calSecAm';
+    /** Ngôn ngữ đang chọn, để widget vẽ đúng thứ tiếng (xem LunarTable.langOf). */
+    var K_LANG = 'qmdj.lang';
+    var openJq = true, openAm = false;
 
     var viewY, viewM;          // tháng đang xem (dương lịch)
     var selected = null;       // {y,m,d}
@@ -116,7 +127,10 @@
             if (list[i].jdn <= jdn) at = i; else break;
         }
         if (at < 0) return null;
-        return { day: jdn - list[at].jdn + 1, month: list[at].month, leap: list[at].leap };
+        // Kèm cả NĂM âm: mục "Lịch âm" cần nó để dựng đúng 12-13 tháng của năm
+        // đang xem. Bỏ sót thì Ephem.monthsAtBasis nhận undefined và ném lỗi.
+        return { day: jdn - list[at].jdn + 1, month: list[at].month,
+                 leap: list[at].leap, year: list[at].year };
     }
 
     /** Số ngày Julius — trùng công thức với zi_jdn bên app.js. */
@@ -220,6 +234,7 @@
         clearLunarBasis();
         lastWeeks = cells.length / 7;
         fitGrid(lastWeeks);
+        renderAmBan();
         publishLunarCache();
     }
 
@@ -243,7 +258,6 @@
         // ra thì trên máy thật lưới lịch với bảng tiết khí chiếm trọn màn hình
         // rồi đẩy nút xuống dưới, nằm khuất sau thanh tab cố định.
         var pin = document.getElementById('calPinBtn');
-        var note = document.getElementById('calPinNote');
         if (!grid || !head || !dow) return;
 
         var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
@@ -255,23 +269,36 @@
             return (el && getComputedStyle(el).display !== 'none') ? h(el) : 0;
         };
         var avail = window.innerHeight / zoom
-            - h(head) - h(dow) - h(bar) - vis(pin) - vis(note) - GRID_CHROME;
+            - h(head) - h(dow) - h(bar) - vis(pin) - GRID_CHROME;
 
-        // Lưới lấy phần của nó trước (có trần), bảng tiết khí nhận toàn bộ
-        // phần còn lại — nhờ vậy màn hình cao không còn hở một mảng ở đáy.
-        // Đo chiều cao THẬT của bảng tiết khí thay vì giữ sẵn một khoản cố
-        // định: giữ 320px mà bảng chỉ cao 280px thì 40px kia thành khoảng hở ở
-        // đáy màn hình. Đo phần tử <table> chứ không phải khung cuộn — khung
-        // đang bị max-height của lần chia trước cắt ngắn.
-        var table = document.querySelector('#calJieQi table.cal-jq');
-        var jqH = table ? Math.ceil(table.getBoundingClientRect().height / zoom) + 2
-                        : JQ_FALLBACK;
-        jqH = Math.min(jqH, Math.max(120, avail - ROW_MIN * weeks));
+        // Hai thanh tiêu đề gập luôn chiếm chỗ, dù mục có mở hay không.
+        var heads = h(document.getElementById('calJqHead')) +
+                    h(document.getElementById('calAmHead'));
+        avail -= heads;
 
-        var rowH = Math.max(ROW_MIN, Math.min(ROW_MAX, Math.floor((avail - jqH) / weeks)));
+        // Không mục nào mở: lưới lịch lấy hết phần còn lại.
+        if (!openJq && !openAm) {
+            var rowFull = Math.max(ROW_MIN, Math.min(ROW_MAX, Math.floor(avail / weeks)));
+            document.documentElement.style.setProperty('--cal-row-h', rowFull + 'px');
+            return;
+        }
+
+        // Lưới lấy phần của nó trước (có trần), phần còn lại chia cho các mục
+        // đang mở — nhờ vậy màn hình cao không còn hở một mảng ở đáy. Đo chiều
+        // cao THẬT của từng bảng thay vì giữ sẵn một khoản cố định: giữ 320px
+        // mà bảng chỉ cao 280px thì 40px kia thành khoảng hở. Đo phần tử
+        // <table> chứ không phải khung cuộn — khung đang bị max-height của lần
+        // chia trước cắt ngắn.
+        var natOf = function (id) {
+            var tb = document.querySelector('#' + id + ' table.cal-jq');
+            return tb ? Math.ceil(tb.getBoundingClientRect().height / zoom) + 2 : JQ_FALLBACK;
+        };
+        var want = (openJq ? natOf('calJieQi') : 0) + (openAm ? natOf('calAmBan') : 0);
+        var secH = Math.min(want, Math.max(SEC_MIN, avail - ROW_MIN * weeks));
+
+        var rowH = Math.max(ROW_MIN, Math.min(ROW_MAX, Math.floor((avail - secH) / weeks)));
         document.documentElement.style.setProperty('--cal-row-h', rowH + 'px');
-        document.documentElement.style.setProperty(
-            '--cal-jq-h', Math.max(120, Math.floor(avail - rowH * weeks)) + 'px');
+        shareSectionHeight(Math.max(SEC_MIN, Math.floor(avail - rowH * weeks)));
     }
 
     /**
@@ -339,24 +366,48 @@
         try { rows = buildJieQiRows(); } catch (e) { rows = null; }
         if (!rows) { box.innerHTML = ''; box.className = ''; return; }
 
-        // Không còn hộp tiêu đề "Tiết khí trong năm" với nút gập: xếp hai cột
-        // xong thì cả 24 mục vừa một màn hình, chẳng còn gì để gập lại — thanh
-        // tiêu đề chỉ tổ ăn mất chừng 32px mà không nói thêm được gì, vì hai
-        // cột "Tiết Khí" đã tự giới thiệu chính nó.
-        //
-        // KHÔNG bọc thêm .dp-table-wrap: nó có overflow-x nên trở thành vùng
-        // cuộn gần nhất của <th> sticky, mà chính nó lại không giới hạn chiều
-        // cao — hàng tiêu đề vì thế trôi mất khi cuộn (màn hình thấp vẫn phải
-        // cuộn). Cho .cal-jq-body cuộn cả hai chiều là xong.
+        // Một nhóm 24 hàng, ba cột. KHÔNG bọc thêm .dp-table-wrap: nó có
+        // overflow-x nên trở thành vùng cuộn gần nhất của <th> sticky, mà chính
+        // nó lại không giới hạn chiều cao — hàng tiêu đề vì thế trôi mất khi
+        // cuộn. Chính .cal-sec-body cuộn là đủ.
         box.innerHTML =
-            '<div class="cal-jq-body">' +
             '<table class="dp-table cal-jq"><thead><tr>' +
-            '<th>' + t('colTk') + '</th><th>' + t('colDate') + '</th>' +
-            '<th class="cal-jq-split">' + t('colTk') + '</th>' +
-            '<th class="cal-jq-last">' + t('colDate') + '</th>' +
-            '</tr></thead><tbody id="calJqBody">' + rows + '</tbody></table></div>';
+            '<th>' + t('colTk') + '</th>' +
+            '<th>' + t('colDate') + '</th>' +
+            '<th class="cal-jq-last">' + t('colGz') + '</th>' +
+            '</tr></thead><tbody id="calJqBody">' + rows + '</tbody></table>';
         setTimeout(scrollToActiveJieQi, 40);
         return true;
+    }
+
+    /**
+     * Can chi THÁNG của tháng chứa mốc tiết khí ấy.
+     *
+     * Lấy từ chính engine (lunar.js) chứ không tự suy từ chỉ số tiết khí: can
+     * tháng phụ thuộc can năm, mà năm can chi lại đổi ở Lập Xuân — tự dựng lại
+     * luật ấy là mời thêm một nguồn sai lệch nữa với tab Kỳ Môn.
+     *
+     * Nhận thẳng NGÀY JULIUS Ở MỐC UTC+8, không nhận chuỗi giờ địa phương.
+     * Quy ngược chuỗi ấy về UTC+8 cần offset ĐÚNG CỦA CHÍNH MỐC ĐÓ, trong khi
+     * `tz` của bảng là offset của ngày đang chọn — ở nước có DST thì hai thứ
+     * lệch nhau một giờ suốt nửa năm, đủ để Lập Xuân rơi về tháng Sửu thay vì
+     * mở tháng Dần. Mà can chi tháng vốn là đại lượng ở UTC+8, nên đi thẳng.
+     */
+    function monthGanZhiAt(jdUTC8) {
+        if (typeof Solar === 'undefined' || typeof Ephem === 'undefined') return '';
+        if (!isFinite(jdUTC8)) return '';
+        try {
+            // Nhích 2 phút qua mốc giao tiết: đúng tại mốc, phép làm tròn trong
+            // lunar.js có thể còn xếp về tháng cũ. 2 phút thì chắc chắn đã sang
+            // tháng mới mà vẫn cách tiết sau cả nửa tháng.
+            var gz = Ephem.atBasis(null, function () {
+                return Solar.fromJulianDay(jdUTC8 + 2 / 1440)
+                    .getLunar().getEightChar().getMonth();
+            });
+            if (!gz || gz.length < 2) return '';
+            return isZH() ? gz
+                : (getDisplayCan(gz[0]) + ' ' + getDisplayChi(gz[1]));
+        } catch (e) { return ''; }
     }
 
     /** Dựng thân bảng (12 hàng × 2 cột kép); trả null nếu app.js chưa sẵn sàng. */
@@ -381,6 +432,9 @@
             return { Y: Y, dates: sb_getJieQiDates(Y, tzId, tz) };
         });
         var Y = res.Y, dates = res.dates;
+        // Cùng dãy mốc mà sb_getJieQiDates dùng, nhưng giữ nguyên ngày Julius ở
+        // UTC+8 để suy can chi tháng (xem monthGanZhiAt).
+        var jds = Ephem.jieQiJdAtBasis(Y + 1, null);
 
         // Tiết khí đang hiệu lực = mốc CUỐI CÙNG không muộn hơn ngày đang chọn.
         // Lấy 12:00 trưa làm mốc so: chọn 00:00 thì đúng ngày giao tiết sẽ rơi
@@ -392,34 +446,129 @@
             if (!isNaN(ts) && ts <= at) active = i;
         }
 
-        // Bỏ Độn và Số Cục thì mỗi mục chỉ còn tên với ngày — hẹp bằng nửa
-        // bề ngang. Xếp 12 mục đầu (Đông Chí → Mang Chủng) bên trái, 12 mục
-        // sau (Hạ Chí → Đại Tuyết) bên phải: bảng thấp đi một nửa, gần như
-        // không phải cuộn nữa, và ranh giới trái/phải trùng đúng ranh giới
-        // Dương Độn / Âm Độn.
+        // Một dãy 24 hàng liền, thêm cột can chi tháng. Can chi của một tháng
+        // phủ đúng hai tiết khí (tiết rồi khí), nên hai hàng liền nhau lặp lại
+        // cùng một giá trị — đó là đúng, không phải trùng lặp thừa.
         var zh = isZH();
-        // `right` chứ không phải `k === 12`: vách ngăn phải kẻ ở ô đầu của nửa
-        // PHẢI trên MỌI hàng. Bám vào chỉ số 12 thì nó chỉ trúng hàng đầu tiên,
-        // nên đường kẻ đứt ngay sau hàng ấy.
-        var cell = function (k, right) {
+        var rows = '';
+        for (var k = 0; k < 24; k++) {
             var on = k === active;
-            return '<td class="cal-jq-name' + (on ? ' cal-jq-on' : '') +
-                (right ? ' cal-jq-split' : '') + '"' +
+            rows += '<tr' + (k % 2 === 0 ? ' class="dp-row-alt"' : '') + '>' +
+                '<td class="cal-jq-name' + (on ? ' cal-jq-on' : '') + '"' +
                 (on ? ' id="calJqActive"' : '') + '>' +
                 esc(zh ? TK_ZH[k] : TK_VI[k]) + '</td>' +
-                '<td class="dp-num cal-jq-date' + (on ? ' cal-jq-on' : '') +
-                (right ? ' cal-jq-last' : '') + '">' +
-                esc(dates[k] || '') + '</td>';
-        };
-        var rows = '';
-        for (var k = 0; k < 12; k++) {
-            rows += '<tr' + (k % 2 === 0 ? ' class="dp-row-alt"' : '') + '>' +
-                cell(k, false) + cell(k + 12, true) + '</tr>';
+                '<td class="dp-num cal-jq-date' + (on ? ' cal-jq-on' : '') + '">' +
+                esc(dates[k] || '') + '</td>' +
+                '<td class="cal-jq-gz cal-jq-last' + (on ? ' cal-jq-on' : '') + '">' +
+                esc(monthGanZhiAt(jds[k + 1])) + '</td>' +
+                '</tr>';
         }
         return rows;
     }
 
+    /**
+     * Mục "Lịch âm": đúng bảng của Âm Bàn pháp ở tab Kỳ Môn (Tháng âm · Sóc ·
+     * Vọng), dựng lại tại đây từ CÙNG những hàm ấy để hai tab không thể lệch.
+     */
+    function renderAmBan() {
+        var box = document.getElementById('calAmBan');
+        if (!box) return;
+        if (typeof Ephem === 'undefined' || typeof Solar === 'undefined' ||
+            typeof formatPreciseSocLocal !== 'function' ||
+            typeof formatPreciseVongLocal !== 'function') { box.innerHTML = ''; return; }
+        try {
+            var sel = selected || { y: viewY, m: viewM, d: 1 };
+            var info = countryData[getDOM('country').value];
+            if (!info || !info.tzId) { box.innerHTML = ''; return; }
+            var tz = getTimezoneOffset(info.tzId, new Date(sel.y, sel.m - 1, sel.d, 12));
+
+            // Tháng âm của ngày đang chọn, để tô đậm đúng hàng.
+            var ctx = buildCtx(sel.y, sel.m);
+            var cur = ctx ? ziFromCtx(ctx, jdnOfDate(sel.y, sel.m, sel.d)) : null;
+            var curYear = cur ? cur.year : sel.y;
+            var curMonth = cur ? (cur.leap ? -cur.month : cur.month) : 0;
+
+            var months = Ephem.monthsAtBasis(curYear, tz);
+            var rows = '';
+            for (var i = 0; i < months.length; i++) {
+                var mo = months[i];
+                var moNum = mo.leap ? -mo.month : mo.month;
+                var socSolar = Solar.fromJulianDay(mo.jd);
+                var on = (moNum === curMonth);
+                var label = (isZH() ? mo.month + '月' : 'Tháng ' + mo.month) +
+                    (mo.leap ? ' (' + t('leap') + ')' : '');
+                rows += '<tr' + (i % 2 === 0 ? ' class="dp-row-alt"' : '') + '>' +
+                    '<td class="cal-jq-name' + (on ? ' cal-jq-on' : '') + '"' +
+                    (on ? ' id="calAmActive"' : '') + '>' + esc(label) + '</td>' +
+                    '<td class="dp-num cal-jq-date' + (on ? ' cal-jq-on' : '') + '">' +
+                    esc(formatPreciseSocLocal(socSolar, info.tzId)) + '</td>' +
+                    '<td class="dp-num cal-jq-date cal-jq-last' + (on ? ' cal-jq-on' : '') + '">' +
+                    esc(formatPreciseVongLocal(socSolar, info.tzId)) + '</td>' +
+                    '</tr>';
+            }
+            box.innerHTML =
+                '<table class="dp-table cal-jq"><thead><tr>' +
+                '<th>' + t('colMonth') + '</th>' +
+                '<th>' + t('colSoc') + '</th>' +
+                '<th class="cal-jq-last">' + t('colVong') + '</th>' +
+                '</tr></thead><tbody>' + rows + '</tbody></table>';
+        } catch (e) {
+            console.warn('calAmBan:', e);
+            box.innerHTML = '';
+        }
+    }
+
     /** Bảng 24 dòng phải cuộn; đưa tiết khí đang hiệu lực vào giữa khung nhìn. */
+    /* ─────────────── Hai mục gập được ─────────────── */
+
+    /** Áp trạng thái mở/đóng lên DOM (không chia lại chiều cao). */
+    function applySections() {
+        var pairs = [['calSecJq', openJq, 'calJqChev'], ['calSecAm', openAm, 'calAmChev']];
+        for (var i = 0; i < pairs.length; i++) {
+            var sec = document.getElementById(pairs[i][0]);
+            if (!sec) continue;
+            sec.classList.toggle('cal-sec-open', pairs[i][1]);
+            var chev = document.getElementById(pairs[i][2]);
+            if (chev) chev.textContent = pairs[i][1] ? '▾' : '▸';
+        }
+    }
+
+    function toggleSection(which) {
+        if (which === 'jq') { openJq = !openJq; prefSet(K_SEC_JQ, openJq ? '1' : '0'); }
+        else                { openAm = !openAm; prefSet(K_SEC_AM, openAm ? '1' : '0'); }
+        applySections();
+        fitGrid(lastWeeks);
+        if (which === 'jq' && openJq) setTimeout(scrollToActiveJieQi, 40);
+    }
+
+    /**
+     * Chia chiều cao còn lại cho những mục ĐANG MỞ.
+     *
+     * Vừa đủ chỗ thì mỗi mục lấy đúng chiều cao thật của nó — không mục nào
+     * phải cuộn. Chật thì chia theo tỉ lệ chiều cao thật, nên mục dài (24 tiết
+     * khí) được phần lớn hơn mục ngắn (12-13 tháng âm), thay vì cưa đôi rồi
+     * mục ngắn thừa chỗ còn mục dài cuộn mỏi tay.
+     */
+    function shareSectionHeight(avail) {
+        var list = [];
+        if (openJq) list.push(document.getElementById('calJieQi'));
+        if (openAm) list.push(document.getElementById('calAmBan'));
+        list = list.filter(Boolean);
+        if (!list.length) return;
+
+        var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
+        var nat = list.map(function (el) {
+            var tb = el.querySelector('table');
+            return tb ? Math.ceil(tb.getBoundingClientRect().height / zoom) + 2 : SEC_MIN;
+        });
+        var sum = nat.reduce(function (a, b) { return a + b; }, 0);
+        for (var i = 0; i < list.length; i++) {
+            var hgt = (sum <= avail) ? nat[i]
+                : Math.max(SEC_MIN, Math.floor(avail * nat[i] / sum));
+            list[i].style.maxHeight = hgt + 'px';
+        }
+    }
+
     function scrollToActiveJieQi() {
         var row = document.getElementById('calJqActive');
         var body = document.querySelector('#calJieQi .cal-jq-body');
@@ -459,21 +608,13 @@
      */
     function setupPinButton() {
         var btn = document.getElementById('calPinBtn');
-        var note = document.getElementById('calPinNote');
         var native = window.QMDJNative;
         if (!btn || !native || typeof native.pinCalendarWidget !== 'function') return;
 
         btn.style.display = 'block';
         btn.addEventListener('click', function () {
-            var res = '';
-            try { res = native.pinCalendarWidget(); } catch (e) { res = 'error'; }
-            note.style.display = 'block';
-            note.textContent = (res === 'ok')
-                ? t('pinOk')
-                : t('pinManual');
-            // Ghi chú vừa hiện ra chiếm thêm chỗ — chia lại ngay, không thì nó
-            // đẩy chính nó xuống dưới thanh tab.
-            fitGrid(lastWeeks);
+            // Hệ thống tự hiện hộp thoại xác nhận; không kèm dòng ghi chú nào.
+            try { native.pinCalendarWidget(); } catch (e) {}
         });
     }
 
@@ -485,6 +626,11 @@
         if (tc) tc.querySelector('.tab-lbl').textContent = t('tabCal');
         var pin = document.getElementById('calPinBtn');
         if (pin) pin.textContent = t('pin');
+        var jqT = document.getElementById('calJqTitle');
+        if (jqT) jqT.textContent = t('secJq');
+        var amT = document.getElementById('calAmTitle');
+        if (amT) amT.textContent = t('secAm');
+        publishLang();
         if (document.body.classList.contains('view-cal')) render();
     }
     window.__calRefreshLabels = refreshLabels;
@@ -524,6 +670,21 @@
         }
     }
 
+    /**
+     * Ghi ngôn ngữ đang chọn cho widget, rồi bảo nó vẽ lại NGAY.
+     *
+     * Widget đọc kho tuỳ chọn lúc vẽ, mà nó chỉ tự vẽ lại lúc nửa đêm hoặc khi
+     * người dùng bấm ‹ › — nên nếu chỉ ghi khoá mà không gọi, đổi sang tiếng
+     * Trung trong ứng dụng thì lịch đã ghim vẫn còn tiếng Việt hàng giờ liền.
+     */
+    function publishLang() {
+        prefSet(K_LANG, isZH() ? 'zh' : 'vi');
+        try {
+            var n = window.QMDJNative;
+            if (n && typeof n.refreshCalendarWidget === 'function') n.refreshCalendarWidget();
+        } catch (e) {}
+    }
+
     /** Số ngày Julius — cùng công thức với LunarTable.jdn bên Kotlin. */
     function jdnOf(y, m, d) {
         var a = Math.floor((14 - m) / 12), yy = y + 4800 - a, mm = m + 12 * a - 3;
@@ -547,6 +708,15 @@
         viewY = now.getFullYear();
         viewM = now.getMonth() + 1;
         selected = { y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate() };
+
+        // Trạng thái gập: mặc định mở Tiết khí, đóng Lịch âm — mở cả hai ngay
+        // từ đầu thì trên máy thấp lưới lịch bị bóp về ROW_MIN.
+        var sj = prefGet(K_SEC_JQ), sa = prefGet(K_SEC_AM);
+        if (sj === '0' || sj === '1') openJq = sj === '1';
+        if (sa === '0' || sa === '1') openAm = sa === '1';
+        applySections();
+        document.getElementById('calJqHead').addEventListener('click', function () { toggleSection('jq'); });
+        document.getElementById('calAmHead').addEventListener('click', function () { toggleSection('am'); });
 
         document.getElementById('tabQmdj').addEventListener('click', function () { showTab('qmdj'); });
         document.getElementById('tabCal').addEventListener('click', function () { showTab('cal'); });
@@ -599,6 +769,13 @@
                 if (document.body.classList.contains('view-cal')) {
                     try { render(); } catch (err) { console.warn('calendar:', err); }
                 }
+                // Địa điểm đổi thì giờ tiết khí và bảng tháng của widget cũng
+                // đổi theo — publishLunarCache đã ghi bảng mới, còn đây là chỗ
+                // bảo widget vẽ lại.
+                try {
+                    var n = window.QMDJNative;
+                    if (n && typeof n.refreshCalendarWidget === 'function') n.refreshCalendarWidget();
+                } catch (e2) {}
                 return r;
             };
             wrappedCalc.__calRecalcWrapped = true;

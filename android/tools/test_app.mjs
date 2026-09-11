@@ -106,7 +106,11 @@ console.log('\nGPS → tính lại lá số');
 doc.getElementById('locGpsBtn').dispatchEvent(new w.Event('click'));
 await new Promise(r => setTimeout(r, 300));
 check('gọi cầu native', String(gpsCalls), '1');
-check('toạ độ hiển thị', val('out-astro-coord'), '16.07°N 108.22°E');
+// Bảng Nhật–Nguyệt đã gỡ, nên đọc thẳng toạ độ mà GPS nạp vào engine.
+check('toạ độ vào engine', (function () {
+    var l = w.QMDJLocation.current();
+    return l ? l.lat.toFixed(2) + ',' + l.lon.toFixed(2) : '—';
+})(), '16.07,108.22');
 check('vị trí được lưu', String(JSON.parse(store['qmdj.location']).tzId), 'Asia/Ho_Chi_Minh');
 
 console.log('\nNhập toạ độ thủ công');
@@ -119,23 +123,15 @@ doc.getElementById('locApply').dispatchEvent(new w.Event('click'));
 await new Promise(r => setTimeout(r, 100));
 check('múi giờ áp dụng', val('out-chinhngo').split(' ')[1], '(GMT+7)');
 
-console.log('\nBảng Nhật–Nguyệt (mặc định ẩn để giống bản web gốc)');
-check('mặc định ẩn', doc.getElementById('astroPanel').style.display, 'none');
-doc.querySelector('.info-pair-chinhngo').dispatchEvent(new w.Event('click'));
-check('chạm Chính Ngọ thì hiện', doc.getElementById('astroPanel').style.display, 'block');
-check('có dữ liệu Mặt Trời', val('out-astro-sun').length > 5 ? 'yes' : 'no', 'yes');
-check('có dữ liệu Mặt Trăng', val('out-astro-moon').length > 5 ? 'yes' : 'no', 'yes');
-check('Back đóng bảng', String(w.__onBackPressed()), 'true');
-check('đã đóng lại', doc.getElementById('astroPanel').style.display, 'none');
+console.log('\nBảng Nhật–Nguyệt đã gỡ hẳn');
+check('không còn trong trang', String(doc.getElementById('astroPanel') === null), 'true');
+check('chạm Chính Ngọ không mở gì', String(!!doc.querySelector('.info-pair-chinhngo')), 'true');
 
 console.log('\nĐổi ngôn ngữ');
-doc.querySelector('.info-pair-chinhngo').dispatchEvent(new w.Event('click'));  // mở lại
 w.setLang('vi');
-check('nhãn Mặt Trời (vi)', val('lblAstroSun'), 'Mặt Trời:');
-check('giá trị đổi theo (vi)', val('out-astro-sun').slice(0, 3), 'mọc');
+check('nhãn Chính Ngọ (vi)', val('lblChinhNgo'), 'Chính Ngọ:');
 w.setLang('zh');
-check('nhãn Mặt Trời (zh)', val('lblAstroSun'), '太阳:');
-check('giá trị đổi theo (zh)', val('out-astro-sun').slice(0, 1), '出');
+check('nhãn Chính Ngọ (zh)', val('lblChinhNgo'), '正午时间:');
 
 console.log('\nTab Lịch âm dương');
 w.setLang('vi');            // can chi tiếng Việt
@@ -184,9 +180,7 @@ console.log('\nNút Back của Android');
 w.openCountryPicker();
 check('1. đóng hộp thoại vị trí trước', String(w.__onBackPressed()), 'true');
 check('   hộp thoại đã đóng', String(doc.getElementById('locOverlay').classList.contains('open')), 'false');
-check('   bảng Nhật–Nguyệt còn mở', doc.getElementById('astroPanel').style.display, 'block');
-check('2. rồi mới đóng bảng Nhật–Nguyệt', String(w.__onBackPressed()), 'true');
-check('3. không còn gì để đóng', String(w.__onBackPressed()), 'false');
+check('2. không còn gì để đóng', String(w.__onBackPressed()), 'false');
 
 console.log('\nLỗi JS trong lúc chạy:', errors.length ? errors.slice(0, 5) : 'không có');
 if (errors.length) fail++;

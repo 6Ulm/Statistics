@@ -22,6 +22,21 @@ object LunarTable {
     val CHI = arrayOf("Tý", "Sửu", "Dần", "Mão", "Thìn", "Tỵ", "Ngọ", "Mùi",
                       "Thân", "Dậu", "Tuất", "Hợi")
 
+    val CAN_ZH = arrayOf("甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸")
+    val CHI_ZH = arrayOf("子", "丑", "寅", "卯", "辰", "巳", "午", "未",
+                         "申", "酉", "戌", "亥")
+
+    /**
+     * Ngôn ngữ đang chọn trong ỨNG DỤNG ("vi" hoặc "zh").
+     *
+     * Ứng dụng ghi khoá này mỗi lần đổi ngôn ngữ (publishLang trong
+     * calendar.js) rồi gọi refreshCalendarWidget, nên widget theo kịp ngay chứ
+     * không đợi tới nửa đêm.
+     */
+    fun langOf(context: Context): String =
+        context.getSharedPreferences("qmdj_prefs", Context.MODE_PRIVATE)
+            .getString("qmdj.lang", "vi") ?: "vi"
+
     /** Ngày âm lịch của một ngày dương lịch. */
     data class LunarDay(val day: Int, val month: Int, val year: Int, val leap: Boolean)
 
@@ -41,6 +56,17 @@ object LunarTable {
         "Hạ Chí", "Tiểu Thử", "Đại Thử", "Lập Thu", "Xử Thử", "Bạch Lộ",
         "Thu Phân", "Hàn Lộ", "Sương Giáng", "Lập Đông", "Tiểu Tuyết", "Đại Tuyết"
     )
+
+    val TIET_KHI_ZH = arrayOf(
+        "冬至", "小寒", "大寒", "立春", "雨水", "惊蛰",
+        "春分", "清明", "谷雨", "立夏", "小满", "芒种",
+        "夏至", "小暑", "大暑", "立秋", "处暑", "白露",
+        "秋分", "寒露", "霜降", "立冬", "小雪", "大雪"
+    )
+
+    /** Tên tiết khí theo ngôn ngữ đang chọn. */
+    fun tietKhiName(idx: Int, zh: Boolean): String =
+        if (zh) TIET_KHI_ZH[idx] else TIET_KHI[idx]
 
     private var socSec: IntArray = IntArray(0)
     private var jqJdn: IntArray = IntArray(0)
@@ -89,7 +115,7 @@ object LunarTable {
      * Các tiết khí rơi vào một tháng dương lịch, đã sắp theo thời gian.
      * Bảng sắp sẵn theo JDN nên chỉ cần quét đoạn giữa hai mốc đầu/cuối tháng.
      */
-    fun jieQiOfMonth(year: Int, month: Int): List<JieQi> {
+    fun jieQiOfMonth(year: Int, month: Int, zh: Boolean = false): List<JieQi> {
         if (!loaded || jqJdn.isEmpty()) return emptyList()
         val from = jdn(year, month, 1)
         val to = from + 40
@@ -105,7 +131,7 @@ object LunarTable {
         while (i < jqJdn.size && jqJdn[i] <= to) {
             val (cy, cm, _) = civilOf(jqJdn[i])
             if (cy == year && cm == month) {
-                out.add(JieQi(TIET_KHI[jqIdx[i]], jqJdn[i], jqMin[i]))
+                out.add(JieQi(tietKhiName(jqIdx[i], zh), jqJdn[i], jqMin[i]))
             }
             i++
         }
@@ -120,7 +146,7 @@ object LunarTable {
      * Bảng jieqi.txt vốn đã là dãy phẳng đã sắp xếp, nên chỉ cần tìm mốc Đông
      * Chí (chỉ số tên 0) gần nhất không muộn hơn `ref` rồi lấy 24 mục kế tiếp.
      */
-    fun jieQiYearOf(ref: Int): List<JieQi> {
+    fun jieQiYearOf(ref: Int, zh: Boolean = false): List<JieQi> {
         if (!loaded || jqJdn.isEmpty()) return emptyList()
         // mốc cuối cùng có jdn ≤ ref
         var lo = 0
@@ -136,7 +162,7 @@ object LunarTable {
         while (start >= 0 && jqIdx[start] != 0) start--
         if (start < 0 || start + 23 >= jqJdn.size) return emptyList()
         return (start until start + 24).map {
-            JieQi(TIET_KHI[jqIdx[it]], jqJdn[it], jqMin[it])
+            JieQi(tietKhiName(jqIdx[it], zh), jqJdn[it], jqMin[it])
         }
     }
 
@@ -279,9 +305,10 @@ object LunarTable {
     }
 
     /** Can chi của ngày, suy thẳng từ JDN (không phụ thuộc múi giờ). */
-    fun ganZhiOf(jdn: Int): Pair<String, String> {
+    fun ganZhiOf(jdn: Int, zh: Boolean = false): Pair<String, String> {
         if (!loaded) return "" to ""
         val i = (((jdn - ganZhiEpoch) % 60) + 60) % 60
-        return CAN[i % 10] to CHI[i % 12]
+        return if (zh) CAN_ZH[i % 10] to CHI_ZH[i % 12]
+               else CAN[i % 10] to CHI[i % 12]
     }
 }

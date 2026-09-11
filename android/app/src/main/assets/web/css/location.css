@@ -162,8 +162,3 @@
     cursor: pointer;
 }
 #locApply:active { opacity: .8; }
-
-/* ── Bảng Nhật – Nguyệt ── */
-#astroPanel .info-pair { min-width: 0; }
-#astroPanel .val-norm  { overflow: hidden; text-overflow: ellipsis; }
-#astroPanel .info-pair-wide { flex: 1.6; }
