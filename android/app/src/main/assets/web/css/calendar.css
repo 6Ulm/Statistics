@@ -20,8 +20,8 @@
 /* Ngôn ngữ + địa điểm: một hàng, nằm dưới hai tab, hiện ở CẢ hai tab. */
 #sharedBar {
     display: flex; align-items: center;
-    gap: 4px;
-    padding: 4px 6px;
+    gap: 6px;
+    padding: 6px 8px;
     border-top: 1px solid var(--border-color, #ddd);
     background: var(--bg-white, #fff);
 }

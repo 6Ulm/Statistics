@@ -57,7 +57,16 @@ const browser = await chromium.launch(
     fs.existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {}
 );
 
+// Mặc định chạy CẢ HAI tab. Trước đây tab Lịch chỉ được đo khi đặt TAB=cal, mà
+// phép canh "vừa một màn hình" thì chỉ tab ấy mới có — nên một lần fitGrid()
+// quên trừ hàng dùng chung dưới hai tab đã lọt qua toàn bộ bộ kiểm thử.
+// TAB=cal / TAB=qmdj vẫn dùng được để chạy riêng một tab.
+const TABS = process.env.TAB ? [process.env.TAB] : ['qmdj', 'cal'];
+let cases = 0;
+
+for (const TAB of TABS)
 for (const d of DEVICES) {
+    cases++;
     const ctx = await browser.newContext({
         viewport: { width: d.w, height: d.h }, deviceScaleFactor: d.dpr,
         isMobile: true, hasTouch: true,
@@ -65,7 +74,7 @@ for (const d of DEVICES) {
     const page = await ctx.newPage();
     await page.goto(base, { waitUntil: 'networkidle' });
     await page.waitForTimeout(900);
-    if (process.env.TAB === 'cal') {
+    if (TAB === 'cal') {
         await page.evaluate(() => {
             window.showTab('cal');
             // Nút Ghim chỉ hiện khi chạy trong ứng dụng Android. Đo mà thiếu nó
@@ -164,7 +173,7 @@ for (const d of DEVICES) {
     // Ngưỡng 640px: dưới mức đó thì 6 hàng × ROW_MIN (58px) cộng đầu lịch, bảng
     // tiết khí và thanh tab đã vượt màn hình rồi — máy 320×520 buộc phải cuộn,
     // không phải lỗi chia chiều cao.
-    if (process.env.TAB === 'cal' && d.h > d.w && d.h >= 640 && r.contentH > r.innerH + 1) {
+    if (TAB === 'cal' && d.h > d.w && d.h >= 640 && r.contentH > r.innerH + 1) {
         problems.push(`tab Lịch tràn dọc ${r.contentH - r.innerH}px (phải vừa một màn hình)`);
     }
     // Bảng tiết khí phải nằm trọn bề ngang: cuộn ngang trong một bảng 24 dòng
@@ -180,8 +189,9 @@ for (const d of DEVICES) {
         problems.push(`đã phải cuộn (${r.contentH}px > ${r.innerH}px) mà còn phóng ×${r.zoom}`);
     }
 
-    if (problems.length) { fail++; console.log(`  FAIL ${d.name.padEnd(18)} ${problems.join('; ')}`); }
-    else console.log(`  ok   ${d.name.padEnd(18)} zoom ${r.zoom.toFixed(3)}  bàn ${r.boardH}px  ` +
+    const label = (TABS.length > 1 ? (TAB === 'cal' ? 'Lịch · ' : 'KM · ') : '') + d.name;
+    if (problems.length) { fail++; console.log(`  FAIL ${label.padEnd(24)} ${problems.join('; ')}`); }
+    else console.log(`  ok   ${label.padEnd(24)} zoom ${r.zoom.toFixed(3)}  bàn ${r.boardH}px  ` +
                      `nội dung ${r.contentH}/${r.innerH}px  không tràn, không cắt chữ` +
                      (r.jq ? `, bảng tiết khí vừa bề ngang` : ''));
 
@@ -190,5 +200,5 @@ for (const d of DEVICES) {
 
 await browser.close();
 server.close();
-console.log(fail ? `\n✗ ${fail}/${DEVICES.length} kích thước có lỗi bố cục` : `\n✓ ${DEVICES.length}/${DEVICES.length} kích thước đạt`);
+console.log(fail ? `\n✗ ${fail}/${cases} lượt đo có lỗi bố cục` : `\n✓ ${cases}/${cases} lượt đo đạt (${TABS.join(' + ')})`);
 process.exit(fail ? 1 : 0);

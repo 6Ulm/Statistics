@@ -233,7 +233,10 @@
         if (!weeks) return;
         var grid = document.getElementById('calGrid');
         var head = document.getElementById('calHead');
-        var bar = document.getElementById('tabBar');
+        // Cả THANH DƯỚI, không riêng hàng tab: hàng ngôn ngữ + địa điểm nằm
+        // dưới hai tab trong cùng thanh ấy. Trừ thiếu nó thì lưới lịch cộng
+        // bảng tiết khí chiếm quá chỗ và tab Lịch tràn khỏi một màn hình.
+        var bar = document.getElementById('bottomDock') || document.getElementById('tabBar');
         var dow = grid ? grid.querySelector('.cal-dow') : null;
         // Nút "Ghim lịch ra màn hình chính" CHỈ hiện khi chạy trong ứng dụng
         // Android, nên mọi phép đo trên trình duyệt đều không thấy nó. Không trừ

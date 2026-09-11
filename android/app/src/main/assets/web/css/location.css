@@ -46,16 +46,29 @@
     overflow-y: auto; -webkit-overflow-scrolling: touch;
     border-top: 1px solid var(--border-color);
 }
+/* Tiêu đề nằm ĐÚNG giữa hàng: lưới ba cột, hai cột bên bằng nhau. Để nguyên
+   space-between thì "Phái" chỉ nằm giữa "Hủy" và khoảng đệm phải — xê dịch
+   theo bề rộng chữ "Hủy"/"取消", nên không thẳng hàng với danh sách bên dưới. */
+#optPanel .drum-header {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+}
+#optPanel .drum-cancel { justify-self: start; }
+#optPanel .drum-title  { justify-self: center; }
+
 .opt-row {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 8px;
-    padding: 11px 14px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    padding: 12px 34px;
     border-bottom: 1px solid #f2f2f4;
     cursor: pointer;
 }
 .opt-row:active { background: var(--accent-light); }
-.opt-name { font-size: 14px; color: var(--text-main); }
-.opt-tick { width: 14px; flex-shrink: 0; font-size: 13px; color: var(--accent); }
+.opt-name { font-size: 15px; color: var(--text-main); text-align: center; }
+/* Dấu ✓ tách khỏi luồng để không đẩy nhãn lệch khỏi trục giữa. */
+.opt-tick {
+    position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+    font-size: 14px; color: var(--accent);
+}
 /* Mục đang chọn: đủ rõ khi liếc qua, không chỉ mỗi dấu ✓. */
 .opt-row-active { background: var(--accent-light); }
 .opt-row-active .opt-name { font-weight: 700; color: var(--accent); }

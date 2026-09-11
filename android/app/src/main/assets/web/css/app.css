@@ -35,7 +35,7 @@
             background: var(--bg-body);
             display: flex; flex-direction: column;
             align-items: center;
-            padding: 4px 6px; gap: 3px;
+            padding: 12px 6px 4px; gap: 3px;
             color: var(--text-main);
         }
         @media (min-width: 768px) {
@@ -304,12 +304,12 @@
 
         /* ── Picker buttons (date / country) ── */
         .picker-btn {
-            flex: 1; padding: 3px 6px;
-            border: var(--border-std); border-radius: 2px;
-            font-size: 11px; background: var(--bg-white); color: var(--text-main);
+            flex: 1; padding: 5px 7px;
+            border: var(--border-std); border-radius: 3px;
+            font-size: 13.5px; background: var(--bg-white); color: var(--text-main);
             text-align: center; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
-            min-height: 24px; user-select: none; overflow: hidden;
+            min-height: 32px; user-select: none; overflow: hidden;
         }
         #dateDisplayBtn    { flex: 1.1; white-space: nowrap; }
         #countryDisplayBtn { flex: 0.9; }
@@ -326,7 +326,7 @@
            hết cho ô chọn phái. Để ngày giờ co được thì nó bị bóp còn
            "0-09-2026 18:3". */
         /* Ô ngày giờ ăn hết phần thừa; ô phái chỉ vừa đúng nhãn dài nhất. */
-        #qmRow #dateDisplayBtn { flex: 1 1 auto; white-space: nowrap; padding: 3px 5px; }
+        #qmRow #dateDisplayBtn { flex: 1 1 auto; white-space: nowrap; }
         #qmRow #methodDisplayBtn { flex: 0 0 auto; padding-inline: 9px; }
         /* Xếp chồng nhãn đang hiện với ba nhãn ẩn trong CÙNG một ô lưới:
            bề rộng cột = bề rộng nhãn rộng nhất, nên ô không co giãn theo phái
@@ -352,11 +352,11 @@
             display: flex; align-items: center; gap: 4px;
             flex: 0 0 auto; margin-left: 4px;
             cursor: pointer; white-space: nowrap; user-select: none;
-            font-size: 13px;
+            font-size: 14px;
             color: var(--text-main, #333);
         }
         #chkHienThiCoBan {
-            width: 15px; height: 15px; flex-shrink: 0;
+            width: 17px; height: 17px; flex-shrink: 0;
             cursor: pointer; accent-color: var(--accent, #5c7cfa);
         }
 

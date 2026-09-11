@@ -805,8 +805,12 @@ ellipsis, và phóng to trong khi nội dung đã phải cuộn. Chiều cao ở
 cao **WebView thật** (đã trừ thanh trạng thái và thanh điều hướng), không phải
 chiều cao màn hình.
 
-`TAB=cal node test_responsive.mjs` chạy lại cùng bộ đó trên tab Lịch, và **bật
-nút Ghim lên trước khi đo**. Nút ấy `display:none` ngoài ứng dụng Android, nên
+Mặc định chạy **cả hai tab** (14 lượt đo). Trước đây tab Lịch chỉ được đo khi
+đặt `TAB=cal`, mà phép canh "vừa một màn hình" thì chỉ tab ấy mới có — nên một
+lần `fitGrid()` quên trừ hàng dùng chung dưới hai tab đã lọt qua trọn bộ kiểm
+thử. `TAB=cal` / `TAB=qmdj` vẫn chạy riêng một tab được.
+
+Lượt tab Lịch **bật nút Ghim lên trước khi đo**. Nút ấy `display:none` ngoài ứng dụng Android, nên
 mọi phép đo trên trình duyệt vốn không thấy nó — bố cục trên máy thật vì thế cao
 hơn phép thử tưởng và nút bị thanh tab cố định che mất. Phép thử giờ canh thêm
 hai điều: không phần tử nào bị thanh tab che khi trang vừa màn hình, và **tab
