@@ -152,10 +152,50 @@ Vọng), dựng lại bằng **cùng những hàm ấy** (`Ephem.monthsAtBasis`,
 `formatPreciseSocLocal`, `formatPreciseVongLocal`) để hai tab không thể lệch —
 `test_cal_sections.mjs` so từng dòng một.
 
-Chiều cao: `fitGrid()` trừ phần cố định rồi chia phần còn lại cho những mục đang
-mở. Vừa đủ chỗ thì mỗi mục lấy đúng chiều cao thật; chật thì chia **theo tỉ lệ
-chiều cao thật**, nên mục dài (24 tiết khí) được phần lớn hơn mục ngắn (12–13
-tháng âm) thay vì cưa đôi rồi mục ngắn thừa chỗ còn mục dài cuộn mỏi tay.
+Giá trị Sóc/Vọng CĂN GIỮA (lớp `.c`, giống hệt tiêu đề), khác cột "Dương lịch"
+của Tiết khí (vẫn căn trái). Cột này rộng hơn hẳn nội dung (Sóc/Vọng chỉ chiếm
+non nửa cột, phần dư nhường cho cột Tháng âm hẹp bên trái theo mẹo `width:1%`),
+nên căn GIỮA tiêu đề trong khi giá trị căn TRÁI khiến tiêu đề trông như bị đẩy
+sang phải cả 20-30px so với nơi giá trị thật sự nằm — đo được: tâm chữ "Sóc"
+cách tâm chữ giá trị tới 30px. Cho giá trị cũng căn giữa thì cả hai chia sẻ
+đúng một tâm — không cần đo/canh gì thêm, tự động khớp theo đúng nghĩa hình
+học. Còn dấu mũi gập/mở (▾/▸) của cột
+cuối: trước đây ô TIÊU ĐỀ cuối có lệ riêng "padding-right lớn hơn ô giá trị"
+để chừa chỗ cho dấu mũi — làm tiêu đề và giá trị không còn cùng một hộp nội
+dung, lệch thêm vài px nữa. Bỏ lệ riêng ấy, thu nhỏ dấu mũi (9px, nép sát mép)
+để vừa gọn trong đúng phần đệm chung với ô giá trị ở MỌI bề rộng màn hình
+(kể cả nấc thu gọn dưới 375px) — `test_cal_sections.mjs` đo tâm chữ (không phải
+tâm ô) của tiêu đề so với giá trị, lệch ≤ 1,5px.
+
+### Vị trí hai tiêu đề CỐ ĐỊNH, bất kể gập hay mở
+
+Lưới lịch giữ **đúng một chiều cao hàng** (`ROW_MIN`), không đổi theo việc mục
+nào đang mở hay đóng. Bản trước có HAI công thức khác hẳn nhau: "còn mục nào mở
+thì lưới chỉ lấy `ROW_MIN`, phần dư nhường cho mục" so với "không mục nào mở thì
+lưới lấy hết phần dư" (có thể chạm `ROW_MAX`) — hai công thức lệch nhau tới
+20px/hàng, nhân với 5–6 hàng thì cả lưới lẫn hai tiêu đề bên dưới nhảy hơn
+100px mỗi lần bấm gập/mở, dù người dùng chỉ đóng/mở MỘT mục. Nay chỉ còn MỘT
+công thức, luôn chạy: lưới luôn giữ `ROW_MIN`, mọi phần dư luôn "nhường" cho
+mục — không mục nào mở thì phần dư ấy hoá thành một khoảng trống đứng yên dưới
+hai hàng tiêu đề, thay vì kéo lưới phình ra. Đổi lại `fitGrid` phải đo CHIỀU
+CAO CỦA `<thead>` (không phải cả DIV): `<thead>` cao như nhau bất kể `tbody`
+bên trong đang hiện hay ẩn, nên phép trừ này không đổi theo trạng thái gập/mở —
+đo cả DIV (như trước) sẽ khiến "avail" trôi theo mục nào đang mở.
+
+Chia phần dư giữa hai mục thì KHÔNG chia theo tỉ lệ chiều cao thật của những
+mục ĐANG MỞ lúc này (bản trước làm vậy) — phần của Tiết khí sẽ phụ thuộc vào
+việc Lịch âm CÓ đang mở hay không, nên bấm mở Lịch âm là Tiết khí bị bớt lại
+ngay lập tức dù bản thân nó không đổi trạng thái, kéo tiêu đề Lịch âm nhảy
+đúng lúc người dùng vừa chạm vào nó. Nay BẤT ĐỐI XỨNG có chủ đích: Tiết khí
+(đứng trước) luôn được nhắm tới **65% phần dư**, không đổi dù Lịch âm mở hay
+đóng; Lịch âm (đứng sau cùng) lấy hết PHẦN CÒN LẠI sau khi trừ đúng phần Tiết
+khí đang dùng thật. Vì Tiết khí đứng trước Lịch âm nên chiều cao thật của nó
+ảnh hưởng tới vị trí tiêu đề Lịch âm — khoá cứng phần của nó triệt tiêu hẳn
+đường lây; còn Lịch âm không đứng trước ai nên nhường phần dư dôi ra cho nó
+không ảnh hưởng tới bất cứ tiêu đề nào — mở một mình thì nó vẫn chiếm trọn chỗ
+trống, không phải chừa vô cớ (bản test `test_cal_sections.mjs` canh cả hai:
+tiêu đề Tiết khí đứng yên qua đủ 5 tổ hợp gập/mở, và gập/mở CHÍNH Lịch âm không
+tự dịch chuyển tiêu đề của chính nó).
 
 ## Widget theo kịp ngôn ngữ
 

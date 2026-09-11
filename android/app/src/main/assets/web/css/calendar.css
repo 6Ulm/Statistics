@@ -217,10 +217,16 @@ table.cal-jq thead tr.cal-sec-head th {
    một giá trị "positioned", tự làm gốc cho con absolute rồi — đè thành relative
    là GỠ MẤT sticky của riêng ô cuối: hai cột đầu vẫn dính, cột thứ ba trôi theo
    nội dung, thành ra khi cuộn thì giá trị cột cuối đè lên chỗ hàng tiêu đề. */
-table.cal-jq thead th.cal-jq-last { padding-right: 18px; }
+/* KHÔNG tự riêng thêm padding-right cho ô tiêu đề cuối để chừa chỗ dấu mũi —
+   từng làm vậy (18px so với 10px của ô giá trị) khiến tiêu đề "Can chi"/"Vọng"
+   CĂN GIỮA lệch hẳn khỏi tâm của giá trị bên dưới, vì hai ô không còn cùng một
+   hộp nội dung. Dấu mũi bé và nép sát mép nên vừa gọn trong đúng phần đệm
+   .cal-jq-last đã có (10px thường, 7px màn hẹp) — chừa dư thì khỏi cần lớp
+   này nữa, ô tiêu đề và ô giá trị dùng chung một con số ở mọi bề rộng màn hình.
+*/
 .cal-sec-chev {
-    position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
-    font-size: 11px; font-weight: 400;
+    position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
+    font-size: 9px; font-weight: 400;
 }
 /* Gập lại thì chỉ còn hàng tiêu đề. */
 .cal-sec:not(.cal-sec-open) tbody { display: none; }
@@ -276,9 +282,11 @@ table.cal-jq .cal-jq-gz {
     width: 1%; white-space: nowrap; text-align: center;
     color: var(--text-main, #333);
 }
-/* .dp-table cho mọi <th> căn trái; th.c là ngoại lệ căn giữa. Chỉ TIÊU ĐỀ —
-   giá trị ngày giờ vẫn căn trái để các cột thẳng hàng nhau. */
-table.cal-jq thead th.c { text-align: center; }
+/* .dp-table cho mọi <th>/<td> căn trái theo mặc định; lớp "c" là ngoại lệ căn
+   giữa — dùng cho tiêu đề (Can chi, Sóc, Vọng) VÀ cho giá trị Sóc/Vọng (mục
+   Lịch âm), để hai bên căn theo đúng cùng một tâm. Cột "Dương lịch" của Tiết
+   khí không mang lớp này nên vẫn căn trái như cũ. */
+table.cal-jq th.c, table.cal-jq td.c { text-align: center; }
 /* Cột tên co đúng bằng chữ (width:1% là mẹo bảo trình duyệt thu về bề rộng nội
    dung tối thiểu), cột ngày ăn phần còn lại và căn TRÁI. Trước đây ngày căn
    phải nên tiêu đề "Dương lịch" (căn trái, như mọi th của .dp-table) không

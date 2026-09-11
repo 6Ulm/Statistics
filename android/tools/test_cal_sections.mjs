@@ -121,22 +121,53 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     await page.click('#tabCal'); await page.waitForTimeout(700);
     await setOpen(page, 'am', true);
     await page.waitForTimeout(600);
-    const cal = await page.evaluate(() => ({
-        dupTitle: !!document.getElementById('calAmTitle'),
-        headIsThead: !!document.querySelector('#calAmBan thead tr.cal-sec-head'),
-        // Tiêu đề Sóc và Vọng phải CĂN GIỮA cột (giá trị vẫn căn trái).
-        centred: [...document.querySelectorAll('#calAmBan thead th')]
-            .slice(1).every(x => getComputedStyle(x).textAlign === 'center'),
-        cols: [...document.querySelectorAll('#calAmBan thead th')]
-            .map(x => x.textContent.replace(/[▾▸]/g, '').trim()),
-        rows: [...document.querySelectorAll('#calAmBan tbody tr')]
-            .map(tr => [...tr.cells].map(c => c.textContent.trim()).join(' | ')),
-        active: (document.getElementById('calAmActive') || {}).textContent,
-    }));
+    const cal = await page.evaluate(() => {
+        // Tâm ngang của phần TEXT thật sự (Range trên node văn bản đầu tiên),
+        // không phải tâm của cả ô — ô thường rộng hơn hẳn nội dung, đo theo ô
+        // thì sai lệch dù chữ đã canh đúng.
+        var textCx = el => {
+            if (!el) return null;
+            var w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+            var n = w.nextNode();
+            if (!n) return null;
+            var rg = document.createRange();
+            rg.selectNodeContents(n);
+            var b = rg.getBoundingClientRect();
+            return (b.left + b.right) / 2;
+        };
+        var heads = [...document.querySelectorAll('#calAmBan thead th')];
+        var row1 = document.querySelector('#calAmBan tbody tr');
+        var socTd = row1 ? row1.children[1] : null;
+        var vongTd = row1 ? row1.children[2] : null;
+        return {
+            dupTitle: !!document.getElementById('calAmTitle'),
+            headIsThead: !!document.querySelector('#calAmBan thead tr.cal-sec-head'),
+            // Tiêu đề Sóc và Vọng phải CĂN GIỮA — VÀ giá trị bên dưới cũng vậy,
+            // không như cột "Dương lịch" của Tiết khí (vẫn căn trái).
+            headCentred: heads.slice(1).every(x => getComputedStyle(x).textAlign === 'center'),
+            valCentred: socTd && vongTd &&
+                getComputedStyle(socTd).textAlign === 'center' &&
+                getComputedStyle(vongTd).textAlign === 'center',
+            socHeadCx: textCx(heads[1]), socValCx: textCx(socTd),
+            vongHeadCx: textCx(heads[2]), vongValCx: textCx(vongTd),
+            cols: heads.map(x => x.textContent.replace(/[▾▸]/g, '').trim()),
+            rows: [...document.querySelectorAll('#calAmBan tbody tr')]
+                .map(tr => [...tr.cells].map(c => c.textContent.trim()).join(' | ')),
+            active: (document.getElementById('calAmActive') || {}).textContent,
+        };
+    });
     ok('không còn nhãn tiêu đề riêng', !cal.dupTitle);
     ok('hàng tên cột đóng luôn vai tiêu đề', cal.headIsThead);
     check('ba cột', cal.cols.join(' | '), 'Tháng âm | Sóc | Vọng');
-    ok('tiêu đề Sóc và Vọng căn giữa', cal.centred);
+    ok('tiêu đề Sóc và Vọng căn giữa', cal.headCentred);
+    ok('giá trị Sóc và Vọng cũng căn giữa', cal.valCentred);
+    // Tâm chữ tiêu đề phải trùng tâm chữ giá trị — đây chính là yêu cầu
+    // "Sóc/Vọng đang bị right aligned so với values, hãy fix để center so với
+    // values". Ngưỡng 1,5px: chừa cho lệch làm tròn nửa pixel của trình duyệt.
+    ok('tiêu đề "Sóc" trùng tâm giá trị', Math.abs(cal.socHeadCx - cal.socValCx) <= 1.5,
+        `tiêu đề ${cal.socHeadCx?.toFixed(1)} vs giá trị ${cal.socValCx?.toFixed(1)}`);
+    ok('tiêu đề "Vọng" trùng tâm giá trị', Math.abs(cal.vongHeadCx - cal.vongValCx) <= 1.5,
+        `tiêu đề ${cal.vongHeadCx?.toFixed(1)} vs giá trị ${cal.vongValCx?.toFixed(1)}`);
     ok('số tháng khớp bảng gốc', cal.rows.length === km.length, `${cal.rows.length} vs ${km.length}`);
     ok('từng dòng khớp bảng gốc', cal.rows.join('#') === km.join('#'),
         'Lịch: ' + (cal.rows[0] || '—') + ' · Kỳ Môn: ' + (km[0] || '—'));
@@ -184,6 +215,71 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     }));
     check('nhớ trạng thái mục Tiết khí', kept.jq, '0');
     check('nhớ trạng thái mục Lịch âm', kept.am, '1');
+    await ctx.close();
+}
+
+/* ── 3b. Vị trí tiêu đề CỐ ĐỊNH bất kể gập hay mở ──
+   Tiêu đề của MỘT mục không được di chuyển do CHÍNH mục đó (hay mục khác)
+   đổi trạng thái, TRỪ khi có mục nào NẰM TRÊN nó vừa đổi chiều cao thật (đó
+   là phản xạ bình thường của một accordion — đóng mục Tiết khí thì dĩ nhiên
+   đẩy tiêu đề Lịch âm bên dưới nó lên, không ai coi đó là lỗi).
+   Bug đã sửa: fitGrid từng có HAI công thức khác hẳn nhau — "còn mục nào mở"
+   dùng ROW_MIN, "không mục nào mở" cho lưới ăn hết phần dư (có thể chạm
+   ROW_MAX) — nên bấm gập/mở là lưới lịch đổi cỡ, kéo CẢ HAI tiêu đề nhảy hơn
+   100px dù người dùng chỉ đóng/mở một mục. Nay chỉ còn MỘT công thức, không
+   rẽ nhánh theo trạng thái, nên lưới (và do đó tiêu đề Tiết khí — mục ĐẦU
+   TIÊN, không có gì phía trên ngoài lưới) đứng yên tuyệt đối. */
+{
+    const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const { page, errs } = await openCal(ctx);
+
+    console.log('\nVị trí tiêu đề cố định bất kể gập/mở');
+    const pos = () => page.evaluate(() => {
+        var top = id => {
+            var el = document.getElementById(id);
+            return el ? +el.getBoundingClientRect().top.toFixed(1) : null;
+        };
+        return {
+            jq: top('calSecJq'), am: top('calSecAm'),
+            rowH: getComputedStyle(document.documentElement).getPropertyValue('--cal-row-h').trim(),
+        };
+    });
+
+    // Mục ĐẦU TIÊN (Tiết khí): không có gì phía trên ngoài lưới lịch cố định,
+    // nên tiêu đề của nó phải đứng đúng MỘT chỗ qua toàn bộ 5 trạng thái sau,
+    // bất kể trạng thái của MỤC KIA.
+    const seq = [];
+    seq.push(['jq mở · am đóng (ban đầu)', await pos()]);
+    await setOpen(page, 'jq', false); await page.waitForTimeout(500);
+    seq.push(['jq đóng · am đóng', await pos()]);
+    await setOpen(page, 'am', true); await page.waitForTimeout(500);
+    seq.push(['jq đóng · am mở', await pos()]);
+    await setOpen(page, 'jq', true); await page.waitForTimeout(500);
+    seq.push(['jq mở · am mở', await pos()]);
+    await setOpen(page, 'am', false); await page.waitForTimeout(500);
+    seq.push(['jq mở · am đóng (quay lại)', await pos()]);
+
+    const jqTops = seq.map(([, p]) => p.jq);
+    const rowHs = seq.map(([, p]) => p.rowH);
+    ok('tiêu đề Tiết khí đứng đúng một chỗ ở cả 5 trạng thái',
+        jqTops.every(t => Math.abs(t - jqTops[0]) < 1),
+        seq.map(([label, p]) => `${label}: ${p.jq}px`).join(' · '));
+    ok('chiều cao hàng lưới (--cal-row-h) không đổi theo trạng thái gập/mở',
+        rowHs.every(h => h === rowHs[0]), rowHs.join(' → '));
+
+    // Đóng/mở MỤC LỊCH ÂM (mục cuối) không được tự dịch chuyển TIÊU ĐỀ CỦA
+    // CHÍNH NÓ — vì tiêu đề luôn nằm TRÊN thân của chính mục ấy. Giữ nguyên
+    // trạng thái Tiết khí (đang mở) trong suốt phép so này.
+    const beforeAmToggle = await pos();
+    await setOpen(page, 'am', true); await page.waitForTimeout(500);
+    const amOpened = await pos();
+    await setOpen(page, 'am', false); await page.waitForTimeout(500);
+    const amClosed = await pos();
+    ok('gập/mở CHÍNH MÌNH không dịch chuyển tiêu đề của mục Lịch âm',
+        Math.abs(amOpened.am - beforeAmToggle.am) < 1 && Math.abs(amClosed.am - beforeAmToggle.am) < 1,
+        `trước ${beforeAmToggle.am}px · lúc mở ${amOpened.am}px · đóng lại ${amClosed.am}px`);
+
+    ok('không lỗi JS', errs.length === 0, errs.join('; '));
     await ctx.close();
 }
 

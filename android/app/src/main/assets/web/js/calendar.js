@@ -80,11 +80,6 @@
     // Chỗ thừa của màn hình cao giờ đổ vào bảng tiết khí 24 dòng, không kéo
     // hàng lịch cao ra nữa.
     var ROW_MIN = 58, ROW_MAX = 80;
-    // Bảng tiết khí mở ra thì phải cao đủ để đọc; dưới mức này thì thà để lưới
-    // lịch tràn một chút rồi cuộn cả trang.
-    // Dự phòng khi chưa đo được bảng tiết khí (lần vẽ đầu): 12 hàng hai cột cao
-    // chừng ngần này.
-    var JQ_FALLBACK = 300;
     /** Mục đang mở không bao giờ thấp hơn chừng này — thấp quá thì vô dụng. */
     var SEC_MIN = 96;
     /** Lề trên #calSections cộng lề giữa hai mục (xem calendar.css). */
@@ -273,36 +268,35 @@
         var avail = window.innerHeight / zoom
             - h(head) - h(dow) - h(bar) - vis(pin) - GRID_CHROME;
 
-        // Thanh tiêu đề nay là hàng <thead> NẰM TRONG khung cuộn của mỗi mục.
-        // Mục đang MỞ thì chiều cao ấy đã nằm trong phần được chia; mục đã ĐÓNG
-        // thì khung co lại vừa đúng hàng tiêu đề, và chừng ấy vẫn chiếm chỗ —
-        // phải trừ ra trước khi chia, không thì tab Lịch tràn đúng bằng tổng
-        // chiều cao hai hàng tiêu đề.
-        var secs = [['calJieQi', openJq], ['calAmBan', openAm]];
-        for (var si = 0; si < secs.length; si++) {
-            if (!secs[si][1]) avail -= h(document.getElementById(secs[si][0]));
-        }
-        avail -= SEC_MARGIN;
+        // Thanh tiêu đề nay là hàng <thead> NẰM TRONG khung cuộn của mỗi mục,
+        // và luôn hiện — chỉ tbody mới bị ẩn khi mục đóng. Đo THẲNG <thead>
+        // (không đo cả DIV) nên con số này KHÔNG phụ thuộc mục đang mở hay
+        // đóng: <thead> cao như nhau bất kể tbody bên trong có hiện hay
+        // không. Đo cả DIV như trước sẽ khiến chiều cao trừ ra đổi theo trạng
+        // thái, kéo theo "avail" — và do đó mọi phép chia bên dưới — trôi
+        // theo mục nào đang mở, đúng thứ ta đang cố xoá bỏ.
+        var jqHeadH = h(document.querySelector('#calJieQi thead'));
+        var amHeadH = h(document.querySelector('#calAmBan thead'));
+        avail -= jqHeadH + amHeadH + SEC_MARGIN;
 
-        // Không mục nào mở: lưới lịch lấy hết phần còn lại.
-        if (!openJq && !openAm) {
-            var rowFull = Math.max(ROW_MIN, Math.min(ROW_MAX, Math.floor(avail / weeks)));
-            document.documentElement.style.setProperty('--cal-row-h', rowFull + 'px');
-            return;
-        }
-
-        // Lưới lấy phần của nó trước (có trần), phần còn lại chia cho các mục
-        // đang mở — nhờ vậy màn hình cao không còn hở một mảng ở đáy. Đo chiều
-        // cao THẬT của từng bảng thay vì giữ sẵn một khoản cố định: giữ 320px
-        // mà bảng chỉ cao 280px thì 40px kia thành khoảng hở. Đo phần tử
-        // <table> chứ không phải khung cuộn — khung đang bị max-height của lần
-        // chia trước cắt ngắn.
-        var natOf = function (id) {
-            var tb = document.querySelector('#' + id + ' table.cal-jq');
-            return tb ? Math.ceil(tb.getBoundingClientRect().height / zoom) + 2 : JQ_FALLBACK;
-        };
-        var want = (openJq ? natOf('calJieQi') : 0) + (openAm ? natOf('calAmBan') : 0);
-        var secH = Math.min(want, Math.max(SEC_MIN, avail - ROW_MIN * weeks));
+        // CHỐT rowH — KHÔNG phụ thuộc openJq/openAm, để tiêu đề hai mục đứng
+        // đúng một chỗ dù gập hay mở.
+        //
+        // Bản trước có một nhánh riêng "không mục nào mở thì lưới lấy hết
+        // avail" (rowH có thể chạm ROW_MAX), khác hẳn nhánh "còn mục mở thì
+        // lưới chỉ lấy ROW_MIN, phần dư nhường cho mục". Hai công thức cho hai
+        // con số rowH khác nhau tới 20px/hàng — nhân với 5-6 hàng thì lưới lịch
+        // (và do đó CẢ HAI tiêu đề bên dưới) nhảy hơn 100px mỗi lần bấm gập/mở,
+        // dù người dùng chỉ đóng/mở một mục.
+        //
+        // Nay CHỈ một công thức, luôn chạy, không rẽ nhánh: lưới luôn giữ
+        // ROW_MIN, mọi phần dư (avail - ROW_MIN*weeks) luôn được "nhường" cho
+        // các mục — có mục nào mở hay không cũng vậy. Không mục nào mở thì
+        // phần dư ấy chẳng ai nhận (shareSectionHeight thấy danh sách rỗng thì
+        // bỏ qua), hoá thành một khoảng trống dưới hai hàng tiêu đề — đánh đổi
+        // chấp nhận được, vì thứ người dùng thấy khó chịu là tiêu đề NHẢY, chứ
+        // không phải một khoảng trống đứng yên.
+        var secH = Math.max(SEC_MIN, avail - ROW_MIN * weeks);
 
         var rowH = Math.max(ROW_MIN, Math.min(ROW_MAX, Math.floor((avail - secH) / weeks)));
         document.documentElement.style.setProperty('--cal-row-h', rowH + 'px');
@@ -506,12 +500,14 @@
                 var on = (moNum === curMonth);
                 var label = (isZH() ? mo.month + '月' : 'Tháng ' + mo.month) +
                     (mo.leap ? ' (' + t('leap') + ')' : '');
+                // Sóc/Vọng CĂN GIỮA (lớp "c"), khớp tiêu đề đã căn giữa — khác cột
+                // "Dương lịch" của Tiết khí, vốn căn trái nên vẫn để nguyên.
                 rows += '<tr' + (i % 2 === 0 ? ' class="dp-row-alt"' : '') + '>' +
                     '<td class="cal-jq-name' + (on ? ' cal-jq-on' : '') + '"' +
                     (on ? ' id="calAmActive"' : '') + '>' + esc(label) + '</td>' +
-                    '<td class="dp-num cal-jq-date' + (on ? ' cal-jq-on' : '') + '">' +
+                    '<td class="dp-num cal-jq-date c' + (on ? ' cal-jq-on' : '') + '">' +
                     esc(formatPreciseSocLocal(socSolar, info.tzId)) + '</td>' +
-                    '<td class="dp-num cal-jq-date cal-jq-last' + (on ? ' cal-jq-on' : '') + '">' +
+                    '<td class="dp-num cal-jq-date c cal-jq-last' + (on ? ' cal-jq-on' : '') + '">' +
                     esc(formatPreciseVongLocal(socSolar, info.tzId)) + '</td>' +
                     '</tr>';
             }
@@ -562,38 +558,55 @@
     }
 
     /**
-     * Chia chiều cao còn lại cho những mục ĐANG MỞ.
+     * Trần chiều cao của Tiết khí LUÔN CỐ ĐỊNH — `JQ_SHARE` phần trăm của
+     * `avail`, không đổi dù Lịch âm có đang mở hay không. Lịch âm thì lấy hết
+     * PHẦN CÒN LẠI sau khi trừ đúng phần Tiết khí đang dùng thật.
      *
-     * Vừa đủ chỗ thì mỗi mục lấy đúng chiều cao thật của nó — không mục nào
-     * phải cuộn. Chật thì chia theo tỉ lệ chiều cao thật, nên mục dài (24 tiết
-     * khí) được phần lớn hơn mục ngắn (12-13 tháng âm), thay vì cưa đôi rồi
-     * mục ngắn thừa chỗ còn mục dài cuộn mỏi tay.
+     * Bất đối xứng CÓ CHỦ ĐÍCH — không phải chia đều "cho công bằng":
+     *
+     * Tiết khí đứng TRƯỚC Lịch âm trong trang, nên chiều cao THẬT của nó ảnh
+     * hưởng tới vị trí tiêu đề của Lịch âm; còn Lịch âm đứng SAU CÙNG, chiều
+     * cao của nó không ảnh hưởng tới bất cứ tiêu đề nào khác. Nếu chia theo tỉ
+     * lệ `nat/sum` giữa các mục ĐANG MỞ (như bản trước), phần của Tiết khí sẽ
+     * phụ thuộc vào việc Lịch âm CÓ đang mở hay không — bấm mở Lịch âm là Tiết
+     * khí bị bớt lại NGAY LẬP TỨC dù bản thân nó không đổi trạng thái, kéo
+     * tiêu đề Lịch âm nhảy đúng lúc người dùng vừa chạm vào nó. Khoá cứng phần
+     * của Tiết khí thì triệt tiêu hẳn đường lây đó; nhường phần dư dôi ra cho
+     * Lịch âm (mục cuối, không ai đứng sau nó) thì được ngay cái lợi cũ —
+     * mở một mình thì Lịch âm vẫn chiếm trọn chỗ trống, không phải chừa vô cớ.
      */
+    var JQ_SHARE = 0.65;
     function shareSectionHeight(avail) {
-        var list = [];
-        if (openJq) list.push(document.getElementById('calJieQi'));
-        if (openAm) list.push(document.getElementById('calAmBan'));
-        list = list.filter(Boolean);
-        if (!list.length) return;
-        // Trần phải tính cả hàng tiêu đề, vì nó nằm TRONG khung cuộn.
-
-
         var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
-        var nat = list.map(function (el) {
-            var tb = el.querySelector('table');
+        var natOf = function (id) {
+            var tb = document.querySelector('#' + id + ' table');
             return tb ? Math.ceil(tb.getBoundingClientRect().height / zoom) + 2 : SEC_MIN;
-        });
-        var sum = nat.reduce(function (a, b) { return a + b; }, 0);
-        for (var i = 0; i < list.length; i++) {
-            var hgt = (sum <= avail) ? nat[i]
-                : Math.max(SEC_MIN, Math.floor(avail * nat[i] / sum));
-            list[i].style.maxHeight = hgt + 'px';
+        };
+        var jqUsed = 0;
+        if (openJq) {
+            var jqEl = document.getElementById('calJieQi');
+            var jqCap = Math.max(SEC_MIN, Math.floor(avail * JQ_SHARE));
+            jqUsed = Math.min(natOf('calJieQi'), jqCap);
+            if (jqEl) jqEl.style.maxHeight = jqUsed + 'px';
+        }
+        if (openAm) {
+            var amEl = document.getElementById('calAmBan');
+            var amCap = Math.max(SEC_MIN, avail - jqUsed);
+            if (amEl) amEl.style.maxHeight = Math.min(natOf('calAmBan'), amCap) + 'px';
         }
     }
 
+    /**
+     * Cuộn mục Tiết khí để hàng đang hiệu lực nằm giữa khung nhìn.
+     *
+     * `#calJieQi` CHÍNH LÀ khung cuộn (.cal-sec-body) từ khi tiêu đề chuyển
+     * thành hàng <thead> — trước đó còn một lớp bọc `.cal-jq-body` riêng, nay
+     * đã bỏ. Hàm này vẫn trỏ vào lớp bọc cũ nên querySelector luôn ra null và
+     * lặng lẽ không làm gì; mở mục Tiết khí không còn tự cuộn tới hôm nay.
+     */
     function scrollToActiveJieQi() {
         var row = document.getElementById('calJqActive');
-        var body = document.querySelector('#calJieQi .cal-jq-body');
+        var body = document.getElementById('calJieQi');
         if (!row || !body) return;
         body.scrollTop = Math.max(0,
             row.offsetTop - body.clientHeight / 2 + row.offsetHeight / 2);
