@@ -372,10 +372,15 @@
         // overflow-x nên trở thành vùng cuộn gần nhất của <th> sticky, mà chính
         // nó lại không giới hạn chiều cao — hàng tiêu đề vì thế trôi mất khi
         // cuộn. Chính .cal-sec-body cuộn là đủ.
+        // "Dương lịch" KHÔNG mang lớp "c": giá trị của nó (.cal-jq-date) căn
+        // TRÁI, nên tiêu đề cũng phải căn trái mới trùng tâm — gắn "c" vào đây
+        // (sót lại từ đợt đổi tiêu đề thành hàng <thead>, lẽ ra chỉ áp cho
+        // "Can chi") kéo tiêu đề lệch hẳn sang phải so với cột ngày giờ bên
+        // dưới, ~70px trên máy 393px.
         box.innerHTML =
             '<table class="dp-table cal-jq"><thead><tr class="cal-sec-head">' +
             '<th>' + t('colTk') + '</th>' +
-            '<th class="c">' + t('colDate') + '</th>' +
+            '<th>' + t('colDate') + '</th>' +
             '<th class="c cal-jq-last">' + t('colGz') +
             '<span class="cal-sec-chev"></span></th>' +
             '</tr></thead><tbody id="calJqBody">' + rows + '</tbody></table>';
@@ -547,12 +552,6 @@
         if (which === 'jq') { openJq = !openJq; prefSet(K_SEC_JQ, openJq ? '1' : '0'); }
         else                { openAm = !openAm; prefSet(K_SEC_AM, openAm ? '1' : '0'); }
         applySections();
-        // Công bố ngay từ lúc mở ứng dụng: widget phải đúng kể cả khi người
-        // dùng không chạm vào gì.
-        setTimeout(function () {
-            try { publishLunarCache(); } catch (e) {}
-            try { publishLang(); } catch (e) {}
-        }, 400);
         fitGrid(lastWeeks);
         if (which === 'jq' && openJq) setTimeout(scrollToActiveJieQi, 40);
     }
@@ -782,6 +781,17 @@
         if (sj === '0' || sj === '1') openJq = sj === '1';
         if (sa === '0' || sa === '1') openAm = sa === '1';
         applySections();
+
+        // Công bố ngay từ lúc MỞ ỨNG DỤNG — widget phải đúng kể cả khi người
+        // dùng không chạm vào gì (không đổi ngôn ngữ, không đổi địa điểm,
+        // không mở tab Lịch). processAll() ở app.js cũng tự publish sau
+        // 100ms, nhưng CHỈ KHI countryData/Solar đã sẵn sàng; gọi thêm ở đây,
+        // trễ hơn một khoảng an toàn, để không bỏ sót nếu thứ tự nạp lệch đi.
+        setTimeout(function () {
+            try { publishLunarCache(); } catch (e) {}
+            try { publishLang(); } catch (e) {}
+        }, 600);
+
         // Uỷ quyền: hàng tiêu đề nằm trong bảng, mà bảng thì dựng lại mỗi lần
         // vẽ — gắn thẳng vào nó thì cứ đổi tháng là mất người nghe.
         document.getElementById('calSections').addEventListener('click', function (e) {

@@ -76,25 +76,48 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     await page.waitForTimeout(500);
 
     console.log('\nMục "Tiết khí" — một dãy 24, thêm cột can chi');
-    const r = await page.evaluate(() => ({
-        // Tiêu đề mục CHÍNH LÀ hàng tên cột — không còn nhãn riêng, nên tên
-        // "Tiết khí" không bị lặp hai lần như trước.
-        dupTitle: !!document.getElementById('calJqTitle'),
-        headIsThead: !!document.querySelector('#calJieQi thead tr.cal-sec-head'),
-        cols: [...document.querySelectorAll('#calJieQi thead th')]
-            .map(x => x.textContent.replace(/[▾▸]/g, '').trim()),
-        rows: document.querySelectorAll('#calJqBody tr').length,
-        cells: [...document.querySelectorAll('#calJqBody tr')].map(tr => tr.cells.length),
-        // Không còn vách ngăn giữa hai nửa bảng — dấu hiệu của bố cục cũ.
-        split: document.querySelectorAll('#calJieQi .cal-jq-split').length,
-        gz: [...document.querySelectorAll('#calJqBody tr')].map(tr => tr.cells[2].textContent.trim()),
-    }));
+    const r = await page.evaluate(() => {
+        var textCx = el => {
+            if (!el) return null;
+            var w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+            var n = w.nextNode();
+            if (!n) return null;
+            var rg = document.createRange();
+            rg.selectNodeContents(n);
+            var b = rg.getBoundingClientRect();
+            return { left: b.left, cx: (b.left + b.right) / 2 };
+        };
+        var heads = [...document.querySelectorAll('#calJieQi thead th')];
+        var row1 = document.querySelector('#calJqBody tr');
+        return {
+            // Tiêu đề mục CHÍNH LÀ hàng tên cột — không còn nhãn riêng, nên tên
+            // "Tiết khí" không bị lặp hai lần như trước.
+            dupTitle: !!document.getElementById('calJqTitle'),
+            headIsThead: !!document.querySelector('#calJieQi thead tr.cal-sec-head'),
+            cols: heads.map(x => x.textContent.replace(/[▾▸]/g, '').trim()),
+            rows: document.querySelectorAll('#calJqBody tr').length,
+            cells: [...document.querySelectorAll('#calJqBody tr')].map(tr => tr.cells.length),
+            // Không còn vách ngăn giữa hai nửa bảng — dấu hiệu của bố cục cũ.
+            split: document.querySelectorAll('#calJieQi .cal-jq-split').length,
+            gz: [...document.querySelectorAll('#calJqBody tr')].map(tr => tr.cells[2].textContent.trim()),
+            // "Dương lịch" phải CĂN TRÁI như giá trị của nó — không phải "c"
+            // (từng bị gắn nhầm khi tiêu đề chuyển thành hàng <thead>, kéo
+            // tiêu đề lệch hẳn sang phải so với cột ngày giờ bên dưới).
+            dateHeadAlign: getComputedStyle(heads[1]).textAlign,
+            dateHeadLeft: textCx(heads[1])?.left,
+            dateValLeft: textCx(row1.children[1])?.left,
+        };
+    });
     ok('không còn nhãn tiêu đề riêng (hết lặp tên)', !r.dupTitle);
     ok('hàng tên cột đóng luôn vai tiêu đề', r.headIsThead);
     check('đúng 24 hàng', r.rows, 24);
     ok('mọi hàng đều 3 ô', r.cells.every(n => n === 3), r.cells.join(','));
     check('ba cột', r.cols.join(' | '), 'Tiết Khí | Dương lịch | Can chi');
     check('không còn chia đôi', r.split, 0);
+    check('tiêu đề "Dương lịch" căn trái (khớp giá trị)', r.dateHeadAlign, 'left');
+    ok('mép trái tiêu đề "Dương lịch" trùng mép trái giá trị',
+        Math.abs(r.dateHeadLeft - r.dateValLeft) <= 1.5,
+        `tiêu đề ${r.dateHeadLeft?.toFixed(1)} vs giá trị ${r.dateValLeft?.toFixed(1)}`);
     ok('cột can chi không ô nào trống', r.gz.every(x => x.length > 0));
     // Mỗi trụ tháng phủ đúng hai tiết khí liền nhau (tiết mở tháng, rồi khí).
     let pairs = true;
@@ -425,6 +448,18 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     ok('publishLang được gọi khi đổi nhãn', /\n\s*publishLang\(\);/.test(calJs));
     ok('đổi địa điểm cũng bảo widget vẽ lại',
         /__calRecalcWrapped[\s\S]{0,1700}pokeWidget\(\)/.test(calJs));
+
+    // Lỗi từng lọt lưới: khối "công bố lúc mở app" bị đặt NHẦM vào trong
+    // toggleSection (chỉ chạy khi người dùng bấm mở/đóng mục), thay vì vào
+    // đúng chỗ chạy một lần lúc khởi động — nên ai ghim widget rồi không đụng
+    // gì tới app thì widget không bao giờ nhận được bảng cả. Đo vị trí thật
+    // trong mã nguồn, không suy đoán qua hành vi (dễ bị một đường công bố
+    // khác của app.js che khuất mất sự khác biệt).
+    const toggleBody = (/function toggleSection\(which\) \{[\s\S]*?\n    \}/.exec(calJs) || [''])[0];
+    ok('toggleSection không tự công bố (đó là việc của lúc mở app, không phải lúc bấm)',
+        toggleBody.length > 0 && !/publishLunarCache/.test(toggleBody));
+    ok('có khối công bố kèm hẹn giờ Ở NGOÀI toggleSection (chạy lúc mở app)',
+        /setTimeout\(function \(\) \{[\s\S]{0,40}try \{ publishLunarCache\(\); \}/.test(calJs.replace(toggleBody, '')));
 }
 
 await browser.close();

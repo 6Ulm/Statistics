@@ -189,6 +189,88 @@ for (const tzId of ['Europe/Paris', 'Asia/Ho_Chi_Minh', 'America/New_York']) {
     }
 }
 
+/* ── Ca "khởi động lạnh, không chạm gì cả" — đúng kịch bản ghim widget rồi
+ * không mở app, hoặc mở lên rồi thoát ngay. boot() ở trên luôn tự gọi
+ * processAll() qua page.evaluate — cách đó chưa từng chứng minh đường công
+ * bố THẬT SỰ tự chạy được khi người dùng không đụng vào gì. Đây chính là ca
+ * mà lỗi "khối công bố nằm nhầm trong toggleSection thay vì DOMContentLoaded"
+ * đã lọt qua mọi lần kiểm trước đó. ── */
+{
+    const tag = 'Khởi động lạnh (không chạm gì)';
+    const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2 });
+    await ctx.addInitScript(() => {
+        window.__prefs = {};
+        window.__pokes = 0;
+        window.QMDJNative = {
+            getPref: k => (k in window.__prefs ? window.__prefs[k] : null),
+            setPref: (k, v) => { window.__prefs[k] = v; },
+            deviceTimeZone: () => 'Europe/Paris',
+            platform: () => 'android',
+            refreshCalendarWidget: () => { window.__pokes++; },
+        };
+    });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', e => errs.push(e.message));
+    await page.goto(base, { waitUntil: 'networkidle' });
+    // KHÔNG processAll(), KHÔNG đổi quốc gia, KHÔNG bấm tab nào. Chỉ đợi —
+    // qua cả đường ~100ms của app.js lẫn đường dự phòng 600ms của
+    // calendar.js — rồi xem kho tuỳ chọn đã có gì chưa.
+    await page.waitForTimeout(1800);
+
+    const raw = await page.evaluate(() => window.__prefs['qmdj.lunarCache'] || '');
+    const lang = await page.evaluate(() => window.__prefs['qmdj.lang'] || '');
+    const pokes = await page.evaluate(() => window.__pokes);
+    ok(`${tag}: tự công bố bảng tháng, không cần bấm gì`, !!raw,
+        'không ghi gì — đúng lỗi vừa sửa (khối công bố nhầm chỗ)');
+    ok(`${tag}: tự công bố ngôn ngữ`, !!lang, 'không ghi gì');
+    ok(`${tag}: có bảo widget vẽ lại`, pokes > 0, `${pokes} lần`);
+
+    if (raw) {
+        const tzId = await page.evaluate(() => countryData[document.getElementById('country').value].tzId);
+        const bar = raw.indexOf('|');
+        const cache = { tzId: raw.slice(0, bar), start: [], month: [], leap: [] };
+        for (const row of raw.slice(bar + 1).split(';')) {
+            if (!row) continue;
+            const f = row.split(',');
+            cache.start.push(+f[0]); cache.month.push(+f[1]); cache.leap.push(f[2] === '1');
+        }
+        ok(`${tag}: khoá bảng là mã múi giờ đang chọn`, cache.tzId === tzId, cache.tzId);
+
+        const appDays = await page.evaluate(() => {
+            const out = [];
+            const now = new Date();
+            for (let k = -60; k < 60; k++) {
+                const dt = new Date(now.getFullYear(), now.getMonth(), now.getDate() + k);
+                const info = countryData[document.getElementById('country').value];
+                const tz = getTimezoneOffset(info.tzId, new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 12));
+                const list = zi_months(dt.getFullYear(), info.lon, info.tzId, tz);
+                const a = Math.floor((14 - (dt.getMonth() + 1)) / 12);
+                const yy = dt.getFullYear() + 4800 - a, mm = (dt.getMonth() + 1) + 12 * a - 3;
+                const jdn = dt.getDate() + Math.floor((153 * mm + 2) / 5) + 365 * yy
+                    + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+                let at = -1;
+                for (let i = 0; i < list.length; i++) if (list[i].jdn <= jdn) at = i; else break;
+                out.push(at < 0 ? null : { jdn, day: jdn - list[at].jdn + 1, month: list[at].month });
+            }
+            return out;
+        });
+        let bad = 0, first = '';
+        for (const a of appDays) {
+            if (!a) continue;
+            const w = widgetLunar(a.jdn, tzId, cache);
+            if (!w || w.day !== a.day || w.month !== a.month) {
+                bad++;
+                if (!first) first = `JDN ${a.jdn}: app ${a.day}/${a.month} · widget ` +
+                    (w ? `${w.day}/${w.month} (${w.from})` : 'không tra được');
+            }
+        }
+        ok(`${tag}: 120 ngày khớp từng ngày (không hề bấm gì)`, bad === 0, `${bad} ngày lệch — ${first}`);
+    }
+    ok(`${tag}: không lỗi JS`, errs.length === 0, errs.join('; '));
+    await ctx.close();
+}
+
 await browser.close();
 server.close();
 console.log(`\n${pass} đạt · ${fail} hỏng`);

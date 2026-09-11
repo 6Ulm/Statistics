@@ -214,7 +214,7 @@ nguồn rồi so.
 widget: lỡ một nhịp nào đó (trang chưa nạp xong, broadcast rơi) thì cứ rời ứng
 dụng về màn hình chính là widget đã đúng.
 
-### Hai chỗ từng làm lịch đã ghim lệch khỏi ứng dụng
+### Ba chỗ từng làm lịch đã ghim lệch khỏi ứng dụng
 
 **Bảng tháng chỉ được ghi ở tab Lịch.** `publishLunarCache()` xưa chỉ chạy trong
 `render()`, mà `render()` chỉ chạy ở tab Lịch — trong khi ứng dụng **mở ra ở tab
@@ -231,6 +231,20 @@ mùa.
 
 Cả hai đều lặng lẽ: widget vẫn hiện một con số trông hợp lý, chỉ là không phải
 con số của ứng dụng — nên chỉ đo mới thấy, xem `test_widget_sync.mjs`.
+
+**Khối "công bố lúc mở app" lại bị đặt trong tay bấm.** Có một hẹn giờ mang
+đúng ý định "công bố ngay khi mở app, kể cả không đụng gì" — nhưng khối đó nằm
+NHẦM bên trong `toggleSection()`, hàm chỉ chạy khi người dùng bấm mở/đóng tiêu
+đề Tiết khí hay Lịch âm, thay vì nằm ở `DOMContentLoaded`, nơi chạy đúng một
+lần lúc khởi động. Ai ghim widget rồi không bao giờ đụng tới hai tiêu đề ấy thì
+khối này không bao giờ chạy. Bug lọt qua nhiều vòng kiểm trước đó vì `app.js`
+đã có sẵn một lời gọi `processAll()` 100ms sau khi mở app, tình cờ phủ kín gần
+hết các ca thực tế — `test_widget_sync.mjs` dù thử đúng kịch bản "khởi động
+lạnh, không chạm gì" vẫn xanh trên cả bản lỗi lẫn bản đã sửa, vì đường công bố
+kia của `app.js` che mất sự khác biệt. Nên bản kiểm bổ sung không đo hành vi mà
+soi thẳng VỊ TRÍ trong mã nguồn: `test_cal_sections.mjs` trích hẳn thân hàm
+`toggleSection` ra và khẳng định nó không gọi `publishLunarCache`, đồng thời
+khối hẹn giờ công bố ấy phải tồn tại Ở NGOÀI hàm đó.
 
 Phải gọi cho widget vẽ lại chứ không chỉ ghi khoá: widget chỉ tự vẽ lại lúc nửa
 đêm hoặc khi người dùng bấm ‹ ›, nên nếu chỉ ghi thì đổi sang tiếng Trung trong
