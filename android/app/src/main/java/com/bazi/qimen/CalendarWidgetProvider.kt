@@ -166,23 +166,30 @@ class CalendarWidgetProvider : AppWidgetProvider() {
 
     /**
      * Múi giờ của địa điểm người dùng đã chọn trong ứng dụng. Ứng dụng ghi cả
-     * cụm vị trí thành JSON dưới khoá `qmdj.location` (xem location.js); chưa
-     * chọn gì thì dùng giờ Việt Nam, đúng như cơ sở lịch âm của widget.
+     * cụm vị trí thành JSON dưới khoá `qmdj.location` (xem location.js).
+     *
+     * Chưa có khoá ấy thì dùng múi giờ CỦA MÁY — location.js cũng suy về múi
+     * giờ máy khi mở app lần đầu mà chưa có vị trí đã lưu lẫn không mục nào
+     * trong danh sách khớp múi giờ máy, nên đây là dự đoán gần nhất với cái
+     * app đang thực sự dùng. Trước đây chốt cứng giờ Việt Nam — hợp lý với
+     * CƠ SỞ LƯU TRỮ của lunar_months.txt/jieqi.txt (UTC+7), nhưng ứng dụng lại
+     * không hề mặc định vào Việt Nam, nên widget cứ lệch giờ tiết khí ngay từ
+     * lần mở app đầu tiên, trước khi ai kịp chọn địa điểm.
      */
     private fun selectedTimeZone(context: Context): TimeZone {
         val raw = context.getSharedPreferences("qmdj_prefs", Context.MODE_PRIVATE)
-            .getString("qmdj.location", null) ?: return TimeZone.getTimeZone(DEFAULT_TZ)
+            .getString("qmdj.location", null) ?: return TimeZone.getDefault()
         val id = try {
             JSONObject(raw).optString("tzId", "")
         } catch (e: JSONException) {
             ""
         }
-        if (id.isEmpty()) return TimeZone.getTimeZone(DEFAULT_TZ)
+        if (id.isEmpty()) return TimeZone.getDefault()
         val tz = TimeZone.getTimeZone(id)
         // getTimeZone() trả về GMT cho id lạ thay vì báo lỗi — bắt lại ở đây,
         // không thì một id hỏng lặng lẽ đẩy mọi mốc về UTC.
         return if (tz.id == "GMT" && id != "GMT" && id != "UTC") {
-            TimeZone.getTimeZone(DEFAULT_TZ)
+            TimeZone.getDefault()
         } else tz
     }
 
@@ -667,9 +674,6 @@ class CalendarWidgetProvider : AppWidgetProvider() {
          * mà lề càng rộng thì cung góc càng ăn nông.
          */
         private const val PAD_NARROWEST = 4f
-
-        /** Chưa chọn địa điểm thì lấy giờ Việt Nam — cùng cơ sở với lịch âm. */
-        private const val DEFAULT_TZ = "Asia/Ho_Chi_Minh"
 
         /** Máy này có cho ghim widget bằng một cú chạm không? */
         fun canPin(context: Context): Boolean {

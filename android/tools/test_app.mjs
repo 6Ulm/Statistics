@@ -182,6 +182,49 @@ check('1. đóng hộp thoại vị trí trước', String(w.__onBackPressed()),
 check('   hộp thoại đã đóng', String(doc.getElementById('locOverlay').classList.contains('open')), 'false');
 check('2. không còn gì để đóng', String(w.__onBackPressed()), 'false');
 
+console.log('\nMúi giờ máy không khớp mục nào có sẵn (mở app lần đầu, danh sách chỉ hơn chục nước)');
+{
+    const store2 = {};
+    const errors2 = [];
+    const vc2 = new VirtualConsole();
+    vc2.on('jsdomError', e => errors2.push(e.message));
+    vc2.on('error', (...a) => errors2.push(a.join(' ')));
+    const dom2 = new JSDOM(fs.readFileSync(path.join(WEB, 'index.html'), 'utf8'), {
+        url: 'file://' + path.join(WEB, 'index.html'),
+        runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true,
+        virtualConsole: vc2,
+    });
+    dom2.window.QMDJNative = {
+        readAsset: p => fs.readFileSync(path.join(WEB, p), 'utf8'),
+        getPref: k => (k in store2 ? store2[k] : null),
+        setPref: (k, v) => { store2[k] = v; },
+        deviceTimeZone: () => 'America/Los_Angeles', // không nằm trong countryData
+        hasLocationPermission: () => false,
+        platform: () => 'android',
+        requestLocation: () => {},
+    };
+    await new Promise(r => dom2.window.addEventListener('load', r));
+    await new Promise(r => setTimeout(r, 400));
+    const w2 = dom2.window;
+
+    // Lỗi từng lọt lưới: không mục nào trong countryData khớp múi giờ máy thì
+    // trước đây BỎ QUA LUÔN — #country đứng ở mặc định 'FR' của app.js (Pháp)
+    // còn qmdj.location trống trơn. Widget đọc thấy trống lại tự suy múi giờ
+    // khác (trước đây chốt cứng Việt Nam) — hai bên lệch giờ tiết khí ngay từ
+    // lần mở app đầu tiên, mà đây lại đúng lúc NGƯỜI DÙNG CHƯA TỪNG CHỌN GÌ
+    // nên không hề biết để mà sửa.
+    check('có ghi qmdj.location dù múi giờ máy không khớp mục nào có sẵn',
+        String(!!store2['qmdj.location']), 'true');
+    const loc2 = store2['qmdj.location'] ? JSON.parse(store2['qmdj.location']) : null;
+    check('khoá đúng múi giờ máy (không lặng lẽ đổi sang nước khác)',
+        loc2 ? loc2.tzId : '(không ghi gì)', 'America/Los_Angeles');
+    const cur2 = w2.QMDJLocation.current();
+    check('vị trí app đang dùng cũng đúng múi giờ máy',
+        cur2 ? cur2.tzId : '(không có)', 'America/Los_Angeles');
+
+    if (errors2.length) { fail++; console.log('  lỗi JS:', errors2.slice(0, 5)); }
+}
+
 console.log('\nLỗi JS trong lúc chạy:', errors.length ? errors.slice(0, 5) : 'không có');
 if (errors.length) fail++;
 console.log(`\n${checks - fail}/${checks} phép kiểm đạt.`);

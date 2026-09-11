@@ -548,6 +548,18 @@
             });
             if (match) {
                 applyLoc(makeLoc(match.name_vi, match.lat, match.lon, match.tzId, 'preset', match.name_zh), false);
+            } else {
+                // Múi giờ máy không trùng mục có sẵn nào (danh sách chỉ có
+                // hơn chục nước) — KHÔNG ĐƯỢC bỏ qua, nếu không #country lặng
+                // lẽ đứng ở mặc định của app.js (Pháp) mà `qmdj.location`
+                // chẳng bao giờ được ghi. Widget đọc thấy trống thì tự suy ra
+                // múi giờ khác — hai bên lệch giờ tiết khí ngay từ lần mở app
+                // đầu tiên, mà đây lại là NGƯỜI DÙNG CHƯA TỪNG CHỌN GÌ nên
+                // không hề biết để mà sửa. Ghi tạm một vị trí đúng múi giờ máy
+                // (kinh độ suy từ độ lệch UTC — chỉ ảnh hưởng Chính Ngọ, không
+                // ảnh hưởng lịch âm/tiết khí vốn chỉ cần đúng múi giờ).
+                var h = getTimezoneOffset(tzId, new Date());
+                applyLoc(makeLoc('GMT' + (h >= 0 ? '+' : '') + h, 0, h * 15, tzId, 'device'), false);
             }
         }
     });

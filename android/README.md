@@ -214,7 +214,7 @@ nguồn rồi so.
 widget: lỡ một nhịp nào đó (trang chưa nạp xong, broadcast rơi) thì cứ rời ứng
 dụng về màn hình chính là widget đã đúng.
 
-### Ba chỗ từng làm lịch đã ghim lệch khỏi ứng dụng
+### Bốn chỗ từng làm lịch đã ghim lệch khỏi ứng dụng
 
 **Bảng tháng chỉ được ghi ở tab Lịch.** `publishLunarCache()` xưa chỉ chạy trong
 `render()`, mà `render()` chỉ chạy ở tab Lịch — trong khi ứng dụng **mở ra ở tab
@@ -250,6 +250,28 @@ Phải gọi cho widget vẽ lại chứ không chỉ ghi khoá: widget chỉ t�
 đêm hoặc khi người dùng bấm ‹ ›, nên nếu chỉ ghi thì đổi sang tiếng Trung trong
 ứng dụng mà lịch đã ghim vẫn tiếng Việt hàng giờ liền. Đổi **địa điểm** cũng
 gọi, vì giờ giao tiết và bảng tháng của widget đều theo nơi đang chọn.
+
+**Chưa từng chọn địa điểm thì app và widget đoán HAI NƠI KHÁC NHAU.** Đây là
+chỗ lệch nặng nhất trong cả bốn, vì không cần điều kiện đặc biệt gì — chỉ cần
+CHƯA TỪNG mở bảng chọn vị trí, đúng cảnh mở app lần đầu sau khi cài. `countryData`
+chỉ có hơn chục nước; múi giờ máy không khớp mục nào trong đó thì `location.js`
+xưa BỎ QUA LUÔN, không ghi `qmdj.location`, còn `app.js` lặng lẽ đứng ở mặc định
+chốt cứng `'FR'` (Pháp). Widget đọc thấy khoá ấy trống lại tự chốt cứng sang một
+nước KHÁC — Việt Nam (`DEFAULT_TZ = "Asia/Ho_Chi_Minh"`) — nên hai bên tính giờ
+giao tiết lệch nguyên số giờ (Paris–Hà Nội lệch 5-6 tiếng tuỳ mùa) ngay từ lần mở
+app đầu tiên, trước khi ai kịp làm gì cả. Hai chỗ chốt cứng này còn KHÁC NHAU,
+nên không phải chỉnh một hằng số cho khớp hằng số kia là xong.
+
+Sửa ở gốc, không phải sửa cho khớp: `location.js` giờ LUÔN ghi lại một vị trí
+đúng múi giờ máy khi không mục nào khớp (kinh độ suy từ độ lệch UTC hiện tại,
+nhãn "GMT±N" cho biết đây là suy đoán) — không bỏ qua nữa. Phòng thêm một lớp,
+`CalendarWidgetProvider.kt` đổi mặc định "chưa có gì" từ MỘT NƯỚC chốt cứng
+sang `TimeZone.getDefault()` — múi giờ của chính cái máy đang chạy — để dù JS
+có lỡ chưa kịp ghi gì thì widget vẫn đoán gần đúng nhất có thể, thay vì nhảy
+sang một nước bất kỳ không liên quan. `test_app.mjs` dựng lại đúng cảnh "múi
+giờ máy không khớp mục nào có sẵn", đối chiếu `qmdj.location` VÀ vị trí app
+đang dùng đều phải khớp múi giờ máy; `test_cal_sections.mjs` soi mã Kotlin,
+khẳng định không còn chỗ nào chốt cứng "Asia/Ho_Chi_Minh" nữa.
 
 Xem trước bản tiếng Trung mà không cần dựng APK:
 `node tools/shot_widget.mjs` rồi mở `widget_preview.html?lang=zh`.

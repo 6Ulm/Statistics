@@ -460,6 +460,18 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         toggleBody.length > 0 && !/publishLunarCache/.test(toggleBody));
     ok('có khối công bố kèm hẹn giờ Ở NGOÀI toggleSection (chạy lúc mở app)',
         /setTimeout\(function \(\) \{[\s\S]{0,40}try \{ publishLunarCache\(\); \}/.test(calJs.replace(toggleBody, '')));
+
+    // Lỗi khác từng lọt lưới: chưa chọn địa điểm (hoặc múi giờ máy không
+    // khớp mục nào trong countryData) thì Kotlin xưa chốt cứng giờ VIỆT NAM,
+    // trong khi app lại mặc định/suy ra một nơi khác — widget và app lệch
+    // giờ tiết khí ngay từ lần mở đầu tiên. Nay cả hai lượt "chưa có gì" đều
+    // phải rơi về múi giờ MÁY (TimeZone.getDefault()), không phải một nước
+    // chốt cứng.
+    ok('widget KHÔNG còn chốt cứng giờ Việt Nam khi chưa có địa điểm',
+        !/getTimeZone\(DEFAULT_TZ\)/.test(provKt) && !/"Asia\/Ho_Chi_Minh"/.test(provKt));
+    const selectedTzFn = (/private fun selectedTimeZone[\s\S]*?\n    \}/.exec(provKt) || [''])[0];
+    check('cả ba lượt "chưa có gì" đều rơi về múi giờ máy',
+        (selectedTzFn.match(/TimeZone\.getDefault\(\)/g) || []).length, 3);
 }
 
 await browser.close();
