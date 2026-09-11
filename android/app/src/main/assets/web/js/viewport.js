@@ -28,7 +28,7 @@
     var BASE_GAP = 3;
     // Trần của khe sau khi rót phần thừa vào. Không có trần thì trên máy cao
     // (A51: dôi 82px cho 4 khe) các bảng rời rạc hẳn ra, xấu hơn cả khoảng hở.
-    var GAP_MAX = 21;
+    var GAP_MAX = 24;
 
     var lastW = 0, lastH = 0, timer = null;
 

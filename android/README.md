@@ -195,6 +195,13 @@ ngang, chia đôi, mép trái / vạch giữa / mép phải trùng khít mép ha
 và Lịch. Muốn trùng thì không được có đệm ngoài hay khe giữa — vạch ngăn chính
 là viền trái của ô thứ hai, y như `.tab-item + .tab-item`.
 
+Hai hàng **cao bằng nhau** nhờ cùng chốt vào `--dock-row-h`, chứ không thả theo
+chữ: chữ Hán cao hơn chữ Latin nên một tab tự nhiên cao 27px ở tiếng Trung mà
+chỉ 25px ở tiếng Việt — pin một con số cho riêng hàng dưới thì không tài nào
+bằng ở cả hai thứ tiếng. Giữa hai hàng chừa 6px, và nền thanh dưới lấy màu nền
+TRANG (không phải trắng) nên cái khe ấy hiện ra thành một vạch, hai hàng tách
+bạch chứ không dính liền một khối.
+
 Trên máy hẹp nhất (S21, 360px) ô ngày giờ chốt ở 50% khiến nửa phải chỉ còn
 ~166px, trong khi ô phái nới 1,5 lần cộng ô "Đầy đủ" cần ~189px. Dưới 375px hệ
 số nới hạ còn 1,1 và lề ngang còn 7px — nhãn vẫn hiện trọn, chỉ thoáng ít hơn.

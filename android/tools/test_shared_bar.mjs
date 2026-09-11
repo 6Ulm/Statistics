@@ -372,6 +372,13 @@ for (const d of DEVICES) {
                     ctry: [box('countryDisplayBtn').left, box('countryDisplayBtn').right],
                     tab0: [tabs[0].left, tabs[0].right],
                     tab1: [tabs[1].left, tabs[1].right],
+                    tabH: tabs[0].height,
+                    boxH: box('langDisplayBtn').height,
+                    // Khe giữa hàng tab và hàng dùng chung.
+                    rowGap: box('sharedBar').top -
+                            document.getElementById('tabBar').getBoundingClientRect().bottom,
+                    // Mép phải ô địa điểm, tính theo phần trăm bề ngang.
+                    rightPct: box('countryDisplayBtn').right / window.innerWidth * 100,
                     // Nửa phải của hàng vẫn phải đủ chỗ cho ô phái và ô Đầy đủ.
                     fits: document.getElementById('qmRow').scrollWidth <=
                           document.getElementById('qmRow').clientWidth + 1,
@@ -387,6 +394,12 @@ for (const d of DEVICES) {
                 `[${r.lang.map(v => v.toFixed(1))}] vs [${r.tab0.map(v => v.toFixed(1))}]`);
             ok(`${tag}: ô địa điểm trùng khít tab Lịch`, near(r.ctry, r.tab1),
                 `[${r.ctry.map(v => v.toFixed(1))}] vs [${r.tab1.map(v => v.toFixed(1))}]`);
+            ok(`${tag}: ô cao đúng bằng tab`, Math.abs(r.boxH - r.tabH) <= 1,
+                `ô ${r.boxH.toFixed(1)}px vs tab ${r.tabH.toFixed(1)}px`);
+            ok(`${tag}: có khe giữa hai hàng`, r.rowGap >= 3 && r.rowGap <= 10,
+                `khe ${r.rowGap.toFixed(1)}px`);
+            ok(`${tag}: mép phải ô địa điểm ≥ 75%`, r.rightPct >= 75,
+                `mới ${r.rightPct.toFixed(1)}%`);
             ok(`${tag}: nửa phải vẫn đủ chỗ`, r.fits);
             await ctx.close();
         }
