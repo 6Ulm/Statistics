@@ -87,6 +87,8 @@
     var JQ_FALLBACK = 300;
     /** Mục đang mở không bao giờ thấp hơn chừng này — thấp quá thì vô dụng. */
     var SEC_MIN = 96;
+    /** Lề trên #calSections cộng lề giữa hai mục (xem calendar.css). */
+    var SEC_MARGIN = 11;
 
     /** Khoá kho tuỳ chọn: bảng tháng âm cho widget (xem publishLunarCache). */
     var K_LUNAR_CACHE = 'qmdj.lunarCache';
@@ -271,10 +273,16 @@
         var avail = window.innerHeight / zoom
             - h(head) - h(dow) - h(bar) - vis(pin) - GRID_CHROME;
 
-        // Hai thanh tiêu đề gập luôn chiếm chỗ, dù mục có mở hay không.
-        var heads = h(document.getElementById('calJqHead')) +
-                    h(document.getElementById('calAmHead'));
-        avail -= heads;
+        // Thanh tiêu đề nay là hàng <thead> NẰM TRONG khung cuộn của mỗi mục.
+        // Mục đang MỞ thì chiều cao ấy đã nằm trong phần được chia; mục đã ĐÓNG
+        // thì khung co lại vừa đúng hàng tiêu đề, và chừng ấy vẫn chiếm chỗ —
+        // phải trừ ra trước khi chia, không thì tab Lịch tràn đúng bằng tổng
+        // chiều cao hai hàng tiêu đề.
+        var secs = [['calJieQi', openJq], ['calAmBan', openAm]];
+        for (var si = 0; si < secs.length; si++) {
+            if (!secs[si][1]) avail -= h(document.getElementById(secs[si][0]));
+        }
+        avail -= SEC_MARGIN;
 
         // Không mục nào mở: lưới lịch lấy hết phần còn lại.
         if (!openJq && !openAm) {
@@ -371,10 +379,11 @@
         // nó lại không giới hạn chiều cao — hàng tiêu đề vì thế trôi mất khi
         // cuộn. Chính .cal-sec-body cuộn là đủ.
         box.innerHTML =
-            '<table class="dp-table cal-jq"><thead><tr>' +
+            '<table class="dp-table cal-jq"><thead><tr class="cal-sec-head">' +
             '<th>' + t('colTk') + '</th>' +
-            '<th>' + t('colDate') + '</th>' +
-            '<th class="c cal-jq-last">' + t('colGz') + '</th>' +
+            '<th class="c">' + t('colDate') + '</th>' +
+            '<th class="c cal-jq-last">' + t('colGz') +
+            '<span class="cal-sec-chev"></span></th>' +
             '</tr></thead><tbody id="calJqBody">' + rows + '</tbody></table>';
         setTimeout(scrollToActiveJieQi, 40);
         return true;
@@ -507,10 +516,11 @@
                     '</tr>';
             }
             box.innerHTML =
-                '<table class="dp-table cal-jq"><thead><tr>' +
+                '<table class="dp-table cal-jq"><thead><tr class="cal-sec-head">' +
                 '<th>' + t('colMonth') + '</th>' +
                 '<th class="c">' + t('colSoc') + '</th>' +
-                '<th class="c cal-jq-last">' + t('colVong') + '</th>' +
+                '<th class="c cal-jq-last">' + t('colVong') +
+                '<span class="cal-sec-chev"></span></th>' +
                 '</tr></thead><tbody>' + rows + '</tbody></table>';
         } catch (e) {
             console.warn('calAmBan:', e);
@@ -523,13 +533,17 @@
 
     /** Áp trạng thái mở/đóng lên DOM (không chia lại chiều cao). */
     function applySections() {
-        var pairs = [['calSecJq', openJq, 'calJqChev'], ['calSecAm', openAm, 'calAmChev']];
+        var pairs = [['calSecJq', openJq], ['calSecAm', openAm]];
         for (var i = 0; i < pairs.length; i++) {
             var sec = document.getElementById(pairs[i][0]);
             if (!sec) continue;
             sec.classList.toggle('cal-sec-open', pairs[i][1]);
-            var chev = document.getElementById(pairs[i][2]);
+            var chev = sec.querySelector('.cal-sec-chev');
             if (chev) chev.textContent = pairs[i][1] ? '▾' : '▸';
+            // Mục đã đóng thì trả lại chiều cao tự nhiên (chỉ còn hàng tiêu đề),
+            // không thì trần của lần chia trước còn chừa một khoảng trống.
+            var body = sec.querySelector('.cal-sec-body');
+            if (body && !pairs[i][1]) body.style.maxHeight = '';
         }
     }
 
@@ -555,6 +569,8 @@
         if (openAm) list.push(document.getElementById('calAmBan'));
         list = list.filter(Boolean);
         if (!list.length) return;
+        // Trần phải tính cả hàng tiêu đề, vì nó nằm TRONG khung cuộn.
+
 
         var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
         var nat = list.map(function (el) {
@@ -626,10 +642,6 @@
         if (tc) tc.querySelector('.tab-lbl').textContent = t('tabCal');
         var pin = document.getElementById('calPinBtn');
         if (pin) pin.textContent = t('pin');
-        var jqT = document.getElementById('calJqTitle');
-        if (jqT) jqT.textContent = t('secJq');
-        var amT = document.getElementById('calAmTitle');
-        if (amT) amT.textContent = t('secAm');
         publishLang();
         if (document.body.classList.contains('view-cal')) render();
     }
@@ -715,8 +727,14 @@
         if (sj === '0' || sj === '1') openJq = sj === '1';
         if (sa === '0' || sa === '1') openAm = sa === '1';
         applySections();
-        document.getElementById('calJqHead').addEventListener('click', function () { toggleSection('jq'); });
-        document.getElementById('calAmHead').addEventListener('click', function () { toggleSection('am'); });
+        // Uỷ quyền: hàng tiêu đề nằm trong bảng, mà bảng thì dựng lại mỗi lần
+        // vẽ — gắn thẳng vào nó thì cứ đổi tháng là mất người nghe.
+        document.getElementById('calSections').addEventListener('click', function (e) {
+            var head = e.target.closest ? e.target.closest('.cal-sec-head') : null;
+            if (!head) return;
+            var sec = head.closest('.cal-sec');
+            if (sec) toggleSection(sec.id === 'calSecJq' ? 'jq' : 'am');
+        });
 
         document.getElementById('tabQmdj').addEventListener('click', function () { showTab('qmdj'); });
         document.getElementById('tabCal').addEventListener('click', function () { showTab('cal'); });

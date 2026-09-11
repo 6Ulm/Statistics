@@ -64,9 +64,8 @@ async function openCal(ctx) {
 }
 const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     const sec = document.getElementById(w === 'jq' ? 'calSecJq' : 'calSecAm');
-    if (sec.classList.contains('cal-sec-open') !== v) {
-        document.getElementById(w === 'jq' ? 'calJqHead' : 'calAmHead').click();
-    }
+    // Thanh tiêu đề nay là hàng <thead> của chính bảng.
+    if (sec.classList.contains('cal-sec-open') !== v) sec.querySelector('.cal-sec-head').click();
 }, [which, want]);
 
 /* ── 1. Mục Tiết khí: 24 hàng liền, ba cột ── */
@@ -78,15 +77,20 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
 
     console.log('\nMục "Tiết khí" — một dãy 24, thêm cột can chi');
     const r = await page.evaluate(() => ({
-        title: document.getElementById('calJqTitle').textContent.trim(),
-        cols: [...document.querySelectorAll('#calJieQi thead th')].map(x => x.textContent.trim()),
+        // Tiêu đề mục CHÍNH LÀ hàng tên cột — không còn nhãn riêng, nên tên
+        // "Tiết khí" không bị lặp hai lần như trước.
+        dupTitle: !!document.getElementById('calJqTitle'),
+        headIsThead: !!document.querySelector('#calJieQi thead tr.cal-sec-head'),
+        cols: [...document.querySelectorAll('#calJieQi thead th')]
+            .map(x => x.textContent.replace(/[▾▸]/g, '').trim()),
         rows: document.querySelectorAll('#calJqBody tr').length,
         cells: [...document.querySelectorAll('#calJqBody tr')].map(tr => tr.cells.length),
         // Không còn vách ngăn giữa hai nửa bảng — dấu hiệu của bố cục cũ.
         split: document.querySelectorAll('#calJieQi .cal-jq-split').length,
         gz: [...document.querySelectorAll('#calJqBody tr')].map(tr => tr.cells[2].textContent.trim()),
     }));
-    check('tiêu đề mục', r.title, 'Tiết khí');
+    ok('không còn nhãn tiêu đề riêng (hết lặp tên)', !r.dupTitle);
+    ok('hàng tên cột đóng luôn vai tiêu đề', r.headIsThead);
     check('đúng 24 hàng', r.rows, 24);
     ok('mọi hàng đều 3 ô', r.cells.every(n => n === 3), r.cells.join(','));
     check('ba cột', r.cols.join(' | '), 'Tiết Khí | Dương lịch | Can chi');
@@ -118,14 +122,21 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     await setOpen(page, 'am', true);
     await page.waitForTimeout(600);
     const cal = await page.evaluate(() => ({
-        title: document.getElementById('calAmTitle').textContent.trim(),
-        cols: [...document.querySelectorAll('#calAmBan thead th')].map(x => x.textContent.trim()),
+        dupTitle: !!document.getElementById('calAmTitle'),
+        headIsThead: !!document.querySelector('#calAmBan thead tr.cal-sec-head'),
+        // Tiêu đề Sóc và Vọng phải CĂN GIỮA cột (giá trị vẫn căn trái).
+        centred: [...document.querySelectorAll('#calAmBan thead th')]
+            .slice(1).every(x => getComputedStyle(x).textAlign === 'center'),
+        cols: [...document.querySelectorAll('#calAmBan thead th')]
+            .map(x => x.textContent.replace(/[▾▸]/g, '').trim()),
         rows: [...document.querySelectorAll('#calAmBan tbody tr')]
             .map(tr => [...tr.cells].map(c => c.textContent.trim()).join(' | ')),
         active: (document.getElementById('calAmActive') || {}).textContent,
     }));
-    check('tiêu đề mục', cal.title, 'Lịch âm');
+    ok('không còn nhãn tiêu đề riêng', !cal.dupTitle);
+    ok('hàng tên cột đóng luôn vai tiêu đề', cal.headIsThead);
     check('ba cột', cal.cols.join(' | '), 'Tháng âm | Sóc | Vọng');
+    ok('tiêu đề Sóc và Vọng căn giữa', cal.centred);
     ok('số tháng khớp bảng gốc', cal.rows.length === km.length, `${cal.rows.length} vs ${km.length}`);
     ok('từng dòng khớp bảng gốc', cal.rows.join('#') === km.join('#'),
         'Lịch: ' + (cal.rows[0] || '—') + ' · Kỳ Môn: ' + (km[0] || '—'));
@@ -161,7 +172,10 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     await page.waitForTimeout(600);
     const oneOpen = await state();
     ok('đóng mục này không đụng mục kia', !oneOpen.jq && oneOpen.am);
-    ok('mục đã đóng không chiếm chỗ', oneOpen.jqH === 0, String(oneOpen.jqH));
+    // Đóng lại thì chỉ còn HÀNG TIÊU ĐỀ (trước đây thân bị display:none nên
+    // cao 0; nay tiêu đề nằm trong thân nên còn đúng chiều cao một hàng).
+    ok('mục đã đóng chỉ còn hàng tiêu đề', oneOpen.jqH > 10 && oneOpen.jqH < 46,
+        String(oneOpen.jqH));
     ok('mục còn mở được rộng thêm', oneOpen.amH > both.amH, `${oneOpen.amH} ≤ ${both.amH}`);
 
     // Trạng thái phải sống sót qua lần mở sau (ghi vào kho tuỳ chọn).

@@ -18,30 +18,23 @@
 }
 
 /* Ngôn ngữ + địa điểm: một hàng, nằm dưới hai tab, hiện ở CẢ hai tab. */
-/* Hộp của hàng này phải TRÙNG hộp của các bảng trong trang thì mới canh được
-   theo vạch cột của bảng Tứ Trụ. Các bảng rộng min(màn hình − 12, --max-w) và
-   nằm giữa; thanh dưới thì cố định nên không ăn đệm của <body>, phải tự dựng
-   lại: rộng tối đa --max-w + 12, đệm 6 mỗi bên, margin auto. */
+/* Rộng hết bề ngang và chia đôi ĐÚNG như hàng tab ngay trên: mép trái, vạch
+   giữa và mép phải của hai ô trùng khít mép hai tab Kỳ Môn / Lịch. Muốn trùng
+   thì không được có đệm ngoài hay khe giữa — vạch ngăn ở giữa chính là viền
+   trái của ô thứ hai, y như .tab-item + .tab-item. */
 #sharedBar {
-    display: flex; align-items: center;
-    gap: 6px;
-    width: 100%;
-    max-width: calc(var(--max-w) + 12px);
-    margin: 0 auto;
-    padding: 6px;
+    display: flex; align-items: stretch;
+    gap: 0;
+    padding: 0;
     border-top: 1px solid var(--border-color, #ddd);
     background: var(--bg-white, #fff);
 }
-/* Hai ô chia nhau đúng một hàng: ngôn ngữ · địa điểm. */
-#sharedBar #langDisplayBtn    { flex: 1; min-width: 0; }
-#sharedBar #countryDisplayBtn { flex: 1; min-width: 0; }
-/* Mép phải ô địa điểm dừng đúng ở vạch ngăn Ngày|Giờ, tức 75% bề rộng bảng.
-   Chèn một ô đệm chiếm phần tư cuối: trừ đi 6px để cái khe đứng TRƯỚC nó cũng
-   nằm trong phần tư ấy, nhờ vậy mép phải rơi đúng 75% chứ không phải 75% − 6. */
-#sharedBar::after {
-    content: '';
-    flex: 0 0 calc(25% - 6px);
+#sharedBar .picker-btn {
+    flex: 1 1 0; min-width: 0;
+    border: none; border-radius: 0;
+    min-height: 42px;
 }
+#sharedBar #countryDisplayBtn { border-left: 1px solid var(--border-color, #ddd); }
 /* Thanh tab thấp thôi — nó ăn vào chiều cao vốn đã chật của màn Kỳ Môn. */
 .tab-item {
     flex: 1;
@@ -198,49 +191,49 @@ body.view-cal #calView { display: block; }
    mục nào không đủ chỗ thì tự cuộn dọc trong khung của nó. */
 #calSections { margin-top: 6px; }
 .cal-sec + .cal-sec { margin-top: 5px; }
-.cal-sec-head {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 6px 10px;
-    background: var(--bg-white, #fff);
-    border: 1px solid var(--border-color, #ddd);
-    border-radius: 6px;
-    cursor: pointer; user-select: none;
+/* Hàng <thead> đóng luôn vai tiêu đề mục: bấm vào là gập/mở, và vì nó nằm
+   trong chính bảng nên tên cột luôn thẳng hàng với giá trị bên dưới. */
+.cal-sec-head { cursor: pointer; user-select: none; }
+.cal-sec-head:active th { filter: brightness(.96); }
+table.cal-jq thead tr.cal-sec-head th {
+    font-size: 12.5px; font-weight: 700;
 }
-.cal-sec-head:active { background: var(--bg-alt, #e4e4ea); }
-.cal-sec-title { font-size: 13px; font-weight: 700; }
-.cal-sec-chev  { font-size: 12px; }
+/* Dấu mũi nằm nép bên phải ô cuối, không đẩy chữ lệch khỏi tâm cột. */
+table.cal-jq thead th.cal-jq-last { position: relative; padding-right: 18px; }
+.cal-sec-chev {
+    position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+    font-size: 11px; font-weight: 400;
+}
+/* Gập lại thì chỉ còn hàng tiêu đề. */
+.cal-sec:not(.cal-sec-open) tbody { display: none; }
 
 /* Hai mục khác màu hẳn nhau để liếc một cái là biết đang mở mục nào: Tiết khí
    theo đỏ của đầu lịch (#d32f2f), Lịch âm theo chàm. Mỗi mục tô cả chữ, dấu
    mũi, nền nhạt và một vạch dọc bên trái, chứ không chỉ đổi màu chữ — nền và
    vạch còn nhận ra được khi mục đã gập lại. */
-#calSecJq .cal-sec-head {
-    background: #fdeeee;
-    border-color: #f0c4c4;
-    border-left: 3px solid #d32f2f;
+#calSecJq .cal-sec-head th {
+    background: #fdeeee; color: #b71c1c;
+    border-bottom-color: #f0c4c4;
 }
-#calSecJq .cal-sec-title { color: #b71c1c; }
-#calSecJq .cal-sec-chev  { color: #d32f2f; }
-#calSecJq.cal-sec-open .cal-sec-body { border-color: #f0c4c4; }
+#calSecJq .cal-sec-head th:first-child { box-shadow: inset 3px 0 0 #d32f2f; }
+#calSecJq .cal-sec-chev { color: #d32f2f; }
+#calSecJq .cal-sec-body { border-color: #f0c4c4; }
 
-#calSecAm .cal-sec-head {
-    background: #eef1fd;
-    border-color: #c4cbf0;
-    border-left: 3px solid #3949ab;
+#calSecAm .cal-sec-head th {
+    background: #eef1fd; color: #283593;
+    border-bottom-color: #c4cbf0;
 }
-#calSecAm .cal-sec-title { color: #283593; }
-#calSecAm .cal-sec-chev  { color: #3949ab; }
-#calSecAm.cal-sec-open .cal-sec-body { border-color: #c4cbf0; }
+#calSecAm .cal-sec-head th:first-child { box-shadow: inset 3px 0 0 #3949ab; }
+#calSecAm .cal-sec-chev { color: #3949ab; }
+#calSecAm .cal-sec-body { border-color: #c4cbf0; }
 /* Mục đang mở: nối liền thanh tiêu đề với thân, thành một khối. */
 .cal-sec-open .cal-sec-head { border-radius: 6px 6px 0 0; border-bottom: none; }
-.cal-sec-body { display: none; }
-.cal-sec-open .cal-sec-body {
-    display: block;
+.cal-sec-body {
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     background: var(--bg-white, #fff);
     border: 1px solid var(--border-color, #ddd);
-    border-radius: 0 0 6px 6px;
+    border-radius: 6px;
 }
 
 /* Bảng dùng lại .dp-table của bảng Sách Bổ pháp — chỉ chỉnh đệm cho hợp khung

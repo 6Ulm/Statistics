@@ -304,22 +304,15 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
     <div id="calGrid"></div>
 
     <!-- Hai mục gập được, mở/đóng độc lập nên có thể mở CẢ HAI cùng lúc; mục
-         nào dài quá thì tự cuộn trong khung của nó. -->
+         nào dài quá thì tự cuộn trong khung của nó.
+
+         Thanh tiêu đề CHÍNH LÀ hàng <thead> của bảng: ba tên cột vừa là tiêu
+         đề mục vừa là tên cột, nên không còn cảnh "Tiết khí" xuất hiện hai lần,
+         và tên cột thẳng hàng với giá trị bên dưới mà không phải canh tay —
+         chính bảng lo việc ấy. Nội dung do calendar.js dựng. -->
     <div id="calSections">
-        <div class="cal-sec" id="calSecJq">
-            <div class="cal-sec-head" id="calJqHead">
-                <span class="cal-sec-title" id="calJqTitle">Tiết khí</span>
-                <span class="cal-sec-chev" id="calJqChev">▾</span>
-            </div>
-            <div class="cal-sec-body" id="calJieQi"></div>
-        </div>
-        <div class="cal-sec" id="calSecAm">
-            <div class="cal-sec-head" id="calAmHead">
-                <span class="cal-sec-title" id="calAmTitle">Lịch âm</span>
-                <span class="cal-sec-chev" id="calAmChev">▾</span>
-            </div>
-            <div class="cal-sec-body" id="calAmBan"></div>
-        </div>
+        <div class="cal-sec" id="calSecJq"><div class="cal-sec-body" id="calJieQi"></div></div>
+        <div class="cal-sec" id="calSecAm"><div class="cal-sec-body" id="calAmBan"></div></div>
     </div>
 
     <button type="button" id="calPinBtn">📌 Ghim lịch ra màn hình chính</button>

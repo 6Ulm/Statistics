@@ -122,6 +122,14 @@ Phải đặt lại mốc này mỗi lần vẽ: `processAll()` để lại múi
 Dưới lưới lịch là hai mục, mở/đóng **độc lập** nên mở được cả hai cùng lúc;
 trạng thái nhớ qua các lần mở ứng dụng.
 
+Thanh tiêu đề **chính là hàng `<thead>`** của bảng: ba tên cột vừa làm tiêu đề
+mục vừa làm tên cột. Trước đây có một nhãn riêng nên "Tiết khí" hiện hai lần —
+một ở tiêu đề, một ở tên cột — mà tên cột lại phải canh tay cho thẳng với giá
+trị. Nay chính bảng lo việc ấy, và gập lại thì `tbody` ẩn đi, còn đúng hàng tiêu
+đề. Đổi lại, `fitGrid` phải trừ chiều cao hàng tiêu đề của những mục ĐANG ĐÓNG
+(mục đang mở thì đã nằm trong phần được chia) — quên là tab Lịch tràn đúng bằng
+tổng hai hàng ấy.
+
 **Tiết khí** — một dãy **24 hàng liền**, ba cột: tên · ngày giờ · **can chi
 tháng**. Trước đây bảng chia đôi thành hai nhóm 12 cho vừa một màn hình; nay có
 thêm cột thứ ba nên xếp thẳng một dãy rồi cho cuộn, đọc theo thứ tự thời gian
@@ -174,22 +182,18 @@ gọi, vì giờ giao tiết và bảng tháng của widget đều theo nơi đa
 Xem trước bản tiếng Trung mà không cần dựng APK:
 `node tools/shot_widget.mjs` rồi mở `widget_preview.html?lang=zh`.
 
-## Canh theo vạch cột của bảng Tứ Trụ
+## Canh hàng theo thứ bên dưới / bên trên
 
-Khe giữa ô ngày giờ và ô phái rơi đúng vạch **Tháng|Ngày**; mép phải ô địa điểm
-dừng đúng vạch **Ngày|Giờ**.
+Khe giữa ô ngày giờ và ô phái rơi đúng vạch **Tháng|Ngày** của bảng Tứ Trụ ngay
+dưới. `.controls` lọt vào 6px (đệm 5 + viền 1) so với bảng ấy, nên bề rộng hàng
+là `w = W − 12`; muốn tâm khe nằm ở `L + W/2` thì ô ngày giờ rộng đúng
+`calc(50% − 2px)` (2px là nửa khe 4px). Đo được lệch **0,0px** trên
+360/393/412/520px × hai ngôn ngữ.
 
-Hai hàng ấy nằm trong hai hộp khác nhau: `.controls` lọt vào 6px (đệm 5 + viền
-1) so với bảng Tứ Trụ, còn thanh dưới thì `position: fixed` nên không ăn đệm của
-`<body>` — phải dựng lại đúng hộp ấy (`max-width: calc(var(--max-w) + 12px)`,
-đệm 6, `margin: 0 auto`). Sau đó bề rộng hàng là `w = W − 12`, nên muốn tâm khe
-nằm ở `L + W/2` thì ô ngày giờ rộng đúng `calc(50% − 2px)` (2px là nửa khe 4px).
-Mép phải ô địa điểm lùi về 75% bằng một ô đệm `calc(25% − 6px)` — trừ 6px để cái
-khe đứng trước nó cũng nằm trong phần tư cuối.
-
-Đo được lệch 0,0px ở khe và ≤ 0,3px ở mép phải, trên 360/393/412/520px × hai
-ngôn ngữ (ngưỡng canh là 1px: bảng Tứ Trụ dùng `border-collapse` nên vạch dày
-1px).
+Hai ô của hàng dùng chung thì canh theo **hàng tab ngay trên nó**: rộng hết bề
+ngang, chia đôi, mép trái / vạch giữa / mép phải trùng khít mép hai tab Kỳ Môn
+và Lịch. Muốn trùng thì không được có đệm ngoài hay khe giữa — vạch ngăn chính
+là viền trái của ô thứ hai, y như `.tab-item + .tab-item`.
 
 Trên máy hẹp nhất (S21, 360px) ô ngày giờ chốt ở 50% khiến nửa phải chỉ còn
 ~166px, trong khi ô phái nới 1,5 lần cộng ô "Đầy đủ" cần ~189px. Dưới 375px hệ

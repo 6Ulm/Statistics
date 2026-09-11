@@ -343,10 +343,9 @@ for (const d of DEVICES) {
 }
 
 /* ── 7. Canh theo vạch cột của bảng Tứ Trụ ──
-   Khe giữa ô ngày giờ và ô phái phải rơi đúng vạch Tháng|Ngày; mép phải ô địa
-   điểm phải dừng đúng vạch Ngày|Giờ. Hai hàng này nằm ở hai hộp khác nhau
-   (.controls lọt vào 6px, thanh dưới thì cố định nên không ăn đệm của body),
-   nên chỉ cần một bên đổi đệm là lệch ngay — canh bằng số đo, không bằng mắt. */
+   Khe giữa ô ngày giờ và ô phái phải rơi đúng vạch Tháng|Ngày của bảng Tứ Trụ;
+   còn hai ô của hàng dùng chung phải trùng khít hai tab ngay trên nó. Chỉ cần
+   một bên đổi đệm là lệch ngay — canh bằng số đo, không bằng mắt. */
 {
     console.log('\nCanh theo vạch cột bảng Tứ Trụ');
     for (const d of [{ name: 'S21', w: 360 }, { name: 'S21 FE', w: 393 },
@@ -363,11 +362,16 @@ for (const d of DEVICES) {
                     .map(x => x.getBoundingClientRect());
                 const box = id => document.getElementById(id).getBoundingClientRect();
                 const dt = box('dateDisplayBtn'), mb = box('methodDisplayBtn');
+                const tabs = [...document.querySelectorAll('.tab-item')]
+                    .map(x => x.getBoundingClientRect());
                 return {
                     seam: (dt.right + mb.left) / 2,   // tâm khe giữa hai ô
                     edgeTN: th[1].right,              // vạch Tháng | Ngày
-                    phap: box('countryDisplayBtn').right,
-                    edgeNG: th[2].right,              // vạch Ngày | Giờ
+                    // Hàng dùng chung phải trùng khít hàng tab ngay trên nó.
+                    lang: [box('langDisplayBtn').left, box('langDisplayBtn').right],
+                    ctry: [box('countryDisplayBtn').left, box('countryDisplayBtn').right],
+                    tab0: [tabs[0].left, tabs[0].right],
+                    tab1: [tabs[1].left, tabs[1].right],
                     // Nửa phải của hàng vẫn phải đủ chỗ cho ô phái và ô Đầy đủ.
                     fits: document.getElementById('qmRow').scrollWidth <=
                           document.getElementById('qmRow').clientWidth + 1,
@@ -378,8 +382,11 @@ for (const d of DEVICES) {
             // tâm vạch và mép ô lệch nhau tối đa nửa viền.
             ok(`${tag}: khe trùng vạch Tháng|Ngày`, Math.abs(r.seam - r.edgeTN) <= 1,
                 `khe ${r.seam.toFixed(1)} vs vạch ${r.edgeTN.toFixed(1)}`);
-            ok(`${tag}: mép phải ô địa điểm trùng vạch Ngày|Giờ`, Math.abs(r.phap - r.edgeNG) <= 1,
-                `mép ${r.phap.toFixed(1)} vs vạch ${r.edgeNG.toFixed(1)}`);
+            const near = (a, b) => Math.abs(a[0] - b[0]) <= 1 && Math.abs(a[1] - b[1]) <= 1;
+            ok(`${tag}: ô ngôn ngữ trùng khít tab Kỳ Môn`, near(r.lang, r.tab0),
+                `[${r.lang.map(v => v.toFixed(1))}] vs [${r.tab0.map(v => v.toFixed(1))}]`);
+            ok(`${tag}: ô địa điểm trùng khít tab Lịch`, near(r.ctry, r.tab1),
+                `[${r.ctry.map(v => v.toFixed(1))}] vs [${r.tab1.map(v => v.toFixed(1))}]`);
             ok(`${tag}: nửa phải vẫn đủ chỗ`, r.fits);
             await ctx.close();
         }
