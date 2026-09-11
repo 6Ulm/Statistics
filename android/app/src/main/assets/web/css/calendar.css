@@ -213,7 +213,11 @@ table.cal-jq thead tr.cal-sec-head th {
     font-size: 12.5px; font-weight: 700;
 }
 /* Dấu mũi nằm nép bên phải ô cuối, không đẩy chữ lệch khỏi tâm cột. */
-table.cal-jq thead th.cal-jq-last { position: relative; padding-right: 18px; }
+/* KHÔNG đặt position ở đây. `position: sticky` (khai ở .cal-jq thead th) đã là
+   một giá trị "positioned", tự làm gốc cho con absolute rồi — đè thành relative
+   là GỠ MẤT sticky của riêng ô cuối: hai cột đầu vẫn dính, cột thứ ba trôi theo
+   nội dung, thành ra khi cuộn thì giá trị cột cuối đè lên chỗ hàng tiêu đề. */
+table.cal-jq thead th.cal-jq-last { padding-right: 18px; }
 .cal-sec-chev {
     position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
     font-size: 11px; font-weight: 400;

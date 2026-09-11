@@ -234,6 +234,50 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     await ctx.close();
 }
 
+/* ── 4b. Cuộn: cả ba ô tiêu đề phải dính lại CÙNG NHAU ──
+   Từng có lúc ô tiêu đề cuối bị đè position:relative (để đặt dấu mũi), mà
+   relative thì GỠ MẤT position:sticky của riêng ô ấy: hai cột đầu vẫn dính, cột
+   thứ ba trôi theo nội dung — cuộn xuống là giá trị cột cuối đè lên chỗ hàng
+   tiêu đề. Trên máy thật trông như bảng vỡ đôi. */
+{
+    const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const { page, errs } = await openCal(ctx);
+    await setOpen(page, 'jq', true);
+    await setOpen(page, 'am', true);
+    await page.waitForTimeout(600);
+
+    console.log('\nCuộn: hàng tiêu đề dính lại');
+    await page.evaluate(() => {
+        document.getElementById('calJieQi').scrollTop = 200;
+        document.getElementById('calAmBan').scrollTop = 120;
+    });
+    await page.waitForTimeout(400);
+    const r = await page.evaluate(() => {
+        const chk = id => {
+            const body = document.getElementById(id);
+            const br = body.getBoundingClientRect();
+            const ths = [...body.querySelectorAll('thead th')];
+            const tops = ths.map(x => +x.getBoundingClientRect().top.toFixed(1));
+            return {
+                scrolled: body.scrollTop,
+                sameTop: new Set(tops).size === 1,
+                atTop: Math.abs(tops[0] - br.top) < 2,
+                sticky: ths.every(x => getComputedStyle(x).position === 'sticky'),
+                tops,
+            };
+        };
+        return { jq: chk('calJieQi'), am: chk('calAmBan') };
+    });
+    for (const [name, x] of [['Tiết khí', r.jq], ['Lịch âm', r.am]]) {
+        ok(`${name}: thật sự đã cuộn`, x.scrolled > 50, String(x.scrolled));
+        ok(`${name}: mọi ô tiêu đề đều sticky`, x.sticky);
+        ok(`${name}: ba ô tiêu đề cùng một hàng`, x.sameTop, x.tops.join(','));
+        ok(`${name}: tiêu đề dính mép trên khung`, x.atTop, x.tops.join(','));
+    }
+    ok('không lỗi JS', errs.length === 0, errs.join('; '));
+    await ctx.close();
+}
+
 /* ── 5. Hợp đồng đồng bộ widget — soi thẳng vào mã Kotlin ──
    Widget vẽ bằng Kotlin, mà ở đây không chạy được Kotlin: phần kiểm ở trên chỉ
    chứng minh được NỬA phía JavaScript (ghi khoá, gọi cầu). Nửa kia từng hỏng
@@ -274,11 +318,17 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     ok('rời ứng dụng thì widget vẽ lại', /fun onStop\(\)[\s\S]{0,160}refreshNow\(this\)/.test(mainKt));
 
     // Phía JavaScript: đổi ngôn ngữ VÀ đổi địa điểm đều phải báo.
-    ok('đổi ngôn ngữ thì gọi refreshCalendarWidget',
-        /function publishLang\(\)[\s\S]{0,400}refreshCalendarWidget/.test(calJs));
+    ok('có một chỗ dùng chung để bảo widget vẽ lại',
+        /function pokeWidget\(\)[\s\S]{0,300}refreshCalendarWidget/.test(calJs));
+    ok('đổi ngôn ngữ thì bảo widget vẽ lại',
+        /function publishLang\(\)[\s\S]{0,200}pokeWidget\(\)/.test(calJs));
+    ok('ghi bảng tháng xong cũng bảo widget vẽ lại',
+        /function publishLunarCache\(\)[\s\S]{0,3000}pokeWidget\(\)/.test(calJs));
+    ok('ghi bảng tháng ngoài cả tab Lịch',
+        /__calRecalcWrapped[\s\S]{0,1600}publishLunarCache\(\)/.test(calJs));
     ok('publishLang được gọi khi đổi nhãn', /\n\s*publishLang\(\);/.test(calJs));
-    ok('đổi địa điểm cũng gọi refreshCalendarWidget',
-        (calJs.match(/refreshCalendarWidget/g) || []).length >= 2);
+    ok('đổi địa điểm cũng bảo widget vẽ lại',
+        /__calRecalcWrapped[\s\S]{0,1700}pokeWidget\(\)/.test(calJs));
 }
 
 await browser.close();

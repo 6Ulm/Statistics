@@ -174,6 +174,24 @@ nguồn rồi so.
 widget: lỡ một nhịp nào đó (trang chưa nạp xong, broadcast rơi) thì cứ rời ứng
 dụng về màn hình chính là widget đã đúng.
 
+### Hai chỗ từng làm lịch đã ghim lệch khỏi ứng dụng
+
+**Bảng tháng chỉ được ghi ở tab Lịch.** `publishLunarCache()` xưa chỉ chạy trong
+`render()`, mà `render()` chỉ chạy ở tab Lịch — trong khi ứng dụng **mở ra ở tab
+Kỳ Môn**. Ai không bao giờ mở tab Lịch thì ứng dụng KHÔNG HỀ đưa bảng tháng của
+mình cho widget, và widget đành dùng bảng đóng sẵn ở mốc UTC+7: ở Paris lệch
+~0,35% số tháng và ~1% nhãn tháng. Nay bảng được ghi sau **mọi** lần engine tính
+lại, và ghi luôn một lần lúc mở ứng dụng.
+
+**Khoá bảng là số phút lệch.** Ứng dụng ghi độ lệch của *ngày đang chọn*, widget
+lại so với độ lệch của *đúng ngày nó đang vẽ*. Ở nước có DST hai con số ấy khác
+nhau suốt nửa năm (Paris: 120 và 60), nên bảng của ứng dụng bị chối oan và
+widget lặng lẽ lùi về bảng đóng sẵn. Nay khoá là **mã múi giờ**, không đổi theo
+mùa.
+
+Cả hai đều lặng lẽ: widget vẫn hiện một con số trông hợp lý, chỉ là không phải
+con số của ứng dụng — nên chỉ đo mới thấy, xem `test_widget_sync.mjs`.
+
 Phải gọi cho widget vẽ lại chứ không chỉ ghi khoá: widget chỉ tự vẽ lại lúc nửa
 đêm hoặc khi người dùng bấm ‹ ›, nên nếu chỉ ghi thì đổi sang tiếng Trung trong
 ứng dụng mà lịch đã ghim vẫn tiếng Việt hàng giờ liền. Đổi **địa điểm** cũng
@@ -938,6 +956,24 @@ ba phái, và ô ngày giờ phải rộng hơn hẳn, tức nó là ô **ăn** 
 phải ô bị bóp.
 
 Chính phép thử này bắt được lỗi `#optOverlay` bị luật ẩn của tab Lịch xoá mất.
+
+### Lịch đã ghim có khớp ứng dụng không
+
+```bash
+node test_widget_sync.mjs
+```
+
+Chạy ứng dụng thật trong Chromium, giả lập lớp native để hứng đúng những gì nó
+ghi ra kho tuỳ chọn, rồi **dựng lại đường tra của widget** (bản sao
+`LunarTable.lunarOf`, cả bảng của ứng dụng lẫn bảng đóng sẵn) trên chính dữ liệu
+ấy và so **từng ngày** trong 120 ngày quanh hôm nay.
+
+Ca quan trọng nhất là **KHÔNG mở tab Lịch** — đúng thói quen thật, vì ứng dụng
+mở ra ở tab Kỳ Môn. Phép thử canh cả việc widget có THẬT SỰ dùng bảng của ứng
+dụng hay không, chứ không chỉ canh con số cuối: bảng đóng sẵn thường cho cùng
+đáp án, nên nếu chỉ so số thì lỗi "ứng dụng không ghi gì cho widget" vẫn lọt.
+Gỡ bản sửa ra thì phép thử đỏ ngay: *0/120 ngày* tra được trong bảng của ứng
+dụng.
 
 ### Hai mục của tab Lịch và ngôn ngữ của widget
 

@@ -331,7 +331,16 @@
            bề rộng hàng w = W − 12 với W là bề rộng bảng. Muốn tâm khe nằm ở
            L + W/2 thì ô ngày giờ phải rộng 0,5·w − 2 — tức đúng
            calc(50% − 2px), với 2px là nửa khe 4px. */
-        #qmRow #dateDisplayBtn { flex: 0 0 calc(50% - 2px); white-space: nowrap; }
+        /* TRẦN 50%, không phải chốt cứng 50%. Chốt cứng thì ô phái và ô "Đầy
+           đủ" luôn được nguyên bề rộng của chúng, tổng vượt hàng là tràn ra
+           ngoài màn hình — trên máy thật phông Samsung rộng hơn phông ở máy
+           dựng nên "Đầy đủ" bị cắt mất, dù đo ở đây thì vừa. Cho ô ngày giờ co
+           lại khi chật: còn chỗ thì nó vẫn nở đúng tới 50% (khe vẫn trùng vạch
+           Tháng|Ngày), chật thì nó nhường, chứ không đẩy ai ra khỏi màn hình. */
+        #qmRow #dateDisplayBtn {
+            flex: 1 1 auto; max-width: calc(50% - 2px);
+            white-space: nowrap; overflow: hidden;
+        }
         #qmRow #methodDisplayBtn { flex: 0 0 auto; padding-inline: 9px; }
         /* Xếp chồng nhãn đang hiện với ba nhãn ẩn trong CÙNG một ô lưới:
            bề rộng cột = bề rộng nhãn rộng nhất, nên ô không co giãn theo phái
@@ -365,11 +374,12 @@
             cursor: pointer; accent-color: var(--accent, #5c7cfa);
         }
 
-        /* Máy hẹp nhất (S21: 360px): ô ngày giờ chốt ở 50% nên nửa phải chỉ còn
-           ~166px, mà ô phái nới 1,5 lần cộng ô "Đầy đủ" cần tới ~189px — tràn
-           26px. Hạ hệ số nới và lề ngang một nấc cho vừa; nhãn vẫn hiện trọn,
-           chỉ là quanh chữ thoáng ít hơn so với máy rộng hơn. */
-        @media (max-width: 375px) {
+        /* Điện thoại (≤412px): ô ngày giờ lấy tới 50% nên nửa phải khá chật —
+           ô phái nới 1,5 lần cộng ô "Đầy đủ" là vừa đủ tràn. Hạ hệ số nới và lề
+           ngang một nấc để có khoảng dự phòng: phông trên máy thật (Samsung)
+           rộng hơn phông ở máy dựng, mà cái tràn ấy thì cắt mất chữ "Đầy đủ".
+           Nhãn vẫn hiện trọn, chỉ là quanh chữ thoáng ít hơn máy rộng. */
+        @media (max-width: 412px) {
             #qmRow .opt-sizer { --sizer-scale: 1.1; }
             #qmRow #methodDisplayBtn { padding-inline: 7px; }
             #cobanToggleWrap { margin-left: 2px; gap: 3px; }

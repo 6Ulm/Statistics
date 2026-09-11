@@ -230,7 +230,7 @@ object LunarTable {
      * ghi sẵn vài chục tháng quanh hôm nay ở đúng múi giờ đang chọn — widget
      * đọc cái này trước, hết tầm với mới quay về bảng đóng sẵn.
      */
-    private var cacheTzMin: Int = Int.MIN_VALUE
+    private var cacheTzId: String = ""
     private var cacheStart: IntArray = IntArray(0)
     private var cacheMonth: IntArray = IntArray(0)
     private var cacheLeap: BooleanArray = BooleanArray(0)
@@ -243,7 +243,7 @@ object LunarTable {
         try {
             val bar = raw.indexOf('|')
             if (bar <= 0) { cacheStart = IntArray(0); return }
-            cacheTzMin = raw.substring(0, bar).toInt()
+            cacheTzId = raw.substring(0, bar)
             val parts = raw.substring(bar + 1).split(';').filter { it.isNotEmpty() }
             val st = IntArray(parts.size); val mo = IntArray(parts.size)
             val lp = BooleanArray(parts.size)
@@ -260,9 +260,17 @@ object LunarTable {
         }
     }
 
-    /** Tra trong bảng của ứng dụng; trả null nếu không phủ tới ngày này. */
-    private fun fromAppCache(jdn: Int, tzMin: Int): LunarDay? {
-        if (cacheStart.size < 2 || cacheTzMin != tzMin) return null
+    /**
+     * Tra trong bảng của ứng dụng; trả null nếu không phủ tới ngày này.
+     *
+     * So bằng MÃ MÚI GIỜ chứ không bằng số phút lệch. Số phút lệch đổi theo mùa
+     * ở nước có DST: ứng dụng ghi độ lệch của ngày đang chọn, widget lại tra
+     * theo độ lệch của đúng ngày nó đang vẽ — ở Paris hai con số ấy khác nhau
+     * suốt nửa năm, nên bảng của ứng dụng bị chối oan và widget lặng lẽ lùi về
+     * bảng đóng sẵn ở mốc UTC+7, tức hết đồng bộ.
+     */
+    private fun fromAppCache(jdn: Int, tzId: String): LunarDay? {
+        if (cacheStart.size < 2 || cacheTzId.isEmpty() || cacheTzId != tzId) return null
         // Ngày nằm ngoài đoạn bảng phủ thì không đoán — để bảng đóng sẵn lo.
         if (jdn < cacheStart[0] || jdn >= cacheStart[cacheStart.size - 1]) return null
         var lo = 0; var hi = cacheStart.size - 1; var idx = -1
@@ -275,7 +283,7 @@ object LunarTable {
     }
 
     fun lunarOf(jdn: Int, tz: TimeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh")): LunarDay? {
-        fromAppCache(jdn, tz.getOffset(jdnToMillis(jdn)) / 60000)?.let { return it }
+        fromAppCache(jdn, tz.id)?.let { return it }
         if (!loaded || starts.isEmpty()) return null
         // Mùng 1 = ngày CHỨA điểm Sóc, xét ở múi giờ đang xem. Bảng ghi điểm
         // Sóc ở mốc UTC+7 nên phải quy đổi trước rồi mới so — chốt cứng mùng 1
@@ -290,10 +298,6 @@ object LunarTable {
         if (idx < 0) return null
         return LunarDay(jdn - monthStart(idx, tz) + 1, lMonth[idx], lYear[idx], lLeap[idx])
     }
-
-    /** Mốc epoch (ms) của 12:00 trưa ngày JDN — đủ để tra offset/DST. */
-    private fun jdnToMillis(jdn: Int): Long =
-        (jdn - 2440588L) * 86_400_000L + 43_200_000L
 
     /**
      * Ngày dương (JDN) của mùng 1 tháng thứ `i`, xét ở múi giờ `tz`.

@@ -551,6 +551,12 @@
         if (which === 'jq') { openJq = !openJq; prefSet(K_SEC_JQ, openJq ? '1' : '0'); }
         else                { openAm = !openAm; prefSet(K_SEC_AM, openAm ? '1' : '0'); }
         applySections();
+        // Công bố ngay từ lúc mở ứng dụng: widget phải đúng kể cả khi người
+        // dùng không chạm vào gì.
+        setTimeout(function () {
+            try { publishLunarCache(); } catch (e) {}
+            try { publishLang(); } catch (e) {}
+        }, 400);
         fitGrid(lastWeeks);
         if (which === 'jq' && openJq) setTimeout(scrollToActiveJieQi, 40);
     }
@@ -662,6 +668,8 @@
      *
      * Định dạng: "<múi giờ phút>|<JDN mùng 1>,<tháng>,<nhuận>;…"
      */
+    var lastCache = null;       // payload đã ghi lần trước, để khỏi ghi lại thừa
+
     function publishLunarCache() {
         if (typeof ShouXingUtil === 'undefined' || typeof Solar === 'undefined') return;
         try {
@@ -672,14 +680,51 @@
             // tab Lịch và tab Kỳ Môn, nên widget không thể lệch với ứng dụng.
             var info = countryData[getDOM('country').value];
             if (!info || !info.tzId || typeof zi_months !== 'function') return;
-            var list = zi_months(now.getFullYear(), info.lon, info.tzId, tz);
-            for (var i = 0; i < list.length; i++) {
-                rows.push(list[i].jdn + ',' + list[i].month + ',' + (list[i].leap ? 1 : 0));
+            // Ghi cả năm nay LẪN năm sau: tháng âm cuối năm dương tràn sang năm
+            // sau, mà widget lật tháng bằng ‹ › thì đi xa hơn hôm nay nhiều.
+            //
+            // Hai năm thì danh sách CHỒNG NHAU (zi_months của năm sau vẫn chứa
+            // mấy tháng cuối năm nay), mà widget đòi mốc mùng 1 tăng dần NGẶT —
+            // trùng một mốc là nó chối cả bảng rồi lùi về bảng đóng sẵn. Gộp
+            // rồi sắp và bỏ trùng theo JDN.
+            var seen = Object.create(null), all = [];
+            for (var y = now.getFullYear(); y <= now.getFullYear() + 1; y++) {
+                var list = zi_months(y, info.lon, info.tzId, tz);
+                for (var i = 0; i < list.length; i++) {
+                    if (seen[list[i].jdn]) continue;
+                    seen[list[i].jdn] = 1;
+                    all.push(list[i]);
+                }
             }
-            if (rows.length) prefSet(K_LUNAR_CACHE, Math.round(tz * 60) + '|' + rows.join(';'));
+            all.sort(function (a, b) { return a.jdn - b.jdn; });
+            for (var k = 0; k < all.length; k++) {
+                rows.push(all[k].jdn + ',' + all[k].month + ',' + (all[k].leap ? 1 : 0));
+            }
+            if (!rows.length) return;
+
+            // Khoá là MÃ MÚI GIỜ, không phải số phút lệch.
+            //
+            // Trước đây ghi Math.round(tz*60) — độ lệch của NGÀY ĐANG CHỌN — còn
+            // widget thì so với độ lệch của ĐÚNG NGÀY nó đang tra. Ở nước có
+            // DST hai con số ấy khác nhau suốt nửa năm (Paris: 120 vs 60), nên
+            // bảng của ứng dụng bị chối và widget lặng lẽ lùi về bảng đóng sẵn
+            // ở mốc UTC+7 — tức là hết đồng bộ, đúng lúc không ai ngờ.
+            var payload = info.tzId + '|' + rows.join(';');
+            if (payload === lastCache) return;
+            lastCache = payload;
+            prefSet(K_LUNAR_CACHE, payload);
+            pokeWidget();
         } catch (e) {
             try { ShouXingUtil.setTzOffsetHours(null); } catch (e2) {}
         }
+    }
+
+    /** Bảo widget vẽ lại (không có lớp native thì im lặng bỏ qua). */
+    function pokeWidget() {
+        try {
+            var n = window.QMDJNative;
+            if (n && typeof n.refreshCalendarWidget === 'function') n.refreshCalendarWidget();
+        } catch (e) {}
     }
 
     /**
@@ -691,10 +736,7 @@
      */
     function publishLang() {
         prefSet(K_LANG, isZH() ? 'zh' : 'vi');
-        try {
-            var n = window.QMDJNative;
-            if (n && typeof n.refreshCalendarWidget === 'function') n.refreshCalendarWidget();
-        } catch (e) {}
+        pokeWidget();
     }
 
     /** Số ngày Julius — cùng công thức với LunarTable.jdn bên Kotlin. */
@@ -787,13 +829,18 @@
                 if (document.body.classList.contains('view-cal')) {
                     try { render(); } catch (err) { console.warn('calendar:', err); }
                 }
-                // Địa điểm đổi thì giờ tiết khí và bảng tháng của widget cũng
-                // đổi theo — publishLunarCache đã ghi bảng mới, còn đây là chỗ
-                // bảo widget vẽ lại.
-                try {
-                    var n = window.QMDJNative;
-                    if (n && typeof n.refreshCalendarWidget === 'function') n.refreshCalendarWidget();
-                } catch (e2) {}
+                // Ghi lại bảng tháng cho widget sau MỌI lần engine tính lại,
+                // không riêng lúc vẽ tab Lịch.
+                //
+                // Trước đây publishLunarCache chỉ chạy trong render(), mà
+                // render() chỉ chạy ở tab Lịch — trong khi ứng dụng mở ra ở tab
+                // Kỳ Môn. Ai không bao giờ mở tab Lịch thì ứng dụng KHÔNG HỀ
+                // đưa bảng tháng của mình cho widget, và widget đành dùng bảng
+                // đóng sẵn ở mốc UTC+7 — ở Paris lệch với ứng dụng ~0,35% số
+                // tháng và ~1% nhãn tháng. Đó chính là "lịch đã ghim không đồng
+                // bộ" mà không đụng gì tới ngôn ngữ.
+                try { publishLunarCache(); } catch (e2) {}
+                pokeWidget();
                 return r;
             };
             wrappedCalc.__calRecalcWrapped = true;

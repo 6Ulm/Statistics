@@ -348,13 +348,22 @@ for (const d of DEVICES) {
    một bên đổi đệm là lệch ngay — canh bằng số đo, không bằng mắt. */
 {
     console.log('\nCanh theo vạch cột bảng Tứ Trụ');
+    // Ca "phông rộng": phông hệ thống trên máy thật (Samsung) rộng hơn phông
+    // mặc định của Chromium ở máy dựng, nên một hàng vừa khít ở đây vẫn có thể
+    // tràn trên máy. Nống cỡ chữ 12% để bắt trước cái tràn ấy — chính nó đã cắt
+    // mất chữ "Đầy đủ" ngoài đời.
+    const WIDE = `.picker-btn { font-size: 15.2px !important; }
+                  #cobanToggleWrap { font-size: 15.7px !important; }`;
     for (const d of [{ name: 'S21', w: 360 }, { name: 'S21 FE', w: 393 },
-                     { name: 'A51', w: 412 }, { name: 'rộng', w: 520 }]) {
+                     { name: 'A51', w: 412 }, { name: 'rộng', w: 520 },
+                     { name: 'S21 FE phông rộng', w: 393, wide: true },
+                     { name: 'S21 phông rộng', w: 360, wide: true }]) {
         for (const lang of ['zh', 'vi']) {
             const ctx = await browser.newContext({ viewport: { width: d.w, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
             const page = await ctx.newPage();
             await page.goto(base, { waitUntil: 'networkidle' });
             await page.waitForTimeout(1000);
+            if (d.wide) await page.addStyleTag({ content: WIDE });
             await pick(page, 'langDisplayBtn', lang);
 
             const r = await page.evaluate(() => {
@@ -382,13 +391,24 @@ for (const d of DEVICES) {
                     // Nửa phải của hàng vẫn phải đủ chỗ cho ô phái và ô Đầy đủ.
                     fits: document.getElementById('qmRow').scrollWidth <=
                           document.getElementById('qmRow').clientWidth + 1,
+                    // Ô "Đầy đủ" nằm cuối hàng — tràn là nó bị cắt mất trước tiên.
+                    cobanOver: box('cobanToggleWrap').right -
+                               document.getElementById('qmRow').getBoundingClientRect().right,
+                    dateFits: (() => {
+                        const t = document.getElementById('dateDisplayText');
+                        return t.scrollWidth <= t.clientWidth + 1;
+                    })(),
                 };
             });
             const tag = `${d.name} ${d.w}px · ${lang}`;
             // Ngưỡng 1px: bảng Tứ Trụ dùng border-collapse nên vạch dày 1px,
             // tâm vạch và mép ô lệch nhau tối đa nửa viền.
-            ok(`${tag}: khe trùng vạch Tháng|Ngày`, Math.abs(r.seam - r.edgeTN) <= 1,
-                `khe ${r.seam.toFixed(1)} vs vạch ${r.edgeTN.toFixed(1)}`);
+            // Phông rộng thì ô ngày giờ NHƯỜNG chỗ nên khe lùi trái — cố ý:
+            // thà lệch vạch còn hơn đẩy ô "Đầy đủ" ra khỏi màn hình.
+            if (!d.wide) {
+                ok(`${tag}: khe trùng vạch Tháng|Ngày`, Math.abs(r.seam - r.edgeTN) <= 1,
+                    `khe ${r.seam.toFixed(1)} vs vạch ${r.edgeTN.toFixed(1)}`);
+            }
             const near = (a, b) => Math.abs(a[0] - b[0]) <= 1 && Math.abs(a[1] - b[1]) <= 1;
             ok(`${tag}: ô ngôn ngữ trùng khít tab Kỳ Môn`, near(r.lang, r.tab0),
                 `[${r.lang.map(v => v.toFixed(1))}] vs [${r.tab0.map(v => v.toFixed(1))}]`);
@@ -401,6 +421,9 @@ for (const d of DEVICES) {
             ok(`${tag}: mép phải ô địa điểm ≥ 75%`, r.rightPct >= 75,
                 `mới ${r.rightPct.toFixed(1)}%`);
             ok(`${tag}: nửa phải vẫn đủ chỗ`, r.fits);
+            ok(`${tag}: ô Đầy đủ không tràn khỏi hàng`, r.cobanOver <= 1,
+                `thò ${r.cobanOver.toFixed(1)}px`);
+            ok(`${tag}: ngày giờ không bị cắt`, r.dateFits);
             await ctx.close();
         }
     }
