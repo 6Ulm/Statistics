@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Chiều cao các khối cố định của widget. Kotlin phải biết đúng những con số này
+  để tính ra khung lưới lịch còn lại bao nhiêu rồi vẽ bitmap cho vừa — xem
+  WidgetLayout.kt, và tools/test_widget_layout.mjs canh hai bên khớp nhau.
+-->
+<resources>
+    <!-- Thanh tiêu đề có hai mũi tên ‹ ›. -->
+    <dimen name="widget_header">32dp</dimen>
+    <!-- Hàng thứ trong tuần (T2…CN). -->
+    <dimen name="widget_dow">16dp</dimen>
+    <!-- Hàng tiêu đề của mỗi mục gập được. -->
+    <dimen name="widget_sec_head">20dp</dimen>
+    <!-- Một hàng giá trị trong ListView của mục. -->
+    <dimen name="widget_row">18dp</dimen>
+    <!--
+      Chỗ chừa dưới đáy cho góc bo của widget. Android 12 trở lên tự bo góc mọi
+      widget khá rộng; hàng cuối của ListView chạm sát mép thì bị cung tròn gặm
+      mất chữ. Trước đây khoản này tính bằng lượng giác trong Kotlin vì bảng nằm
+      trong bitmap; nay bảng là View thật nên chỉ cần lề tĩnh.
+    -->
+    <dimen name="widget_corner_pad">6dp</dimen>
+</resources>

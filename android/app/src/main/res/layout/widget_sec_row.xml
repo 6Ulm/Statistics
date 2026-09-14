@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Một hàng của mục "Tiết khí" hoặc "Lịch âm", do WidgetSectionService dựng.
+
+  Ba cột dùng layout_weight 27:35:38 — ĐÚNG bộ số của hàng tiêu đề trong
+  widget_calendar.xml, nên tiêu đề thẳng cột với giá trị; và vì hai mục dùng
+  chung bộ số ấy nên "Dương lịch" thẳng hàng với "Sóc", "Can chi" với "Vọng".
+  Đổi ở đây thì phải đổi cả hai chỗ kia — tools/test_widget_layout.mjs canh.
+
+  Vạch 3dp đầu hàng là chỗ trống cho khớp với vạch màu của hàng tiêu đề; thiếu
+  nó là cả hàng giá trị lệch 3dp so với tiêu đề.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rowRoot"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/widget_row"
+    android:orientation="horizontal">
+
+    <View android:layout_width="3dp" android:layout_height="match_parent" />
+
+        <TextView android:id="@+id/rowCol0"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="27" android:gravity="center_vertical"
+            android:paddingStart="5dp" android:paddingLeft="5dp"
+            android:singleLine="true" android:ellipsize="end"
+            android:textSize="10sp" />
+
+        <TextView android:id="@+id/rowCol1"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="35" android:gravity="center"
+            android:singleLine="true" android:ellipsize="end"
+            android:textSize="10sp" />
+
+        <TextView android:id="@+id/rowCol2"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="38" android:gravity="center"
+            android:singleLine="true" android:ellipsize="end"
+            android:textSize="10sp" />
+</LinearLayout>

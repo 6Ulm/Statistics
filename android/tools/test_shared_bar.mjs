@@ -289,6 +289,8 @@ for (const d of DEVICES) {
 {
     console.log('\nChia bề rộng hàng Kỳ Môn');
     for (const d of [{ name: 'S21', w: 360 }, { name: 'A51', w: 412 }]) {
+        /** Bề rộng ô phái theo từng ngôn ngữ, để so hai bên với nhau. */
+        const methByLang = {};
         for (const lang of ['zh', 'vi']) {
             const ctx = await browser.newContext({ viewport: { width: d.w, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
             const page = await ctx.newPage();
@@ -319,6 +321,18 @@ for (const d of DEVICES) {
                         r.selectNodeContents(t);
                         return +r.getBoundingClientRect().width.toFixed(1);
                     })(),
+                    // Mép ô phái so với VẠCH THẬT của bảng Tứ Trụ ngay dưới:
+                    // trái phải trùng vạch Tháng|Ngày, phải trùng vạch Ngày|Giờ.
+                    seam: (() => {
+                        const tt = document.getElementById('tuTruPanel');
+                        const b = document.getElementById('methodDisplayBtn').getBoundingClientRect();
+                        if (!tt || !tt.tHead || getComputedStyle(tt).display === 'none') return null;
+                        const cells = [...tt.tHead.rows[0].cells];
+                        return {
+                            left: +(b.left - cells[2].getBoundingClientRect().left).toFixed(1),
+                            right: +(b.right - cells[3].getBoundingClientRect().left).toFixed(1),
+                        };
+                    })(),
                 })));
             }
             const tag = `${d.name} ${d.w}px · ${lang}`;
@@ -328,17 +342,23 @@ for (const d of DEVICES) {
             // Ô ngày giờ phải là ô ĂN phần thừa, không phải ô bị bóp.
             ok(`${tag}: ngày giờ vẫn rộng hơn ô phái`, seen[0].date > seen[0].meth,
                 `ngày giờ ${seen[0].date} vs phái ${seen[0].meth}`);
-            // Ô phái nới thêm 50% bằng zoom trên ba nhãn ẩn (xem .opt-ghost).
-            // Nếu WebView bỏ qua zoom thì ô co về bề rộng chữ trần — canh cho
-            // chắc là phần lề quanh chữ thật sự có.
-            ok(`${tag}: ô phái nới rộng quanh nhãn`, seen[0].meth >= seen[0].label * 1.35,
-                `ô ${seen[0].meth} vs nhãn ${seen[0].label}`);
-            // Nới RỘNG, không nới CAO: `zoom` phóng cả hai chiều, nên ba nhãn
-            // ẩn phải bị ép height:0, nếu không ô phái cao hơn ô ngày giờ.
+            // Ô phái chiếm ĐÚNG phần tư thứ ba của bảng Tứ Trụ: mép trái trên
+            // vạch Tháng|Ngày, mép phải trên vạch Ngày|Giờ. Bản trước để ô co
+            // theo nhãn dài nhất nên mép phải rơi vào những chỗ khác nhau ở hai
+            // ngôn ngữ (77px tiếng Việt, 44px tiếng Trung).
+            const sm = seen[0].seam;
+            ok(`${tag}: mép trái ô phái trùng vạch Tháng|Ngày`,
+                sm && Math.abs(sm.left) <= 1.5, sm ? `lệch ${sm.left}px` : 'không đo được');
+            ok(`${tag}: mép phải ô phái trùng vạch Ngày|Giờ`,
+                sm && Math.abs(sm.right) <= 1.5, sm ? `lệch ${sm.right}px` : 'không đo được');
             ok(`${tag}: ô phái CAO BẰNG ô ngày giờ`, Math.abs(seen[0].methH - seen[0].dateH) < 1.5,
                 `phái ${seen[0].methH}px vs ngày giờ ${seen[0].dateH}px`);
+            methByLang[lang] = seen[0].meth;
             await ctx.close();
         }
+        ok(`${d.name} ${d.w}px: ô phái rộng BẰNG NHAU ở hai ngôn ngữ`,
+            Math.abs(methByLang.vi - methByLang.zh) < 0.5,
+            `vi ${methByLang.vi}px vs zh ${methByLang.zh}px`);
     }
 }
 
@@ -374,7 +394,7 @@ for (const d of DEVICES) {
                 const tabs = [...document.querySelectorAll('.tab-item')]
                     .map(x => x.getBoundingClientRect());
                 return {
-                    seam: (dt.right + mb.left) / 2,   // tâm khe giữa hai ô
+                    seam: mb.left,                    // MÉP TRÁI ô phái
                     edgeTN: th[1].right,              // vạch Tháng | Ngày
                     // Hàng dùng chung phải trùng khít hàng tab ngay trên nó.
                     lang: [box('langDisplayBtn').left, box('langDisplayBtn').right],
@@ -403,11 +423,16 @@ for (const d of DEVICES) {
             const tag = `${d.name} ${d.w}px · ${lang}`;
             // Ngưỡng 1px: bảng Tứ Trụ dùng border-collapse nên vạch dày 1px,
             // tâm vạch và mép ô lệch nhau tối đa nửa viền.
-            // Phông rộng thì ô ngày giờ NHƯỜNG chỗ nên khe lùi trái — cố ý:
-            // thà lệch vạch còn hơn đẩy ô "Đầy đủ" ra khỏi màn hình.
+            // Ô phái chiếm đúng phần tư thứ ba của bảng, nên MÉP TRÁI của nó
+            // nằm trên vạch Tháng|Ngày — khe giữa hai ô lùi hẳn sang trái vạch
+            // ấy. Bản trước canh TÂM KHE trùng vạch; đổi vì ô phái nay phải
+            // chạy từ vạch 50% tới vạch 75%, giống hệt nhau ở hai ngôn ngữ.
+            // Phông rộng thì ô ngày giờ NHƯỜNG chỗ — cố ý: thà lệch vạch còn
+            // hơn đẩy ô "Đầy đủ" ra khỏi màn hình.
             if (!d.wide) {
-                ok(`${tag}: khe trùng vạch Tháng|Ngày`, Math.abs(r.seam - r.edgeTN) <= 1,
-                    `khe ${r.seam.toFixed(1)} vs vạch ${r.edgeTN.toFixed(1)}`);
+                ok(`${tag}: mép trái ô phái trùng vạch Tháng|Ngày`,
+                    Math.abs(r.seam - r.edgeTN) <= 1,
+                    `mép ${r.seam.toFixed(1)} vs vạch ${r.edgeTN.toFixed(1)}`);
             }
             const near = (a, b) => Math.abs(a[0] - b[0]) <= 1 && Math.abs(a[1] - b[1]) <= 1;
             ok(`${tag}: ô ngôn ngữ trùng khít tab Kỳ Môn`, near(r.lang, r.tab0),

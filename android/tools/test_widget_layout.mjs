@@ -78,11 +78,18 @@ const FLOOR_TEXT_DP = 7.5;
  * `r − √(2r·x − x²)` ở hoành độ x mà chữ bắt đầu — nên phép canh dựng lại đúng
  * công thức ấy thay vì so với một con số chết.
  */
-const CORNER_DP = 16;
-const PAD_NARROWEST_DP = 4;
-const arcDepth = (r, x) => (x >= r ? 0 : r - Math.sqrt(2 * r * x - x * x));
-/** Lưới lịch phải giữ được ngần này phần thân widget, không cho bảng nuốt hết. */
+/** Lưới lịch phải giữ được ngần này phần thân widget, không cho hai mục nuốt hết. */
 const MIN_GRID_SHARE = 0.35;
+/** Chiều cao thanh tiêu đề — phải khớp values/dimens.xml. */
+const HEADER_DP = 32;
+/** Mục đang mở mà hiện chưa nổi ngần này hàng thì cuộn cũng chẳng để làm gì. */
+const MIN_ROWS_SEEN = 2;
+/**
+ * Ba cột của hai mục chia bằng `layout_weight` chứ không co theo chữ, nên chữ
+ * dài có thể bị cắt vài pixel. Ngần này thì mắt không thấy; hơn nữa là phải
+ * chỉnh lại bộ weight trong widget_calendar.xml và widget_sec_row.xml.
+ */
+const MAX_SPILL_PX = 2;
 
 const MIME = { '.html': 'text/html', '.txt': 'text/plain', '.js': 'text/javascript' };
 const server = http.createServer((req, res) => {
@@ -124,67 +131,57 @@ for (const dev of DEVICES) {
 
     dev.sizes.forEach(([wDp, hDp, floorNote], i) => {
         const L = byMonth[MONTHS[0]][i];
-        const px = v => v / dev.density;               // px canvas → dp
         const tag = `${dev.name} ${wDp}×${hDp}dp${floorNote ? ' (' + floorNote + ')' : ''}`;
         const minText = floorNote ? FLOOR_TEXT_DP : MIN_TEXT_DP;
 
-        if (!L.jq) { bad(`${tag}: không dựng được bảng tiết khí`); return; }
-        const q = L.jq;
+        if (!L) { bad(`${tag}: không dựng được widget`); return; }
 
-        // 1. Không tràn: cột cuối phải nằm trong bề ngang bảng, còn chừa lề.
-        const right = q.right, limit = q.limit;
-        if (right > limit + 0.5) {
-            bad(`${tag}: cột cuối tràn ${px(right - limit).toFixed(1)}dp khỏi lề phải`);
+        // 1. Số ngày trong ô lịch còn đọc được.
+        if (L.dayPx < minText) {
+            bad(`${tag}: số ngày chỉ ${L.dayPx.toFixed(1)}dp (< ${minText}dp)`);
         } else ok();
 
-        // 2. Chữ còn đọc được.
-        if (px(q.txtPx) < minText) {
-            bad(`${tag}: chữ tiết khí chỉ ${px(q.txtPx).toFixed(1)}dp (< ${minText}dp)`);
-        } else ok();
-
-        // 3. Hàng cuối nằm trên cung góc bo, và bảng không vượt đáy bitmap.
-        // Đệm đáy phải phủ được chỗ cung góc ăn tới ở hoành độ chữ bắt đầu.
-        const needPad = arcDepth(CORNER_DP, PAD_NARROWEST_DP);
-        if (px(q.bottomPad) < needPad - 0.01) {
-            bad(`${tag}: đệm đáy ${px(q.bottomPad).toFixed(1)}dp < cung góc ăn `
-                + `${needPad.toFixed(1)}dp — hàng cuối sẽ bị cắt`);
-        } else ok();
-        // ...nhưng cũng không được hở hơn mức cần quá 4dp: chừa thừa là một dải
-        // trắng vô cớ dưới đáy bảng, đúng thứ người dùng kêu.
-        if (px(q.bottomPad) > needPad + 4) {
-            bad(`${tag}: đệm đáy ${px(q.bottomPad).toFixed(1)}dp, thừa `
-                + `${(px(q.bottomPad) - needPad).toFixed(1)}dp so với cung góc`);
-        } else ok();
-        const hPx = (hDp - 32) * dev.density;
-        if (q.top + q.tableH > hPx + 0.5) {
-            bad(`${tag}: bảng thò ${px(q.top + q.tableH - hPx).toFixed(1)}dp khỏi đáy widget`);
-        } else ok();
-
-        // 4. Lưới lịch không bị bảng nuốt.
-        const share = L.gridH / (hPx - L.dowH);
+        // 2. Lưới lịch không bị hai mục nuốt mất.
+        const share = L.gridDp / (hDp - HEADER_DP);
         if (share < MIN_GRID_SHARE) {
             bad(`${tag}: lưới lịch chỉ còn ${(share * 100).toFixed(0)}% thân widget`);
         } else ok();
 
-        // 5. Bảng CỐ ĐỊNH: mọi tháng cho ra cùng một khung, cùng cỡ chữ.
+        // 3. Không tràn khỏi chiều cao widget.
+        if (L.over) bad(`${tag}: nội dung tràn khỏi chiều cao widget`); else ok();
+
+        // 4. Mục đang mở phải hiện được mấy hàng, không thì cuộn cũng vô nghĩa.
+        if (L.jqOpen && L.jqSeen < MIN_ROWS_SEEN) {
+            bad(`${tag}: mục Tiết khí chỉ hiện ${L.jqSeen} hàng`);
+        } else ok();
+        if (L.amOpen && L.amSeen < MIN_ROWS_SEEN) {
+            bad(`${tag}: mục Lịch âm chỉ hiện ${L.amSeen} hàng`);
+        } else ok();
+
+        // 5. Ba cột chia bằng layout_weight nên KHÔNG tự nới theo chữ — cột hẹp
+        //    hơn chữ là chữ bị cắt. Đây là cái giá của việc bỏ bitmap, nên phải
+        //    canh: chỗ nào cắt quá vài pixel là phải chỉnh lại bộ weight.
+        if (L.spill > MAX_SPILL_PX) {
+            bad(`${tag}: "${L.spillText}" bị cắt ${L.spill.toFixed(1)}px`);
+        } else ok();
+
+        // 6. Khung CỐ ĐỊNH: mọi tháng cho ra cùng một lưới, cùng cỡ chữ. Lưới
+        //    luôn 6 hàng nên tháng 4 hay 6 tuần đều phải y hệt nhau.
         for (const m of MONTHS.slice(1)) {
-            const o = byMonth[m][i], oq = o.jq;
-            const same = ['jqRowH', 'jqH'].every(k => Math.abs(L[k] - o[k]) < 0.01)
-                && ['txtPx', 'top', 'tableH', 'right', 'midCx', 'lastCx']
-                    .every(k => Math.abs(q[k] - oq[k]) < 0.01)
-                // Bề rộng ba cột (dùng chung cho cả hai mục) cũng phải đứng yên.
-                && q.cols.every((v, ci) => Math.abs(v - oq.cols[ci]) < 0.01);
+            const o = byMonth[m][i];
+            const same = ['gridDp', 'cellH', 'dayPx', 'gzPx']
+                .every(k => Math.abs(L[k] - o[k]) < 0.01);
             if (!same) {
-                bad(`${tag}: tháng ${m} cho bảng khác tháng ${MONTHS[0]} `
-                    + `(cao ${px(oq.tableH).toFixed(1)} vs ${px(q.tableH).toFixed(1)}dp, `
-                    + `chữ ${px(oq.txtPx).toFixed(1)} vs ${px(q.txtPx).toFixed(1)}dp)`);
+                bad(`${tag}: tháng ${m} cho lưới khác tháng ${MONTHS[0]} `
+                    + `(cao ${o.gridDp.toFixed(1)} vs ${L.gridDp.toFixed(1)}dp, `
+                    + `chữ ${o.dayPx.toFixed(1)} vs ${L.dayPx.toFixed(1)}dp)`);
             } else ok();
         }
 
-        console.log(`  ${tag}: hàng ${px(L.jqRowH).toFixed(1)}dp · chữ ${px(q.txtPx).toFixed(1)}dp`
-            + ` · hàng hiện ${q.secs.map(s0 => s0.shown).join('+')}`
-            + ` · thừa ${px(limit - right).toFixed(1)}dp`
-            + ` · đệm đáy ${px(q.bottomPad).toFixed(0)}dp · lưới ${(share * 100).toFixed(0)}%`);
+        console.log(`  ${tag}: lưới ${L.gridDp.toFixed(0)}dp · ô ${L.cellH.toFixed(1)}dp`
+            + ` · số ngày ${L.dayPx.toFixed(1)}dp · can chi ${L.showGanZhi ? 'có' : 'tắt'}`
+            + ` · hàng hiện ${L.jqSeen}+${L.amSeen}`
+            + ` · cắt chữ ${L.spill.toFixed(1)}px · lưới ${(share * 100).toFixed(0)}%`);
     });
     await ctx.close();
 }

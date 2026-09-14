@@ -107,6 +107,18 @@
         .info-pair-f1   { flex: 1   !important; min-width: 0; overflow: hidden; }
         .info-pair-f14  { flex: 1.4 !important; min-width: 0; overflow: hidden; }
         .info-pair-f2   { flex: 2   !important; min-width: 0; overflow: hidden; }
+        /* Ô "Chính Ngọ" rộng hơn một chút so với flex:1.
+           Nhãn tiếng Việt dài hơn hẳn tiếng Trung ("Chính Ngọ:" vs "正午:") mà
+           giá trị lại kèm cả múi giờ ("11:55 (GMT+0)"): ở 320px phần flex:1
+           thiếu đúng 2px và `text-overflow: ellipsis` nuốt mất dấu đóng ngoặc.
+           Chỗ thiếu lấy từ ô Tiết khí bên cạnh — ô ấy chỉ chứa tên tiết khí nên
+           còn dư.
+           Phải đặt SAU .info-pair-f1 (cùng độ đặc hiệu, thứ tự quyết định) và
+           phải viết hai lớp để thắng .info-pair-f1; bản tiếng Trung giành lại
+           flex:1 bằng #mainBody.lang-zh ngay dưới đây — chỉ có lớp `lang-zh`
+           được gắn lúc chạy, KHÔNG có `lang-vi`, nên tiếng Việt là mặc định. */
+        .info-line-nowrap .info-pair-chinhngo { flex: 1.15 !important; }
+        #mainBody.lang-zh .info-pair-chinhngo { flex: 1 !important; }
         /* val-norm text-overflow variant */
         .val-ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         /* tuTruLegend key badge */
@@ -331,36 +343,33 @@
            bề rộng hàng w = W − 12 với W là bề rộng bảng. Muốn tâm khe nằm ở
            L + W/2 thì ô ngày giờ phải rộng 0,5·w − 2 — tức đúng
            calc(50% − 2px), với 2px là nửa khe 4px. */
-        /* TRẦN 50%, không phải chốt cứng 50%. Chốt cứng thì ô phái và ô "Đầy
-           đủ" luôn được nguyên bề rộng của chúng, tổng vượt hàng là tràn ra
-           ngoài màn hình — trên máy thật phông Samsung rộng hơn phông ở máy
-           dựng nên "Đầy đủ" bị cắt mất, dù đo ở đây thì vừa. Cho ô ngày giờ co
-           lại khi chật: còn chỗ thì nó vẫn nở đúng tới 50% (khe vẫn trùng vạch
-           Tháng|Ngày), chật thì nó nhường, chứ không đẩy ai ra khỏi màn hình. */
+        /* Ô ngày giờ dừng lại TRƯỚC vạch Tháng|Ngày đúng một khe, để mép trái
+           ô phái rơi đúng LÊN vạch ấy. Vẫn là TRẦN chứ không chốt cứng: chật
+           quá thì nó nhường chỗ chứ không đẩy ai ra khỏi màn hình. */
         #qmRow #dateDisplayBtn {
-            flex: 1 1 auto; max-width: calc(50% - 2px);
+            flex: 1 1 auto; max-width: calc(50% - 4px);
             white-space: nowrap; overflow: hidden;
         }
-        #qmRow #methodDisplayBtn { flex: 0 0 auto; padding-inline: 9px; }
-        /* Xếp chồng nhãn đang hiện với ba nhãn ẩn trong CÙNG một ô lưới:
-           bề rộng cột = bề rộng nhãn rộng nhất, nên ô không co giãn theo phái
-           đang chọn.
+        /* Ô phái chiếm ĐÚNG phần tư thứ ba của bảng Tứ Trụ: mép trái trên vạch
+           Tháng|Ngày, mép phải trên vạch Ngày|Giờ.
 
-           Ô rộng thêm 50%: `zoom` trên ba nhãn ẩn — khác `transform`, nó ĐỔI
-           kích thước dùng để dựng bố cục, nên cột lưới nở theo. Cách này tỉ lệ
-           đúng cho cả hai ngôn ngữ (chữ Hán ngắn hơn chữ Việt) và không cần đo
-           bằng JavaScript — mà đo thì sai, vì hàng này bị ẩn khi đang ở tab
-           Lịch, đúng lúc ô ngôn ngữ dùng chung có thể đổi ngôn ngữ.
-           Lề ngang nhân theo cùng hệ số (6px → 9px) để cả Ô rộng thêm 50%,
-           không riêng phần chữ. */
-        .opt-sizer { display: grid; --sizer-scale: 1.5; }
-        .opt-sizer > * { grid-area: 1 / 1; }
-        .opt-ghost {
-            visibility: hidden; white-space: nowrap; pointer-events: none;
-            zoom: var(--sizer-scale);
-            /* CHỈ góp bề RỘNG. `zoom` phóng cả hai chiều, nên để nguyên thì ô
-               phái cao hơn ô ngày giờ 4-6px — cao lên là thứ không ai xin. */
-            height: 0; line-height: 0; overflow: hidden;
+           Tính ra phần trăm của HÀNG: .controls lọt vào trong 6px (đệm 5 +
+           viền 1) mỗi bên so với bảng, nên hàng rộng w = W − 12. Vạch 50% của
+           bảng nằm ở W/2 − 6 = w/2 tính từ mép hàng; vạch 75% nằm ở
+           3W/4 − 6 = 3w/4 + 3. Ô phái vì thế rộng w/4 + 3.
+
+           Bề rộng là một PHẦN TRĂM nên GIỐNG HỆT NHAU ở hai ngôn ngữ. Bản
+           trước để ô co đúng bằng nhãn dài nhất (ba nhãn ẩn trong một ô lưới),
+           nên nó rộng 77px ở tiếng Việt mà chỉ 44px ở tiếng Trung — cùng một
+           màn hình, hai bố cục khác hẳn nhau. */
+        #qmRow #methodDisplayBtn {
+            flex: 0 0 calc(25% + 3px);
+            padding-inline: 4px;
+            overflow: hidden;
+        }
+        #qmRow #methodDisplayText {
+            display: block; overflow: hidden;
+            white-space: nowrap; text-overflow: ellipsis;
         }
         #cobanToggleWrap {
             display: flex; align-items: center; gap: 4px;
@@ -374,14 +383,11 @@
             cursor: pointer; accent-color: var(--accent, #5c7cfa);
         }
 
-        /* Điện thoại (≤412px): ô ngày giờ lấy tới 50% nên nửa phải khá chật —
-           ô phái nới 1,5 lần cộng ô "Đầy đủ" là vừa đủ tràn. Hạ hệ số nới và lề
-           ngang một nấc để có khoảng dự phòng: phông trên máy thật (Samsung)
-           rộng hơn phông ở máy dựng, mà cái tràn ấy thì cắt mất chữ "Đầy đủ".
-           Nhãn vẫn hiện trọn, chỉ là quanh chữ thoáng ít hơn máy rộng. */
+        /* Điện thoại (≤412px): nửa phải của hàng khá chật — ô phái đã chốt
+           cứng một phần tư, nên chỗ dự phòng phải lấy từ ô "Đầy đủ". Phông
+           trên máy thật (Samsung) rộng hơn phông ở máy dựng, mà cái tràn ấy
+           thì cắt mất chữ "Đầy đủ". */
         @media (max-width: 412px) {
-            #qmRow .opt-sizer { --sizer-scale: 1.1; }
-            #qmRow #methodDisplayBtn { padding-inline: 7px; }
             #cobanToggleWrap { margin-left: 2px; gap: 3px; }
         }
 

@@ -474,17 +474,19 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         await page.click(`.opt-row[data-value="${v}"]`);
         await page.waitForTimeout(800);
     };
-    // Ứng dụng mở ra ở tiếng Trung, nên phải sang tiếng Việt TRƯỚC thì lần
-    // chọn tiếng Trung sau mới là một thay đổi thật — chọn đúng thứ đang dùng
+    // Ứng dụng mở ra ở TIẾNG VIỆT, nên phải sang tiếng Trung TRƯỚC thì lần
+    // chọn tiếng Việt sau mới là một thay đổi thật — chọn đúng thứ đang dùng
     // thì setLang() thoát sớm và chẳng có gì để canh.
-    await pick('vi');
-    const b = await read();
-    check('chọn tiếng Việt thì khoá đổi', b.lang, 'vi');
-    ok('và widget được bảo vẽ lại', b.n > a.n, `${a.n} → ${b.n}`);
+    check('mở app ra là tiếng Việt', a.lang, 'vi');
 
     await pick('zh');
+    const b = await read();
+    check('chọn tiếng Trung thì khoá đổi', b.lang, 'zh');
+    ok('và widget được bảo vẽ lại', b.n > a.n, `${a.n} → ${b.n}`);
+
+    await pick('vi');
     const c = await read();
-    check('chọn tiếng Trung thì khoá đổi', c.lang, 'zh');
+    check('chọn lại tiếng Việt thì khoá đổi', c.lang, 'vi');
     ok('widget lại được bảo vẽ lại', c.n > b.n, `${b.n} → ${c.n}`);
     await ctx.close();
 }
@@ -547,6 +549,14 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     const manifest= read('app/src/main/AndroidManifest.xml');
     const appJs   = read('app/src/main/assets/web/js/app.js');
     const calJs   = read('app/src/main/assets/web/js/calendar.js');
+    const secKt   = read('app/src/main/java/com/bazi/qimen/WidgetSections.kt');
+    const supKt   = read('app/src/main/java/com/bazi/qimen/WidgetSupport.kt');
+    const svcKt   = read('app/src/main/java/com/bazi/qimen/WidgetSectionService.kt');
+    const layXml  = read('app/src/main/res/layout/widget_calendar.xml');
+    const rowXml  = read('app/src/main/res/layout/widget_sec_row.xml');
+    // Phần dựng widget nay trải ra bốn tệp; phần lớn phép canh dưới đây chỉ cần
+    // biết "có ở đâu đó trong mã widget".
+    const widgetKt = provKt + secKt + supKt + svcKt;
 
     // Mặc định hai bên PHẢI trùng nhau: ngay sau khi cài mới, chưa ai ghi khoá
     // qmdj.lang, mà ứng dụng đã hiện một thứ tiếng rồi.
@@ -559,10 +569,10 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     ok('tiêu đề widget theo ngôn ngữ', /if \(zh\) "农历/.test(provKt));
     ok('thứ trong tuần theo ngôn ngữ', /if \(zh\) arrayOf\("一"/.test(provKt));
     // Đối số zh nằm sau một lời gọi lồng nhau — mẫu không được dừng ở ")" đầu.
-    ok('tên tiết khí theo ngôn ngữ', /jieQiYearOf\(.*\bzh\)/.test(provKt));
-    ok('can chi theo ngôn ngữ', /ganZhiOf\(jdn, zh\)/.test(provKt));
-    ok('tiêu đề hai cột theo ngôn ngữ', /if \(zh\) "节气"/.test(provKt));
-    ok('đọc khoá qmdj.lang', /LunarTable\.langOf\(context\)/.test(provKt));
+    ok('tên tiết khí theo ngôn ngữ', /jieQiYearOf\(.*\bzh\)/.test(widgetKt));
+    ok('can chi theo ngôn ngữ', /ganZhiOf\(jdn, zh\)/.test(widgetKt));
+    ok('tiêu đề hai cột theo ngôn ngữ', /if \(zh\) "节气"/.test(widgetKt));
+    ok('đọc khoá qmdj.lang', /LunarTable\.langOf\(context\)/.test(widgetKt));
 
     // Đường báo cho widget vẽ lại.
     ok('cầu native có refreshCalendarWidget', /@JavascriptInterface\s+fun refreshCalendarWidget/.test(bridge));
@@ -604,34 +614,100 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     // phải rơi về múi giờ MÁY (TimeZone.getDefault()), không phải một nước
     // chốt cứng.
     ok('widget KHÔNG còn chốt cứng giờ Việt Nam khi chưa có địa điểm',
-        !/getTimeZone\(DEFAULT_TZ\)/.test(provKt) && !/"Asia\/Ho_Chi_Minh"/.test(provKt));
-    const selectedTzFn = (/private fun selectedTimeZone[\s\S]*?\n    \}/.exec(provKt) || [''])[0];
+        !/getTimeZone\(DEFAULT_TZ\)/.test(widgetKt) && !/"Asia\/Ho_Chi_Minh"/.test(widgetKt));
+    const selectedTzFn = (/fun timeZone\(context: Context\)[\s\S]*?\n    \}/.exec(supKt) || [''])[0];
     check('cả ba lượt "chưa có gì" đều rơi về múi giờ máy',
         (selectedTzFn.match(/TimeZone\.getDefault\(\)/g) || []).length, 3);
 
     /* ── Widget phải hiện ĐÚNG hai mục của tab Lịch ── */
     console.log('\nWidget dựng đúng hai mục của tab Lịch');
-    ok('widget vẽ theo mục, không còn bảng tiết khí gập đôi',
-        /private fun drawSections\(/.test(provKt) && !/fun drawJieQi\(/.test(provKt));
-    ok('mục Tiết khí có cột CAN CHI THÁNG', /LunarTable\.ganZhi60\(it\.gz, zh\)/.test(provKt));
+    ok('mục Tiết khí có cột CAN CHI THÁNG', /LunarTable\.ganZhi60\(it\.gz, zh\)/.test(secKt));
     ok('có mục Lịch âm với Sóc và Vọng',
-        /stamp\(it\.socJdn, it\.socMin, tz\)/.test(provKt) &&
-        /stamp\(it\.vongJdn, it\.vongMin, tz\)/.test(provKt));
+        /stamp\(it\.socJdn, it\.socMin, tz\)/.test(secKt) &&
+        /stamp\(it\.vongJdn, it\.vongMin, tz\)/.test(secKt));
     // Trạng thái gập/mở phải ĐỌC TỪ chính hai khoá mà calendar.js ghi.
     check('widget đọc khoá gập/mở của mục Tiết khí',
-        /SEC_JQ = "([^"]+)"/.exec(provKt)?.[1], 'qmdj.calSecJq');
+        /SEC_JQ = "([^"]+)"/.exec(supKt)?.[1], 'qmdj.calSecJq');
     check('widget đọc khoá gập/mở của mục Lịch âm',
-        /SEC_AM = "([^"]+)"/.exec(provKt)?.[1], 'qmdj.calSecAm');
+        /SEC_AM = "([^"]+)"/.exec(supKt)?.[1], 'qmdj.calSecAm');
     ok('…và mặc định khớp calendar.js (Tiết khí mở, Lịch âm đóng)',
-        /app\.getString\(SEC_JQ, null\) != "0"/.test(provKt) &&
-        /app\.getString\(SEC_AM, null\) == "1"/.test(provKt));
+        /getString\(SEC_JQ, null\) != "0"/.test(supKt) &&
+        /getString\(SEC_AM, null\) == "1"/.test(supKt));
     // Ghi khoá thôi chưa đủ: widget chỉ tự vẽ lại lúc nửa đêm.
     const toggleFn = (/function toggleSection\(which\) \{[\s\S]*?\n    \}/.exec(calJs) || [''])[0];
     ok('bấm gập/mở trong ứng dụng thì bảo widget vẽ lại ngay',
         /pokeWidget\(\)/.test(toggleFn));
-    // Bề rộng cột không được đổi theo năm đang xem.
-    ok('cột can chi và cột tháng có khuôn bề rộng cố định',
-        /allGanZhi\(zh\)/.test(provKt) && /allMonthLabels\(context, zh, leap\)/.test(provKt));
+
+    /* ── Widget dùng được bằng ngón tay, không phải ảnh tĩnh ── */
+    console.log('\nWidget cuộn được và chạm được');
+    // Cuộn chỉ có trong collection view do RemoteViewsService nuôi.
+    ok('hai mục là ListView, không còn vẽ vào bitmap',
+        /<ListView[\s\S]{0,200}@\+id\/jqList/.test(layXml) &&
+        /<ListView[\s\S]{0,200}@\+id\/amList/.test(layXml) &&
+        !/fun drawSections\(/.test(widgetKt));
+    ok('có RemoteViewsService nuôi hàng cho hai mục',
+        /class WidgetSectionService : RemoteViewsService\(\)/.test(svcKt) &&
+        /RemoteViewsFactory/.test(svcKt));
+    ok('manifest khai service kèm quyền BIND_REMOTEVIEWS (thiếu là mục trống trơn)',
+        /<service[\s\S]{0,260}\.WidgetSectionService[\s\S]{0,260}android\.permission\.BIND_REMOTEVIEWS/
+            .test(manifest));
+    ok('provider nối adapter cho cả hai ListView',
+        /setRemoteAdapter\(listId, sectionIntent\(context, id, sec\.key\)\)/.test(provKt));
+    // filterEquals bỏ qua extras: hai mục chỉ khác extras thì dùng chung một
+    // factory và cùng hiện một bảng.
+    ok('khoá mục nằm trong Intent.data, không chỉ trong extras',
+        /setData\(Uri\.parse\("qmdj:\/\/widget\/\$id\/sec\/\$key"\)\)/.test(provKt));
+    ok('bảo factory đọc lại sau mỗi lần vẽ',
+        /notifyAppWidgetViewDataChanged\(id, R\.id\.jqList\)/.test(provKt) &&
+        /notifyAppWidgetViewDataChanged\(id, R\.id\.amList\)/.test(provKt));
+    ok('mục đang mở thì cuộn tới hàng đang hiệu lực',
+        /setScrollPosition\(listId, sec\.active\)/.test(provKt));
+
+    // Chạm ngày: 42 ô, mỗi ô một PendingIntent riêng.
+    const cellIds = (layXml.match(/@\+id\/cell\d\d/g) || []).length;
+    check('lưới bắt chạm đủ 42 ô trong layout', cellIds, 42);
+    const cellRefs = (provKt.match(/R\.id\.cell\d\d/g) || []).length;
+    check('…và Kotlin trỏ đủ 42 ô ấy', cellRefs, 42);
+    ok('chạm ngày là CHỌN ngày, không mở ứng dụng',
+        /ACTION_PICK/.test(provKt) && /setSelected\(context, id,/.test(provKt));
+    ok('không còn chỗ nào trong widget mở ứng dụng',
+        !/MainActivity::class\.java/.test(provKt) && !/EXTRA_TAB/.test(provKt));
+    ok('ngày đang chọn có viền riêng, khác hôm nay',
+        /isSel/.test(provKt) && /#007BFF/.test(provKt));
+    // Lưới bitmap phải luôn 6 hàng, không thì ô chạm lệch khỏi ô nhìn thấy.
+    ok('lưới luôn 6 hàng cho khớp lưới bắt chạm',
+        /GRID_WEEKS \* 7/.test(provKt) && /GRID_WEEKS = 6/.test(provKt));
+
+    // Ba cột của hàng giá trị phải cùng bộ weight với hàng tiêu đề, và hai mục
+    // phải cùng bộ ấy — đó là thứ giữ "Dương lịch" thẳng hàng với "Sóc".
+    const weights = x => (x.match(/android:layout_weight="(\d+)"/g) || [])
+        .map(w => +/\d+/.exec(w)[0]);
+    const rowW = weights(rowXml).slice(0, 3);
+    const headW = (layXml.match(/android:layout_weight="(27|35|38)"/g) || [])
+        .map(w => +/\d+/.exec(w)[0]);
+    ok('hàng giá trị có đúng ba cột theo weight', rowW.length === 3, rowW.join(':'));
+    ok('hai hàng tiêu đề dùng ĐÚNG bộ weight ấy',
+        headW.length === 6 && headW.slice(0, 3).join() === rowW.join() &&
+        headW.slice(3).join() === rowW.join(),
+        `hàng ${rowW.join(':')} · tiêu đề ${headW.join(':')}`);
+    // Kotlin tính chiều cao bitmap lưới từ chính những con số của XML.
+    const dimens = read('app/src/main/res/values/dimens.xml');
+    const dimen = n => +(new RegExp(`name="${n}">(\\d+)dp`).exec(dimens) || [])[1];
+    const konst = n => +(new RegExp(`${n} = (\\d+)`).exec(supKt) || [])[1];
+    for (const [d, k] of [['widget_header', 'HEADER_DP'], ['widget_dow', 'DOW_DP'],
+                          ['widget_sec_head', 'SEC_HEAD_DP'], ['widget_row', 'ROW_DP'],
+                          ['widget_corner_pad', 'CORNER_PAD_DP']]) {
+        check(`Kotlin biết đúng ${d} của XML`, konst(k), dimen(d));
+    }
+    const blockW = (open, id) => {
+        const re = new RegExp(`<${open}[\\s\\S]{0,400}?@\\+id\\/${id}[\\s\\S]{0,400}?android:layout_weight="(\\d+)"`);
+        const m = re.exec(layXml);
+        return m ? +m[1] : null;
+    };
+    const frame = /<FrameLayout[\s\S]{0,240}?android:layout_weight="(\d+)"/.exec(layXml);
+    check('Kotlin biết đúng phần chia của lưới lịch', konst('W_GRID'), frame ? +frame[1] : null);
+    check('…của mục Tiết khí', konst('W_JQ'), blockW('ListView', 'jqList'));
+    check('…của mục Lịch âm', konst('W_AM'), blockW('ListView', 'amList'));
 
     /* ── Báo thức nửa đêm phải sống sót qua reboot ── */
     console.log('\nWidget không kẹt ở ngày cũ');

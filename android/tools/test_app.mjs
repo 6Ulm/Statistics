@@ -79,6 +79,10 @@ const w = dom.window, doc = w.document;
 const val = id => { const e = doc.getElementById(id); return e ? (e.innerText ?? e.textContent) : ''; };
 
 console.log('Tứ Trụ (đối chiếu bản web gốc)');
+// Mốc đối chiếu là bản web GỐC, vốn in can chi bằng chữ Hán. Ứng dụng nay mặc
+// định TIẾNG VIỆT, nên phải sang tiếng Trung trước khi so — nếu không thì
+// "MậuThìn" bị đem so với "戊辰" và cả sáu lá số đều đỏ dù engine vẫn đúng.
+if (typeof w.setLang === 'function') w.setLang('zh');
 for (const [y, m, d, h, mi, loc, method, want] of PILLARS) {
     for (const [id, v] of [['inYear', y], ['inMonth', m], ['inDay', d], ['solarHour', h],
                            ['solarMinute', mi], ['country', loc], ['methodSelect', method]]) {

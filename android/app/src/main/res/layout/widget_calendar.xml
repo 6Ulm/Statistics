@@ -1,19 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Thanh tiêu đề dựng bằng View thật (LinearLayout + TextView) chứ không vẽ vào
-  ảnh: có thế hai mũi tên ‹ › mới bấm được để lùi/tiến tháng. Phần lưới lịch và
-  bảng tiết khí bên dưới vẫn là một bitmap, vì RemoteViews không dựng nổi lưới
-  7×6 cho gọn.
+  Widget lịch: KHÔNG còn là một tấm ảnh duy nhất.
+
+  Widget chỉ cuộn được bên trong một collection view (ListView/GridView) do
+  RemoteViewsService nuôi, và chỉ nhận chạm qua PendingIntent gắn vào từng
+  View — vẽ hết vào bitmap thì vừa không cuộn được, vừa không biết người dùng
+  chạm vào ngày nào. Nên bố cục nay là:
+
+    • thanh tiêu đề  — View thật, để ‹ › bấm được;
+    • hàng thứ       — bảy TextView, để lưới bên dưới bắt đầu ở mép biết trước;
+    • lưới lịch      — vẫn là bitmap (dựng 42 ô bằng RemoteViews thì mỗi ô phải
+                       là ba TextView lồng nhau, mà chiều cao ô lại không đặt
+                       được theo chiều cao widget trước API 31), ĐÈ LÊN nó một
+                       lưới 6×7 View trong suốt để bắt chạm từng ngày;
+    • hai mục        — mỗi mục một hàng tiêu đề + một ListView cuộn được.
+
+  Chiều cao chia bằng layout_weight. Kotlin phải biết đúng những con số ấy mới
+  vẽ bitmap lưới cho vừa khung — xem WidgetLayout.kt; tools/test_widget_layout.mjs
+  canh hai bên khớp nhau.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:paddingBottom="@dimen/widget_corner_pad"
     android:background="@drawable/widget_bg">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="32dp"
+        android:layout_height="@dimen/widget_header"
         android:orientation="horizontal"
         android:background="@drawable/widget_header_bg">
 
@@ -50,11 +65,311 @@
             android:contentDescription="@string/widget_next" />
     </LinearLayout>
 
-    <ImageView
-        android:id="@+id/widgetImage"
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/widget_dow"
+        android:orientation="horizontal">
+        <TextView android:id="@+id/dow0"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:gravity="center"
+            android:textSize="9sp" android:textStyle="bold" />
+        <TextView android:id="@+id/dow1"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:gravity="center"
+            android:textSize="9sp" android:textStyle="bold" />
+        <TextView android:id="@+id/dow2"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:gravity="center"
+            android:textSize="9sp" android:textStyle="bold" />
+        <TextView android:id="@+id/dow3"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:gravity="center"
+            android:textSize="9sp" android:textStyle="bold" />
+        <TextView android:id="@+id/dow4"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:gravity="center"
+            android:textSize="9sp" android:textStyle="bold" />
+        <TextView android:id="@+id/dow5"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:gravity="center"
+            android:textSize="9sp" android:textStyle="bold" />
+        <TextView android:id="@+id/dow6"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:gravity="center"
+            android:textSize="9sp" android:textStyle="bold" />
+    </LinearLayout>
+
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:scaleType="fitXY"
-        android:contentDescription="@string/widget_desc" />
+        android:layout_weight="58">
+
+        <ImageView
+            android:id="@+id/widgetImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitXY"
+            android:contentDescription="@string/widget_desc" />
+
+        <!-- Lưới bắt chạm: trong suốt, nằm đè đúng 42 ô của bitmap. Mỗi ô một
+             PendingIntent riêng — RemoteViews không có cách nào biết toạ độ
+             ngón tay, nên muốn biết chạm vào ngày nào thì phải có ngần này
+             View. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:orientation="horizontal">
+                    <View android:id="@+id/cell00"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell01"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell02"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell03"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell04"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell05"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell06"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                </LinearLayout>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:orientation="horizontal">
+                    <View android:id="@+id/cell10"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell11"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell12"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell13"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell14"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell15"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell16"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                </LinearLayout>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:orientation="horizontal">
+                    <View android:id="@+id/cell20"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell21"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell22"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell23"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell24"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell25"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell26"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                </LinearLayout>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:orientation="horizontal">
+                    <View android:id="@+id/cell30"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell31"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell32"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell33"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell34"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell35"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell36"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                </LinearLayout>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:orientation="horizontal">
+                    <View android:id="@+id/cell40"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell41"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell42"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell43"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell44"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell45"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell46"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                </LinearLayout>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:orientation="horizontal">
+                    <View android:id="@+id/cell50"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell51"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell52"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell53"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell54"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell55"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                    <View android:id="@+id/cell56"
+                        android:layout_width="0dp" android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                </LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Mục "Tiết khí": hàng tiêu đề là View thật, thân là ListView nên CUỘN
+         được bằng ngón tay. Ba cột dùng layout_weight 27:35:38 — ĐÚNG bộ số
+         của widget_sec_row.xml và của mục kia, nên "Dương lịch" thẳng hàng với
+         "Sóc" và "Can chi" thẳng hàng với "Vọng" mà không phải đo gì. -->
+    <LinearLayout
+        android:id="@+id/jqHead"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/widget_sec_head"
+        android:orientation="horizontal"
+        android:background="#FDEEEE">
+
+        <View android:layout_width="3dp" android:layout_height="match_parent"
+            android:background="#D32F2F" />
+
+        <TextView android:id="@+id/jqHead0"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="27" android:gravity="center_vertical"
+            android:paddingStart="5dp" android:paddingLeft="5dp"
+            android:singleLine="true" android:ellipsize="end"
+            android:textSize="10sp" android:textStyle="bold" />
+
+        <TextView android:id="@+id/jqHead1"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="35" android:gravity="center"
+            android:singleLine="true" android:ellipsize="end"
+            android:textSize="10sp" android:textStyle="bold" />
+
+        <TextView android:id="@+id/jqHead2"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="38" android:gravity="center"
+            android:singleLine="true" android:ellipsize="end"
+            android:textSize="10sp" android:textStyle="bold" />
+    </LinearLayout>
+
+    <ListView
+        android:id="@+id/jqList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="26"
+        android:background="#FFFFFF"
+        android:divider="#EEEEEE"
+        android:dividerHeight="1px"
+        android:scrollbars="none" />
+
+    <!-- Mục "Lịch âm": hàng tiêu đề là View thật, thân là ListView nên CUỘN
+         được bằng ngón tay. Ba cột dùng layout_weight 27:35:38 — ĐÚNG bộ số
+         của widget_sec_row.xml và của mục kia, nên "Dương lịch" thẳng hàng với
+         "Sóc" và "Can chi" thẳng hàng với "Vọng" mà không phải đo gì. -->
+    <LinearLayout
+        android:id="@+id/amHead"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/widget_sec_head"
+        android:orientation="horizontal"
+        android:background="#EEF1FD">
+
+        <View android:layout_width="3dp" android:layout_height="match_parent"
+            android:background="#3949AB" />
+
+        <TextView android:id="@+id/amHead0"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="27" android:gravity="center_vertical"
+            android:paddingStart="5dp" android:paddingLeft="5dp"
+            android:singleLine="true" android:ellipsize="end"
+            android:textSize="10sp" android:textStyle="bold" />
+
+        <TextView android:id="@+id/amHead1"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="35" android:gravity="center"
+            android:singleLine="true" android:ellipsize="end"
+            android:textSize="10sp" android:textStyle="bold" />
+
+        <TextView android:id="@+id/amHead2"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="38" android:gravity="center"
+            android:singleLine="true" android:ellipsize="end"
+            android:textSize="10sp" android:textStyle="bold" />
+    </LinearLayout>
+
+    <ListView
+        android:id="@+id/amList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="16"
+        android:background="#FFFFFF"
+        android:divider="#EEEEEE"
+        android:dividerHeight="1px"
+        android:scrollbars="none" />
+
 </LinearLayout>

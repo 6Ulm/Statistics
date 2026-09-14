@@ -297,7 +297,11 @@ document.addEventListener("DOMContentLoaded", function() {
     // Dùng setTimeout để đảm bảo tất cả DOMContentLoaded (drum picker override) đã chạy xong
     const savedLang   = safeStorage.getItem('defaultLang');
     const savedMethod = safeStorage.getItem('defaultMethod');
-    const initLang = (savedLang === 'vi' || savedLang === 'zh') ? savedLang : 'zh';
+    // Mặc định TIẾNG VIỆT khi chưa ai chọn gì. Đổi ở đây thì phải đổi cả
+    // LunarTable.DEFAULT_LANG bên Kotlin: widget đọc khoá `qmdj.lang`, mà ngay
+    // sau khi cài mới thì chưa ai ghi khoá ấy — hai bên mặc định khác nhau là
+    // ứng dụng một thứ tiếng, lịch đã ghim một thứ tiếng khác.
+    const initLang = (savedLang === 'vi' || savedLang === 'zh') ? savedLang : 'vi';
     setTimeout(() => {
         if (typeof setLang === 'function') { currentLang = initLang === 'zh' ? 'vi' : 'zh'; setLang(initLang); }
         // Load saved default method
@@ -487,11 +491,6 @@ function updateMethodDisplay() {
     const sel = getDOM('methodSelect');
     if (!el || !sel) return;
     el.textContent = methodLabel(sel.value);
-    // Ba nhãn ẩn giữ cho ô rộng đúng bằng nhãn dài nhất, kể cả sau khi đổi
-    // ngôn ngữ — xem .opt-sizer trong app.css.
-    const ghosts = getDOM('methodDisplayBtn').querySelectorAll('.opt-ghost');
-    const all = ['trinhuan', 'amban', 'bophap'];
-    ghosts.forEach((g, i) => { g.textContent = all[i] ? methodLabel(all[i]) : ''; });
 }
 
 /**

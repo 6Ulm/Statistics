@@ -63,19 +63,18 @@ thì mở ra cùng một thứ.
 
 Vài chỗ phải để ý:
 
-* **Ô phái rộng đúng bằng nhãn dài nhất**, không phải nhãn đang hiện — nếu không
-  ô co giãn mỗi lần đổi phái. Không đếm được bằng số ký tự (chữ Hán và chữ Việt
-  không cùng một thước), nên xếp chồng nhãn đang hiện với ba nhãn ẩn trong cùng
-  một ô lưới: bề rộng cột là bề rộng nhãn rộng nhất, tự đúng cả khi đổi ngôn ngữ.
-  Ô còn nới thêm **50%** quanh nhãn: `zoom` trên ba nhãn ẩn — khác `transform`,
-  `zoom` đổi kích thước dùng để dựng bố cục nên cột lưới nở theo, tỉ lệ đúng cho
-  cả hai ngôn ngữ mà không phải đo bằng JavaScript. Đo thì hỏng: hàng này bị ẩn
-  khi đang ở tab Lịch, đúng lúc ô ngôn ngữ dùng chung có thể đổi ngôn ngữ.
-  Lề ngang nhân cùng hệ số (6px → 9px) để nới cả Ô chứ không riêng phần chữ.
-  Ba nhãn ẩn phải bị ép `height: 0`: `zoom` phóng **cả hai chiều**, để nguyên
-  thì ô phái cao hơn ô ngày giờ 4–6px — nới rộng chứ không nới cao.
-  Phần thừa dồn cho ô ngày giờ (trên S21: 55px → 179px tiếng Việt, 226px tiếng
-  Trung; ô phái 59px → 88px và 36px → 53px).
+* **Ô phái chiếm đúng phần tư thứ ba của bảng Tứ Trụ** — mép trái trên vạch
+  `Tháng|Ngày`, mép phải trên vạch `Ngày|Giờ`. Bề rộng là một PHẦN TRĂM nên
+  **giống hệt nhau ở hai ngôn ngữ**; bản trước để ô co đúng bằng nhãn dài nhất
+  (ba nhãn ẩn xếp chồng trong một ô lưới, cộng `zoom` để nới) nên cùng một màn
+  hình mà ô rộng 77px ở tiếng Việt và chỉ 44px ở tiếng Trung — hai bố cục khác
+  hẳn nhau, và mép phải rơi vào những chỗ khác nhau.
+  Phép tính ra phần trăm: `.controls` lọt vào 6px (đệm 5 + viền 1) mỗi bên so
+  với bảng, nên hàng rộng `w = W − 12`; vạch 50% của bảng nằm ở `W/2 − 6 = w/2`
+  tính từ mép hàng, vạch 75% nằm ở `3W/4 − 6 = 3w/4 + 3`. Ô phái vì thế rộng
+  `calc(25% + 3px)`, còn ô ngày giờ dừng ở `calc(50% − 4px)` để chừa đúng một
+  khe. Đo được lệch **0,0px** ở mép trái và **0,2–0,3px** ở mép phải, trên
+  320/360/393px × hai ngôn ngữ.
 * **Ô ngày giờ và ô "Đầy đủ" giữ nguyên bề rộng chữ của mình.** Cho ô ngày giờ
   co được thì nó bị bóp còn `0-09-2026 18:3`; ép cỡ chữ nhỏ đi thì "Sách Bổ" bị
   cắt còn chữ "S" khi đang ở tiếng Việt. Đo trên 360/393/412px × hai ngôn ngữ:
@@ -204,11 +203,11 @@ ngôn ngữ đang chọn vào khoá `qmdj.lang` (`publishLang` trong `calendar.j
 gọi `refreshCalendarWidget`; `LunarTable.langOf` đọc khoá ấy và widget đổi cả
 tiêu đề, thứ trong tuần, tên tiết khí, tiêu đề hai cột lẫn can chi.
 
-**Mặc định hai bên phải trùng nhau.** Ứng dụng mặc định tiếng Trung (`initLang`
-trong `app.js`), nên `LunarTable.DEFAULT_LANG` cũng phải là `"zh"` — để `"vi"`
-thì ngay sau khi cài mới, trước khi ai kịp ghi khoá, ứng dụng hiện tiếng Trung
-còn widget hiện tiếng Việt. `test_cal_sections.mjs` đọc cả hai mặc định từ mã
-nguồn rồi so.
+**Mặc định là TIẾNG VIỆT, và hai bên phải trùng nhau.** Ứng dụng mặc định tiếng
+Việt (`initLang` trong `app.js`), nên `LunarTable.DEFAULT_LANG` cũng phải là
+`"vi"` — lệch nhau thì ngay sau khi cài mới, trước khi ai kịp ghi khoá, ứng dụng
+hiện một thứ tiếng còn lịch đã ghim hiện thứ tiếng khác.
+`test_cal_sections.mjs` đọc cả hai mặc định từ mã nguồn rồi so.
 
 **Không treo việc đồng bộ vào một lời gọi.** `MainActivity.onStop` cũng vẽ lại
 widget: lỡ một nhịp nào đó (trang chưa nạp xong, broadcast rơi) thì cứ rời ứng
@@ -278,11 +277,11 @@ Xem trước bản tiếng Trung mà không cần dựng APK:
 
 ## Canh hàng theo thứ bên dưới / bên trên
 
-Khe giữa ô ngày giờ và ô phái rơi đúng vạch **Tháng|Ngày** của bảng Tứ Trụ ngay
-dưới. `.controls` lọt vào 6px (đệm 5 + viền 1) so với bảng ấy, nên bề rộng hàng
-là `w = W − 12`; muốn tâm khe nằm ở `L + W/2` thì ô ngày giờ rộng đúng
-`calc(50% − 2px)` (2px là nửa khe 4px). Đo được lệch **0,0px** trên
-360/393/412/520px × hai ngôn ngữ.
+**Mép trái** ô phái rơi đúng vạch **Tháng|Ngày** của bảng Tứ Trụ ngay dưới, và
+mép phải đúng vạch **Ngày|Giờ** — ô chiếm trọn phần tư thứ ba của bảng (xem
+phép tính ở mục trên). Bản trước canh TÂM KHE giữa hai ô vào vạch Tháng|Ngày;
+đổi vì ô phái nay phải chạy từ vạch 50% tới vạch 75% và rộng như nhau ở hai
+ngôn ngữ. Đo được lệch **0,0px** trên 320/360/393/412px × hai ngôn ngữ.
 
 Hai ô của hàng dùng chung thì canh theo **hàng tab ngay trên nó**: rộng hết bề
 ngang, chia đôi, mép trái / vạch giữa / mép phải trùng khít mép hai tab Kỳ Môn
@@ -296,9 +295,10 @@ bằng ở cả hai thứ tiếng. Giữa hai hàng chừa 6px, và nền thanh 
 TRANG (không phải trắng) nên cái khe ấy hiện ra thành một vạch, hai hàng tách
 bạch chứ không dính liền một khối.
 
-Trên máy hẹp nhất (S21, 360px) ô ngày giờ chốt ở 50% khiến nửa phải chỉ còn
-~166px, trong khi ô phái nới 1,5 lần cộng ô "Đầy đủ" cần ~189px. Dưới 375px hệ
-số nới hạ còn 1,1 và lề ngang còn 7px — nhãn vẫn hiện trọn, chỉ thoáng ít hơn.
+Trên máy hẹp nhất (S21, 360px) ô ngày giờ chốt ở 50% và ô phái chốt ở một phần
+tư, nên chỗ dự phòng chỉ còn lấy được từ ô "Đầy đủ": dưới 412px nó bóp lề trái
+và khe trong còn 2–3px. Phông trên máy thật (Samsung) rộng hơn phông ở máy
+dựng, mà cái tràn ấy thì cắt mất chữ "Đầy đủ".
 
 ## Không để hở đáy màn Kỳ Môn
 
@@ -684,8 +684,17 @@ với nhau, và đó là thứ nhìn vào là thấy.
 
 Ghim riêng **lịch âm** ra màn hình chính, không cần mở ứng dụng. Trong tab
 Lịch, bấm **📌 Ghim lịch ra màn hình chính** (Android 8 trở lên; launcher cũ thì
-nhấn giữ màn hình chính → Tiện ích → "Lịch âm"). Chạm vào widget mở thẳng tab
-Lịch, không phải bàn Kỳ Môn.
+nhấn giữ màn hình chính → Tiện ích → "Lịch âm").
+
+**Widget DÙNG ĐƯỢC, không chỉ để nhìn.** Hai mục CUỘN được bằng ngón tay, và
+chạm vào một ngày là CHỌN ngày ấy ngay trên màn hình chính: ô được viền màu
+nhấn, hai mục tô lại hàng ứng với ngày đó rồi cuộn tới hàng ấy. Không chỗ nào
+trong widget mở ứng dụng nữa — mở bằng biểu tượng như mọi ứng dụng khác. Trước
+đây chạm vào lưới là nhảy thẳng vào tab Lịch, nên không thể vừa chạm vừa ở lại
+màn hình chính.
+
+Chạm lại đúng ngày đang chọn thì BỎ chọn, quay về tô theo hôm nay; chạm tiêu đề
+cũng vậy (về tháng này và bỏ chọn).
 
 Widget có **đúng thiết kế của tab Lịch** — cùng màu, cùng cách sắp chữ, cùng
 kiểu đánh dấu hôm nay — chỉ bỏ thanh tab và nút ghim. Nội dung gồm lưới lịch rồi
@@ -704,9 +713,39 @@ ghim hai cái cạnh nhau vẫn xem được hai tháng khác nhau. Ba nút dùn
 `requestCode` khác nhau (`id * 8 + 1|2|3`), nếu không hệ thống dùng lại cùng một
 `PendingIntent` và cả ba cùng làm một việc.
 
-Thanh tiêu đề là **View thật** (`widget_calendar.xml`) để hai mũi tên bấm được;
-phần lưới và bảng tiết khí vẽ ra bitmap vì RemoteViews không dựng nổi lưới 7×6
-cho gọn.
+Widget KHÔNG còn là một tấm ảnh duy nhất. Hai ràng buộc của App Widget quyết
+định bố cục:
+
+* **Cuộn** chỉ có bên trong một *collection view* (`ListView`/`GridView`) do
+  `RemoteViewsService` nuôi — vẽ vào bitmap thì không tài nào cuộn. Nên mỗi mục
+  nay là một `ListView` giữ đủ 24 và 13 hàng (`WidgetSectionService`).
+* **Chạm** chỉ nhận qua `PendingIntent` gắn vào từng View — RemoteViews không
+  có cách nào biết toạ độ ngón tay. Nên trên bitmap lưới có một lưới **6×7 View
+  trong suốt**, mỗi ô một PendingIntent riêng. Khoá mục và chỉ số ô nằm trong
+  `Intent.data` chứ không chỉ trong extras: hệ thống so intent bằng
+  `filterEquals`, vốn BỎ QUA extras, nên hai thứ chỉ khác extras có thể bị gộp
+  làm một.
+
+Lưới lịch vẫn là bitmap: dựng 42 ô bằng RemoteViews thì mỗi ô phải là ba
+TextView lồng nhau, mà chiều cao ô lại không đặt được theo chiều cao widget
+trước API 31 (`setViewLayoutHeight`), trong khi minSdk là 24.
+
+Lưới LUÔN **sáu hàng**, kể cả tháng chỉ cần bốn hay năm: lưới bắt chạm đè lên
+trên là 6×7 View cố định trong XML, nên số hàng của bitmap mà đổi theo tháng là
+ô chạm lệch hẳn khỏi ô nhìn thấy.
+
+Chiều cao chia bằng `layout_weight`, mà Kotlin phải tự biết khung lưới còn lại
+bao nhiêu để vẽ bitmap cho vừa (`scaleType="fitXY"` nên lệch một chút là chữ bị
+kéo giãn). Những con số ấy để ở `WidgetLayout.kt` và `values/dimens.xml`;
+`test_cal_sections.mjs` đọc cả hai bên và canh khớp nhau.
+
+Ba cột của hai mục chia bằng `layout_weight` **27:35:38**, dùng chung cho hàng
+tiêu đề lẫn hàng giá trị và cho cả hai mục — đó là thứ giữ "Dương lịch" thẳng
+hàng với "Sóc" và "Can chi" thẳng hàng với "Vọng", không phải đo gì. Đổi lại,
+cột không tự nới theo chữ, nên cỡ chữ co theo bề ngang widget
+(`WidgetLayout.rowTextSp`): ở cỡ sàn 250dp mà người dùng tự bóp tay, cột giữa
+chỉ còn ~87dp trong khi "21-12-2025 22:03" cần ~92dp — thà chữ nhỏ hơn một chút
+còn hơn `ellipsize` nuốt mất đuôi giờ.
 
 Sàn kích thước là **4×4 ô** (`minResizeWidth/Height` = `minWidth/Height` =
 250dp): kéo to ra thì được, thu nhỏ hơn thì không. Ở 3×2 hay 4×3 ô, mỗi ô lịch
@@ -782,79 +821,50 @@ Lịch từ lúc nó thêm cột can chi tháng. Trước đây widget gập b�
 **hai nửa 12 hàng × hai cột**, tức hình dạng CŨ của tab, và cũng vì thế mà không
 có chỗ cho cột thứ ba: nửa bảng chỉ rộng ~165dp.
 
-Đổi lại, không còn nhét trọn 24 mục vào một màn. Mục nào đang mở thì hiện một
-**cửa sổ hàng quanh hàng đang hiệu lực** — y như tab Lịch tự cuộn tới tiết khí
-của hôm nay khi mở mục. Số hàng vừa được chia cho các mục đang mở theo đúng
-`JQ_SHARE` của `calendar.js` (Tiết khí 65%, Lịch âm phần còn lại); mục nào không
-dùng hết phần của mình thì nhường lại chứ không bỏ trống.
+Mỗi mục giữ ĐỦ hàng (24 và 13) và cuộn trong khung của nó, y như mục trong tab
+Lịch. Mở mục thì nó tự cuộn tới hàng đang hiệu lực
+(`RemoteViews.setScrollPosition`), đúng như tab Lịch cuộn tới tiết khí của ngày
+đang chọn.
 
-Chừng ấy nội dung cần chiều cao thật: 6 hàng lịch cộng 13 hàng bảng. Chiều cao
-được chia theo đúng tỉ lệ của tab Lịch (hàng lịch cao gấp ~3,7 lần hàng bảng),
-rồi kẹp hàng bảng trong khoảng 9–18dp.
+Chiều cao chia bằng `layout_weight`: lưới lịch **58**, mục Tiết khí **26**, mục
+Lịch âm **16**, sau khi trừ các khối cố định (tiêu đề 32dp, hàng thứ 16dp, hai
+hàng tiêu đề mục 20dp, đệm đáy 6dp). Mục nào đang ĐÓNG thì `ListView` của nó là
+`GONE`, mà `LinearLayout` không tính phần của View đã `GONE` — chỗ ấy tự chia
+lại cho lưới và mục còn lại. `WidgetLayout.gridHeightDp` dựng lại đúng luật ấy
+để biết vẽ bitmap lưới cao bao nhiêu.
 
-Khối bảng là một khối **cố định**, không đổi khi lật tháng hay khi gập/mở:
+Lưới lịch là một khối **cố định**, không đổi khi lật tháng:
 
-* Phần chia luôn tính theo **6 hàng lịch** (`GRID_WEEKS`) — số hàng của tháng dài
-  nhất — chứ không theo số hàng của tháng đang xem. Tính theo tháng đang xem thì
-  tháng gọn 5 hàng làm bảng phình thêm ~12%: bấm ‹ › một cái là cả khung lẫn cỡ
-  chữ nhảy. Chỗ dôi ra của tháng ngắn đổ vào lưới lịch, nơi ô cao thêm chỉ tốt lên.
-* Ba cột nằm ở **chỗ cố định**: cột tên rộng đúng bằng tên dài nhất (đo bằng
-  `measureText`, y như `width:1%` bên CSS) và căn trái; cột cuối căn giữa trong
-  phần chừa sát mép phải; cột giữa căn giữa khoảng trống còn lại — cùng luật với
-  `.cal-jq-date` bên CSS.
-* **Một bộ bề rộng cho CẢ HAI mục** (`sharedColWidths`): cột rộng nhất của từng
-  vị trí, đúng như `syncSectionColumns` bên tab Lịch, nên "Dương lịch" thẳng
-  hàng với "Sóc" và "Can chi" thẳng hàng với "Vọng". Cỡ chữ cũng đo theo bộ cột
-  chung ấy, không theo từng mục.
-* Bề rộng đo trên **toàn bộ số hàng** (kể cả hàng đang bị cửa sổ cắt ra ngoài)
-  **cộng khuôn**: mốc ngày giờ lấy `00-00-0000 00:00`, cột can chi tháng lấy cả
-  60 trụ, cột tháng âm lấy cả 24 nhãn có thể có. Đo riêng năm đang xem thì cột
-  nhích mỗi lần lật tháng — "Giáp Tý" hẹp hơn "Nhâm Thân" khá nhiều.
-* **Cỡ chữ lấy hai ràng buộc, không lấy hệ số đoán chừng.** Theo chiều cao:
-  `Paint.FontMetrics` của chính phông đang dùng cho biết một dòng chiếm bao
-  nhiêu, chia ra là được cỡ lớn nhất còn nằm trọn trong hàng — tiếng Việt dấu
-  chồng (Ậ, Ổ, ế) cao hơn Latin trơn, mà `ascent` đã tính sẵn khoản ấy. Theo bề
-  ngang: hạ tiếp cho tới khi ba cột rộng nhất của **cả hai mục** nằm gọn trong
-  bề ngang bảng (đo bằng chữ đậm, vì dòng đang hiệu lực in đậm và rộng hơn). Một
-  cỡ dùng chung cho cả hai mục — hai mục chữ to nhỏ khác nhau thì nhìn như hai
-  bảng của hai ứng dụng. Trần vẫn là 12dp cho khớp bảng ở tab Lịch. Hệ số 0,66
-  cũ chừa thừa quá tay: trên widget 4×5 của S21 chữ chỉ còn 7,1dp trong khi hàng
-  cao 10,7dp và bề ngang vẫn dư hơn 40dp.
-* **Lề co giãn**: chật thì bóp về mức tối thiểu (4 · 4 · 6dp) để dành chỗ cho
-  chữ, dư ra bao nhiêu trả lại cho lề tới mức rộng rãi (8 · 7 · 14dp — lề trái ·
-  khoảng hở giữa các cột · lề phải, gần đúng bằng đệm của bảng bên tab Lịch).
-  Phần của khoảng hở không tiêu vào đâu cả: hai cột sau căn giữa hộp của chúng
-  nên chỗ dôi ra tự nở thành khoảng trắng giữa ba nhóm chữ.
-* Bề rộng cột ngày chốt theo **khuôn `00-00-0000 00:00`**, không theo mốc của
-  năm đang xem, nên cột không nhích khi lật sang năm khác.
-* **Đệm đáy tính theo chỗ cung góc thật sự ăn tới, không phải cả bán kính.**
-  Android 12 trở lên tự bo góc mọi widget theo
-  `system_app_widget_background_radius` (One UI để khá rộng); bảng chạm sát mép
-  thì cung tròn ăn mất chữ đầu của hàng cuối (Mang Chủng) và đuôi giờ của nửa
-  phải (Đại Tuyết). Nhưng cung chỉ sâu nhất ở SÁT mép: ở hoành độ *x* mà chữ bắt
-  đầu, nó mới xuống tới `d = r − √(2r·x − x²)`. Với góc 16dp và lề hẹp nhất 4dp
-  thì d = 5,4dp, không phải 16dp — chừa cả bán kính là hở ra một dải trắng vô cớ
-  dưới đáy bảng. Chừa đúng d cộng 1,5dp lề an toàn, tính theo lề HẸP NHẤT có thể
-  xảy ra vì lề thật chỉ rộng hơn, mà lề càng rộng thì cung càng ăn nông.
-  Bán kính đọc thẳng từ hệ thống, không dưới 16dp của `widget_bg.xml` và không
-  quá 32dp.
+* Luôn **6 hàng** (`GRID_WEEKS`) — số hàng của tháng dài nhất — nên chiều cao ô
+  không nhảy khi bấm ‹ ›, và lưới bắt chạm 6×7 trong XML lúc nào cũng đè đúng ô.
+* **Cỡ chữ chặn theo dp tuyệt đối** (số ngày ≤ 17dp, ngày âm ≤ 11,5dp, can chi
+  ≤ 11dp): thả trôi theo chiều cao widget thì widget cao một chút là chữ phình,
+  widget thấp là chữ bé không đọc nổi. Can chi tự tắt khi ô không đủ cao.
+* **Đệm đáy 6dp** (`widget_corner_pad`) chừa cho góc bo mà Android 12 trở lên tự
+  áp cho mọi widget: hàng cuối của `ListView` chạm sát mép thì bị cung tròn gặm
+  mất chữ. Trước đây khoản này tính bằng lượng giác trong Kotlin vì bảng nằm
+  trong bitmap; nay bảng là View thật nên chỉ cần một lề tĩnh.
 
-Cỡ chữ bảng tiết khí đo trên ba máy đích (`node tools/test_widget_layout.mjs`):
+Bố cục đo trên ba máy đích (`node tools/test_widget_layout.mjs`):
 
-| Máy · cỡ widget | Trước | Sau | Ràng buộc |
-|---|---|---|---|
-| S21 · 4×5 (330×440dp) | 7,1dp | **9,8dp** | chiều cao hàng |
-| S21 · 4×6 (330×530dp) | 8,8dp | **10,5dp** | bề ngang nửa bảng |
-| S21 FE · 4×5 (360×450dp) | 7,3dp | **10,1dp** | chiều cao hàng |
-| S21 FE · 4×6 (360×545dp) | 9,0dp | **11,5dp** | bề ngang nửa bảng |
-| A51 · 4×5 (380×460dp) | 7,4dp | **10,3dp** | chiều cao hàng |
-| A51 · 4×6 (380×560dp) | 9,3dp | **12,0dp** | chạm trần 12dp |
+| Máy · cỡ widget | Khung lưới | Ô lịch | Số ngày | Can chi | Hàng mục hiện |
+|---|---|---|---|---|---|
+| S21 · 4×5 (330×440dp) | 239dp | 39,8dp | 14,3dp | tắt | 6 |
+| S21 · 4×6 (330×530dp) | 301dp | 50,2dp | **17,0dp** | có | 8 |
+| S21 FE · 4×5 (360×450dp) | 246dp | 41,0dp | 14,7dp | tắt | 6 |
+| S21 FE · 4×6 (360×545dp) | 311dp | 51,9dp | **17,0dp** | có | 8 |
+| A51 · 4×5 (380×460dp) | 253dp | 42,1dp | 15,2dp | tắt | 6 |
+| A51 · 4×6 (380×560dp) | 322dp | 53,7dp | **17,0dp** | có | 8 |
+
+Số hàng hiện là số hàng NHÌN THẤY của mục đang mở; mục vẫn giữ đủ 24 hàng và
+cuộn. Ở cỡ 4×5 ô lịch chưa đủ cao cho can chi nên nó tự tắt — đúng luật cũ, chỉ
+khác là nay lưới luôn 6 hàng nên ngưỡng ấy không còn nhảy theo tháng.
 
 Ba máy chỉ khác nhau ở bề ngang màn hình (360 · 393 · 412dp) và mật độ
-(3 · 2,75 · 2,625). Bố cục tính hết theo dp và theo `measureText` của chính phông
-đang dùng, nên **không có nhánh riêng cho máy nào** — cùng một luật cho ra ba kết
-quả xếp đúng theo bề ngang. Mật độ lẻ 2,75 của S21 FE cũng không gây lệch: mọi
-mốc đều là số thực, chỉ có bề rộng bitmap mới làm tròn.
+(3 · 2,75 · 2,625). Bố cục tính hết theo dp và theo `layout_weight`, nên **không
+có nhánh riêng cho máy nào** — cùng một luật cho ra ba kết quả xếp đúng theo bề
+ngang. Mật độ lẻ 2,75 của S21 FE cũng không gây lệch: mọi mốc đều là số thực,
+chỉ có bề rộng bitmap mới làm tròn.
 
 Ở cỡ 4×6 trở lên, **S21 và S21 FE bị bề ngang chặn** chứ không phải chiều cao:
 nửa bảng rộng ~165dp (S21) và ~180dp (S21 FE), mà "Sương Giáng" cộng

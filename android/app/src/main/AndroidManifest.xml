@@ -70,11 +70,27 @@
                 <action android:name="com.bazi.qimen.WIDGET_PREV" />
                 <action android:name="com.bazi.qimen.WIDGET_NEXT" />
                 <action android:name="com.bazi.qimen.WIDGET_TODAY" />
+                <action android:name="com.bazi.qimen.WIDGET_PICK" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/calendar_widget_info" />
         </receiver>
+
+        <!--
+          Nguồn hàng cho hai ListView của widget. Widget chỉ cuộn được bên trong
+          một collection view, mà collection view thì chỉ nhận dữ liệu qua một
+          RemoteViewsService như thế này.
+
+          BIND_REMOTEVIEWS là quyền chữ ký của hệ thống: khai ở đây nghĩa là CHỈ
+          launcher (tiến trình đã có quyền ấy) được nối vào service, không ứng
+          dụng nào khác gọi tới được. Thiếu dòng này thì hệ thống từ chối nối và
+          hai mục hiện ra trống trơn.
+        -->
+        <service
+            android:name=".WidgetSectionService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
 
         <!--
           Dựng lại báo thức nửa đêm của widget sau khi khởi động lại máy, sau
