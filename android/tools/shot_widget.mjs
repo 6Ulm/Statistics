@@ -36,7 +36,11 @@ const ctx = await browser.newContext({ viewport: { width: 760, height: 900 }, de
 const page = await ctx.newPage();
 page.on('pageerror', e => console.error('lỗi trang:', e.message));
 
-for (const [q, name] of [['', 'thangnay'], ['?month=2026-9', 'thangsau']]) {
+// Ba trạng thái gập/mở của hai mục — widget phải theo đúng trạng thái người
+// dùng để lại trong ứng dụng, nên xem trước cả ba.
+for (const [q, name] of [['', 'thangnay'], ['?month=2026-9', 'thangsau'],
+                         ['?am=1', 'ca-hai-mo'], ['?jq=0&am=1', 'chi-lich-am'],
+                         ['?jq=0', 'ca-hai-dong']]) {
     await page.goto(base + q, { waitUntil: 'networkidle' });
     await page.waitForSelector('body[data-ready="1"]');
     await page.screenshot({ path: path.join(OUT, `widget-${name}.png`), fullPage: true });

@@ -152,8 +152,8 @@ Vọng), dựng lại bằng **cùng những hàm ấy** (`Ephem.monthsAtBasis`,
 `formatPreciseSocLocal`, `formatPreciseVongLocal`) để hai tab không thể lệch —
 `test_cal_sections.mjs` so từng dòng một.
 
-Giá trị Sóc/Vọng CĂN GIỮA (lớp `.c`, giống hệt tiêu đề), khác cột "Dương lịch"
-của Tiết khí (vẫn căn trái). Cột này rộng hơn hẳn nội dung (Sóc/Vọng chỉ chiếm
+Giá trị Sóc/Vọng CĂN GIỮA (lớp `.c`, giống hệt tiêu đề) — và cột "Dương lịch"
+của Tiết khí nay cũng vậy. Cột này rộng hơn hẳn nội dung (Sóc/Vọng chỉ chiếm
 non nửa cột, phần dư nhường cho cột Tháng âm hẹp bên trái theo mẹo `width:1%`),
 nên căn GIỮA tiêu đề trong khi giá trị căn TRÁI khiến tiêu đề trông như bị đẩy
 sang phải cả 20-30px so với nơi giá trị thật sự nằm — đo được: tâm chữ "Sóc"
@@ -654,11 +654,16 @@ giờ khác nhau; `tools/test_lunar_table.mjs` canh bảng của widget theo cù
 nguyên tắc.
 
 Ở tab Lịch, bảng bỏ hai cột **Độn** và **Số Cục** (đó là chuyện của bàn Kỳ Môn)
-nên mỗi mục chỉ còn tên với ngày giờ — hẹp bằng nửa bề ngang. 24 mục vì thế xếp
-thành **hai cột kép**, 12 mục mỗi bên: bảng thấp đi một nửa, cả năm hiện gọn
-trong một màn hình, và ranh giới trái/phải trùng luôn ranh giới Dương Độn / Âm
-Độn. Cột tên co đúng bằng chữ và cột ngày căn trái ngay sau nó, để tiêu đề
-"Dương lịch" thẳng hàng với giá trị bên dưới thay vì bị đẩy sát mép máy.
+và thêm cột **Can chi** (trụ tháng mà tiết khí ấy mở ra), thành một dãy 24 hàng
+liền × ba cột, cuộn trong khung của mục.
+
+Cột tên co đúng bằng chữ (`width:1%`) và căn trái; cột "Can chi" cũng co bằng
+chữ, căn giữa, chừa 20px tới mép phải; cột "Dương lịch" ăn hết phần còn lại và
+**căn GIỮA** — cả tiêu đề lẫn giá trị, nên hai bên vẫn chung một tâm. Căn trái
+(bản trước) dán cột ngày vào sát cột tên trong khi phía Can chi hở ra một mảng
+trống rộng gấp năm: đo trên máy 393px là 33px một bên và 169px bên kia. Cột
+giữa rộng gấp ba hai cột bên, nên chỉ cần đổi chỗ đứng của CHỮ trong nó là ba
+nhóm chữ chia đều bề ngang bảng, không phải nắn lại bề rộng cột.
 
 ## Widget lịch trên màn hình chính
 
@@ -668,8 +673,15 @@ nhấn giữ màn hình chính → Tiện ích → "Lịch âm"). Chạm vào wi
 Lịch, không phải bàn Kỳ Môn.
 
 Widget có **đúng thiết kế của tab Lịch** — cùng màu, cùng cách sắp chữ, cùng
-kiểu đánh dấu hôm nay — chỉ bỏ thanh tab và nút ghim. Nội dung gồm lưới lịch và
-bảng tiết khí, không có gì khác.
+kiểu đánh dấu hôm nay — chỉ bỏ thanh tab và nút ghim. Nội dung gồm lưới lịch rồi
+**cả hai mục gập được**: "Tiết khí" (Tiết Khí · Dương lịch · Can chi) và "Lịch
+âm" (Tháng âm · Sóc · Vọng).
+
+**Gập/mở theo đúng ứng dụng.** Hai mục ấy trong tab Lịch nhớ trạng thái vào
+`qmdj.calSecJq` / `qmdj.calSecAm`; widget đọc chính hai khoá đó, nên đóng mục
+nào trong ứng dụng là widget đóng đúng mục ấy, mở cũng vậy. `toggleSection`
+gọi luôn `pokeWidget()` sau khi ghi khoá — chỉ ghi không thôi thì widget còn
+hiện trạng thái cũ tới tận nửa đêm.
 
 Hai mũi tên **‹ ›** lùi/tiến tháng, chạm tiêu đề thì về tháng hiện tại; tháng
 đang xem được nhớ riêng cho **từng widget** (`qmdj_widget` / `w<id>.offset`), nên
@@ -695,11 +707,27 @@ Widget vẽ bằng RemoteViews nên **không có WebView** — `lunar.js` không
 được. Thay vì chép thuật toán tính điểm Sóc và giờ giao tiết sang Kotlin (dễ
 lệch với phần còn lại của ứng dụng), mọi mốc mùng 1 và mọi tiết khí từ
 1900–2100 được tính sẵn bằng chính `lunar.js` rồi đóng gói thành hai bảng tra
-(43 KB + 71 KB); Kotlin chỉ tìm nhị phân. Can chi suy thẳng từ số ngày Julius.
+(92 KB + 85 KB); Kotlin chỉ tìm nhị phân. Can chi ngày suy thẳng từ số ngày
+Julius.
+
+Hai bảng ấy mang thêm ba cột để dựng được đúng hai mục của tab Lịch:
+
+* **Can chi THÁNG** của từng tiết khí (`jieqi.txt`, cột 4, chỉ số 0–59). Hỏi
+  thẳng `getEightChar().getMonth()` chứ không suy từ chỉ số tiết khí: can tháng
+  phụ thuộc can năm, mà năm can chi lại đổi ở Lập Xuân.
+* **Mốc Sóc và Vọng để HIỆN** (`lunar_months.txt`, bốn cột cuối). Đây KHÔNG
+  phải cột giây ở đầu dòng: cột ấy là *ngưỡng bậc thang* định xem NGÀY nào là
+  mùng 1 khi đổi múi giờ, còn bốn cột cuối là điểm Sóc/Vọng thiên văn
+  (`shuoHigh` ở mốc UTC+8 — đúng hàm mà `Ephem.socSolar`/`vongSolar` gọi) mà tab
+  Lịch in ra. Đo trên 2000–2050 thì hai con số **lệch nhau ở 2,4% số tháng, có
+  ca lệch 17 giờ** — dùng nhầm cột là widget in giờ Sóc khác hẳn ứng dụng.
+  `tools/test_widget_sections.mjs` so từng ô của cả hai bảng với ứng dụng thật,
+  ở ba múi giờ.
 
 ```bash
 node tools/build_lunar_table.mjs   # sinh assets/lunar_months.txt + jieqi.txt
 node tools/test_lunar_table.mjs    # đối chiếu với lunar.js
+node tools/test_widget_sections.mjs # hai bảng của widget khớp tab Lịch từng ô
 node tools/test_astro_table.mjs    # bảng DE423 còn đúng, còn được dùng, và
                                    # tháng nhuận 1900-2100 chưa xê dịch
 ```
@@ -734,36 +762,50 @@ phỏng**. Nay phép thử soi thẳng vào mã Kotlin — đơn vị của từ
 `monthStart` không được đi qua `localize` — và kiểm cả dải giá trị thật trong
 hai tệp dữ liệu, nên một bản sao lệch nữa sẽ đỏ chứ không im.
 
-Widget hiện **cả 24 tiết khí của năm**, xếp hai cột 12 — đúng hình dạng bảng ở
-tab Lịch, kể cả vách ngăn giữa hai nửa và ô tô màu cho tiết khí đang hiệu lực.
+Hai bảng trải hết bề ngang, **ba cột**, một dãy liền — đúng hình dạng bảng ở tab
+Lịch từ lúc nó thêm cột can chi tháng. Trước đây widget gập bảng tiết khí thành
+**hai nửa 12 hàng × hai cột**, tức hình dạng CŨ của tab, và cũng vì thế mà không
+có chỗ cho cột thứ ba: nửa bảng chỉ rộng ~165dp.
+
+Đổi lại, không còn nhét trọn 24 mục vào một màn. Mục nào đang mở thì hiện một
+**cửa sổ hàng quanh hàng đang hiệu lực** — y như tab Lịch tự cuộn tới tiết khí
+của hôm nay khi mở mục. Số hàng vừa được chia cho các mục đang mở theo đúng
+`JQ_SHARE` của `calendar.js` (Tiết khí 65%, Lịch âm phần còn lại); mục nào không
+dùng hết phần của mình thì nhường lại chứ không bỏ trống.
 
 Chừng ấy nội dung cần chiều cao thật: 6 hàng lịch cộng 13 hàng bảng. Chiều cao
-được chia theo đúng tỉ lệ của tab Lịch (hàng lịch cao gấp ~3,7 lần hàng tiết
-khí), rồi kẹp hàng tiết khí trong khoảng 9–18dp.
+được chia theo đúng tỉ lệ của tab Lịch (hàng lịch cao gấp ~3,7 lần hàng bảng),
+rồi kẹp hàng bảng trong khoảng 9–18dp.
 
-Bảng tiết khí là một khối **cố định**, không đổi khi lật tháng:
+Khối bảng là một khối **cố định**, không đổi khi lật tháng hay khi gập/mở:
 
 * Phần chia luôn tính theo **6 hàng lịch** (`GRID_WEEKS`) — số hàng của tháng dài
   nhất — chứ không theo số hàng của tháng đang xem. Tính theo tháng đang xem thì
   tháng gọn 5 hàng làm bảng phình thêm ~12%: bấm ‹ › một cái là cả khung lẫn cỡ
   chữ nhảy. Chỗ dôi ra của tháng ngắn đổ vào lưới lịch, nơi ô cao thêm chỉ tốt lên.
-* Hai cột nằm ở **chỗ cố định**: cột tên rộng đúng bằng tên dài nhất (đo bằng
-  `measureText`, y như `width:1%` bên CSS), cột ngày bắt đầu ngay sau nó — giống
-  nhau ở cả hai nửa bảng và ở mọi tháng.
+* Ba cột nằm ở **chỗ cố định**: cột tên rộng đúng bằng tên dài nhất (đo bằng
+  `measureText`, y như `width:1%` bên CSS) và căn trái; cột cuối căn giữa trong
+  phần chừa sát mép phải; cột giữa căn giữa khoảng trống còn lại — cùng luật với
+  `.cal-jq-date` bên CSS.
+* Bề rộng đo trên **toàn bộ số hàng** (kể cả hàng đang bị cửa sổ cắt ra ngoài)
+  **cộng khuôn**: mốc ngày giờ lấy `00-00-0000 00:00`, cột can chi tháng lấy cả
+  60 trụ, cột tháng âm lấy cả 24 nhãn có thể có. Đo riêng năm đang xem thì cột
+  nhích mỗi lần lật tháng — "Giáp Tý" hẹp hơn "Nhâm Thân" khá nhiều.
 * **Cỡ chữ lấy hai ràng buộc, không lấy hệ số đoán chừng.** Theo chiều cao:
   `Paint.FontMetrics` của chính phông đang dùng cho biết một dòng chiếm bao
   nhiêu, chia ra là được cỡ lớn nhất còn nằm trọn trong hàng — tiếng Việt dấu
   chồng (Ậ, Ổ, ế) cao hơn Latin trơn, mà `ascent` đã tính sẵn khoản ấy. Theo bề
-  ngang: hạ tiếp cho tới khi "tên dài nhất + mốc ngày giờ dài nhất" nằm gọn
-  trong nửa bảng (đo bằng chữ đậm, vì dòng đang hiệu lực in đậm và rộng hơn).
-  Trần vẫn là 12dp cho khớp bảng ở tab Lịch. Hệ số 0,66 cũ chừa thừa quá tay:
-  trên widget 4×5 của S21 chữ chỉ còn 7,1dp trong khi hàng cao 10,7dp và bề
-  ngang vẫn dư hơn 40dp.
-* **Lề mỗi nửa bảng co giãn**: chật thì bóp về mức tối thiểu (4 · 4 · 5dp) để
-  dành chỗ cho chữ, dư ra bao nhiêu trả lại cho lề tới mức rộng rãi
-  (8 · 6 · 10dp — lề trái · khoảng hở giữa hai cột · lề phải, gần đúng bằng đệm
-  của bảng bên tab Lịch). Trên S21 nửa bảng chỉ rộng ~165dp nên vài dp lề ấy đổi
-  thẳng thành cỡ chữ.
+  ngang: hạ tiếp cho tới khi ba cột rộng nhất của **cả hai mục** nằm gọn trong
+  bề ngang bảng (đo bằng chữ đậm, vì dòng đang hiệu lực in đậm và rộng hơn). Một
+  cỡ dùng chung cho cả hai mục — hai mục chữ to nhỏ khác nhau thì nhìn như hai
+  bảng của hai ứng dụng. Trần vẫn là 12dp cho khớp bảng ở tab Lịch. Hệ số 0,66
+  cũ chừa thừa quá tay: trên widget 4×5 của S21 chữ chỉ còn 7,1dp trong khi hàng
+  cao 10,7dp và bề ngang vẫn dư hơn 40dp.
+* **Lề co giãn**: chật thì bóp về mức tối thiểu (4 · 4 · 6dp) để dành chỗ cho
+  chữ, dư ra bao nhiêu trả lại cho lề tới mức rộng rãi (8 · 7 · 14dp — lề trái ·
+  khoảng hở giữa các cột · lề phải, gần đúng bằng đệm của bảng bên tab Lịch).
+  Phần của khoảng hở không tiêu vào đâu cả: hai cột sau căn giữa hộp của chúng
+  nên chỗ dôi ra tự nở thành khoảng trắng giữa ba nhóm chữ.
 * Bề rộng cột ngày chốt theo **khuôn `00-00-0000 00:00`**, không theo mốc của
   năm đang xem, nên cột không nhích khi lật sang năm khác.
 * **Đệm đáy tính theo chỗ cung góc thật sự ăn tới, không phải cả bán kính.**
@@ -841,8 +883,31 @@ node tools/shot_widget.mjs         # ảnh widget ở 4 kích thước
 duyệt (cùng mô hình vẽ với Canvas của Android) và đọc **chính hai tệp assets mà
 widget dùng**, nên bản xem trước không thể lệch với widget thật.
 
+### Widget không được kẹt ở ngày cũ
+
 Widget tự vẽ lại sau nửa đêm bằng một báo thức lặp không chính xác — chỉ cần
 đúng ngày, đỡ tốn pin hơn nhiều so với đánh thức nửa tiếng một lần.
+
+Mà báo thức của `AlarmManager` **không sống qua lần khởi động lại máy**, và
+`calendar_widget_info.xml` để `updatePeriodMillis="0"` nên hệ thống cũng không
+tự gọi `onUpdate` theo chu kỳ. Cộng lại: reboot một cái là lịch đã ghim đứng im
+ở ngày hôm ấy, không còn gì đánh thức nó, cho tới khi người dùng tình cờ mở ứng
+dụng hay bấm ‹ ›. Đúng cái cảnh "widget hiện bản cũ" mà không ai hiểu vì sao.
+
+Nên có ba đường bù lại:
+
+* `BootReceiver` (`exported="true"`, quyền `RECEIVE_BOOT_COMPLETED`) bắt
+  `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED` và `TIMEZONE_CHANGED` rồi dựng lại
+  báo thức và vẽ lại ngay. Phải là receiver RIÊNG: receiver của widget để
+  `exported="false"` nên không nhận nổi broadcast của hệ thống. Cả ba action
+  đều nằm trong danh sách ngoại lệ của luật chặn broadcast ngầm từ Android 8.
+* `refreshAll()` đặt lại báo thức ở **mọi** lần vẽ lại, không riêng `onUpdate`.
+  Đặt lại cùng một `PendingIntent` chỉ là thay chỗ cũ, không chồng thêm.
+* Ứng dụng gọi `refreshCalendarWidget` mỗi khi đổi ngôn ngữ, đổi địa điểm,
+  gập/mở một mục, và khi rời ứng dụng (`MainActivity.onStop`).
+
+`RECEIVE_BOOT_COMPLETED` là quyền **thường** (normal): không hỏi người dùng,
+không mở đường ra mạng. Ứng dụng vẫn không có `INTERNET`.
 
 ## Vì sao chạy được offline
 

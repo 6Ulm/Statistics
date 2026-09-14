@@ -375,15 +375,15 @@
         // overflow-x nên trở thành vùng cuộn gần nhất của <th> sticky, mà chính
         // nó lại không giới hạn chiều cao — hàng tiêu đề vì thế trôi mất khi
         // cuộn. Chính .cal-sec-body cuộn là đủ.
-        // "Dương lịch" KHÔNG mang lớp "c": giá trị của nó (.cal-jq-date) căn
-        // TRÁI, nên tiêu đề cũng phải căn trái mới trùng tâm — gắn "c" vào đây
-        // (sót lại từ đợt đổi tiêu đề thành hàng <thead>, lẽ ra chỉ áp cho
-        // "Can chi") kéo tiêu đề lệch hẳn sang phải so với cột ngày giờ bên
-        // dưới, ~70px trên máy 393px.
+        // Luật chung: mỗi tiêu đề căn ĐÚNG KIỂU của giá trị bên dưới nó, không
+        // thì hai bên không trùng tâm. "Tiết khí" căn trái theo tên tiết khí;
+        // "Dương lịch" mang "c" vì giá trị của nó (.cal-jq-date) căn giữa —
+        // lớp `.cal-jq-date` chỉ gắn cho <td>, nên bỏ "c" ở đây là tiêu đề một
+        // đằng giá trị một nẻo, lệch ~60px trên máy 393px.
         box.innerHTML =
             '<table class="dp-table cal-jq"><thead><tr class="cal-sec-head">' +
             '<th>' + t('colTk') + '</th>' +
-            '<th>' + t('colDate') + '</th>' +
+            '<th class="c">' + t('colDate') + '</th>' +
             '<th class="c cal-jq-last">' + t('colGz') +
             '<span class="cal-sec-chev"></span></th>' +
             '</tr></thead><tbody id="calJqBody">' + rows + '</tbody></table>';
@@ -571,6 +571,11 @@
     function toggleSection(which) {
         if (which === 'jq') { openJq = !openJq; prefSet(K_SEC_JQ, openJq ? '1' : '0'); }
         else                { openAm = !openAm; prefSet(K_SEC_AM, openAm ? '1' : '0'); }
+        // Widget gập/mở hai mục THEO ĐÚNG hai khoá này, nên ghi khoá xong phải
+        // bảo nó vẽ lại — không thì lịch đã ghim còn hiện trạng thái cũ cho tới
+        // nửa đêm. Chỉ gọi vẽ lại, KHÔNG công bố bảng tháng: bảng ấy không đổi
+        // vì một cú bấm gập/mở, và việc công bố là của lúc mở ứng dụng.
+        pokeWidget();
         applySections();
         fitGrid(lastWeeks);
         if (which === 'jq' && openJq) setTimeout(scrollToActiveJieQi, 40);

@@ -24,12 +24,13 @@ import org.json.JSONObject
 import kotlin.math.sqrt
 
 /**
- * Widget màn hình chính: CHỈ lịch âm dương và bảng tiết khí — không có bàn Kỳ
- * Môn, không có thanh tab, không có nút ghim. Bố cục và màu sắc giống hệt tab
- * Lịch trong ứng dụng.
+ * Widget màn hình chính: CHỈ những gì tab Lịch có — lưới lịch âm dương rồi hai
+ * mục gập được "Tiết khí" và "Lịch âm" — không có bàn Kỳ Môn, không có thanh
+ * tab, không có nút ghim. Bố cục, màu sắc và CẢ TRẠNG THÁI GẬP/MỞ đều lấy theo
+ * tab Lịch, nên hai chỗ không thể hiện hai thứ khác nhau.
  *
  * Thanh tiêu đề là View thật (xem widget_calendar.xml) để hai mũi tên ‹ › bấm
- * được mà lùi/tiến tháng; phần lưới và bảng tiết khí bên dưới vẽ ra bitmap vì
+ * được mà lùi/tiến tháng; phần lưới và hai bảng bên dưới vẽ ra bitmap vì
  * RemoteViews không dựng nổi lưới 7×6 cho gọn.
  *
  * Home-screen widget: the lunar calendar and its jieqi table, nothing else.
@@ -92,6 +93,12 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             ComponentName(context, CalendarWidgetProvider::class.java)
         )
         ids.forEach { render(context, manager, it) }
+        // Đặt lại báo thức nửa đêm ở MỌI lần vẽ lại, không riêng onUpdate.
+        // Báo thức là đường duy nhất widget tự biết đã sang ngày mới
+        // (updatePeriodMillis = 0), mà nó thì mất khi khởi động lại máy hoặc khi
+        // hệ thống dọn tiến trình. Đặt lại cùng một PendingIntent chỉ là thay
+        // chỗ cũ, không chồng thêm báo thức nào.
+        if (ids.isNotEmpty()) scheduleMidnight(context)
     }
 
     /* ─────────────── Dựng widget ─────────────── */
@@ -259,39 +266,55 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         val daysInMonth = first.getActualMaximum(Calendar.DAY_OF_MONTH)
         val weeks = Math.ceil((lead + daysInMonth) / 7.0).toInt().coerceAtLeast(1)
 
-        // Bảng tiết khí: CẢ 24 mục của năm, xếp hai cột 12 — đúng hình dạng của
-        // tab Lịch. Mười ba hàng (một hàng tiêu đề + 12) là một khối lớn, nên
-        // chia theo TỈ LỆ của ứng dụng thay vì cho nó một khoản cố định: ở tab
-        // Lịch trên A51, hàng lịch cao ~78dp còn hàng tiết khí ~21dp, tức xấp
-        // xỉ 3,7 lần.
-        // Giờ giao tiết hiện theo múi giờ của ĐỊA ĐIỂM ĐANG CHỌN trong ứng
-        // dụng, giống hệt tab Lịch — widget không có bảng chọn nơi riêng.
+        // Hai mục gập được, y như tab Lịch: "Tiết khí" (ba cột — tên · Dương
+        // lịch · can chi tháng) rồi "Lịch âm" (Tháng âm · Sóc · Vọng). Hàng
+        // tiêu đề của CẢ HAI luôn hiện; mục nào đang mở thì có thêm mấy hàng
+        // giá trị bên dưới, đúng trạng thái người dùng để lại trong ứng dụng.
+        //
+        // Mười ba hàng là một khối lớn, nên chia theo TỈ LỆ của ứng dụng thay vì
+        // cho nó một khoản cố định: ở tab Lịch trên A51, hàng lịch cao ~78dp còn
+        // hàng bảng ~21dp, tức xấp xỉ 3,7 lần.
+        // Giờ giao tiết và mốc Sóc/Vọng hiện theo múi giờ của ĐỊA ĐIỂM ĐANG
+        // CHỌN trong ứng dụng, giống hệt tab Lịch — widget không có bảng chọn
+        // nơi riêng.
         val tz = selectedTimeZone(context)
         val zh = LunarTable.langOf(context) == "zh"
-        val jieQi = LunarTable.jieQiYearOf(LunarTable.jdn(year, month, 15), zh)
-            .map { LunarTable.localize(it, tz) }
+        val secs = buildSections(context, year, month, todayJdn, tz, zh)
         val dowH = minOf(h * 0.09f, dp(context, 15f))
-        val jqRows = if (jieQi.size == 24) 13 else 0
+        val hasTable = secs.isNotEmpty()
 
-        // Đáy widget bị góc bo cắt mất một cung tròn. Bảng tiết khí chạm sát
-        // mép thì hàng cuối (Mang Chủng · Đại Tuyết) mất chữ đầu và mất đuôi
-        // giờ. Chừa đúng chỗ cung ăn tới Ở HOÀNH ĐỘ CHỮ BẮT ĐẦU — lấy lề hẹp
-        // nhất có thể xảy ra làm trường hợp xấu nhất, vì lề thật chỉ rộng hơn.
-        val safeBottom = if (jqRows == 0) 0f else
+        // Đáy widget bị góc bo cắt mất một cung tròn. Bảng chạm sát mép thì hàng
+        // cuối mất chữ đầu và mất đuôi giờ. Chừa đúng chỗ cung ăn tới Ở HOÀNH ĐỘ
+        // CHỮ BẮT ĐẦU — lấy lề hẹp nhất có thể xảy ra làm trường hợp xấu nhất,
+        // vì lề thật chỉ rộng hơn.
+        val safeBottom = if (!hasTable) 0f else
             cornerBottomPad(context, cornerRadius(context), dp(context, PAD_NARROWEST))
 
-        // Bảng tiết khí phải CỐ ĐỊNH: chia theo GRID_WEEKS (tháng dài nhất) chứ
-        // không theo `weeks` của tháng đang xem. Chia theo `weeks` thì tháng gọn
-        // 5 hàng làm bảng phình ra ~12% — lật tháng một cái là cả khung lẫn cỡ
-        // chữ nhảy, đúng thứ người dùng thấy chướng. Chỗ dôi ra của tháng 5 hàng
-        // đổ vào lưới lịch, nơi ô cao thêm chỉ tốt lên.
-        // 6 hàng lịch × 3,7 + 13 hàng tiết khí = 35,2 phần bằng nhau.
-        // Kẹp hai đầu: dưới 9dp thì chữ tiết khí không đọc nổi, trên 18dp thì
-        // bảng phình ra nuốt mất lưới lịch trên widget cao.
-        val jqRowH = if (jqRows == 0) 0f else
-            ((h - dowH - safeBottom) / (GRID_WEEKS * ROW_RATIO + jqRows))
+        // Khối bảng phải CỐ ĐỊNH: chia theo GRID_WEEKS (tháng dài nhất) và theo
+        // NOMINAL_ROWS chứ không theo `weeks` của tháng đang xem hay theo số
+        // hàng thật sự vẽ ra. Chia theo tháng đang xem thì tháng gọn 5 hàng làm
+        // bảng phình ra ~12% — lật tháng một cái là cả khung lẫn cỡ chữ nhảy,
+        // đúng thứ người dùng thấy chướng. Chỗ dôi ra của tháng 5 hàng đổ vào
+        // lưới lịch, nơi ô cao thêm chỉ tốt lên.
+        // 6 hàng lịch × 3,7 + 13 hàng bảng = 35,2 phần bằng nhau.
+        // Kẹp hai đầu: dưới 9dp thì chữ không đọc nổi, trên 18dp thì bảng phình
+        // ra nuốt mất lưới lịch trên widget cao.
+        val jqRowH = if (!hasTable) 0f else
+            ((h - dowH - safeBottom) / (GRID_WEEKS * ROW_RATIO + NOMINAL_ROWS))
                 .coerceIn(dp(context, 9f), dp(context, 18f))
-        val jqH = if (jqRows == 0) 0f else jqRowH * jqRows + dp(context, 5f) + safeBottom
+
+        // Bao nhiêu hàng GIÁ TRỊ thì vừa: lưới lịch giữ đúng phần của nó
+        // (GRID_WEEKS hàng, mỗi hàng cao ROW_RATIO lần hàng bảng), phần còn lại
+        // chia cho các mục đang mở. Trừ đi hàng tiêu đề của cả hai mục, vốn
+        // luôn hiện dù mục có mở hay không.
+        val gridKeep = if (!hasTable) 0f else jqRowH * ROW_RATIO * GRID_WEEKS
+        val slots = if (!hasTable) 0 else
+            (((h - dowH - safeBottom - gridKeep) / jqRowH).toInt() - secs.size)
+                .coerceAtLeast(0)
+        val shown = shareRows(secs, slots)
+        val bodyRows = shown.sum()
+        val jqH = if (!hasTable) 0f else
+            jqRowH * (secs.size + bodyRows) + dp(context, 5f) + safeBottom
         val gridH = (h - dowH - jqH).coerceAtLeast(0f)
         val cellW = w / 7f
         val cellH = gridH / weeks
@@ -403,148 +426,351 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         }
         paint.style = Paint.Style.FILL
 
-        // ── Bảng tiết khí: 12 hàng × 2 cặp cột, y như tab Lịch ──
-        if (jqRows > 0) {
-            drawJieQi(context, c, paint, w, dowH + gridH + dp(context, 5f),
-                jqRowH, safeBottom, jieQi, todayJdn, zh)
+        // ── Hai mục gập được, y như tab Lịch ──
+        if (hasTable) {
+            drawSections(context, c, paint, w, dowH + gridH + dp(context, 5f),
+                jqRowH, safeBottom, secs, shown)
         }
         return bmp
     }
 
     /**
-     * Bảng 24 tiết khí, 12 hàng × hai cặp cột — cùng hình dạng, cùng màu với
-     * bảng ở tab Lịch: nền trắng, hàng lẻ tô nhạt, vách ngăn dọc giữa hai nửa,
-     * mục đang hiệu lực tô màu nhấn.
+     * Một mục gập được của tab Lịch, đã dựng sẵn thành chữ: ba tiêu đề cột, các
+     * hàng giá trị (mỗi hàng ba ô), hàng đang hiệu lực, và trạng thái mở/đóng.
+     */
+    private class Sec(
+        val heads: Array<String>,
+        val rows: List<Array<String>>,
+        /**
+         * Khuôn bề rộng của từng cột: những chuỗi RỘNG NHẤT cột ấy có thể phải
+         * chứa, kể cả khi tháng đang xem không có chuỗi nào dài như thế. Không
+         * có khuôn thì cột co giãn theo đúng dữ liệu của tháng đang xem, và lật
+         * tháng một cái là chữ trượt ngang — "Giáp Tý" hẹp hơn "Nhâm Thân" khá
+         * nhiều, mà cột can chi tháng thì đổi theo từng năm.
+         */
+        val samples: Array<List<String>>,
+        val active: Int,
+        val open: Boolean,
+        val headBg: Int,
+        val headFg: Int,
+        val bar: Int,
+    )
+
+    /**
+     * Dựng hai mục ĐÚNG NHƯ tab Lịch đang hiện — cùng cột, cùng chữ, cùng hàng
+     * được tô, và cùng trạng thái gập/mở.
      *
-     * Hai cột nằm ở CHỖ CỐ ĐỊNH, giống hệt nhau ở cả hai nửa và ở mọi tháng:
-     * cột tên rộng đúng bằng tên dài nhất (đo bằng measureText, y như
-     * `width:1%` bên CSS), cột ngày bắt đầu ngay sau nó. Cỡ chữ hạ xuống vừa đủ
-     * để dòng dài nhất còn nằm trong nửa bảng — thà chữ nhỏ hơn một chút còn
-     * hơn để mốc ngày giờ tràn qua vách ngăn rồi bị mép widget cắt cụt.
+     * Trạng thái gập/mở đọc thẳng từ kho tuỳ chọn mà calendar.js ghi
+     * (`qmdj.calSecJq` / `qmdj.calSecAm`), nên đóng mục nào trong ứng dụng là
+     * widget đóng đúng mục ấy. Mặc định khớp với calendar.js: Tiết khí mở, Lịch
+     * âm đóng.
+     */
+    private fun buildSections(
+        context: Context, year: Int, month: Int, todayJdn: Int, tz: TimeZone, zh: Boolean
+    ): List<Sec> {
+        val app = context.getSharedPreferences("qmdj_prefs", Context.MODE_PRIVATE)
+        val ref = LunarTable.jdn(year, month, 15)
+        val out = ArrayList<Sec>(2)
+
+        val jieQi = LunarTable.jieQiYearOf(ref, zh).map { LunarTable.localize(it, tz) }
+        if (jieQi.size == 24) {
+            var active = -1
+            for (i in jieQi.indices) if (jieQi[i].jdn <= todayJdn) active = i
+            out.add(Sec(
+                arrayOf(
+                    if (zh) "节气" else context.getString(R.string.col_jieqi),
+                    if (zh) "公历" else context.getString(R.string.col_solar),
+                    if (zh) "月柱" else context.getString(R.string.col_ganzhi),
+                ),
+                jieQi.map { arrayOf(it.name, dateText(it), LunarTable.ganZhi60(it.gz, zh)) },
+                arrayOf(emptyList<String>(), listOf(DATE_TEMPLATE), allGanZhi(zh)),
+                active,
+                app.getString(SEC_JQ, null) != "0",
+                Color.parseColor("#FDEEEE"), Color.parseColor("#B71C1C"),
+                Color.parseColor("#D32F2F"),
+            ))
+        }
+
+        val lunarYear = LunarTable.lunarYearOf(ref, tz)
+        val months = if (lunarYear == null) emptyList<LunarTable.Month>()
+                     else LunarTable.monthsOfYear(lunarYear)
+        if (months.isNotEmpty()) {
+            // Tô tháng âm chứa HÔM NAY, và chỉ khi hôm nay còn nằm trong năm âm
+            // đang hiện — lật tới năm khác thì không tô hàng nào, giống bảng
+            // Tiết khí.
+            val today = LunarTable.lunarOf(todayJdn, tz)
+            val sameYear = LunarTable.lunarYearOf(todayJdn, tz) == lunarYear
+            var active = -1
+            if (today != null && sameYear) {
+                for (i in months.indices) {
+                    if (months[i].month == today.month && months[i].leap == today.leap) {
+                        active = i; break
+                    }
+                }
+            }
+            val leap = if (zh) "闰" else context.getString(R.string.leap)
+            out.add(Sec(
+                arrayOf(
+                    if (zh) "农历月" else context.getString(R.string.col_month),
+                    if (zh) "朔" else context.getString(R.string.col_soc),
+                    if (zh) "望" else context.getString(R.string.col_vong),
+                ),
+                months.map {
+                    arrayOf(
+                        monthLabel(context, it.month, it.leap, zh, leap),
+                        LunarTable.stamp(it.socJdn, it.socMin, tz),
+                        LunarTable.stamp(it.vongJdn, it.vongMin, tz),
+                    )
+                },
+                arrayOf(allMonthLabels(context, zh, leap),
+                        listOf(DATE_TEMPLATE), listOf(DATE_TEMPLATE)),
+                active,
+                app.getString(SEC_AM, null) == "1",
+                Color.parseColor("#EEF1FD"), Color.parseColor("#283593"),
+                Color.parseColor("#3949AB"),
+            ))
+        }
+        return out
+    }
+
+    /** Nhãn một tháng âm, đúng chữ của tab Lịch: "Tháng 5 (Nhuận)" · "5月 (闰)". */
+    private fun monthLabel(
+        context: Context, month: Int, isLeap: Boolean, zh: Boolean, leap: String
+    ): String =
+        (if (zh) "${month}月" else context.getString(R.string.month_n, month)) +
+            (if (isLeap) " ($leap)" else "")
+
+    /**
+     * Cả 60 trụ can chi, và cả 24 nhãn tháng âm có thể có — khuôn bề rộng cho
+     * hai cột mà nội dung đổi theo từng năm. Đo trên toàn bộ khả năng thì cột
+     * đứng yên khi lật tháng; đo trên riêng năm đang xem thì không.
+     */
+    private fun allGanZhi(zh: Boolean): List<String> =
+        (0 until 60).map { LunarTable.ganZhi60(it, zh) }
+
+    private fun allMonthLabels(context: Context, zh: Boolean, leap: String): List<String> {
+        val out = ArrayList<String>(24)
+        for (m in 1..12) {
+            out.add(monthLabel(context, m, false, zh, leap))
+            out.add(monthLabel(context, m, true, zh, leap))
+        }
+        return out
+    }
+
+    /**
+     * Chia `slots` hàng giá trị cho các mục ĐANG MỞ, theo đúng tỉ lệ của tab
+     * Lịch: Tiết khí lấy JQ_SHARE phần, Lịch âm lấy phần còn lại. Mục nào đóng
+     * thì không lấy hàng nào; mục nào không dùng hết phần của mình thì nhường
+     * lại cho mục kia thay vì bỏ trống.
+     */
+    private fun shareRows(secs: List<Sec>, slots: Int): IntArray {
+        val out = IntArray(secs.size)
+        val open = secs.indices.filter { secs[it].open }
+        if (open.isEmpty() || slots <= 0) return out
+        var left = slots
+        if (open.size == 1) {
+            out[open[0]] = minOf(secs[open[0]].rows.size, left)
+            return out
+        }
+        val first = open[0]
+        out[first] = minOf(secs[first].rows.size, maxOf(1, Math.round(slots * JQ_SHARE)))
+        left -= out[first]
+        for (i in 1 until open.size) {
+            val k = open[i]
+            out[k] = minOf(secs[k].rows.size, maxOf(0, left))
+            left -= out[k]
+        }
+        // Còn dư thì trả lại cho mục đầu — nó là mục dài nhất (24 hàng).
+        if (left > 0) out[first] = minOf(secs[first].rows.size, out[first] + left)
+        return out
+    }
+
+    /**
+     * Vẽ hai mục gập được — cùng hình dạng, cùng màu với tab Lịch: hàng tiêu đề
+     * tô nền riêng của từng mục kèm vạch dọc bên trái, hàng chẵn tô nhạt, hàng
+     * đang hiệu lực tô màu nhấn và in đậm.
+     *
+     * BA cột, không phải hai, và trải hết bề ngang thay vì gập đôi 12 hàng —
+     * đúng bảng mà tab Lịch hiện từ lúc nó thêm cột can chi tháng. Đổi lại,
+     * không còn nhét trọn 24 mục vào một màn: mục nào mở thì hiện một CỬA SỔ
+     * hàng quanh hàng đang hiệu lực, y như tab Lịch tự cuộn tới hôm nay.
+     *
+     * Cột nằm ở CHỖ CỐ ĐỊNH, không nhích khi lật tháng: bề rộng đo trên TOÀN BỘ
+     * số hàng (kể cả hàng đang không hiện) cộng khuôn ngày giờ dài nhất. Cột tên
+     * căn trái, cột cuối căn giữa trong phần chừa sát mép phải, cột giữa căn
+     * giữa khoảng trống còn lại — cùng luật với `.cal-jq-date` bên CSS.
      *
      * `bottomPad` là khoảng trắng chừa dưới hàng cuối cho góc bo của widget.
      */
-    private fun drawJieQi(
+    private fun drawSections(
         context: Context, c: Canvas, paint: Paint,
         w: Int, top: Float, rowH: Float, bottomPad: Float,
-        jieQi: List<LunarTable.JieQi>, todayJdn: Int, zh: Boolean
+        secs: List<Sec>, shown: IntArray
     ) {
-        val halfW = w / 2f
-        // Lề của mỗi nửa bảng co giãn: khi chật thì bóp về mức tối thiểu để
-        // dành chỗ cho CHỮ, khi rộng thì nới ra cho thoáng. Trên S21 nửa bảng
-        // chỉ rộng ~165dp mà "Sương Giáng + 07-12-2026 09:52" đã gần kín, nên
-        // vài dp lề ấy đổi được thẳng thành cỡ chữ.
-        val padMin = dp(context, PAD_NARROWEST); val padMax = dp(context, 8f)  // lề trái
-        val gapMin = dp(context, 4f);  val gapMax = dp(context, 6f)   // giữa hai cột
-        val endMin = dp(context, 5f);  val endMax = dp(context, 10f)  // lề phải
+        // Lề co giãn: khi chật thì bóp về mức tối thiểu để dành chỗ cho CHỮ, khi
+        // rộng thì nới ra cho thoáng. Vài dp lề đổi được thẳng thành cỡ chữ.
+        val padMin = dp(context, PAD_NARROWEST); val padMax = dp(context, 8f)
+        val gapMin = dp(context, 4f);  val gapMax = dp(context, 7f)
+        val endMin = dp(context, 6f);  val endMax = dp(context, 14f)
 
-        // Mục đang hiệu lực: mốc CUỐI CÙNG không muộn hơn hôm nay, giống tab
-        // Lịch. Hôm nay nằm ngoài dãy đang hiện thì không tô mục nào.
-        var active = -1
-        for (i in jieQi.indices) if (jieQi[i].jdn <= todayJdn) active = i
-
-        val dates = jieQi.map { dateText(it) }
-
-        // Đo bằng chữ ĐẬM: dòng đang hiệu lực in đậm, cao và rộng hơn dòng
-        // thường, nên hàng vừa cho nó thì vừa cho tất cả.
+        // Đo bằng chữ ĐẬM: hàng đang hiệu lực in đậm, rộng hơn hàng thường, nên
+        // vừa cho nó thì vừa cho tất cả.
         paint.typeface = Typeface.DEFAULT_BOLD
-        val txtPx = fitTextSize(
+        val txtPx = fitSections(
             paint, minOf(textSizeForRow(paint, rowH), dp(context, 12f)), dp(context, 7f),
-            halfW - padMin - gapMin - endMin, jieQi, dates
+            w - padMin - 2 * gapMin - endMin, secs
         )
         paint.textSize = txtPx
         // Đường cơ sở: đặt khối chữ CÂN GIỮA hàng theo metrics của chính cỡ chữ
-        // ấy. Hệ số 0,72 cũ là ước chừng — chữ nhỏ thì lệch lên, chữ to thì dấu
-        // của "Đại Tuyết", "Bạch Lộ" thò lên hàng trên.
+        // ấy. Một hệ số ước chừng thì chữ nhỏ lệch lên, chữ to thì dấu của "Đại
+        // Tuyết", "Bạch Lộ" thò lên hàng trên.
         val fm = paint.fontMetrics
         val baseDy = (rowH - (fm.descent - fm.ascent)) / 2f - fm.ascent
-        val nameW = widestName(paint, jieQi)
-        val dateW = widestDate(paint, dates)
 
-        // Chỗ chữ không dùng hết thì trả lại cho ba khoản lề, chia theo đúng tỉ
-        // lệ dư địa của từng khoản — rộng rãi khi có chỗ, chật khi không.
-        val room = (padMax - padMin) + (gapMax - gapMin) + (endMax - endMin)
-        val slack = (halfW - padMin - gapMin - endMin - nameW - dateW).coerceIn(0f, room)
-        val f = if (room <= 0f) 0f else slack / room
-        val padX = padMin + (padMax - padMin) * f
-        val gap = gapMin + (gapMax - gapMin) * f
-        val padEnd = endMin + (endMax - endMin) * f
-
-        // Cột ngày bắt đầu ở đúng một chỗ: hai nửa và hàng tiêu đề thẳng hàng.
-        val dateDx = padX + nameW + gap
-
-        val headH = rowH
-        val tableH = headH + rowH * 12 + bottomPad
-
+        var y = top
+        val tableH = rowH * (secs.size + shown.sum()) + bottomPad
         paint.style = Paint.Style.FILL
         paint.color = Color.WHITE
         c.drawRect(0f, top, w.toFloat(), top + tableH, paint)
 
-        // hàng tiêu đề
-        paint.typeface = Typeface.DEFAULT_BOLD
-        paint.textAlign = Paint.Align.LEFT
-        paint.color = Color.parseColor("#222222")
-        val headBase = top + baseDy
-        // Tiêu đề hai cột cũng theo ngôn ngữ đang chọn — để nguyên chuỗi tiếng
-        // Việt thì ở bản tiếng Trung "Dương lịch" dài hơn cột và đè lên nhau.
-        val colName = if (zh) "节气" else context.getString(R.string.col_jieqi)
-        val colDate = if (zh) "公历" else context.getString(R.string.col_solar)
-        for (half in 0..1) {
-            val x0 = halfW * half
-            c.drawText(colName, x0 + padX, headBase, paint)
-            c.drawText(colDate, x0 + dateDx, headBase, paint)
-        }
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = dp(context, 1.2f)
-        paint.color = Color.parseColor("#DDDDDD")
-        c.drawLine(0f, top + headH, w.toFloat(), top + headH, paint)
-        paint.style = Paint.Style.FILL
+        for ((si, sec) in secs.withIndex()) {
+            val cols = colWidths(paint, sec)
+            // Chỗ chữ không dùng hết thì trả lại cho ba khoản lề, chia theo đúng
+            // tỉ lệ dư địa của từng khoản — rộng rãi khi có chỗ, chật khi không.
+            // Phần của `gap` không tiêu vào đâu cả: hai cột sau căn giữa hộp
+            // của chúng, nên chỗ dôi ra tự nở thành khoảng hở giữa ba nhóm chữ.
+            // Vẫn phải tính nó vào `room`, không thì padX/padEnd nuốt trọn chỗ
+            // dôi và ba cột dính sát nhau ở giữa.
+            val room = (padMax - padMin) + 2 * (gapMax - gapMin) + (endMax - endMin)
+            val slack = (w - padMin - 2 * gapMin - endMin - cols.sum()).coerceIn(0f, room)
+            val f = if (room <= 0f) 0f else slack / room
+            val padX = padMin + (padMax - padMin) * f
+            val padEnd = endMin + (endMax - endMin) * f
 
-        for (r in 0 until 12) {
-            val y = top + headH + rowH * r
-            if (r % 2 == 0) {
-                paint.color = Color.parseColor("#FAFAFA")
-                c.drawRect(0f, y, w.toFloat(), y + rowH, paint)
-            }
-            for (half in 0..1) {
-                val k = r + half * 12
-                val item = jieQi[k]
-                val x0 = halfW * half
-                val on = k == active
+            // Ba mốc vẽ chữ: tên căn TRÁI, hai cột sau căn GIỮA hộp của chúng.
+            // Cột giữa lấy trọn khoảng trống giữa hai cột bên rồi đứng CHÍNH
+            // GIỮA khoảng ấy — hai khoản `gap` hai bên bằng nhau nên triệt tiêu
+            // khỏi phép tính tâm.
+            val lastCx = w - padEnd - cols[2] / 2f
+            val midCx = (padX + cols[0] + (w - padEnd - cols[2])) / 2f
+
+            /* ── hàng tiêu đề ── */
+            paint.color = sec.headBg
+            c.drawRect(0f, y, w.toFloat(), y + rowH, paint)
+            paint.color = sec.bar
+            c.drawRect(0f, y, dp(context, 3f), y + rowH, paint)
+            paint.typeface = Typeface.DEFAULT_BOLD
+            paint.color = sec.headFg
+            paint.textAlign = Paint.Align.LEFT
+            c.drawText(sec.heads[0], padX, y + baseDy, paint)
+            paint.textAlign = Paint.Align.CENTER
+            c.drawText(sec.heads[1], midCx, y + baseDy, paint)
+            c.drawText(sec.heads[2], lastCx, y + baseDy, paint)
+            // Mũi tên gập/mở, nép sát mép phải — cùng dấu với tab Lịch. Căn
+            // PHẢI chứ không căn giữa, không thì nửa dấu thò ra ngoài mép.
+            paint.textAlign = Paint.Align.RIGHT
+            paint.textSize = txtPx * 0.7f
+            c.drawText(if (sec.open) "▾" else "▸", w - dp(context, 3f), y + baseDy, paint)
+            paint.textSize = txtPx
+            y += rowH
+
+            /* ── cửa sổ hàng giá trị ── */
+            val n = shown[si]
+            val from = if (n >= sec.rows.size) 0 else
+                (if (sec.active < 0) 0 else sec.active - n / 2)
+                    .coerceIn(0, sec.rows.size - n)
+            for (k in from until from + n) {
+                val on = k == sec.active
+                paint.style = Paint.Style.FILL
                 if (on) {
                     paint.color = Color.parseColor("#E8EDFF")
-                    c.drawRect(x0, y, x0 + halfW, y + rowH, paint)
+                    c.drawRect(0f, y, w.toFloat(), y + rowH, paint)
+                } else if (k % 2 == 0) {
+                    paint.color = Color.parseColor("#FAFAFA")
+                    c.drawRect(0f, y, w.toFloat(), y + rowH, paint)
                 }
+                paint.typeface = if (on) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
                 val base = y + baseDy
                 paint.textAlign = Paint.Align.LEFT
-                paint.typeface = if (on) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
                 paint.color = Color.parseColor("#222222")
-                c.drawText(item.name, x0 + padX, base, paint)
-
+                c.drawText(sec.rows[k][0], padX, base, paint)
+                paint.textAlign = Paint.Align.CENTER
                 paint.color = if (on) Color.parseColor("#222222") else Color.parseColor("#666666")
-                c.drawText(dates[k], x0 + dateDx, base, paint)
+                c.drawText(sec.rows[k][1], midCx, base, paint)
+                paint.color = Color.parseColor(if (on) "#222222" else "#333333")
+                c.drawText(sec.rows[k][2], lastCx, base, paint)
+
+                if (k < from + n - 1) {
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = 1f
+                    paint.color = Color.parseColor("#EEEEEE")
+                    c.drawLine(0f, y + rowH, w.toFloat(), y + rowH, paint)
+                    paint.style = Paint.Style.FILL
+                }
+                y += rowH
             }
-            // Vạch dưới hàng cuối là viền ngoài của bảng, không kẻ thêm — kẻ vào
-            // thì phần đệm góc bo bên dưới trông như một hàng trống.
-            if (r < 11) {
+
+            // Vạch đóng mục: dưới hàng tiêu đề khi mục đóng, dưới hàng cuối khi
+            // mục mở. Mục cuối cùng thì viền ngoài của bảng lo, khỏi kẻ thêm —
+            // kẻ vào thì phần đệm góc bo bên dưới trông như một hàng trống.
+            if (si < secs.size - 1) {
                 paint.style = Paint.Style.STROKE
-                paint.strokeWidth = 1f
-                paint.color = Color.parseColor("#EEEEEE")
-                c.drawLine(0f, y + rowH, w.toFloat(), y + rowH, paint)
+                paint.strokeWidth = dp(context, 1.2f)
+                paint.color = Color.parseColor("#DDDDDD")
+                c.drawLine(0f, y, w.toFloat(), y, paint)
                 paint.style = Paint.Style.FILL
             }
         }
 
-        // vách ngăn giữa hai nửa — kẻ suốt cả bảng, kể cả hàng tiêu đề
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = 1f
         paint.color = Color.parseColor("#DDDDDD")
-        c.drawLine(halfW, top, halfW, top + tableH, paint)
         c.drawRect(0f, top, w.toFloat(), top + tableH, paint)
         paint.style = Paint.Style.FILL
         paint.typeface = Typeface.DEFAULT
     }
 
+    /**
+     * Bề rộng ba cột của một mục, đo trên TOÀN BỘ số hàng — kể cả hàng đang bị
+     * cửa sổ cắt ra ngoài — nên cột không nhích khi cuộn hay khi lật tháng.
+     *
+     * Cột ngày giờ còn lấy thêm khuôn `DATE_TEMPLATE` làm sàn: chữ số của Roboto
+     * rộng bằng nhau nên mọi mốc bằng nhau, mà khuôn thì cố định — cột đứng yên
+     * cả khi lật sang năm có mốc ngắn hơn.
+     */
+    private fun colWidths(paint: Paint, sec: Sec): FloatArray {
+        val out = FloatArray(3)
+        for (i in 0..2) {
+            var v = paint.measureText(sec.heads[i])
+            for (r in sec.rows) v = maxOf(v, paint.measureText(r[i]))
+            for (t in sec.samples[i]) v = maxOf(v, paint.measureText(t))
+            out[i] = v
+        }
+        return out
+    }
+
+    /**
+     * Cỡ chữ lớn nhất — không quá `start`, không dưới `min` — mà MỌI mục đều
+     * nằm trọn trong `avail`. Một cỡ dùng chung cho cả hai: hai mục chữ to nhỏ
+     * khác nhau thì nhìn như hai bảng của hai ứng dụng.
+     *
+     * Chữ không co hoàn toàn tuyến tính theo textSize (hinting, làm tròn pixel)
+     * nên tính tỉ lệ xong phải đo lại; vài vòng là hội tụ.
+     */
+    private fun fitSections(
+        paint: Paint, start: Float, min: Float, avail: Float, secs: List<Sec>
+    ): Float {
+        var size = start
+        for (i in 0 until 8) {
+            paint.textSize = size
+            var need = 0f
+            for (sec in secs) need = maxOf(need, colWidths(paint, sec).sum())
+            if (need <= avail || size <= min) break
+            // Hạ thêm 1% cho chắc: đo lại ở vòng sau vẫn có thể nhỉnh hơn tỉ lệ.
+            size = maxOf(min, size * (avail / need) * 0.99f)
+        }
+        return size
+    }
     /** Mốc ngày giờ của một tiết khí, đúng dạng hiện ở tab Lịch. */
     private fun dateText(item: LunarTable.JieQi): String {
         val (jy, jm, jd) = LunarTable.civilOf(item.jdn)
@@ -552,25 +778,6 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             "%02d-%02d-%d %02d:%02d",
             jd, jm, jy, item.minutes / 60, item.minutes % 60
         )
-    }
-
-    /** Tên tiết khí dài nhất — dãy 24 tên là cố định nên số này không đổi. */
-    private fun widestName(paint: Paint, jieQi: List<LunarTable.JieQi>): Float {
-        var v = 0f
-        for (item in jieQi) v = maxOf(v, paint.measureText(item.name))
-        return v
-    }
-
-    /**
-     * Bề rộng cột ngày. Lấy theo KHUÔN `DATE_TEMPLATE` chứ không chỉ theo mốc
-     * của năm đang xem: chữ số của Roboto rộng bằng nhau nên hai con số bằng
-     * nhau, mà khuôn thì cố định — cột không nhích khi lật sang năm khác. Vẫn
-     * so với mốc thật để phòng phông có chữ số rộng hẹp khác nhau.
-     */
-    private fun widestDate(paint: Paint, dates: List<String>): Float {
-        var v = paint.measureText(DATE_TEMPLATE)
-        for (d in dates) v = maxOf(v, paint.measureText(d))
-        return v
     }
 
     /**
@@ -592,27 +799,6 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         return if (lineRatio <= 0f) rowH * 0.66f else rowH / lineRatio
     }
 
-    /**
-     * Cỡ chữ lớn nhất — không quá `start`, không dưới `min` — mà tên tiết khí
-     * dài nhất cộng mốc ngày giờ dài nhất vẫn nằm trong `avail`.
-     *
-     * Chữ không co hoàn toàn tuyến tính theo textSize (hinting, làm tròn pixel)
-     * nên tính tỉ lệ xong phải đo lại; vài vòng là hội tụ.
-     */
-    private fun fitTextSize(
-        paint: Paint, start: Float, min: Float, avail: Float,
-        jieQi: List<LunarTable.JieQi>, dates: List<String>
-    ): Float {
-        var size = start
-        for (i in 0 until 6) {
-            paint.textSize = size
-            val need = widestName(paint, jieQi) + widestDate(paint, dates)
-            if (need <= avail || size <= min) break
-            // Hạ thêm 1% cho chắc: đo lại ở vòng sau vẫn có thể nhỉnh hơn tỉ lệ.
-            size = maxOf(min, size * (avail / need) * 0.99f)
-        }
-        return size
-    }
 
     /* ─────────────── Tự làm mới lúc nửa đêm ─────────────── */
 
@@ -655,8 +841,27 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         /** Chiều cao thanh tiêu đề trong widget_calendar.xml. */
         private const val HEADER_DP = 32
 
-        /** Hàng lịch cao gấp ngần này lần hàng tiết khí — lấy theo tab Lịch. */
+        /** Hàng lịch cao gấp ngần này lần hàng bảng — lấy theo tab Lịch. */
         private const val ROW_RATIO = 3.7f
+
+        /**
+         * Số hàng bảng dùng để CHIA chiều cao — không phải số hàng vẽ ra thật.
+         * Chốt cứng thì khối bảng chiếm đúng một phần màn hình dù hai mục đang
+         * mở hay đóng, nên gập/mở trong ứng dụng không làm lưới lịch của widget
+         * đổi cỡ. Mười ba là con số của bản cũ (một tiêu đề + 12 hàng), giữ
+         * nguyên để widget không đột ngột đổi tỉ lệ sau khi cập nhật.
+         */
+        private const val NOMINAL_ROWS = 13
+
+        /**
+         * Tiết khí lấy ngần này phần số hàng khi CẢ HAI mục cùng mở — đúng
+         * `JQ_SHARE` của calendar.js, để hai bên chia chỗ giống nhau.
+         */
+        private const val JQ_SHARE = 0.65f
+
+        /** Hai khoá trạng thái gập/mở mà calendar.js ghi ra kho tuỳ chọn. */
+        private const val SEC_JQ = "qmdj.calSecJq"
+        private const val SEC_AM = "qmdj.calSecAm"
 
         /**
          * Bảng tiết khí luôn chia theo ngần này hàng lịch — số hàng của tháng
@@ -687,6 +892,19 @@ class CalendarWidgetProvider : AppWidgetProvider() {
          * hoặc địa điểm (xem WebAppBridge.refreshCalendarWidget).
          */
         fun refreshNow(context: Context) {
+            context.sendBroadcast(
+                Intent(context, CalendarWidgetProvider::class.java).setAction(ACTION_REFRESH)
+            )
+        }
+
+        /**
+         * Dựng lại báo thức nửa đêm RỒI vẽ lại ngay — dùng cho BootReceiver.
+         *
+         * Vẽ lại trước hết là để bắt kịp những ngày đã trôi qua trong lúc không
+         * có báo thức nào (máy tắt, ứng dụng vừa cập nhật); đặt lại báo thức là
+         * để từ đó trở đi nó tự theo kịp.
+         */
+        fun reviveNow(context: Context) {
             context.sendBroadcast(
                 Intent(context, CalendarWidgetProvider::class.java).setAction(ACTION_REFRESH)
             )

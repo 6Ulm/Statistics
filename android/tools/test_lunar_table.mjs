@@ -240,8 +240,12 @@ bad += jqBad;
             () => /socSec\[i\] \* 1000L/.test(body('monthStart') || '')],
         ['monthStart không đi qua localize (sai đơn vị 60 lần)',
             () => !/localize\s*\(/.test(body('monthStart') || 'localize(')],
-        ['bảng đọc vào biến tên socSec, không phải socMin',
-            () => /socSec\[i - 1\] = p\[1\]/.test(kt) && !/socMin/.test(kt)],
+        // Cột 2 của lunar_months.txt là GIÂY. Canh đúng CHỖ ĐỌC cột ấy chứ
+        // không cấm hẳn chữ "Min" trong cả tệp: bảng nay còn mấy cột mốc
+        // Sóc/Vọng ĐỂ HIỆN, vốn ghi bằng PHÚT và mang tên ...Min một cách chính
+        // đáng — cấm cả tên gọi thì phép canh này đỏ vì một cái tên đúng.
+        ['cột 2 đọc vào biến tên ...Sec (giây), không phải ...Min',
+            () => /\w*Sec\[i - 1\] = p\[1\]/.test(kt) && !/\w*Min\[i - 1\] = p\[1\]\b/.test(kt)],
     ];
     for (const [what, f] of checks) {
         let ok = false;

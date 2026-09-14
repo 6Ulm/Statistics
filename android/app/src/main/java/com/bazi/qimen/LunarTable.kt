@@ -55,8 +55,22 @@ object LunarTable {
     private var ganZhiEpoch = 0
     private var loaded = false
 
-    /** Một mốc tiết khí: tên tiếng Việt, ngày, và phút kể từ 00:00 giờ địa phương. */
-    data class JieQi(val name: String, val jdn: Int, val minutes: Int)
+    /**
+     * Một mốc tiết khí: tên, ngày, phút kể từ 00:00 giờ địa phương, và chỉ số
+     * 0–59 của CAN CHI THÁNG mà mốc ấy mở ra — cột thứ ba của bảng Tiết khí ở
+     * tab Lịch. `gz` âm nghĩa là bảng cũ chưa có cột ấy.
+     */
+    data class JieQi(val name: String, val jdn: Int, val minutes: Int, val gz: Int = -1)
+
+    /**
+     * Một tháng âm, đúng những gì mục "Lịch âm" của tab Lịch hiện: số tháng,
+     * có nhuận không, rồi mốc Sóc và mốc Vọng (ngày + phút, mốc UTC+7).
+     */
+    data class Month(
+        val month: Int, val leap: Boolean,
+        val socJdn: Int, val socMin: Int,
+        val vongJdn: Int, val vongMin: Int,
+    )
 
     val TIET_KHI = arrayOf(
         "Đông Chí", "Tiểu Hàn", "Đại Hàn", "Lập Xuân", "Vũ Thủy", "Kinh Trập",
@@ -77,9 +91,18 @@ object LunarTable {
         if (zh) TIET_KHI_ZH[idx] else TIET_KHI[idx]
 
     private var socSec: IntArray = IntArray(0)
+    // Mốc Sóc/Vọng ĐỂ HIỆN — khác hẳn `socSec` ở trên, đừng dùng lẫn. socSec là
+    // ngưỡng định NGÀY mùng 1 khi đổi múi giờ; bốn mảng này là điểm Sóc/Vọng
+    // thiên văn mà tab Lịch in ra. Đo trên 2000–2050 thì hai con số lệch nhau ở
+    // 2,4% số tháng, có ca lệch 17 giờ (xem build_lunar_table.mjs).
+    private var socDispJdn: IntArray = IntArray(0)
+    private var socDispMin: IntArray = IntArray(0)
+    private var vongJdn: IntArray = IntArray(0)
+    private var vongMin: IntArray = IntArray(0)
     private var jqJdn: IntArray = IntArray(0)
     private var jqMin: IntArray = IntArray(0)
     private var jqIdx: IntArray = IntArray(0)
+    private var jqGz: IntArray = IntArray(0)
 
     @Synchronized
     fun ensureLoaded(context: Context) {
@@ -92,6 +115,8 @@ object LunarTable {
                 starts = IntArray(n); lYear = IntArray(n)
                 lMonth = IntArray(n); lLeap = BooleanArray(n)
                 socSec = IntArray(n)
+                socDispJdn = IntArray(n); socDispMin = IntArray(n)
+                vongJdn = IntArray(n); vongMin = IntArray(n)
                 for (i in 1..n) {
                     val p = lines[i].split(' ')
                     starts[i - 1] = p[0].toInt()      // JDN điểm Sóc ở mốc UTC+7
@@ -99,6 +124,16 @@ object LunarTable {
                     lYear[i - 1] = p[2].toInt()
                     lMonth[i - 1] = p[3].toInt()
                     lLeap[i - 1] = p[4] == "1"
+                    // Bốn cột cuối ghi bằng ĐỘ LỆCH cho gọn tệp: Sóc lệch mấy
+                    // ngày so với cột đầu, rồi Vọng lệch mấy ngày so với Sóc.
+                    if (p.size >= 9) {
+                        socDispJdn[i - 1] = starts[i - 1] + p[5].toInt()
+                        socDispMin[i - 1] = p[6].toInt()
+                        vongJdn[i - 1] = socDispJdn[i - 1] + p[7].toInt()
+                        vongMin[i - 1] = p[8].toInt()
+                    } else {
+                        socDispJdn[i - 1] = -1; vongJdn[i - 1] = -1
+                    }
                 }
             }
             context.assets.open("jieqi.txt").bufferedReader().use { reader ->
@@ -106,11 +141,13 @@ object LunarTable {
                 jqJdn = IntArray(lines.size)
                 jqMin = IntArray(lines.size)
                 jqIdx = IntArray(lines.size)
+                jqGz = IntArray(lines.size)
                 lines.forEachIndexed { i, line ->
                     val p = line.split(' ')
                     jqJdn[i] = p[0].toInt()
                     jqMin[i] = p[1].toInt()
                     jqIdx[i] = p[2].toInt()
+                    jqGz[i] = if (p.size >= 4) p[3].toInt() else -1
                 }
             }
             loaded = starts.isNotEmpty()
@@ -139,7 +176,7 @@ object LunarTable {
         while (i < jqJdn.size && jqJdn[i] <= to) {
             val (cy, cm, _) = civilOf(jqJdn[i])
             if (cy == year && cm == month) {
-                out.add(JieQi(tietKhiName(jqIdx[i], zh), jqJdn[i], jqMin[i]))
+                out.add(JieQi(tietKhiName(jqIdx[i], zh), jqJdn[i], jqMin[i], jqGz[i]))
             }
             i++
         }
@@ -170,7 +207,7 @@ object LunarTable {
         while (start >= 0 && jqIdx[start] != 0) start--
         if (start < 0 || start + 23 >= jqJdn.size) return emptyList()
         return (start until start + 24).map {
-            JieQi(tietKhiName(jqIdx[it], zh), jqJdn[it], jqMin[it])
+            JieQi(tietKhiName(jqIdx[it], zh), jqJdn[it], jqMin[it], jqGz[it])
         }
     }
 
@@ -194,7 +231,7 @@ object LunarTable {
         var days = local / 86_400_000L
         var rem = local % 86_400_000L
         if (rem < 0) { days -= 1; rem += 86_400_000L }
-        return JieQi(item.name, (days + 2440588L).toInt(), (rem / 60_000L).toInt())
+        return JieQi(item.name, (days + 2440588L).toInt(), (rem / 60_000L).toInt(), item.gz)
     }
 
     /** Số ngày Julius (Fliegel–Van Flandern) — giống hệt bản JavaScript. */
@@ -322,5 +359,59 @@ object LunarTable {
         val i = (((jdn - ganZhiEpoch) % 60) + 60) % 60
         return if (zh) CAN_ZH[i % 10] to CHI_ZH[i % 12]
                else CAN[i % 10] to CHI[i % 12]
+    }
+
+    /**
+     * Một trụ can chi từ chỉ số 0–59. Tiếng Việt tách hai chữ bằng dấu cách
+     * ("Bính Dần"), tiếng Trung viết liền ("丙寅") — đúng như tab Lịch.
+     */
+    fun ganZhi60(idx: Int, zh: Boolean): String {
+        if (idx < 0) return ""
+        val i = ((idx % 60) + 60) % 60
+        return if (zh) CAN_ZH[i % 10] + CHI_ZH[i % 12]
+               else CAN[i % 10] + " " + CHI[i % 12]
+    }
+
+    /**
+     * Mốc "DD-MM-YYYY HH:MM" của một thời điểm ghi ở mốc UTC+7, in theo múi giờ
+     * `tz` — đúng phép mà [localize] dùng, chỉ khác là trả thẳng chuỗi.
+     */
+    fun stamp(jdnLocal7: Int, minute: Int, tz: TimeZone): String {
+        if (jdnLocal7 < 0) return ""
+        val moved = localize(JieQi("", jdnLocal7, minute), tz)
+        val (y, m, d) = civilOf(moved.jdn)
+        return String.format(
+            "%02d-%02d-%d %02d:%02d", d, m, y, moved.minutes / 60, moved.minutes % 60
+        )
+    }
+
+    /**
+     * Các tháng của một NĂM ÂM, kèm mốc Sóc/Vọng — đúng bảng mà mục "Lịch âm"
+     * của tab Lịch hiện. Bảng đóng sẵn dựng ở mốc UTC+7; danh sách tháng của
+     * một năm âm gần như không đổi theo múi giờ người xem (chỉ mốc giờ đổi).
+     */
+    fun monthsOfYear(lunarYear: Int): List<Month> {
+        if (!loaded || starts.isEmpty()) return emptyList()
+        val out = ArrayList<Month>(13)
+        for (i in starts.indices) {
+            if (lYear[i] != lunarYear) continue
+            if (socDispJdn[i] < 0) continue        // bảng cũ, chưa có cột hiện
+            out.add(Month(lMonth[i], lLeap[i], socDispJdn[i], socDispMin[i],
+                          vongJdn[i], vongMin[i]))
+        }
+        return out
+    }
+
+    /** Năm âm chứa một ngày dương — để biết mục "Lịch âm" phải hiện năm nào. */
+    fun lunarYearOf(jdn: Int, tz: TimeZone): Int? {
+        if (!loaded || starts.isEmpty()) return null
+        var lo = 0
+        var hi = starts.size - 1
+        var idx = -1
+        while (lo <= hi) {
+            val mid = (lo + hi) ushr 1
+            if (monthStart(mid, tz) <= jdn) { idx = mid; lo = mid + 1 } else hi = mid - 1
+        }
+        return if (idx < 0) null else lYear[idx]
     }
 }

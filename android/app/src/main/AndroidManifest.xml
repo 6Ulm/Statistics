@@ -15,6 +15,15 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
+    <!-- Chỉ để dựng lại báo thức nửa đêm của widget sau khi khởi động lại máy.
+         Báo thức của AlarmManager không sống qua lần reboot, mà widget thì
+         không có đường nào khác để biết đã sang ngày mới
+         (updatePeriodMillis = 0) — thiếu quyền này là lịch đã ghim đứng im ở
+         ngày cũ cho tới khi người dùng tình cờ mở ứng dụng. Đây là quyền
+         thường (normal), không hỏi người dùng, và không mở đường ra mạng.
+         / Normal permission, only re-arms the widget's midnight alarm. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <uses-feature
         android:name="android.hardware.location"
         android:required="false" />
@@ -50,10 +59,10 @@
             android:label="@string/widget_name"
             android:exported="false">
             <!--
-              Chỉ hai action này. DATE_CHANGED / TIME_SET / TIMEZONE_CHANGED là
-              broadcast ngầm của hệ thống, mà receiver không exported thì không
-              nhận được — khai thêm chỉ tổ gây hiểu lầm. Việc sang ngày đã có
-              báo thức nửa đêm trong scheduleMidnight() lo.
+              Chỉ những action của CHÍNH ứng dụng. Broadcast của hệ thống thì
+              receiver này không nhận được, vì nó exported="false" — nên việc
+              dựng lại báo thức sau reboot giao cho .BootReceiver bên dưới,
+              vốn exported đúng cho mục đích ấy.
             -->
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -65,6 +74,23 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/calendar_widget_info" />
+        </receiver>
+
+        <!--
+          Dựng lại báo thức nửa đêm của widget sau khi khởi động lại máy, sau
+          khi cập nhật ứng dụng, và khi đổi múi giờ. Phải exported="true" thì
+          mới nhận được broadcast của hệ thống; ba action này đều nằm trong
+          danh sách ngoại lệ của luật chặn broadcast ngầm từ Android 8.
+        -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true"
+            android:directBootAware="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
         </receiver>
     </application>
 </manifest>

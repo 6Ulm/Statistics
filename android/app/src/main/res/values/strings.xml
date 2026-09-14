@@ -5,7 +5,15 @@
     <string name="widget_desc">Lịch âm dương và can chi, xem ngay trên màn hình chính</string>
     <string name="widget_prev">Tháng trước</string>
     <string name="widget_next">Tháng sau</string>
-    <!-- Tiêu đề cột bảng tiết khí trong widget — trùng chữ với tab Lịch. -->
+    <!-- Tiêu đề cột hai bảng trong widget — trùng chữ với tab Lịch (xem từ
+         điển T trong js/calendar.js; bản tiếng Trung chốt thẳng trong Kotlin
+         vì widget không đổi theo ngôn ngữ MÁY mà theo ngôn ngữ ỨNG DỤNG). -->
     <string name="col_jieqi">Tiết Khí</string>
     <string name="col_solar">Dương lịch</string>
+    <string name="col_ganzhi">Can chi</string>
+    <string name="col_month">Tháng âm</string>
+    <string name="col_soc">Sóc</string>
+    <string name="col_vong">Vọng</string>
+    <string name="leap">Nhuận</string>
+    <string name="month_n">Tháng %1$d</string>
 </resources>

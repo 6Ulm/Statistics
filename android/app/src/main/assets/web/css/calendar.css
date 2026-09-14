@@ -293,24 +293,29 @@ table.cal-jq .cal-jq-gz {
 }
 /* .dp-table cho mọi <th>/<td> căn trái theo mặc định; lớp "c" là ngoại lệ căn
    giữa — dùng cho tiêu đề (Can chi, Sóc, Vọng) VÀ cho giá trị Sóc/Vọng (mục
-   Lịch âm), để hai bên căn theo đúng cùng một tâm. Cột "Dương lịch" của Tiết
-   khí không mang lớp này nên vẫn căn trái như cũ. */
+   Lịch âm), để hai bên căn theo đúng cùng một tâm. */
 table.cal-jq th.c, table.cal-jq td.c { text-align: center; }
 /* Cột tên co đúng bằng chữ (width:1% là mẹo bảo trình duyệt thu về bề rộng nội
-   dung tối thiểu), cột ngày ăn phần còn lại và căn TRÁI. Trước đây ngày căn
-   phải nên tiêu đề "Dương lịch" (căn trái, như mọi th của .dp-table) không
-   thẳng hàng với giá trị bên dưới, mà giá trị thì bị đẩy sát mép máy. */
+   dung tối thiểu), cột giữa ăn hết phần còn lại. */
 table.cal-jq .cal-jq-name { width: 1%; white-space: nowrap; }
+/* Cột giữa CĂN GIỮA — cả tiêu đề lẫn giá trị, nên hai bên vẫn chung một tâm.
+   Căn TRÁI (như trước) dán cột ngày vào sát cột tên trong khi phía Can chi hở
+   ra một mảng trống rộng: ba cột trông lệch hẳn về bên trái dù bảng thì cân.
+   Cột giữa rộng gấp ba hai cột bên, nên chỉ cần đổi chỗ đứng của CHỮ trong nó
+   là ba nhóm chữ chia đều bề ngang bảng, không phải nắn lại bề rộng cột. */
 table.cal-jq .cal-jq-date {
-    text-align: left;
+    text-align: center;
     color: var(--text-dim, #666);
     padding-left: 8px;
 }
 table.cal-jq thead th + th { padding-left: 8px; }
-/* Cột cuối phải có lề thật, không dính vào mép máy. Trên S21 (360px) bảng gần
-   như hết chỗ, nên khoảng này phải giành lại bằng cách bóp đệm ngang các cột
+/* Cột cuối phải có lề thật, không dính vào mép máy. Rộng hơn hẳn phần đệm
+   thường: cột cuối co đúng bằng chữ (width:1%) nên phần đệm này CHÍNH LÀ
+   khoảng cách từ chữ tới mép bảng — 10px cũ để "Can chi" gần như dán vào mép
+   phải, lệch hẳn so với khoảng hở bên trái của cột tên. Trên S21 (360px) bảng
+   gần như hết chỗ, nên khoảng này giành lại bằng cách bóp đệm ngang các cột
    khác chứ không xin thêm được. */
-table.cal-jq .cal-jq-last { padding-right: 10px; }
+table.cal-jq .cal-jq-last { padding-right: 20px; }
 /* Máy rất hẹp (320px): hai cột kép không đủ chỗ cho "Sương Giáng 23-10-2026
    11:37" nên bảng phải cuộn ngang. Hạ cỡ chữ một nấc là vừa, đỡ hơn hẳn so với
    bắt người dùng kéo ngang. */
@@ -319,7 +324,7 @@ table.cal-jq .cal-jq-last { padding-right: 10px; }
     table.cal-jq .dp-num { font-size: 10px; }
     table.cal-jq td, table.cal-jq thead th { padding-left: 4px; padding-right: 4px; }
     table.cal-jq .cal-jq-date { padding-left: 6px; }
-    table.cal-jq .cal-jq-last { padding-right: 7px; }
+    table.cal-jq .cal-jq-last { padding-right: 14px; }
 }
 /* Tiết khí đang hiệu lực: tô đúng như dòng được tô ở bảng Sách Bổ pháp. */
 table.cal-jq .cal-jq-on {

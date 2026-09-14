@@ -131,11 +131,10 @@ for (const dev of DEVICES) {
         if (!L.jq) { bad(`${tag}: không dựng được bảng tiết khí`); return; }
         const q = L.jq;
 
-        // 1. Không tràn: mép phải của giá trị dài nhất phải nằm trong nửa bảng.
-        const right = q.dateDx + q.maxDateW;
-        const limit = q.halfW - q.padEnd;
+        // 1. Không tràn: cột cuối phải nằm trong bề ngang bảng, còn chừa lề.
+        const right = q.right, limit = q.limit;
         if (right > limit + 0.5) {
-            bad(`${tag}: giá trị tràn ${px(right - limit).toFixed(1)}dp qua vách ngăn`);
+            bad(`${tag}: cột cuối tràn ${px(right - limit).toFixed(1)}dp khỏi lề phải`);
         } else ok();
 
         // 2. Chữ còn đọc được.
@@ -171,8 +170,11 @@ for (const dev of DEVICES) {
         for (const m of MONTHS.slice(1)) {
             const o = byMonth[m][i], oq = o.jq;
             const same = ['jqRowH', 'jqH'].every(k => Math.abs(L[k] - o[k]) < 0.01)
-                && ['txtPx', 'nameW', 'dateDx', 'top', 'tableH']
-                    .every(k => Math.abs(q[k] - oq[k]) < 0.01);
+                && ['txtPx', 'top', 'tableH', 'right']
+                    .every(k => Math.abs(q[k] - oq[k]) < 0.01)
+                // Bề rộng ba cột của TỪNG mục cũng phải đứng yên khi lật tháng.
+                && q.secs.every((s0, si) => s0.cols
+                    .every((v, ci) => Math.abs(v - oq.secs[si].cols[ci]) < 0.01));
             if (!same) {
                 bad(`${tag}: tháng ${m} cho bảng khác tháng ${MONTHS[0]} `
                     + `(cao ${px(oq.tableH).toFixed(1)} vs ${px(q.tableH).toFixed(1)}dp, `
@@ -181,7 +183,8 @@ for (const dev of DEVICES) {
         }
 
         console.log(`  ${tag}: hàng ${px(L.jqRowH).toFixed(1)}dp · chữ ${px(q.txtPx).toFixed(1)}dp`
-            + ` · cột ngày ở ${px(q.dateDx).toFixed(0)}dp · thừa ${px(limit - right).toFixed(1)}dp`
+            + ` · hàng hiện ${q.secs.map(s0 => s0.shown).join('+')}`
+            + ` · thừa ${px(limit - right).toFixed(1)}dp`
             + ` · đệm đáy ${px(q.bottomPad).toFixed(0)}dp · lưới ${(share * 100).toFixed(0)}%`);
     });
     await ctx.close();

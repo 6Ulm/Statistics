@@ -11,6 +11,18 @@
  * Định dạng (assets/lunar_months.txt):
  *   dòng 1 : GANZHI_EPOCH  — số ngày Julius có can chi "Giáp Tý"
  *   dòng 2+: <JDN điểm Sóc> <giây trong ngày> <năm âm> <tháng âm> <1 nếu nhuận>
+ *            <lệch ngày Sóc hiện> <phút trong ngày> <lệch ngày Vọng> <phút>
+ *
+ * Bốn cột cuối là mốc Sóc/Vọng ĐỂ HIỆN trong bảng "Lịch âm" — KHÔNG phải cột
+ * <giây trong ngày> ở đầu dòng. Hai thứ khác nhau thật, không phải chép thừa:
+ *
+ *   • Cột giây đầu dòng là NGƯỠNG BẬC THANG của lunar.js: mốc mà tại đó mùng 1
+ *     nhảy sang ngày khác khi đổi múi giờ. Nó định NGÀY nào là mùng 1.
+ *   • Bốn cột cuối là điểm Sóc/Vọng thiên văn (`shuoHigh` ở mốc UTC+8, đúng
+ *     hàm mà Ephem.socSolar/vongSolar của ứng dụng gọi) — thứ tab Lịch IN RA.
+ *
+ * Đo thử 2000–2050: hai con số lệch nhau ở 2,4% số tháng, có ca lệch tới 17
+ * giờ. Dùng nhầm cột là widget in giờ Sóc khác hẳn ứng dụng.
  *
  * Ghi ĐIỂM SÓC chứ không ghi sẵn ngày mùng 1: mùng 1 là ngày CHỨA điểm Sóc, mà
  * "ngày" nào thì tuỳ múi giờ người xem. Ứng dụng tính lịch âm theo múi giờ của
@@ -30,6 +42,31 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.join(HERE, '..', 'app', 'src', 'main', 'assets', 'web');
 const require = createRequire(import.meta.url);
 const { Solar, LunarYear, ShouXingUtil } = require(path.join(WEB, 'js', 'lunar.js'));
+
+/* ── Mốc Sóc / Vọng ĐỂ HIỆN ──
+   Chép đúng hai hàm của ephem.js (socSolar / vongSolar) chứ không gọi vào đó:
+   ephem.js là tệp trình duyệt, nạp được ở node nhưng kéo theo cả astro.js.
+   Hai hàm này chỉ có ngần này, và `test_lunar_table.mjs` canh lại kết quả với
+   chính ephem.js nên bản chép không thể lặng lẽ trôi đi. */
+const J2000 = Solar.J2000;
+const lunation = solar => Math.round((solar.getJulianDay() + 0.5 - J2000) / 29.5306);
+const socSolar = (solar, basis) =>
+    Solar.fromJulianDay(ShouXingUtil.shuoHigh(lunation(solar) * 2 * Math.PI, basis) + J2000);
+const vongSolar = (solar, basis) =>
+    Solar.fromJulianDay(
+        ShouXingUtil.shuoHigh(lunation(solar) * 2 * Math.PI + Math.PI, basis) + J2000);
+
+/** Chỉ số 0–59 của một trụ can chi viết bằng chữ Hán, vd "丙寅" → 2. */
+const CAN_ZH = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+const CHI_ZH = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+function ganZhiIndex(gz) {
+    const can = CAN_ZH.indexOf(gz[0]);
+    const chi = CHI_ZH.indexOf(gz[1]);
+    if (can < 0 || chi < 0) return -1;
+    // Chu kỳ 60: chỉ số i thoả i%10 == can và i%12 == chi. Chỉ có một nghiệm.
+    for (let i = 0; i < 60; i++) if (i % 10 === can && i % 12 === chi) return i;
+    return -1;
+}
 
 ShouXingUtil.setTzOffsetHours(7);          // cơ sở lịch Việt Nam
 
@@ -117,7 +154,20 @@ for (let y = Y0 - 1; y <= Y1 + 1; y++) {
         const s = Solar.fromJulianDay(jdFirst);
         if (s.getYear() < Y0 - 1 || s.getYear() > Y1 + 1) continue;
         const base = jdn(s.getYear(), s.getMonth(), s.getDay());
-        months.push([base, socMinuteOfDay(y, lm, base), y, Math.abs(lm), lm < 0 ? 1 : 0]);
+        // Mốc để HIỆN: giải ở UTC+8 như ứng dụng, rồi hạ về mốc UTC+7 của tệp.
+        // Cắt xuống PHÚT ngay ở đây được, vì mọi múi giờ đều lệch tròn phút nên
+        // cộng offset sau này không đổi phần giây.
+        const at7 = solar8 => {
+            const local = Solar.fromJulianDay(solar8.getJulianDay() - 1 / 24);
+            return [jdn(local.getYear(), local.getMonth(), local.getDay()),
+                    local.getHour() * 60 + local.getMinute()];
+        };
+        const [socJdn, socMin] = at7(socSolar(s, 8));
+        const [vongJdn, vongMin] = at7(vongSolar(s, 8));
+        months.push([
+            base, socMinuteOfDay(y, lm, base), y, Math.abs(lm), lm < 0 ? 1 : 0,
+            socJdn - base, socMin, vongJdn - socJdn, vongMin,
+        ]);
     }
 }
 months.sort((a, b) => a[0] - b[0]);
@@ -145,6 +195,14 @@ fs.writeFileSync(dest, out);
    Widget cũng phải hiện bảng tiết khí, mà giờ giao tiết thì lunar.js mới tính
    được. Tính sẵn ra bảng: mỗi dòng một tiết khí.
    Định dạng: <JDN> <phút kể từ 00:00 giờ địa phương> <số thứ tự tên>
+              <chỉ số 0–59 của can chi THÁNG>
+
+   Cột can chi tháng để widget dựng được cột thứ ba của bảng Tiết khí, đúng như
+   tab Lịch. Hỏi thẳng lunar.js (getEightChar().getMonth()) chứ không suy từ chỉ
+   số tiết khí: can tháng phụ thuộc can năm, mà năm can chi lại đổi ở Lập Xuân —
+   dựng lại luật ấy bằng tay là mời thêm một nguồn lệch nữa với ứng dụng.
+   Nhích 2 phút qua mốc giao tiết y như monthGanZhiAt trong calendar.js: đúng
+   tại mốc, phép làm tròn trong lunar.js còn có thể xếp về tháng cũ.
 
    NGUYÊN TẮC TÍNH phải trùng KHÍT với bảng Sách Bổ pháp trong ứng dụng
    (`sb_getJieQiDates` trong js/app.js) — cả app lẫn widget đều hiện tiết khí
@@ -169,10 +227,14 @@ for (let Y = Y0 - 1; Y <= Y1; Y++) {
         const local = Solar.fromJulianDay(jds[i + 1] + (TZ_WIDGET - 8) / 24);
         const y = local.getYear();
         if (y < Y0 || y > Y1) continue;
+        const gz = ganZhiIndex(
+            Solar.fromJulianDay(jds[i + 1] + 2 / 1440).getLunar().getEightChar().getMonth());
+        if (gz < 0) throw new Error(`can chi tháng lạ ở tiết khí ${i} năm ${Y}`);
         jq.push([
             jdn(y, local.getMonth(), local.getDay()),
             local.getHour() * 60 + local.getMinute(),
             i,
+            gz,
         ]);
     }
 }

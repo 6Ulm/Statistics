@@ -100,12 +100,31 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
             // Không còn vách ngăn giữa hai nửa bảng — dấu hiệu của bố cục cũ.
             split: document.querySelectorAll('#calJieQi .cal-jq-split').length,
             gz: [...document.querySelectorAll('#calJqBody tr')].map(tr => tr.cells[2].textContent.trim()),
-            // "Dương lịch" phải CĂN TRÁI như giá trị của nó — không phải "c"
-            // (từng bị gắn nhầm khi tiêu đề chuyển thành hàng <thead>, kéo
-            // tiêu đề lệch hẳn sang phải so với cột ngày giờ bên dưới).
+            // "Dương lịch" CĂN GIỮA — như giá trị của nó. Căn trái (bản trước)
+            // dán cột ngày vào sát cột tên trong khi phía Can chi hở ra một
+            // mảng trống rộng gấp năm: đo trên máy 393px là 33px một bên và
+            // 169px bên kia.
             dateHeadAlign: getComputedStyle(heads[1]).textAlign,
-            dateHeadLeft: textCx(heads[1])?.left,
-            dateValLeft: textCx(row1.children[1])?.left,
+            dateValAlign: getComputedStyle(row1.children[1]).textAlign,
+            dateHeadCx: textCx(heads[1])?.cx,
+            dateValCx: textCx(row1.children[1])?.cx,
+            // Ba khoảng hở của hàng tiêu đề, đo theo CHỮ chứ không theo ô.
+            gaps: (() => {
+                const b = el => {
+                    const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+                    const n = w.nextNode();
+                    if (!n) return null;
+                    const rg = document.createRange();
+                    rg.selectNodeContents(n);
+                    const r = rg.getBoundingClientRect();
+                    return { l: r.left, r: r.right };
+                };
+                const t = heads.map(b);
+                const box = document.getElementById('calJieQi').getBoundingClientRect();
+                return t.every(Boolean) ? {
+                    ho1: t[1].l - t[0].r, ho2: t[2].l - t[1].r, phai: box.right - t[2].r,
+                } : null;
+            })(),
         };
     });
     ok('không còn nhãn tiêu đề riêng (hết lặp tên)', !r.dupTitle);
@@ -114,10 +133,19 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     ok('mọi hàng đều 3 ô', r.cells.every(n => n === 3), r.cells.join(','));
     check('ba cột', r.cols.join(' | '), 'Tiết Khí | Dương lịch | Can chi');
     check('không còn chia đôi', r.split, 0);
-    check('tiêu đề "Dương lịch" căn trái (khớp giá trị)', r.dateHeadAlign, 'left');
-    ok('mép trái tiêu đề "Dương lịch" trùng mép trái giá trị',
-        Math.abs(r.dateHeadLeft - r.dateValLeft) <= 1.5,
-        `tiêu đề ${r.dateHeadLeft?.toFixed(1)} vs giá trị ${r.dateValLeft?.toFixed(1)}`);
+    check('tiêu đề "Dương lịch" căn giữa', r.dateHeadAlign, 'center');
+    check('giá trị "Dương lịch" cũng căn giữa', r.dateValAlign, 'center');
+    ok('tiêu đề "Dương lịch" trùng tâm giá trị',
+        Math.abs(r.dateHeadCx - r.dateValCx) <= 1.5,
+        `tiêu đề ${r.dateHeadCx?.toFixed(1)} vs giá trị ${r.dateValCx?.toFixed(1)}`);
+    // Cột giữa phải nằm GIỮA hai cột bên, không dán vào cột tên. Ngưỡng 25%:
+    // hai khoảng hở không bằng nhau tuyệt đối được (ba nhãn dài ngắn khác
+    // nhau), nhưng chênh gấp năm lần như bản căn trái thì phải đỏ.
+    ok('hai khoảng hở quanh "Dương lịch" xấp xỉ nhau',
+        r.gaps && Math.abs(r.gaps.ho1 - r.gaps.ho2) <= 0.25 * Math.max(r.gaps.ho1, r.gaps.ho2),
+        `trái ${r.gaps?.ho1.toFixed(1)} · phải ${r.gaps?.ho2.toFixed(1)}`);
+    ok('"Can chi" không dán vào mép phải', r.gaps && r.gaps.phai >= 18,
+        `cách mép ${r.gaps?.phai.toFixed(1)}px`);
     ok('cột can chi không ô nào trống', r.gz.every(x => x.length > 0));
     // Mỗi trụ tháng phủ đúng hai tiết khí liền nhau (tiết mở tháng, rồi khí).
     let pairs = true;
@@ -529,6 +557,49 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     const selectedTzFn = (/private fun selectedTimeZone[\s\S]*?\n    \}/.exec(provKt) || [''])[0];
     check('cả ba lượt "chưa có gì" đều rơi về múi giờ máy',
         (selectedTzFn.match(/TimeZone\.getDefault\(\)/g) || []).length, 3);
+
+    /* ── Widget phải hiện ĐÚNG hai mục của tab Lịch ── */
+    console.log('\nWidget dựng đúng hai mục của tab Lịch');
+    ok('widget vẽ theo mục, không còn bảng tiết khí gập đôi',
+        /private fun drawSections\(/.test(provKt) && !/fun drawJieQi\(/.test(provKt));
+    ok('mục Tiết khí có cột CAN CHI THÁNG', /LunarTable\.ganZhi60\(it\.gz, zh\)/.test(provKt));
+    ok('có mục Lịch âm với Sóc và Vọng',
+        /stamp\(it\.socJdn, it\.socMin, tz\)/.test(provKt) &&
+        /stamp\(it\.vongJdn, it\.vongMin, tz\)/.test(provKt));
+    // Trạng thái gập/mở phải ĐỌC TỪ chính hai khoá mà calendar.js ghi.
+    check('widget đọc khoá gập/mở của mục Tiết khí',
+        /SEC_JQ = "([^"]+)"/.exec(provKt)?.[1], 'qmdj.calSecJq');
+    check('widget đọc khoá gập/mở của mục Lịch âm',
+        /SEC_AM = "([^"]+)"/.exec(provKt)?.[1], 'qmdj.calSecAm');
+    ok('…và mặc định khớp calendar.js (Tiết khí mở, Lịch âm đóng)',
+        /app\.getString\(SEC_JQ, null\) != "0"/.test(provKt) &&
+        /app\.getString\(SEC_AM, null\) == "1"/.test(provKt));
+    // Ghi khoá thôi chưa đủ: widget chỉ tự vẽ lại lúc nửa đêm.
+    const toggleFn = (/function toggleSection\(which\) \{[\s\S]*?\n    \}/.exec(calJs) || [''])[0];
+    ok('bấm gập/mở trong ứng dụng thì bảo widget vẽ lại ngay',
+        /pokeWidget\(\)/.test(toggleFn));
+    // Bề rộng cột không được đổi theo năm đang xem.
+    ok('cột can chi và cột tháng có khuôn bề rộng cố định',
+        /allGanZhi\(zh\)/.test(provKt) && /allMonthLabels\(context, zh, leap\)/.test(provKt));
+
+    /* ── Báo thức nửa đêm phải sống sót qua reboot ── */
+    console.log('\nWidget không kẹt ở ngày cũ');
+    const bootKt = (() => { try { return read('app/src/main/java/com/bazi/qimen/BootReceiver.kt'); }
+                            catch (e) { return ''; } })();
+    ok('có receiver dựng lại báo thức sau khi khởi động máy',
+        /ACTION_BOOT_COMPLETED/.test(bootKt) && /reviveNow\(context\)/.test(bootKt));
+    ok('…và bắt cả lúc cập nhật ứng dụng lẫn lúc đổi múi giờ',
+        /ACTION_MY_PACKAGE_REPLACED/.test(bootKt) && /ACTION_TIMEZONE_CHANGED/.test(bootKt));
+    ok('manifest khai receiver ấy, và khai exported (không thì không nhận được)',
+        /<receiver[\s\S]{0,200}\.BootReceiver[\s\S]{0,200}android:exported="true"/.test(manifest));
+    ok('manifest xin quyền RECEIVE_BOOT_COMPLETED',
+        /android\.permission\.RECEIVE_BOOT_COMPLETED/.test(manifest));
+    // Khai THẬT, không phải chữ INTERNET trong khối ghi chú ngay đầu manifest.
+    ok('vẫn KHÔNG xin quyền INTERNET',
+        !/<uses-permission[^>]*android\.permission\.INTERNET/.test(manifest));
+    const refreshFn = (/private fun refreshAll\(context: Context\) \{[\s\S]*?\n    \}/.exec(provKt) || [''])[0];
+    ok('mỗi lần vẽ lại cũng đặt lại báo thức nửa đêm',
+        /scheduleMidnight\(context\)/.test(refreshFn));
 }
 
 await browser.close();
