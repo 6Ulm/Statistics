@@ -226,7 +226,18 @@
         for (var d = 1; d <= daysInMonth; d++) {
             cells.push(cellHtml(viewY, viewM, d, cells.length, false, tKey, ctx));
         }
-        for (var nd = 1; cells.length % 7 !== 0; nd++) {
+        // LUÔN đủ 6 hàng (42 ô), không phải "điền cho tròn tuần".
+        //
+        // Tháng dương có 4, 5 hay 6 hàng tuỳ ngày mùng 1 rơi vào thứ mấy —
+        // tháng 2/2026 gọn đúng 4 hàng, tháng 11/2026 cần 6. Điền cho tròn
+        // tuần thì lưới cao thấp theo từng tháng, kéo CẢ HAI tiêu đề bên dưới
+        // nhảy 58px (4→5 hàng) tới 116px (4→6 hàng) mỗi lần bấm ‹ ›. Lịch đã
+        // ghim ngoài màn hình chính vốn LUÔN vẽ 6 hàng (GRID_WEEKS trong
+        // CalendarWidgetProvider.kt, vì 42 ô chạm là cố định), nên giữ nguyên
+        // 6 hàng ở đây còn cho hai bên giống hệt nhau — thứ người dùng đòi
+        // nhiều lần. Trả giá bằng một hàng ngày mờ thừa ở vài tháng; đổi lại
+        // bố cục đứng yên quanh năm.
+        for (var nd = 1; cells.length < 42; nd++) {
             cells.push(cellHtml(nextY, nextM, nd, cells.length, true, tKey, ctx));
         }
 
@@ -328,10 +339,16 @@
         // chứa luôn <thead>. Đưa thẳng con số đã trừ ấy đi chia là trừ hai hàng
         // tiêu đề tới hai lần: đo trên A51 (852px) thì cụm hai mục thấp hơn chỗ
         // nó được phép chiếm đúng 48px, hiện ra thành một dải trống ở đáy.
-        var budget = Math.max(SEC_MIN, Math.floor(avail - rowH * weeks)) + jqHeadH + amHeadH;
+        // KHÔNG kê lên SEC_MIN ở đây: SEC_MIN là mong muốn ("mục mở ra thấp quá
+        // thì vô dụng"), không phải chỗ có thật. Kê lên là bịa ra chỗ không có
+        // — trên máy 360×640, lưới 6 hàng đã ăn gần hết `avail`, phần còn lại
+        // chỉ 51px mà công thức cũ khai 96px, nên cụm hai mục thò 14px xuống
+        // dưới thanh tab. Cứ khai đúng chỗ còn lại; sàn SEC_MIN để
+        // shareSectionHeight lo, và nó kẹp theo chỗ có thật.
+        var budget = Math.max(0, Math.floor(avail - rowH * weeks)) + jqHeadH + amHeadH;
         // Chỉ chốt khi CẢ HAI bảng đã dựng xong — lượt fitGrid đầu của mỗi lần
         // vẽ chạy trước renderAmBan() nên có thể chưa thấy hàng tiêu đề nào.
-        decideAmDefault(budget, jqHeadH > 0 && amHeadH > 0);
+        decideAmDefault(budget, amHeadH, jqHeadH > 0 && amHeadH > 0);
         shareSectionHeight(budget);
     }
 
@@ -347,14 +364,30 @@
      * dùng được thì mở sẵn, dải trống ấy hết; máy thấp thì vẫn đóng, vì mở ra
      * cũng chỉ được một hai hàng.
      *
+     * "Dùng được" ĐO trên chính bảng đang có, không phải một con số chọn bừa:
+     * hàng tiêu đề cộng AM_MIN_ROWS hàng dữ liệu, lấy chiều cao hàng thật của
+     * bảng Lịch âm. Lấy SEC_MIN (96px) làm ngưỡng thì trên S21 FE — nơi phần
+     * của Lịch âm là 88px, thừa sức chứa ba hàng — nó bị đóng lại một cách vô
+     * lý và 71px đáy màn hình bỏ trống.
+     *
+     * HAI hàng, không phải ba: hàng bảng tiếng Trung cao hơn tiếng Việt vài
+     * pixel, nên ngưỡng ba hàng khiến CÙNG MỘT MÁY mở sẵn Lịch âm ở tiếng Việt
+     * mà đóng ở tiếng Trung (S21 FE: 9px thừa so với 85px). Hai hàng vẫn ra
+     * hình một cái bảng, mà bảng thì cuộn được — dù sao cũng hơn một dải trống.
+     *
      * Chốt xong thì GHI vào kho tuỳ chọn chứ không giữ riêng trong bộ nhớ:
      * widget gập/mở theo đúng khoá này, mà widget thì phải khớp với tab Lịch.
      */
+    var AM_MIN_ROWS = 2;
     var amDefaultPending = false;
-    function decideAmDefault(budget, measured) {
+    function decideAmDefault(budget, amHeadH, measured) {
         if (!amDefaultPending || !measured) return;
         amDefaultPending = false;
-        if (budget - Math.floor(budget * JQ_SHARE) < SEC_MIN) return;
+        var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
+        var row = document.querySelector('#calAmBan tbody tr');
+        if (!row) return;
+        var rowH = row.getBoundingClientRect().height / zoom;
+        if (budget - Math.floor(budget * JQ_SHARE) < amHeadH + AM_MIN_ROWS * rowH) return;
         openAm = true;
         prefSet(K_SEC_AM, '1');
         applySections();
@@ -628,12 +661,22 @@
         // 2. Cột tên và cột cuối co đúng bằng chữ (mẹo `width:1%`) nên bề rộng
         //    tự nhiên của chúng CHÍNH LÀ nhu cầu thật; lấy cột rộng nhất của
         //    từng vị trí giữa hai bảng.
+        //
+        //    CHIA CHO `zoom`: getBoundingClientRect trả về px ĐÃ PHÓNG, còn
+        //    style.width nhận px CHƯA PHÓNG (viewport.js phóng cả trang bằng
+        //    `zoom` trên <body>). Đo một đằng ghi một nẻo thì mọi bề rộng cột
+        //    bị nhân thêm đúng hệ số phóng. Máy điện thoại đang ngắm có zoom
+        //    = 1 nên không thấy gì, nhưng trên máy rộng (tablet 768px: zoom
+        //    1,28) ba cột cộng lại thành 512px nhét vào khung 398px — bảng
+        //    phình ra 656px, cột cuối (Can chi / Vọng) bị đẩy hẳn ra ngoài và
+        //    phải kéo ngang 114px mới đọc được.
+        var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
         var w0 = 0, w2 = 0, tableW = 0;
         for (t = 0; t < tables.length; t++) {
             var cells = tables[t].tHead.rows[0].cells;
-            w0 = Math.max(w0, cells[0].getBoundingClientRect().width);
-            w2 = Math.max(w2, cells[2].getBoundingClientRect().width);
-            tableW = Math.max(tableW, tables[t].getBoundingClientRect().width);
+            w0 = Math.max(w0, cells[0].getBoundingClientRect().width / zoom);
+            w2 = Math.max(w2, cells[2].getBoundingClientRect().width / zoom);
+            tableW = Math.max(tableW, tables[t].getBoundingClientRect().width / zoom);
         }
         w0 = Math.ceil(w0); w2 = Math.ceil(w2);
         // Cột giữa phải còn chỗ cho một mốc ngày giờ. Chật quá thì bóp hai cột
@@ -728,16 +771,34 @@
             var tb = document.querySelector('#' + id + ' table');
             return tb ? Math.ceil(tb.getBoundingClientRect().height / zoom) + 2 : SEC_MIN;
         };
-        var jqUsed = 0;
+        var jqEl = document.getElementById('calJieQi');
+        var amEl = document.getElementById('calAmBan');
+        // Chỗ TỐI THIỂU mỗi mục chiếm: đúng hàng tiêu đề của nó. Đo thẳng
+        // <thead> nên con số này KHÔNG đổi theo việc mục đang mở hay đóng —
+        // điều kiện sống còn của cả mục này (xem khối ghi chú bên trên).
+        var jqMin = jqEl ? headOnlyHeight(jqEl) : 0;
+        var amMin = amEl ? headOnlyHeight(amEl) : 0;
+
+        // Tiết khí không bao giờ được lấn sang chỗ hàng tiêu đề của Lịch âm —
+        // mục đóng vẫn choán đúng chừng ấy. Bỏ qua thì đóng Tiết khí mà mở
+        // Lịch âm là cụm hai mục thò 17px xuống dưới thanh tab (đo trên
+        // S21 FE), còn trên máy thấp thì tràn ngay cả ở trạng thái mặc định.
+        // Trừ `amMin` LUÔN LUÔN, chứ không phải "khi Lịch âm đang đóng": trừ
+        // có điều kiện là để trạng thái của Lịch âm quyết chiều cao Tiết khí,
+        // đúng cái vòng lây mà cả hàm này sinh ra để cắt đứt.
+        var jqRoom = Math.max(jqMin, avail - amMin);
+        var jqUsed;
         if (openJq) {
-            var jqEl = document.getElementById('calJieQi');
-            var jqCap = Math.max(SEC_MIN, Math.floor(avail * JQ_SHARE));
+            // Sàn SEC_MIN kẹp theo chỗ CÓ THẬT: máy thấp thì thà mục ngắn còn
+            // hơn đẩy cả cụm xuống dưới thanh tab.
+            var jqCap = Math.max(Math.min(SEC_MIN, jqRoom), Math.floor(jqRoom * JQ_SHARE));
             jqUsed = Math.min(natOf('calJieQi'), jqCap);
             if (jqEl) jqEl.style.maxHeight = jqUsed + 'px';
+        } else {
+            jqUsed = jqMin;
         }
         if (openAm) {
-            var amEl = document.getElementById('calAmBan');
-            var amCap = Math.max(SEC_MIN, avail - jqUsed);
+            var amCap = Math.max(amMin, avail - jqUsed);
             if (amEl) amEl.style.maxHeight = Math.min(natOf('calAmBan'), amCap) + 'px';
         }
     }
@@ -786,6 +847,20 @@
         if (window.scrollY) { try { window.scrollTo(0, 0); } catch (e) {} }
     }
     window.showTab = showTab;
+
+    /**
+     * Chia lại chiều cao tab Lịch NGAY, ở đúng tỉ lệ phóng hiện thời.
+     *
+     * viewport.js gọi hàm này trước mỗi lần nó đo chiều cao nội dung. Không có
+     * nó thì hai cơ chế cùng kéo một sợi dây: fitGrid nới nội dung cho vừa
+     * MỌI tỉ lệ, còn viewport.js thấy nội dung vừa khít thì giữ nguyên tỉ lệ
+     * đang có — nên mọi tỉ lệ trong [0,95; 1] đều "đúng" và app dừng ở đâu là
+     * tuỳ thứ tự chạy. Cùng một máy, cùng một tháng, hai lần mở ra hai cỡ chữ.
+     */
+    window.__calFit = function () {
+        if (!document.body.classList.contains('view-cal')) return;
+        try { fitGrid(lastWeeks); } catch (e) {}
+    };
 
     /**
      * Nút ghim widget Lịch ra màn hình chính. Chỉ hiện khi chạy trong ứng dụng

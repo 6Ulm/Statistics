@@ -94,7 +94,20 @@
         // thì phải cuộn.
         // Trừ 2px dự phòng: làm tròn nửa pixel khi phóng đủ để đẩy trang dài
         // hơn màn hình 1px, thế là hiện thanh cuộn dù nội dung vừa khít.
-        var scale = Math.min(availW / natW, (availH - 2) / natH);
+        //
+        // TRỪ tab Lịch: chiều cao "tự nhiên" của nó KHÔNG phải một con số cố
+        // định. fitGrid() trong calendar.js chia lại chiều cao từng khối theo
+        // innerHeight, nên đo ở tỉ lệ nào nó cũng vừa khít đúng tỉ lệ ấy — đem
+        // con số ấy đi tính tỉ lệ là hai cơ chế cùng kéo một sợi dây: mọi tỉ lệ
+        // trong [MIN_SCALE; 1] đều tự nhất quán, và app dừng ở đâu là tuỳ thứ
+        // tự chạy (đo được 0,976 lần này, 1,000 lần sau, trên cùng một máy).
+        // Ở tab ấy chỉ lấy tỉ lệ theo BỀ NGANG — thứ không co giãn — rồi để
+        // vòng hạ dần bên dưới lo nốt máy quá thấp (fitGrid có sàn SEC_MIN nên
+        // không bóp mãi được).
+        var elastic = body.classList.contains('view-cal') &&
+                      typeof window.__calFit === 'function';
+        var scale = elastic ? (availW / natW)
+                            : Math.min(availW / natW, (availH - 2) / natH);
         scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
         body.style.zoom = scale.toFixed(3);
 
@@ -103,11 +116,20 @@
         // Vì vậy phải đo kết quả THẬT rồi hạ dần cho tới khi vừa — một nhịp
         // không đủ (đo được 1,091 → 1,088 → vẫn dôi ra 1px).
         for (var pass = 0; pass < 4 && scale > MIN_SCALE; pass++) {
+            // Tab Lịch phải được chia lại theo tỉ lệ vừa đặt TRƯỚC KHI đo,
+            // bằng không ta đo một bố cục dựng cho tỉ lệ cũ.
+            if (elastic) window.__calFit();
             var realH = body.getBoundingClientRect().height;
             if (realH <= availH) break;
             scale = Math.max(MIN_SCALE, scale * (availH / realH) - 0.002);
             body.style.zoom = scale.toFixed(3);
         }
+        // Vòng trên thoát vì CHẠM SÀN thì tỉ lệ vừa đổi mà chưa kịp chia lại
+        // (điều kiện lặp thành sai ngay), để lại một bố cục dựng cho tỉ lệ cũ.
+        // Chỉ chia lại trong đúng trường hợp ấy: thoát vì ĐÃ VỪA thì bố cục
+        // đang đúng rồi, chia thêm chỉ nới nội dung ra sát mép và làm trang
+        // dôi ra vài pixel (đo trên tablet: 9px, đủ để hiện thanh cuộn).
+        if (elastic && scale <= MIN_SCALE) window.__calFit();
 
         // ── Rót phần thừa chiều cao vào các khe ──
         // Phóng to bị CHẶN BỞI BỀ NGANG: trên S21 FE tỉ lệ đã kịch 1,0 vì rộng,

@@ -242,6 +242,86 @@ canh cả ba điều: không tràn xuống dưới thanh tab, không còn dải 
 và quét trọn 12 tháng của một năm — kể cả tháng 6 hàng, lúc lưới cao thêm 58px
 — trên cả hai máy.
 
+### Soi kỹ toàn bộ giao diện — năm lỗi nữa
+
+Quét tĩnh (9 cỡ máy × 2 thứ tiếng × 2 tab) rồi bấm thật (đổi 90 lượt tháng,
+chọn ngày, gập/mở đủ tổ hợp, đổi tiếng, xoay máy, mở cả bốn hộp chọn, quét
+1900–2101) lôi ra thêm năm chỗ:
+
+**1. Bảng hai mục phình ra khi trang bị phóng.** `syncSectionColumns()` đo bề
+rộng cột bằng `getBoundingClientRect` — px ĐÃ phóng — rồi ghi vào `style.width`
+— px CHƯA phóng. Điện thoại có `zoom = 1` nên không lộ ra; trên tablet 768px
+(`zoom` 1,28) ba cột cộng lại thành 512px nhét vào khung 398px, bảng phình
+thành 656px và cột cuối (Can chi / Vọng) bị đẩy hẳn ra ngoài — phải kéo ngang
+114px mới đọc được. Nay chia cho `zoom` đúng như mọi phép đo khác trong tệp.
+
+**2. Mục đã đóng vẫn choán chỗ mà bị tính là 0.** `shareSectionHeight()` cho
+Lịch âm lấy trọn phần còn lại khi Tiết khí đóng, trong khi Tiết khí đóng vẫn
+choán đúng hàng tiêu đề của nó — đóng Tiết khí mà mở Lịch âm là cụm hai mục
+thò 17px xuống dưới thanh tab. Nay mỗi mục luôn được trừ sẵn phần tối thiểu
+(hàng tiêu đề) của mục kia, và trừ VÔ ĐIỀU KIỆN — trừ có điều kiện là để
+trạng thái mục này quyết chiều cao mục kia, đúng cái vòng lây phải cắt.
+
+**3. Ngân sách chiều cao bịa ra chỗ không có.** Công thức cũ kê phần còn lại
+lên `SEC_MIN` (96px) ngay cả khi thật ra chỉ còn 51px, nên trên máy 360×640
+nội dung tràn 14px xuống dưới thanh tab. `SEC_MIN` là MONG MUỐN ("mục mở ra
+thấp quá thì vô dụng"), không phải chỗ có thật: nay khai đúng chỗ còn lại, và
+sàn `SEC_MIN` chỉ áp ở chỗ chia, có kẹp theo chỗ có thật.
+
+**4. Tỉ lệ phóng tab Lịch không xác định.** `viewport.js` tính tỉ lệ từ chiều
+cao nội dung, mà chiều cao ấy do `fitGrid()` chia ra cho vừa MỌI tỉ lệ — hai
+cơ chế cùng kéo một sợi dây, nên mọi tỉ lệ trong [0,95; 1] đều tự nhất quán và
+app dừng ở đâu là tuỳ thứ tự chạy: cùng một máy, cùng một tháng, hai lần mở ra
+hai cỡ chữ (đo được 0,976 rồi 1,000). Nay ở tab Lịch chỉ lấy tỉ lệ theo BỀ
+NGANG — thứ không co giãn — rồi để vòng hạ dần lo nốt máy quá thấp;
+`calendar.js` mở thêm `window.__calFit()` để `viewport.js` bảo nó chia lại
+trước mỗi lần đo.
+
+**5. Ô chạm hai mũi tên đổi tháng quá bé.** Chữ ‹ › chỉ cao 20px nên ô chạm
+cũng chỉ 26×20 — chưa tới nửa mức Android khuyên (48dp), mà đây lại là chỗ bấm
+nhiều nhất tab Lịch. Nay đệm ra đúng bằng phần đệm sẵn có của `#calHead` rồi
+kéo lại bằng lề âm: ô chạm 38×36, còn thanh tiêu đề không cao thêm pixel nào.
+
+Kèm hai chỗ nhỏ: `<body>` không còn đặt sẵn lớp `lang-zh` (mặc định nay là
+tiếng Việt, để sẵn lớp ấy thì khung hình ĐẦU TIÊN vẽ bằng cỡ chữ tiếng Trung
+rồi mới nhảy về), và nút **Back** của Android ở tab Lịch nay quay về tab Kỳ Môn
+— tab mở lên đầu tiên — thay vì thoát thẳng ra màn hình chính.
+
+### Lưới lịch LUÔN 6 hàng
+
+Tháng dương có 4, 5 hay 6 hàng tuỳ mùng 1 rơi vào thứ mấy (tháng 2/2026 gọn
+đúng 4 hàng, tháng 11/2026 cần 6). Điền cho tròn tuần thì lưới cao thấp theo
+từng tháng, kéo CẢ HAI tiêu đề bên dưới nhảy **58px** (4→5 hàng) tới **116px**
+(4→6 hàng) mỗi lần bấm ‹ ›. Lịch đã ghim ngoài màn hình chính thì vốn LUÔN vẽ
+6 hàng (`GRID_WEEKS` trong `CalendarWidgetProvider.kt`, vì 42 ô bắt chạm là cố
+định), nên hai bên còn hiện khác nhau ở những tháng ngắn.
+
+Nay tab Lịch cũng luôn 42 ô. Trả giá bằng một hàng ngày mờ thừa ở vài tháng và
+58px chỗ của hai mục; đổi lại bố cục đứng yên quanh năm và tab khớp widget
+từng ô một.
+
+Mất 58px ấy làm ngưỡng mở sẵn Lịch âm phải đo lại cho đúng: lấy `SEC_MIN`
+(96px) làm ngưỡng thì trên S21 FE — nơi phần của Lịch âm là 88px, thừa sức
+chứa vài hàng — nó bị đóng lại một cách vô lý và 71px đáy màn hình bỏ trống.
+Nay ngưỡng ĐO trên chính bảng đang có: hàng tiêu đề cộng **hai** hàng dữ liệu,
+lấy chiều cao hàng thật. Hai chứ không phải ba, vì hàng bảng tiếng Trung cao
+hơn tiếng Việt vài pixel — ngưỡng ba hàng khiến CÙNG MỘT MÁY mở sẵn Lịch âm ở
+tiếng Việt mà đóng ở tiếng Trung.
+
+Chỗ thừa ở đáy tab Lịch sau tất cả (đo trong app, cả hai thứ tiếng):
+
+| Máy | Thừa | Lịch âm |
+|---|---|---|
+| 360×640 | 8–9px | đóng (không đủ chỗ) |
+| S21 360×740 | 9px | mở sẵn |
+| S21 FE 393×790 | 9px | mở sẵn |
+| A51 412×852 | 9px | mở sẵn |
+| tablet 768×1024 | 17px | mở sẵn |
+
+Máy quá thấp (320×520) và màn hình ngang (800×360) vẫn phải cuộn — `MIN_SCALE`
+0,95 là cố ý ("thà cuộn còn hơn chữ li ti") — nhưng cuộn tới đáy là thấy hết,
+không có gì kẹt dưới thanh tab.
+
 ### Vệt chữ rò trên đỉnh mục khi đang cuộn
 
 Hàng tiêu đề là `<th>` `position: sticky` NẰM TRONG khung cuộn. Trên máy có tỉ

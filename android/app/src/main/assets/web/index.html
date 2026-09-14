@@ -9,7 +9,12 @@
     <link rel="stylesheet" href="css/location.css">
     <link rel="stylesheet" href="css/calendar.css">
 </head>
-<body id="mainBody" class="lang-zh">
+<!-- KHÔNG đặt sẵn lớp `lang-zh`: mặc định của ứng dụng nay là tiếng Việt
+     (xem initLang trong app.js), mà chữ trong chính tệp này cũng là tiếng
+     Việt. Đặt sẵn lang-zh thì khung hình ĐẦU TIÊN vẽ bằng cỡ chữ và lề
+     dành cho tiếng Trung rồi mới nhảy về — app.js:349 bật/tắt lớp này
+     theo ngôn ngữ đang chọn. -->
+<body id="mainBody">
 <script>
 // Samsung Internet / older Android WebView: đảm bảo Intl hoạt động
 if (typeof Intl === 'undefined' || typeof Intl.DateTimeFormat === 'undefined') {

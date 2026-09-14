@@ -422,13 +422,16 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
             await page.waitForTimeout(260);
             const g = await geom(page);
             const rows = await page.evaluate(
-                () => document.querySelectorAll('#calGrid .cal-row').length);
+                () => document.querySelectorAll('#calGrid .cal-row:not(.cal-dow)').length);
             if (rows === 6) weeks6++;
             if (g.slack < worst.slack) worst = { slack: g.slack, m: m };
         }
         ok(`${d.n}: cả 12 tháng đều không tràn`, worst.slack >= 0,
             `chật nhất tháng ${worst.m}: ${worst.slack}px`);
-        ok(`${d.n}: có gặp tháng 6 hàng trong phép quét`, weeks6 > 0, `${weeks6} tháng`);
+        // Lưới LUÔN 6 hàng, không còn 4/5/6 tuỳ tháng — xem khối ghi chú ở
+        // render(): lưới cao thấp theo tháng thì hai tiêu đề bên dưới nhảy
+        // 58–116px mỗi lần bấm ‹ ›, mà lịch đã ghim thì vốn luôn vẽ 6 hàng.
+        ok(`${d.n}: tháng nào cũng đúng 6 hàng lưới`, weeks6 === 12, `${weeks6}/12 tháng`);
         ok(`${d.n}: quét 12 tháng không lỗi JS`, errs.length === 0, errs.join('; '));
         await ctx.close();
     }
@@ -453,6 +456,118 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         ok('không lỗi JS', errs.length === 0, errs.join('; '));
         await ctx.close();
     }
+}
+
+/* ── 3e. Bố cục không vỡ ở mọi cỡ máy và mọi tổ hợp gập/mở ──
+   Bốn lỗi đã sửa, tìm ra khi soi kỹ toàn bộ giao diện:
+   a) syncSectionColumns() đo bề rộng bằng getBoundingClientRect (px ĐÃ phóng)
+      rồi ghi vào style.width (px CHƯA phóng). Máy điện thoại có zoom = 1 nên
+      không lộ; trên tablet 768px (zoom 1,28) ba cột cộng lại 512px nhét vào
+      khung 398px — bảng phình thành 656px, cột Can chi/Vọng bị đẩy ra ngoài,
+      phải kéo ngang 114px mới đọc được.
+   b) shareSectionHeight() coi mục Tiết khí ĐANG ĐÓNG là chiếm 0px, trong khi
+      nó vẫn choán đúng hàng tiêu đề — đóng Tiết khí mà mở Lịch âm là cụm hai
+      mục thò 17px xuống dưới thanh tab.
+   c) Ngân sách chiều cao kê lên SEC_MIN (96px) ngay cả khi chỗ còn lại chỉ
+      51px — bịa ra chỗ không có, máy 360×640 tràn 14px.
+   d) viewport.js lấy chiều cao nội dung tab Lịch làm cơ sở tính tỉ lệ phóng,
+      mà chiều cao ấy do fitGrid() chia ra cho vừa MỌI tỉ lệ — hai cơ chế cùng
+      kéo một sợi dây nên mọi tỉ lệ trong [0,95; 1] đều tự nhất quán: cùng một
+      máy, hai lần mở ra hai cỡ chữ (đo được 0,976 rồi 1,000). */
+{
+    console.log('\nBố cục không vỡ ở mọi cỡ máy');
+    const MAY = [
+        ['360×640', 360, 640], ['S21 360×740', 360, 740], ['S21 FE', 393, 790],
+        ['A51', 412, 852], ['tablet', 768, 1024],
+    ];
+    for (const [nm, w, h] of MAY) {
+        const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+        const { page, errs } = await openCal(ctx);
+        await page.evaluate(() => {
+            const b = document.getElementById('calPinBtn');
+            if (b) b.style.display = 'block';
+            if (window.__calRefreshLabels) window.__calRefreshLabels();
+        });
+        await page.waitForTimeout(500);
+
+        // (a) Hai bảng không bao giờ phải kéo ngang.
+        const ngang = await page.evaluate(() => ['calJieQi', 'calAmBan'].map(id => {
+            const b = document.getElementById(id);
+            return { id, thua: b.scrollWidth - b.clientWidth };
+        }));
+        ok(`${nm}: hai mục không phải kéo ngang`, ngang.every(x => x.thua <= 1),
+            ngang.map(x => `${x.id} +${x.thua}`).join(' · '));
+
+        // (b)(c) Đủ bốn tổ hợp gập/mở, không tổ hợp nào đẩy nội dung xuống
+        // dưới thanh tab.
+        const slack = () => page.evaluate(() => {
+            const z = parseFloat(getComputedStyle(document.body).zoom) || 1;
+            const v = document.getElementById('calView'), d = document.getElementById('bottomDock');
+            const kids = [...v.children].filter(e => getComputedStyle(e).display !== 'none');
+            const low = Math.max(...kids.map(e => e.getBoundingClientRect().bottom));
+            return +((d.getBoundingClientRect().top - low) / z).toFixed(1);
+        });
+        const xau = [];
+        for (const [j, a] of [[true, true], [true, false], [false, true], [false, false]]) {
+            await setOpen(page, 'jq', j); await page.waitForTimeout(260);
+            await setOpen(page, 'am', a); await page.waitForTimeout(260);
+            const s = await slack();
+            // Máy quá thấp thì fitGrid hết đường bóp, trang cuộn — chấp nhận
+            // được, miễn là cuộn tới được (thanh dưới là fixed, thân trang có
+            // chừa đúng chiều cao nó).
+            const cuon = await page.evaluate(() =>
+                document.documentElement.scrollHeight > window.innerHeight + 2);
+            if (s < 0 && !cuon) xau.push(`${j ? 'J' : '-'}${a ? 'A' : '-'}:${s}`);
+        }
+        ok(`${nm}: không tổ hợp gập/mở nào bị thanh tab che`, !xau.length, xau.join(' '));
+
+        // (d) Gọi lại phép co giãn nhiều lần phải ra ĐÚNG một con số.
+        const zooms = [];
+        for (let i = 0; i < 3; i++) {
+            await page.evaluate(() => window.__fitScreen && window.__fitScreen());
+            await page.waitForTimeout(400);
+            zooms.push(await page.evaluate(() =>
+                (parseFloat(getComputedStyle(document.body).zoom) || 1).toFixed(3)));
+        }
+        ok(`${nm}: tỉ lệ phóng tab Lịch đứng yên qua 3 lần đo`,
+            new Set(zooms).size === 1, zooms.join(' → '));
+
+        ok(`${nm}: không lỗi JS`, errs.length === 0, errs.join('; '));
+        await ctx.close();
+    }
+}
+
+/* ── 3f. Nút Back của Android ──
+   Không còn hộp thoại nào mà đang ở tab Lịch thì Back đưa về tab Kỳ Môn — tab
+   ứng dụng mở lên đầu tiên — chứ không thoát thẳng ra màn hình chính. */
+{
+    console.log('\nNút Back của Android');
+    const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const { page, errs } = await openCal(ctx);
+    const r = await page.evaluate(() => {
+        const out = { coHam: typeof window.__onBackPressed === 'function' };
+        if (!out.coHam) return out;
+        out.dangOLich = document.body.classList.contains('view-cal');
+        out.nhanLan1 = window.__onBackPressed();
+        out.veKyMon = !document.body.classList.contains('view-cal');
+        out.nhanLan2 = window.__onBackPressed();   // ở Kỳ Môn rồi thì nhường hệ thống
+        return out;
+    });
+    ok('có hàm nhận nút Back', r.coHam);
+    ok('đang ở tab Lịch thì Back xử lý luôn, không thoát app', r.nhanLan1 === true);
+    ok('…và đưa về tab Kỳ Môn', r.veKyMon === true);
+    ok('ở tab Kỳ Môn thì Back nhường lại cho hệ thống', r.nhanLan2 === false);
+
+    // Hộp thoại đang mở thì Back đóng hộp TRƯỚC, chưa đụng tới tab.
+    const ov = await page.evaluate(() => {
+        document.getElementById('langDisplayBtn').click();
+        const daMo = document.getElementById('optOverlay').classList.contains('open');
+        const xuLy = window.__onBackPressed();
+        return { daMo, xuLy, daDong: !document.getElementById('optOverlay').classList.contains('open') };
+    });
+    ok('Back đóng hộp thoại đang mở trước tiên', ov.daMo && ov.xuLy === true && ov.daDong);
+    ok('không lỗi JS', errs.length === 0, errs.join('; '));
+    await ctx.close();
 }
 
 /* ── 3c. Cột tiêu đề CỐ ĐỊNH NGANG bất kể gập hay mở ──

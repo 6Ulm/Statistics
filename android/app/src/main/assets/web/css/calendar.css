@@ -102,8 +102,18 @@ body.view-cal #calView { display: block; }
     cursor: pointer; user-select: none;   /* chạm vào là về tháng hiện tại */
 }
 #calTitle:active { opacity: .65; }
+/* Nới VÙNG CHẠM của hai mũi tên đổi tháng mà KHÔNG đụng tới bố cục.
+   Chữ ‹ › chỉ cao 20px nên ô chạm trước đây cũng chỉ 26×20 — chưa tới nửa mức
+   Android khuyên (48dp), mà đây lại là chỗ bấm nhiều nhất tab Lịch. Nay đệm ra
+   đúng bằng phần đệm sẵn có của #calHead (8px trên dưới, 6px hai bên) rồi kéo
+   lại bằng lề âm đúng chừng ấy: hộp lề vẫn là 26×20 nên thanh tiêu đề không
+   cao hay rộng thêm pixel nào, còn ô chạm thành 38×36.
+   Đệm chứ KHÔNG dùng lớp giả trải rộng: lớp giả nằm ngoài hộp sẽ làm
+   scrollWidth lớn hơn clientWidth, và mọi phép soi "chữ có bị cắt không" —
+   kể cả test_responsive.mjs — sẽ báo nhầm là mũi tên bị cắt. */
 .cal-nav {
-    width: 26px; flex-shrink: 0; text-align: center;
+    width: 38px; padding: 8px 6px; margin: -8px -6px;
+    flex-shrink: 0; text-align: center;
     font-size: 20px; line-height: 1;
     cursor: pointer; user-select: none;
     opacity: .95;

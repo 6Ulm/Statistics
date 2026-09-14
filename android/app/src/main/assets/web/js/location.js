@@ -577,6 +577,15 @@
             var ov = getDOM(ids[i]);
             if (ov && ov.classList.contains('open')) { ov.classList.remove('open'); return true; }
         }
+        // Không còn hộp nào: đang ở tab Lịch thì Back đưa về tab Kỳ Môn — tab
+        // ứng dụng mở lên đầu tiên. Đó là nếp Android quen thuộc (Back về đích
+        // khởi đầu rồi mới thoát); không có bước này thì đang xem lịch mà bấm
+        // Back là ra thẳng màn hình chính, mất cả phiên xem.
+        if (document.body.classList.contains('view-cal') &&
+            typeof window.showTab === 'function') {
+            window.showTab('qmdj');
+            return true;
+        }
         return false;
     };
 
