@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      KHÔNG khai báo android.permission.INTERNET.
+      Ứng dụng chạy hoàn toàn offline: mọi thư viện, dữ liệu thành phố và
+      phép tính thiên văn đều nằm trong APK. Thiếu quyền INTERNET là bằng
+      chứng kỹ thuật rằng không có dữ liệu nào rời khỏi máy.
+
+      No INTERNET permission — everything runs offline, by construction.
+    -->
+
+    <!-- Chỉ dùng khi người dùng bấm "Dùng vị trí hiện tại". GPS hoạt động
+         không cần mạng. / Optional, only for the "use my location" button. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <uses-feature
+        android:name="android.hardware.location"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.location.gps"
+        android:required="false" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="false"
+        android:hardwareAccelerated="true"
+        android:theme="@style/Theme.BaTuKyMon">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode|density|fontScale">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- Widget lịch âm: xem lịch mà không cần mở ứng dụng. -->
+        <receiver
+            android:name=".CalendarWidgetProvider"
+            android:label="@string/widget_name"
+            android:exported="false">
+            <!--
+              Chỉ hai action này. DATE_CHANGED / TIME_SET / TIMEZONE_CHANGED là
+              broadcast ngầm của hệ thống, mà receiver không exported thì không
+              nhận được — khai thêm chỉ tổ gây hiểu lầm. Việc sang ngày đã có
+              báo thức nửa đêm trong scheduleMidnight() lo.
+            -->
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.bazi.qimen.WIDGET_REFRESH" />
+                <action android:name="com.bazi.qimen.WIDGET_PREV" />
+                <action android:name="com.bazi.qimen.WIDGET_NEXT" />
+                <action android:name="com.bazi.qimen.WIDGET_TODAY" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/calendar_widget_info" />
+        </receiver>
+    </application>
+</manifest>

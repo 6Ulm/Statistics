@@ -1,0 +1,1152 @@
+# Bát Tự & Kỳ Môn — ứng dụng Android
+
+Bản chuyển từ web app một-file (`QMDJ_1_1.html`) sang ứng dụng Android chạy
+**hoàn toàn offline**, dùng **giờ Mặt Trời thật** và **dữ liệu Mặt Trăng thật**
+của **bất kỳ toạ độ nào** để lập lá số.
+
+*Android port of the single-file Qi Men Dun Jia / BaZi web app. Fully offline,
+true-solar-time and real lunar data for any coordinate on Earth.*
+
+---
+
+## Điểm khác so với bản web
+
+| | Bản web gốc | Bản Android |
+|---|---|---|
+| Vị trí | 28 thành phố cố định | GPS · 34.006 thành phố · nhập toạ độ tay |
+| Múi giờ | theo danh sách cứng | IANA đầy đủ, có DST, suy được từ toạ độ khi offline |
+| Mặt Trời | chỉ Chính Ngọ | Chính Ngọ, mọc/lặn, độ dài ngày, xích vĩ, lệch giờ MT thật |
+| Mặt Trăng | điểm Sóc (bảng Âm Bàn) | thêm mọc/lặn, pha, % chiếu sáng, Sóc kế tiếp theo giờ địa phương |
+| Màn hình | — | **giống hệt bản gốc** |
+| Mạng | tải trong trình duyệt | **không có quyền INTERNET** |
+
+Engine Bát Tự / Kỳ Môn **không bị sửa một dòng nào**. Lớp vị trí mới ghi toạ độ
+đã chọn vào `countryData['__loc']` rồi trỏ `#country` sang khoá đó, nên
+`processAll()` và toàn bộ ba phái (Trí Nhuận / Sách Bổ / Âm Bàn) chạy y hệt cũ,
+chỉ khác là kinh độ và múi giờ giờ đây là của đúng nơi người dùng chọn.
+Bộ kiểm thử đối chiếu từng lá số với bản web gốc để bảo đảm điều đó.
+
+## Vừa khít màn hình
+
+Bản gốc chỉ có một luật: `@media (min-width: 768px) { body { zoom: 1.25 } }`.
+Luật này chỉ nhìn **chiều rộng**, nên S21 **xoay ngang** (800×360) rộng hơn
+768px và bị phóng to 1,25 lần — trong khi màn hình chỉ cao 360px.
+
+`js/viewport.js` thay bằng hệ số tính từ **cả hai chiều**, đo thực tế chứ không
+đoán, rồi kẹp trong khoảng 0,95–1,6. Bố cục không đổi, chỉ to/nhỏ theo màn hình.
+
+| Máy | Trước | Sau |
+|---|---|---|
+| S21 dọc 360×800 | zoom 1 · bàn 348px | **không đổi** — vốn đã vừa khít |
+| S21 ngang 800×360 | zoom 1,25 · bàn **500px** | zoom 0,95 · bàn **380px** |
+| Z Fold mở 673×841 | zoom 1 · bàn 400px, thừa 273px hai bên | zoom 1,13 · bàn **452px**, lấp đầy |
+| Điện thoại nhỏ 320×568 | zoom 1 | zoom 0,95 |
+
+S21 dọc **không cần sửa gì**: đo bằng Chromium cho thấy không tràn ngang, không
+có chữ nào bị cắt. Khoảng trống ~13% ở đáy màn hình là do bàn Kỳ Môn hình vuông
+và đã chiếm trọn bề ngang — phóng to nữa sẽ tràn ngang, nên giữ nguyên tỉ lệ 1.
+
+Bàn phím ảo làm `innerHeight` tụt một nửa; module bỏ qua lúc đó để giao diện
+không co lại khi đang gõ tìm thành phố.
+
+## Hàng điều khiển và hàng dùng chung
+
+Tab Kỳ Môn chỉ còn **một** hàng điều khiển: ngày giờ · phái · ô "Đầy đủ". Ngôn
+ngữ và địa điểm tách hẳn ra một hàng riêng nằm **dưới hai tab**, trong cùng
+`#bottomDock` với chúng, nên hiện ở **cả hai tab** và đổi ở đâu cũng có tác dụng
+như nhau.
+
+Ngôn ngữ và phái vốn là hai dãy nút (2 nút + 3 nút) chiếm gần trọn một hàng; nay
+mỗi thứ gói vào **một ô** giống hệt ô địa điểm — ô hiện mục đang chọn, chạm vào
+thì mở bảng trượt từ đáy (`#optOverlay`, dùng chung cho cả hai). Ba ô cạnh nhau
+thì mở ra cùng một thứ.
+
+Vài chỗ phải để ý:
+
+* **Ô phái rộng đúng bằng nhãn dài nhất**, không phải nhãn đang hiện — nếu không
+  ô co giãn mỗi lần đổi phái. Không đếm được bằng số ký tự (chữ Hán và chữ Việt
+  không cùng một thước), nên xếp chồng nhãn đang hiện với ba nhãn ẩn trong cùng
+  một ô lưới: bề rộng cột là bề rộng nhãn rộng nhất, tự đúng cả khi đổi ngôn ngữ.
+  Ô còn nới thêm **50%** quanh nhãn: `zoom` trên ba nhãn ẩn — khác `transform`,
+  `zoom` đổi kích thước dùng để dựng bố cục nên cột lưới nở theo, tỉ lệ đúng cho
+  cả hai ngôn ngữ mà không phải đo bằng JavaScript. Đo thì hỏng: hàng này bị ẩn
+  khi đang ở tab Lịch, đúng lúc ô ngôn ngữ dùng chung có thể đổi ngôn ngữ.
+  Lề ngang nhân cùng hệ số (6px → 9px) để nới cả Ô chứ không riêng phần chữ.
+  Ba nhãn ẩn phải bị ép `height: 0`: `zoom` phóng **cả hai chiều**, để nguyên
+  thì ô phái cao hơn ô ngày giờ 4–6px — nới rộng chứ không nới cao.
+  Phần thừa dồn cho ô ngày giờ (trên S21: 55px → 179px tiếng Việt, 226px tiếng
+  Trung; ô phái 59px → 88px và 36px → 53px).
+* **Ô ngày giờ và ô "Đầy đủ" giữ nguyên bề rộng chữ của mình.** Cho ô ngày giờ
+  co được thì nó bị bóp còn `0-09-2026 18:3`; ép cỡ chữ nhỏ đi thì "Sách Bổ" bị
+  cắt còn chữ "S" khi đang ở tiếng Việt. Đo trên 360/393/412px × hai ngôn ngữ:
+  không ô nào bị cắt, mà cỡ chữ vẫn y như cũ.
+* **`#optOverlay` phải nằm trong danh sách chừa của `body.view-cal`.** Luật ẩn
+  của tab Lịch xoá mọi con của `<body>` trừ danh sách ấy, mà bảng chọn lại là
+  con của `<body>` — quên thì ô ngôn ngữ ở hàng dùng chung mở ra một bảng vô
+  hình, đúng cái cảnh mà hàng dùng chung sinh ra để phục vụ.
+* **Địa điểm phải kéo được tab Lịch vẽ lại.** Ô này trước chỉ có ở tab Kỳ Môn
+  nên không đổi được khi đang xem lịch; nay `calendar.js` bọc `processAll()` để
+  vẽ lại khi đang ở tab Lịch (`applyLoc` gọi `processAll` sau khi áp vị trí).
+* **`--tabbar-h` đo cả `#bottomDock`**, không riêng `#tabBar` — bỏ sót hàng dùng
+  chung thì đáy trang bị thanh che mất đúng chiều cao một hàng.
+
+## Tab Lịch
+
+Thanh tab đáy màn hình có hai mục: **Kỳ Môn** (bàn Kỳ Môn, đúng như bản web
+gốc) và **Lịch** (lịch âm dương).
+
+* Mỗi ô ghi ngày dương (to), ngày âm (nhỏ, mùng 1 kèm tháng) và can chi —
+  **can một dòng, chi một dòng** ở mọi ngày, không phụ thuộc độ dài tên.
+* Ô trống đầu/cuối lưới được điền bằng ngày của **tháng trước / tháng sau**, tô
+  mờ; chạm vào là nhảy sang tháng đó.
+* **Hôm nay** có viền đỏ đậm trên nền vàng nhạt — tô đặc màu đỏ thì nổi hơn
+  thật, nhưng chữ phải đảo sang trắng và ô hoá thành một mảng đặc, đọc ngày âm
+  với can chi khó hơn hẳn.
+* Bảng **tiết khí trong năm** nằm ngay dưới lưới, không có hộp tiêu đề gập/mở:
+  xếp hai cột thì cả 24 mục vừa một màn hình trên S21, S21 FE, A51, S21 Ultra và
+  Z Fold, chẳng còn gì để gập. `fitGrid()` đo chiều cao THẬT của bảng rồi mới
+  chia phần còn lại cho các hàng lịch — giữ sẵn một khoản cố định thì phần dư
+  hoá thành khoảng hở ở đáy màn hình. Máy quá thấp (320×520) thì bảng tự cuộn
+  và hàng tiêu đề dính lại.
+* Hai tab ngăn nhau bằng một vạch dọc, tab đang mở có **nền màu nhấn** chứ
+  không chỉ đổi màu chữ.
+
+Lịch âm được tính theo **UTC+7** như quy ước lịch Việt Nam (bản tiếng Trung
+dùng UTC+8) — đó chính là lý do Tết ta và Tết Tàu thỉnh thoảng lệch một ngày.
+Phải đặt lại mốc này mỗi lần vẽ: `processAll()` để lại múi giờ của địa điểm
+đang chọn trong biến toàn cục của `lunar.js`, nên nếu đang chọn Paris thì
+26/08/2026 hoá ra 15/7 thay vì 14/7.
+
+## Hai mục gập được của tab Lịch
+
+Dưới lưới lịch là hai mục, mở/đóng **độc lập** nên mở được cả hai cùng lúc;
+trạng thái nhớ qua các lần mở ứng dụng.
+
+Thanh tiêu đề **chính là hàng `<thead>`** của bảng: ba tên cột vừa làm tiêu đề
+mục vừa làm tên cột. Trước đây có một nhãn riêng nên "Tiết khí" hiện hai lần —
+một ở tiêu đề, một ở tên cột — mà tên cột lại phải canh tay cho thẳng với giá
+trị. Nay chính bảng lo việc ấy, và gập lại thì `tbody` ẩn đi, còn đúng hàng tiêu
+đề. Đổi lại, `fitGrid` phải trừ chiều cao hàng tiêu đề của những mục ĐANG ĐÓNG
+(mục đang mở thì đã nằm trong phần được chia) — quên là tab Lịch tràn đúng bằng
+tổng hai hàng ấy.
+
+**Tiết khí** — một dãy **24 hàng liền**, ba cột: tên · ngày giờ · **can chi
+tháng**. Trước đây bảng chia đôi thành hai nhóm 12 cho vừa một màn hình; nay có
+thêm cột thứ ba nên xếp thẳng một dãy rồi cho cuộn, đọc theo thứ tự thời gian
+cũng tự nhiên hơn.
+
+Can chi tháng lấy **từ chính engine** (`lunar.js`), không tự suy từ chỉ số tiết
+khí: can tháng phụ thuộc can năm, mà năm can chi lại đổi ở Lập Xuân — dựng lại
+luật ấy bằng tay là mời thêm một nguồn lệch nữa với tab Kỳ Môn. Mỗi trụ tháng
+phủ đúng **hai** mục liền nhau (tiết mở tháng, rồi khí nằm giữa tháng), nên hai
+hàng lặp cùng một giá trị là đúng chứ không thừa.
+
+Hàm nhận thẳng **ngày Julius ở mốc UTC+8**, không nhận chuỗi giờ địa phương.
+Quy ngược chuỗi ấy cần offset đúng của **chính mốc đó**, trong khi offset của
+bảng là của ngày đang chọn — ở nước có DST hai thứ lệch nhau một giờ suốt nửa
+năm, đủ để Lập Xuân rơi về tháng Sửu thay vì mở tháng Dần. Mà can chi tháng vốn
+là đại lượng ở UTC+8, nên đi thẳng.
+
+**Lịch âm** — đúng bảng chi tiết của Âm Bàn pháp ở tab Kỳ Môn (Tháng âm · Sóc ·
+Vọng), dựng lại bằng **cùng những hàm ấy** (`Ephem.monthsAtBasis`,
+`formatPreciseSocLocal`, `formatPreciseVongLocal`) để hai tab không thể lệch —
+`test_cal_sections.mjs` so từng dòng một.
+
+Giá trị Sóc/Vọng CĂN GIỮA (lớp `.c`, giống hệt tiêu đề), khác cột "Dương lịch"
+của Tiết khí (vẫn căn trái). Cột này rộng hơn hẳn nội dung (Sóc/Vọng chỉ chiếm
+non nửa cột, phần dư nhường cho cột Tháng âm hẹp bên trái theo mẹo `width:1%`),
+nên căn GIỮA tiêu đề trong khi giá trị căn TRÁI khiến tiêu đề trông như bị đẩy
+sang phải cả 20-30px so với nơi giá trị thật sự nằm — đo được: tâm chữ "Sóc"
+cách tâm chữ giá trị tới 30px. Cho giá trị cũng căn giữa thì cả hai chia sẻ
+đúng một tâm — không cần đo/canh gì thêm, tự động khớp theo đúng nghĩa hình
+học. Còn dấu mũi gập/mở (▾/▸) của cột
+cuối: trước đây ô TIÊU ĐỀ cuối có lệ riêng "padding-right lớn hơn ô giá trị"
+để chừa chỗ cho dấu mũi — làm tiêu đề và giá trị không còn cùng một hộp nội
+dung, lệch thêm vài px nữa. Bỏ lệ riêng ấy, thu nhỏ dấu mũi (9px, nép sát mép)
+để vừa gọn trong đúng phần đệm chung với ô giá trị ở MỌI bề rộng màn hình
+(kể cả nấc thu gọn dưới 375px) — `test_cal_sections.mjs` đo tâm chữ (không phải
+tâm ô) của tiêu đề so với giá trị, lệch ≤ 1,5px.
+
+### Vị trí hai tiêu đề CỐ ĐỊNH, bất kể gập hay mở
+
+Lưới lịch giữ **đúng một chiều cao hàng** (`ROW_MIN`), không đổi theo việc mục
+nào đang mở hay đóng. Bản trước có HAI công thức khác hẳn nhau: "còn mục nào mở
+thì lưới chỉ lấy `ROW_MIN`, phần dư nhường cho mục" so với "không mục nào mở thì
+lưới lấy hết phần dư" (có thể chạm `ROW_MAX`) — hai công thức lệch nhau tới
+20px/hàng, nhân với 5–6 hàng thì cả lưới lẫn hai tiêu đề bên dưới nhảy hơn
+100px mỗi lần bấm gập/mở, dù người dùng chỉ đóng/mở MỘT mục. Nay chỉ còn MỘT
+công thức, luôn chạy: lưới luôn giữ `ROW_MIN`, mọi phần dư luôn "nhường" cho
+mục — không mục nào mở thì phần dư ấy hoá thành một khoảng trống đứng yên dưới
+hai hàng tiêu đề, thay vì kéo lưới phình ra. Đổi lại `fitGrid` phải đo CHIỀU
+CAO CỦA `<thead>` (không phải cả DIV): `<thead>` cao như nhau bất kể `tbody`
+bên trong đang hiện hay ẩn, nên phép trừ này không đổi theo trạng thái gập/mở —
+đo cả DIV (như trước) sẽ khiến "avail" trôi theo mục nào đang mở.
+
+Chia phần dư giữa hai mục thì KHÔNG chia theo tỉ lệ chiều cao thật của những
+mục ĐANG MỞ lúc này (bản trước làm vậy) — phần của Tiết khí sẽ phụ thuộc vào
+việc Lịch âm CÓ đang mở hay không, nên bấm mở Lịch âm là Tiết khí bị bớt lại
+ngay lập tức dù bản thân nó không đổi trạng thái, kéo tiêu đề Lịch âm nhảy
+đúng lúc người dùng vừa chạm vào nó. Nay BẤT ĐỐI XỨNG có chủ đích: Tiết khí
+(đứng trước) luôn được nhắm tới **65% phần dư**, không đổi dù Lịch âm mở hay
+đóng; Lịch âm (đứng sau cùng) lấy hết PHẦN CÒN LẠI sau khi trừ đúng phần Tiết
+khí đang dùng thật. Vì Tiết khí đứng trước Lịch âm nên chiều cao thật của nó
+ảnh hưởng tới vị trí tiêu đề Lịch âm — khoá cứng phần của nó triệt tiêu hẳn
+đường lây; còn Lịch âm không đứng trước ai nên nhường phần dư dôi ra cho nó
+không ảnh hưởng tới bất cứ tiêu đề nào — mở một mình thì nó vẫn chiếm trọn chỗ
+trống, không phải chừa vô cớ (bản test `test_cal_sections.mjs` canh cả hai:
+tiêu đề Tiết khí đứng yên qua đủ 5 tổ hợp gập/mở, và gập/mở CHÍNH Lịch âm không
+tự dịch chuyển tiêu đề của chính nó).
+
+## Widget theo kịp ngôn ngữ
+
+Widget vẽ bằng Kotlin nên không dùng được từ điển của trang web. Ứng dụng ghi
+ngôn ngữ đang chọn vào khoá `qmdj.lang` (`publishLang` trong `calendar.js`) rồi
+gọi `refreshCalendarWidget`; `LunarTable.langOf` đọc khoá ấy và widget đổi cả
+tiêu đề, thứ trong tuần, tên tiết khí, tiêu đề hai cột lẫn can chi.
+
+**Mặc định hai bên phải trùng nhau.** Ứng dụng mặc định tiếng Trung (`initLang`
+trong `app.js`), nên `LunarTable.DEFAULT_LANG` cũng phải là `"zh"` — để `"vi"`
+thì ngay sau khi cài mới, trước khi ai kịp ghi khoá, ứng dụng hiện tiếng Trung
+còn widget hiện tiếng Việt. `test_cal_sections.mjs` đọc cả hai mặc định từ mã
+nguồn rồi so.
+
+**Không treo việc đồng bộ vào một lời gọi.** `MainActivity.onStop` cũng vẽ lại
+widget: lỡ một nhịp nào đó (trang chưa nạp xong, broadcast rơi) thì cứ rời ứng
+dụng về màn hình chính là widget đã đúng.
+
+### Bốn chỗ từng làm lịch đã ghim lệch khỏi ứng dụng
+
+**Bảng tháng chỉ được ghi ở tab Lịch.** `publishLunarCache()` xưa chỉ chạy trong
+`render()`, mà `render()` chỉ chạy ở tab Lịch — trong khi ứng dụng **mở ra ở tab
+Kỳ Môn**. Ai không bao giờ mở tab Lịch thì ứng dụng KHÔNG HỀ đưa bảng tháng của
+mình cho widget, và widget đành dùng bảng đóng sẵn ở mốc UTC+7: ở Paris lệch
+~0,35% số tháng và ~1% nhãn tháng. Nay bảng được ghi sau **mọi** lần engine tính
+lại, và ghi luôn một lần lúc mở ứng dụng.
+
+**Khoá bảng là số phút lệch.** Ứng dụng ghi độ lệch của *ngày đang chọn*, widget
+lại so với độ lệch của *đúng ngày nó đang vẽ*. Ở nước có DST hai con số ấy khác
+nhau suốt nửa năm (Paris: 120 và 60), nên bảng của ứng dụng bị chối oan và
+widget lặng lẽ lùi về bảng đóng sẵn. Nay khoá là **mã múi giờ**, không đổi theo
+mùa.
+
+Cả hai đều lặng lẽ: widget vẫn hiện một con số trông hợp lý, chỉ là không phải
+con số của ứng dụng — nên chỉ đo mới thấy, xem `test_widget_sync.mjs`.
+
+**Khối "công bố lúc mở app" lại bị đặt trong tay bấm.** Có một hẹn giờ mang
+đúng ý định "công bố ngay khi mở app, kể cả không đụng gì" — nhưng khối đó nằm
+NHẦM bên trong `toggleSection()`, hàm chỉ chạy khi người dùng bấm mở/đóng tiêu
+đề Tiết khí hay Lịch âm, thay vì nằm ở `DOMContentLoaded`, nơi chạy đúng một
+lần lúc khởi động. Ai ghim widget rồi không bao giờ đụng tới hai tiêu đề ấy thì
+khối này không bao giờ chạy. Bug lọt qua nhiều vòng kiểm trước đó vì `app.js`
+đã có sẵn một lời gọi `processAll()` 100ms sau khi mở app, tình cờ phủ kín gần
+hết các ca thực tế — `test_widget_sync.mjs` dù thử đúng kịch bản "khởi động
+lạnh, không chạm gì" vẫn xanh trên cả bản lỗi lẫn bản đã sửa, vì đường công bố
+kia của `app.js` che mất sự khác biệt. Nên bản kiểm bổ sung không đo hành vi mà
+soi thẳng VỊ TRÍ trong mã nguồn: `test_cal_sections.mjs` trích hẳn thân hàm
+`toggleSection` ra và khẳng định nó không gọi `publishLunarCache`, đồng thời
+khối hẹn giờ công bố ấy phải tồn tại Ở NGOÀI hàm đó.
+
+Phải gọi cho widget vẽ lại chứ không chỉ ghi khoá: widget chỉ tự vẽ lại lúc nửa
+đêm hoặc khi người dùng bấm ‹ ›, nên nếu chỉ ghi thì đổi sang tiếng Trung trong
+ứng dụng mà lịch đã ghim vẫn tiếng Việt hàng giờ liền. Đổi **địa điểm** cũng
+gọi, vì giờ giao tiết và bảng tháng của widget đều theo nơi đang chọn.
+
+**Chưa từng chọn địa điểm thì app và widget đoán HAI NƠI KHÁC NHAU.** Đây là
+chỗ lệch nặng nhất trong cả bốn, vì không cần điều kiện đặc biệt gì — chỉ cần
+CHƯA TỪNG mở bảng chọn vị trí, đúng cảnh mở app lần đầu sau khi cài. `countryData`
+chỉ có hơn chục nước; múi giờ máy không khớp mục nào trong đó thì `location.js`
+xưa BỎ QUA LUÔN, không ghi `qmdj.location`, còn `app.js` lặng lẽ đứng ở mặc định
+chốt cứng `'FR'` (Pháp). Widget đọc thấy khoá ấy trống lại tự chốt cứng sang một
+nước KHÁC — Việt Nam (`DEFAULT_TZ = "Asia/Ho_Chi_Minh"`) — nên hai bên tính giờ
+giao tiết lệch nguyên số giờ (Paris–Hà Nội lệch 5-6 tiếng tuỳ mùa) ngay từ lần mở
+app đầu tiên, trước khi ai kịp làm gì cả. Hai chỗ chốt cứng này còn KHÁC NHAU,
+nên không phải chỉnh một hằng số cho khớp hằng số kia là xong.
+
+Sửa ở gốc, không phải sửa cho khớp: `location.js` giờ LUÔN ghi lại một vị trí
+đúng múi giờ máy khi không mục nào khớp (kinh độ suy từ độ lệch UTC hiện tại,
+nhãn "GMT±N" cho biết đây là suy đoán) — không bỏ qua nữa. Phòng thêm một lớp,
+`CalendarWidgetProvider.kt` đổi mặc định "chưa có gì" từ MỘT NƯỚC chốt cứng
+sang `TimeZone.getDefault()` — múi giờ của chính cái máy đang chạy — để dù JS
+có lỡ chưa kịp ghi gì thì widget vẫn đoán gần đúng nhất có thể, thay vì nhảy
+sang một nước bất kỳ không liên quan. `test_app.mjs` dựng lại đúng cảnh "múi
+giờ máy không khớp mục nào có sẵn", đối chiếu `qmdj.location` VÀ vị trí app
+đang dùng đều phải khớp múi giờ máy; `test_cal_sections.mjs` soi mã Kotlin,
+khẳng định không còn chỗ nào chốt cứng "Asia/Ho_Chi_Minh" nữa.
+
+Xem trước bản tiếng Trung mà không cần dựng APK:
+`node tools/shot_widget.mjs` rồi mở `widget_preview.html?lang=zh`.
+
+## Canh hàng theo thứ bên dưới / bên trên
+
+Khe giữa ô ngày giờ và ô phái rơi đúng vạch **Tháng|Ngày** của bảng Tứ Trụ ngay
+dưới. `.controls` lọt vào 6px (đệm 5 + viền 1) so với bảng ấy, nên bề rộng hàng
+là `w = W − 12`; muốn tâm khe nằm ở `L + W/2` thì ô ngày giờ rộng đúng
+`calc(50% − 2px)` (2px là nửa khe 4px). Đo được lệch **0,0px** trên
+360/393/412/520px × hai ngôn ngữ.
+
+Hai ô của hàng dùng chung thì canh theo **hàng tab ngay trên nó**: rộng hết bề
+ngang, chia đôi, mép trái / vạch giữa / mép phải trùng khít mép hai tab Kỳ Môn
+và Lịch. Muốn trùng thì không được có đệm ngoài hay khe giữa — vạch ngăn chính
+là viền trái của ô thứ hai, y như `.tab-item + .tab-item`.
+
+Hai hàng **cao bằng nhau** nhờ cùng chốt vào `--dock-row-h`, chứ không thả theo
+chữ: chữ Hán cao hơn chữ Latin nên một tab tự nhiên cao 27px ở tiếng Trung mà
+chỉ 25px ở tiếng Việt — pin một con số cho riêng hàng dưới thì không tài nào
+bằng ở cả hai thứ tiếng. Giữa hai hàng chừa 6px, và nền thanh dưới lấy màu nền
+TRANG (không phải trắng) nên cái khe ấy hiện ra thành một vạch, hai hàng tách
+bạch chứ không dính liền một khối.
+
+Trên máy hẹp nhất (S21, 360px) ô ngày giờ chốt ở 50% khiến nửa phải chỉ còn
+~166px, trong khi ô phái nới 1,5 lần cộng ô "Đầy đủ" cần ~189px. Dưới 375px hệ
+số nới hạ còn 1,1 và lề ngang còn 7px — nhãn vẫn hiện trọn, chỉ thoáng ít hơn.
+
+## Không để hở đáy màn Kỳ Môn
+
+Tỉ lệ phóng của `viewport.js` bị chặn bởi **bề ngang**: trên S21 FE nó đã kịch
+1,0 vì rộng, trong khi chiều cao còn dôi 39px (A51: 82px) nằm chết ngay trên
+thanh dưới. Bàn Kỳ Môn là lưới vuông nên không cao thêm được nếu không rộng
+thêm, vậy chỗ duy nhất nhận được phần dôi ấy là **khe giữa các bảng**: sau khi
+chốt tỉ lệ, phần thừa được chia đều vào các khe, kẹp trần ở 21px (không có trần
+thì trên máy cao các bảng rời rạc hẳn ra, xấu hơn cả khoảng hở).
+
+Kết quả: S21, S21 FE và S21 Ultra khít đáy (hở ≤ 0,3px), A51 còn 10px.
+
+## Ngày âm lịch bắt đầu lúc nào
+
+Hai câu hỏi tách rời nhau: **mốc nào** (kinh tuyến nào) và **lúc mấy giờ** (ranh
+giới ngày).
+
+### Ranh giới: Chính Tý, không phải 00:00
+
+Mùng 1 là ngày CHỨA điểm Sóc, và ngày ở đây đếm từ **Chính Tý tới Chính Tý** —
+nửa đêm MẶT TRỜI THẬT (Chính Ngọ − 12h) tại nơi người dùng đứng.
+
+Đây là chuyện **quy ước, không phải đúng/sai**. Lịch pháp Trung–Việt định ngày
+từ nửa đêm đồng hồ tới nửa đêm đồng hồ tại kinh tuyến quy chiếu, và mọi cuốn
+lịch in đều theo luật ấy. Ứng dụng này chọn nửa đêm thật, cùng hệ với Chính Ngọ
+mà nó vẫn hiển thị.
+
+Không lấy ranh giới **đầu giờ Tý** (Chính Ngọ − 13h): đó là quy ước của mệnh lý
+cho trụ ngày, và bản thân nó còn hai phái (早子時 / 夜子時). Nửa đêm thật thì chỉ
+có một.
+
+Chính Ngọ lệch khỏi 12:00 vì kinh độ + phương trình thời gian + giờ mùa hè, nên
+Chính Tý lệch khỏi 00:00 đúng chừng ấy:
+
+| Nơi | Chính Ngọ | Chính Tý | Cửa sổ lệch |
+|---|---|---|---|
+| Hà Nội | 12:01 | **00:01** | 1 phút |
+| Paris (hè) | 13:55 | **01:55** | 115 phút |
+
+Cửa sổ lệch không đứng yên: phương trình thời gian kéo Chính Tý của Hà Nội dao
+động từ **−17,5 phút đến +6 phút** quanh 00:00 trong năm. Nên ngay cả ở Việt
+Nam vẫn có **0,96% số tháng** (36/3741, quét 1960–2060) rơi mùng 1 khác lịch in;
+nơi lệch xa kinh tuyến múi giờ của mình thì chừng 8%. Ví dụ Paris: Sóc
+06/07/2024 lúc 00:57 vẫn còn **trước** Chính Tý (01:55), nên mùng 1 là 05/07 chứ
+không phải 06/07.
+
+Phần dôi ra ấy là do CHÍNH LUẬT NÀY, không phải sai số tính toán: điểm Sóc mà
+ứng dụng hiển thị rơi đúng ngày mùng 1 của `lunar.js` ở **1744/1744 tháng** từ
+1960 trở đi (mốc UTC+7).
+
+### Điểm Sóc được TÍNH, và tính bằng đúng hàm của lunar.js
+
+`getPreciseSocSolarUTC8()` không tra bảng: nó gọi thẳng `ShouXingUtil.shuoHigh`,
+tức chính hàm mà `lunar.js` dùng để định mốc Sóc. `mo.getFirstJulianDay()` chỉ
+dùng để chọn số thứ tự tuần trăng, không cung cấp giờ.
+
+Trước đây chỗ này CHÉP LẠI công thức của `shuoHigh` — và chép thiếu một bước:
+
+```js
+var v = ((t + 0.5) % 1) * SECOND_PER_DAY;
+if (v < 1800 || v > SECOND_PER_DAY - 1800) {
+    t = this.msaLonT(w) * 36525 - this.dtT(t) + tzDay;   // chính xác hơn
+}
+```
+
+Khi điểm Sóc rơi trong vòng 30 phút quanh nửa đêm, `shuoHigh` giải lại bằng
+`msaLonT` thay cho `msaLonT2`. Mà sát nửa đêm chính là lúc quyết định mùng 1 rơi
+ngày nào — bỏ bước ấy là sai đúng chỗ có hại nhất. Gọi thẳng hàm gốc đưa số
+tháng lệch từ 1960 trở đi **từ 2 về 0**.
+
+### Trước 1960: thiên văn khác sử liệu
+
+`ShouXingUtil.calcShuo` đổi chế độ tại **JD 2436935 = 01/01/1960**:
+
+* **từ 1960**: `shuoHigh` — tính thiên văn thuần;
+* **trước đó**: tra bảng `SHUO_KB` và `shuoLow` kèm chuỗi sửa `SB` — tức chép
+  lại LỊCH SỬ, ghi đúng những gì lịch chính thức ngày ấy đã ban, kể cả chỗ nó
+  sai so với thiên văn.
+
+Ứng dụng luôn tính thiên văn, nên với ngày trước 1960 mốc mùng 1 có thể lệch
+**18/742 tháng (2,43%)** so với cấu trúc tháng của `lunar.js`. Không hàm thiên
+văn nào khớp được chỗ đó — đấy là sử liệu, không phải phép tính.
+
+### Nhãn tháng lấy ở mốc quy chiếu, không lấy ở chỗ đứng
+
+Hai câu hỏi tách bạch:
+
+* **"Tháng này là tháng mấy, tháng nào nhuận"** là QUY ƯỚC LỊCH. Nó do luật
+  "tháng không có trung khí là tháng nhuận" quyết, và luật ấy được định tại
+  kinh tuyến quy chiếu — **UTC+7 cho lịch ta, UTC+8 cho lịch Tàu** (chính chỗ
+  này làm Tết ta và Tết Tàu thỉnh thoảng lệch một ngày).
+* **"Mùng 1 rơi vào ngày dương nào"** mới là chuyện địa phương: ngày chứa điểm
+  Sóc, đếm từ Chính Tý.
+
+Trước đây hỏi `lunar.js` ngay ở mốc địa phương, tức để luật trung khí bị đánh
+giá trên lưới nửa đêm ĐỒNG HỒ ở một offset nguyên giờ. Mà Chính Tý lại xê dịch
+tới ~30 phút trong năm, nên một offset cố định không diễn tả nổi nó — đo được
+**4–8 tháng mỗi thế kỷ đổi nhãn** chỉ vì mốc lệch 15–30 phút. Nay nhãn không còn
+phụ thuộc chuyện đó.
+
+Ghép nhãn (mốc quy chiếu) với mốc bắt đầu (địa phương) là an toàn vì **dãy tuần
+trăng giống hệt nhau ở mọi mốc**: quét 1900–2100, mọi mốc từ UTC−8 tới UTC+12
+đều ra **đúng 2486 tháng**, mốc bắt đầu lệch **tối đa 1 ngày**, không cặp nào
+lệch quá. Độ dài tháng vẫn 29 hoặc 30 ngày ở mọi thành phố đã thử.
+
+## Mốc kinh tuyến
+
+Quy tắc: **mùng 1 là ngày CHỨA điểm Sóc**. Nhưng "ngày" nào thì tuỳ mốc quy
+chiếu — và mốc ấy phải trùng với mốc dùng để HIỆN giờ Sóc, nếu không một màn
+hình có hai hệ quy chiếu.
+
+Bản web gốc mắc đúng chỗ này: nó tính ngày âm ở mốc UTC+8 nhưng lại quy giờ Sóc
+sang giờ địa phương, nên ở Paris bảng Âm Bàn ghi **Sóc 12-08-2026 19:37** ngay
+cạnh **Mùng 1 13-08-2026** — hai con số cùng một thời điểm (17:37 UTC) nhưng đọc
+ở hai hệ khác nhau.
+
+Bản Android tính ngày âm ở **mốc múi giờ của địa điểm đang chọn**. Ở Paris mùng
+1 là 12/08, khớp với giờ Sóc đang hiện; ở Việt Nam vẫn là 13/08 như cũ.
+
+Đã kiểm lại lời cảnh báo trong mã gốc rằng mốc địa phương làm hỏng độ dài tháng
+29/30: **không đúng**. Quét 2020–2035 ở các mốc từ UTC−8 tới UTC+12, mọi tháng
+đều 29 hoặc 30 ngày, số ngày âm liên tục, và mùng 1 luôn chứa Sóc (198/198 tháng
+mỗi mốc).
+
+Chỉ NGÀY ÂM LỊCH đổi mốc.
+
+### Giờ Bắc Kinh ở đây KHÔNG phải một quy ước
+
+Dễ hiểu nhầm chỗ này, nên nói cho rõ. Trụ **năm** và trụ **tháng** đổi tại Lập
+Xuân và 12 mốc Tiết — mà đó đều là những THỜI ĐIỂM tuyệt đối, không phải ngày
+trên lịch. Thời điểm bạn nhập cũng vậy. So thời điểm với thời điểm thì kết quả
+**không phụ thuộc hệ quy chiếu**.
+
+`_readInputBJ()` đổi giờ bạn nhập sang giờ Bắc Kinh
+(`Date.UTC(...) − tz·3600000 + 8·3600000`) chỉ để đặt cả hai vế về CÙNG một hệ
+cho tiện so; làm ở giờ địa phương cũng ra y hệt. Kiểm chứng: cùng một thời điểm
+tuyệt đối đọc từ hai nơi cho cùng trụ năm/tháng, ngay hai bên mốc Lập Xuân 2026.
+
+| Thời điểm | Nơi | Năm | Tháng | Ngày | Giờ |
+|---|---|---|---|---|---|
+| ngay sau Lập Xuân | Hà Nội 04/02 03:30 | Bính Ngọ | Canh Dần | Kỷ Dậu | Bính Dần |
+| ngay sau Lập Xuân | Paris 03/02 21:30 | Bính Ngọ | Canh Dần | Mậu Thân | Nhâm Tuất |
+| ngay trước Lập Xuân | Hà Nội 04/02 02:30 | Ất Tỵ | Kỷ Sửu | Kỷ Dậu | Ất Sửu |
+| ngay trước Lập Xuân | Paris 03/02 20:30 | Ất Tỵ | Kỷ Sửu | Mậu Thân | Nhâm Tuất |
+
+Năm và tháng trùng khít; **ngày và giờ mới khác** — đúng như thiết kế, vì hai
+trụ ấy dùng giờ Mặt Trời thật tại chỗ.
+
+Bảng tiết khí cũng vậy: **tính** ở mốc UTC+8 rồi **hiện ra ở giờ địa phương**.
+Cùng mốc Lập Xuân 2026, Hà Nội ghi `04-02-2026 03:02` còn Paris ghi
+`03-02-2026 21:02` — chênh đúng 6 giờ, cùng một thời điểm.
+
+### Cái giá phải trả (đổi mốc kinh tuyến)
+
+Cục Âm Bàn = `(chi năm + tháng âm + ngày âm + chi giờ) % 9`, nên đổi mốc ngày âm
+là đổi cả kết quả Kỳ Môn ở nơi lệch khỏi UTC+8:
+
+| Nơi | Ngày âm khác bản gốc | Cục Âm Bàn khác |
+|---|---|---|
+| Việt Nam UTC+7 | 0 % | **0 %** |
+| Paris (hè) | 22,9 % | **22,9 %** |
+| Paris (đông) | 29,1 % | **29,1 %** |
+| New York | 56,1 % | **55,6 %** |
+
+`diff_vs_original.mjs` vì thế đòi **trùng khít tuyệt đối ở nơi có mốc UTC+8**
+(tra múi giờ thật theo từng thời điểm — Malaysia từng ở UTC+7:30 tới 1982), còn
+nơi khác thì miễn cho các trường phụ thuộc ngày âm, và chỉ miễn cho bàn Kỳ Môn
+**khi chính cục đã khác** — cục giống mà bàn khác vẫn là hồi quy.
+
+## Engine thiên văn dùng chung (`js/ephem.js`)
+
+Tab Kỳ Môn và tab Lịch cần cùng những mốc thiên văn — Sóc, Vọng, tiết khí,
+Chính Ngọ — nên tất cả nằm ở **một chỗ**, và cả hai gọi vào đó.
+
+Trước khi gom, có hai vấn đề thật:
+
+* **Phương trình thời gian có HAI bản** — `getEquationOfTime` trong `app.js` và
+  `equationOfTime` trong `astro.js`. Đối chiếu Meeus ví dụ 28.b thì cả hai đều
+  đúng tới **0,04 giây**; chúng lệch nhau vì **thời điểm đánh giá**: bản cũ tính
+  EoT tại **12:00 UTC** của ngày đó thay vì tại chính lúc Chính Ngọ địa phương.
+  Với Nhật (UTC+9) hay Mỹ (UTC−5) thì lệch tới 9 giờ, đủ đổi EoT ~9 giây. Nay
+  chỉ còn một bản, đánh giá đúng chỗ.
+
+* **`LunarYear.fromYear()` chỉ nhớ MỘT năm** (`_CACHE_YEAR`). Mỗi lần vẽ, ứng
+  dụng hỏi 3 năm ở mốc quy chiếu, rồi hỏi lại ở UTC+8 cho bảng tiết khí, rồi lại
+  ở mốc địa phương cho bảng Âm Bàn — lần nào cũng đá văng lần trước. `Ephem` nhớ
+  theo **(năm, mốc)** nên hết cảnh dựng đi dựng lại.
+
+Tab Lịch còn dựng **một bối cảnh cho cả lưới** thay vì lặp lại 42 lần: trước
+đây mỗi ô tự gọi `getDOM`, `getTimezoneOffset` (Intl, đắt) và dựng một `Lunar`
+riêng. Can chi ngày nay suy thẳng từ số ngày Julius (chu kỳ 60 liên tục), mốc
+lấy một lần từ `lunar.js`.
+
+`tools/test_perf.mjs` canh các đường nóng khỏi tụt lại. Nó dọn SẠCH mọi bộ nhớ
+đệm trước mỗi phép đo "nguội" — kể cả `_sbCache` riêng của `sb_getJieQiDates` —
+vì phép đo đầu tiên viết ra không làm thế: nó quay vòng qua 40 năm với bộ đệm
+24 mục, nên trộn lẫn trúng đệm với trượt đệm và cho ra con số nhảy gấp bốn giữa
+hai lần chạy. Ngưỡng để rộng tay: chúng là lưới chặn hồi quy, không phải phép
+đo chính xác.
+
+Số đo hiện tại (máy chạy test, đã dọn đệm): `processAll` ~13 ms, `render()` tab
+Lịch ~8,5 ms, `zi_months` nguội ~17 ms, `sb_getJieQiDates` nguội ~5,5 ms và
+~0 ms khi ấm.
+
+`Ephem` cũng là **chỗ duy nhất** cần thay khi đổi sang bộ tính thiên văn khác:
+`socSolar`, `vongSolar`, `jieQiJdAtBasis`, `solarNoonMinutes` là toàn bộ bề mặt.
+
+## Bảng Âm Bàn: Tháng | Sóc | Vọng
+
+Bảng bỏ hai cột **Mùng 1** và **Rằm**, thay bằng **Thời điểm Vọng** (trăng
+tròn). Lý do: mùng 1 và rằm đều suy được từ ngày âm lịch đang hiện ngay bên
+trên, còn thời điểm Vọng thì không — nó là một mốc thiên văn riêng.
+
+Vọng là lúc hiệu kinh độ Mặt Trăng − Mặt Trời đạt **180°**, cùng nghiệm với Sóc
+nhưng lệch pha π (`Ephem.vongSolar`). **Không** được cộng nửa tuần trăng vào
+Sóc: quỹ đạo Mặt Trăng là ellip nên khoảng Sóc→Vọng xê dịch quanh 14,765 ngày —
+tháng 8/2026 chẳng hạn là **15,45 ngày**.
+
+Kiểm chứng độc lập trong `test_soc_parity.mjs`: tại thời điểm Vọng, `astro.js`
+tính Mặt Trăng được chiếu sáng **100,00%**, còn trước và sau đó một ngày là
+98,97% và 98,91% — một cực đại sạch. Phép thử đòi ≥ 99,5% ở mọi ca.
+
+## Mốc thiên văn: bảng DE423, một nguồn duy nhất
+
+Tiết khí, điểm Sóc và điểm Vọng **không còn tính bằng chuỗi giải tích của
+ShouXing** mà tra `assets/web/js/astro_table.js` — bảng sinh sẵn từ JPL DE423 với
+chuỗi tuế sai–chương động IAU 2006/2000A (xem `tools/almanac/`).
+
+Chỉ có ba chỗ nối, tất cả nằm trong `ShouXingUtil`: `qiAccurate`, `qiHigh` và
+`shuoHigh`. Mọi thứ phía sau — `LunarYear`, cấu trúc tháng âm, tháng nhuận,
+`ephem.js`, cả hai tab, và bảng của widget do `build_lunar_table.mjs` sinh ra —
+thừa hưởng giá trị mới mà không phải sửa gì. Ba hàm ấy chỉ được gọi ở nhánh
+**sau 1959**; trước mốc đó `calcQi`/`calcShuo` vẫn tra bảng lịch sử `QI_KB`/
+`SHUO_KB`, và bảng mới không đụng vào — lịch Trung Quốc trước 1959 là **dữ liệu
+đã công bố**, không phải thứ để tính lại.
+
+Bảng ghi mốc theo TT; chỗ nối quy sang giờ dân dụng bằng đúng `dtT` cũ, nên chỉ
+phần thiên văn đổi, cách xử lý ΔT giữ nguyên.
+
+**Nguyên tắc: mốc thì đo, ngày thì tra.** Điểm Sóc, điểm Vọng và tiết khí là
+những sự kiện có thật trên trời — với chúng, chuẩn duy nhất là bầu trời, nên
+tính bằng ephemeris tốt nhất có được. Còn "mùng 1 là ngày nào" thì không phải
+một đại lượng thiên văn: đó là một QUY TẮC áp lên cái mốc ấy, và quy tắc thì
+cần múi giờ với mốc nửa đêm mới ra được ngày. Mốc chính xác hơn làm đầu vào của
+quy tắc tốt hơn — luôn luôn có lợi — nhưng đầu ra vẫn là quy ước.
+
+Hệ quả cho phần trước 1959: **đừng đụng vào `QI_KB` / `SHUO_KB`.** Hai bảng ấy
+không phải phép xấp xỉ bầu trời mà là ghi chép lịch Trung Quốc **đã thật sự
+dùng**, kể cả những quyết định hành chính mà không ephemeris nào dựng lại được.
+Tính lại chúng là lấy một con số đẹp hơn thay cho một sự thật lịch sử — sai theo
+đúng nghĩa. Đó là lý do ba chỗ nối chỉ nằm ở nhánh sau 1959.
+
+Đo trên toàn dải 1900–2100 (9.798 mốc), so bản cũ với bản mới **trong TT** để ΔT
+triệt tiêu:
+
+| Mốc | trung vị lệch | p95 | lớn nhất | vượt 60 s |
+|---|---|---|---|---|
+| Tiết khí | 0,45 s | 1,37 s | **2,83 s** | 0 / 4.824 |
+| Điểm Sóc | 27,9 s | 103 s | **180 s** | 456 / 2.487 |
+| Điểm Vọng | 28,7 s | 146 s | **234 s** | 601 / 2.487 |
+
+Tức là **tiết khí vốn đã đúng** — chuỗi ShouXing cho tiết khí sai không tới 3
+giây — còn **điểm Sóc và điểm Vọng mới là chỗ sai thật**, tới gần 4 phút. Chính
+`lunar.js` cũng ghi nhận điều đó trong một ghi chú tối ưu cũ ("Sóc chính xác hơn
+~2–3 phút").
+
+Dù vậy, **không một ngày lịch nào đổi**: dựng lại `jieqi.txt` và
+`lunar_months.txt` cho ra 0/4.824 tiết khí và 0/2.510 mùng 1 nhảy sang ngày
+khác; chỉ trường giây trong ngày đổi (40 dòng tiết khí, 1.721 dòng tháng âm).
+Sửa cỡ vài phút chỉ dời được ranh giới ngày khi mốc rơi sát nửa đêm địa phương,
+và trong 200 năm không có mốc nào rơi đủ sát.
+
+### Chính Ngọ: cũng lấy từ DE423, qua phương trình thời gian
+
+Chính Ngọ (trưa Mặt Trời thật) chỉ cần **một** đại lượng thiên văn: phương trình
+thời gian, tức giờ Mặt Trời biểu kiến trừ giờ Mặt Trời trung bình. Phần kinh độ
+trong công thức là số học thuần tuý:
+
+```
+Chính Ngọ (phút kể từ 0h giờ đồng hồ) = 720 − (kinh độ − múi giờ×15)×4 − EoT
+```
+
+EoT là hàm của **thời gian, không phải nơi chốn**, nên MỘT bảng toàn cục phục vụ
+mọi địa điểm — khác hẳn mọc/lặn, vốn phụ thuộc vĩ độ và không tra bảng được.
+Bảng lấy mẫu 4 ngày một, nội suy bậc ba; sai số nội suy lớn nhất 12 ms (bước 8
+ngày cho 172 ms, bước 2 ngày chỉ hơn được 0,65 ms mà tốn gấp đôi).
+
+Đo trên 1.946 mốc rải khắp 1901–2098, so với DE423:
+
+| | trung vị | p95 | lớn nhất |
+|---|---|---|---|
+| Meeus (bản cũ) | 0,900 s | 2,555 s | **3,624 s** |
+| bảng DE423 (mới) | 0,0018 s | 0,0080 s | **0,0133 s** |
+
+Tức Chính Ngọ đi từ sai vài giây xuống sai vài phần trăm giây — đạt mức "dưới
+một giây" mà `implementation_prompt.md` đặt ra. Bảng cũng khớp hai mốc kiểm
+trong tài liệu ấy: cực đại **+16,45 phút** ngày 03-11 và cực tiểu **−14,19 phút**
+ngày 12-02 (tài liệu nêu +16,4 và −14,2).
+
+**Còn một khoản chưa khử: ΔUT1.** EoT tự nó thuần hình học nên không cần biết
+Trái Đất quay nhanh chậm ra sao. Nhưng Chính Ngọ là đại lượng ấy **quy ra giờ
+đồng hồ dân dụng**, mà đồng hồ dân dụng chạy theo UTC còn giờ Mặt Trời trung
+bình chạy theo UT1 — công thức trên ngầm coi UT1 = UTC. Đấy đúng là điều
+*stage 2* của tài liệu nói tới. Phần dư là UT1 − UTC, đo trên 19.955 bản ghi
+IERS được **−0,676 … +0,808 giây**. Không nhét được vào bảng: giá trị ấy không
+đoán trước được cho ngày mai, không tồn tại trước 1972 (khi UTC ra đời), mà ứng
+dụng thì chạy ngoại tuyến, không tải được EOP. Nó cũng nhỏ hơn khoảng 60 lần so
+với đơn vị PHÚT mà ứng dụng hiển thị Chính Ngọ.
+
+### Bảng chỉ đổi MỐC — tháng nhuận và Bát Tự vẫn theo luật của lunar.js
+
+Bảng chỉ thay các con số; mọi quy tắc suy ra từ chúng vẫn là của `lunar.js`.
+Đã kiểm bằng cách chạy hai lần (có bảng / giấu bảng) rồi so từng ký tự:
+
+* **Kết cấu tháng âm 1900–2100 — giống hệt.** 3.711 dòng gồm số tháng, cờ
+  nhuận và mùng 1 của mọi tháng: lệch 0. Cả 74 năm nhuận rơi vào đúng tháng cũ.
+  `tools/test_astro_table.mjs` chốt cứng dãy tháng nhuận ấy, nên lần sau có ai
+  đổi bảng mà xê dịch tháng nhuận thì phép thử đỏ ngay.
+* **Bát Tự ở giờ bình thường — giống hệt.**
+
+Có **một** chỗ đổi, và không tránh được: người sinh trong đúng **1–3 giây** mà
+mốc giao tiết dịch đi thì trụ tháng (hoặc trụ năm, nếu là Lập Xuân) lật sang trụ
+kia. Quét ±10 giây quanh 432 mốc giao tiết: 135/9.072 truy vấn đổi kết quả, cửa
+sổ rộng 1 giây (trung vị), 3 giây (lớn nhất); ra ngoài ±4 giây thì khớp 100%.
+
+Đấy là hệ quả số học của việc sửa mốc, không phải lỗi: trụ tháng đổi tại đúng
+khoảnh khắc giao tiết, nên mốc dịch bao nhiêu thì cửa sổ lật rộng bấy nhiêu. Và
+giá trị MỚI mới là giá trị đúng — theo đúng nguyên tắc "mốc thì đo" ở trên.
+
+`node tools/test_astro_table.mjs` canh rằng bảng **đang thật sự được dùng**: mất
+tệp bảng hay mất thẻ `<script>` thì ứng dụng không hỏng, nó lặng lẽ rơi về chuỗi
+cũ — im lặng đúng là lý do phải có phép thử ấy.
+
+## Tiết khí: một nguyên tắc duy nhất
+
+Tiết khí xuất hiện ở ba chỗ — bảng Sách Bổ pháp (tab Kỳ Môn), bảng Tiết khí
+(tab Lịch) và widget — và cả ba phải ra **cùng một con số**. Nguyên tắc lấy theo
+bảng Sách Bổ pháp:
+
+1. `LunarYear.getJieQiJulianDays()`, không phải `getJieQiTable()`;
+2. tính ở mốc **UTC+8** (`setTzOffsetHours(null)`);
+3. rồi mới quy sang giờ địa phương: `jdLocal = jdUTC8 + (tz − 8)/24`, với `tz`
+   tra theo DST tại **chính thời điểm** của mốc đó.
+
+Bước 2 và 3 không phải chuyện vặt: tính thẳng ở múi giờ địa phương thì các tiết
+khí mùa đông của một nước có DST bị cộng nhầm offset mùa hè, lệch đúng một giờ.
+
+Tab Lịch gọi thẳng `sb_getJieQiDates` của tab Kỳ Môn thay vì chép lại — nhưng nó
+chạy khi `ShouXingUtil` đang ở mốc UTC+7 (để lịch âm ra đúng lịch Việt Nam), mà
+`findJieQi` bên trong lại đọc chính biến toàn cục ấy, nên phải đặt lại mốc rồi
+trả về như cũ. `tools/test_jieqi_parity.mjs` so hai bảng từng mục một ở năm múi
+giờ khác nhau; `tools/test_lunar_table.mjs` canh bảng của widget theo cùng
+nguyên tắc.
+
+Ở tab Lịch, bảng bỏ hai cột **Độn** và **Số Cục** (đó là chuyện của bàn Kỳ Môn)
+nên mỗi mục chỉ còn tên với ngày giờ — hẹp bằng nửa bề ngang. 24 mục vì thế xếp
+thành **hai cột kép**, 12 mục mỗi bên: bảng thấp đi một nửa, cả năm hiện gọn
+trong một màn hình, và ranh giới trái/phải trùng luôn ranh giới Dương Độn / Âm
+Độn. Cột tên co đúng bằng chữ và cột ngày căn trái ngay sau nó, để tiêu đề
+"Dương lịch" thẳng hàng với giá trị bên dưới thay vì bị đẩy sát mép máy.
+
+## Widget lịch trên màn hình chính
+
+Ghim riêng **lịch âm** ra màn hình chính, không cần mở ứng dụng. Trong tab
+Lịch, bấm **📌 Ghim lịch ra màn hình chính** (Android 8 trở lên; launcher cũ thì
+nhấn giữ màn hình chính → Tiện ích → "Lịch âm"). Chạm vào widget mở thẳng tab
+Lịch, không phải bàn Kỳ Môn.
+
+Widget có **đúng thiết kế của tab Lịch** — cùng màu, cùng cách sắp chữ, cùng
+kiểu đánh dấu hôm nay — chỉ bỏ thanh tab và nút ghim. Nội dung gồm lưới lịch và
+bảng tiết khí, không có gì khác.
+
+Hai mũi tên **‹ ›** lùi/tiến tháng, chạm tiêu đề thì về tháng hiện tại; tháng
+đang xem được nhớ riêng cho **từng widget** (`qmdj_widget` / `w<id>.offset`), nên
+ghim hai cái cạnh nhau vẫn xem được hai tháng khác nhau. Ba nút dùng ba
+`requestCode` khác nhau (`id * 8 + 1|2|3`), nếu không hệ thống dùng lại cùng một
+`PendingIntent` và cả ba cùng làm một việc.
+
+Thanh tiêu đề là **View thật** (`widget_calendar.xml`) để hai mũi tên bấm được;
+phần lưới và bảng tiết khí vẽ ra bitmap vì RemoteViews không dựng nổi lưới 7×6
+cho gọn.
+
+Sàn kích thước là **4×4 ô** (`minResizeWidth/Height` = `minWidth/Height` =
+250dp): kéo to ra thì được, thu nhỏ hơn thì không. Ở 3×2 hay 4×3 ô, mỗi ô lịch
+chỉ cao chừng 15dp nên can chi tự tắt và số ngày còn khoảng 5dp — không đọc nổi,
+nên đơn giản là chặn hẳn thay vì để người dùng dựng ra một widget vô dụng.
+
+Can chi được đặt thành một **khối hai dòng sát nhau, cân giữa** phần còn lại của
+ô — đúng như `.cal-gz` trong tab Lịch. Đặt theo tỉ lệ phần trăm của phần còn lại
+thì ô càng cao hai chữ càng dạt xa nhau: ở widget 4×5 khoảng cách giãn ra hơn
+gấp đôi cỡ chữ.
+
+Widget vẽ bằng RemoteViews nên **không có WebView** — `lunar.js` không với tới
+được. Thay vì chép thuật toán tính điểm Sóc và giờ giao tiết sang Kotlin (dễ
+lệch với phần còn lại của ứng dụng), mọi mốc mùng 1 và mọi tiết khí từ
+1900–2100 được tính sẵn bằng chính `lunar.js` rồi đóng gói thành hai bảng tra
+(43 KB + 71 KB); Kotlin chỉ tìm nhị phân. Can chi suy thẳng từ số ngày Julius.
+
+```bash
+node tools/build_lunar_table.mjs   # sinh assets/lunar_months.txt + jieqi.txt
+node tools/test_lunar_table.mjs    # đối chiếu với lunar.js
+node tools/test_astro_table.mjs    # bảng DE423 còn đúng, còn được dùng, và
+                                   # tháng nhuận 1900-2100 chưa xê dịch
+```
+
+Bảng tra và cách tra đã đối chiếu **từng ngày một trong 73.414 ngày (1900–2100)
+và 4.824 mốc tiết khí, lệch 0**.
+
+Ngày âm trong widget lấy từ **bảng do chính ứng dụng ghi ra**
+(`publishLunarCache` trong `calendar.js`): mỗi lần vẽ lịch, ứng dụng ghi 40
+tháng quanh hôm nay ở đúng múi giờ đang chọn vào SharedPreferences (~500 ký
+tự). Widget đọc bảng ấy trước.
+
+Lý do không tự suy từ bảng đóng trong APK: bảng ấy ghi điểm Sóc ở mốc UTC+7, mà
+`lunar.js` **không** định mùng 1 thuần tuý bằng "lấy phần nguyên của điểm Sóc
+theo múi giờ" — suy như vậy còn lệch ~0,35% số tháng và ~1% nhãn tháng ở mốc xa
+UTC+7. Bảng đóng sẵn vẫn giữ làm đường lùi (đúng tuyệt đối ở UTC+7, và vẫn hơn
+hẳn cách cũ là chốt cứng mùng 1, vốn lệch tới 16% ở UTC+2).
+
+### Hai bảng, hai đơn vị — chỗ đã sai một lần
+
+`jieqi.txt` ghi cột 2 là **phút** trong ngày (≤ 1439); `lunar_months.txt` ghi
+**giây** (≤ 86 399). `LunarTable.monthStart` từng dùng lại `localize()` — vốn
+viết cho `jieqi.txt` nên nhân 60 000 — cho mốc Sóc, tức nhân thừa đúng 60 lần.
+Mùng 1 vì thế trôi `floor(giây/1440)` ngày, tới 59 ngày: 2 481/2 510 tháng lệch
+và 340 chỗ mất tính tăng dần nên tìm nhị phân cũng sai theo. Sai ở **cả mốc gốc
+UTC+7**, không riêng múi giờ xa.
+
+Con bọ chỉ lộ ra khi widget phải dùng đường lùi, vì đường chính (bảng do ứng
+dụng ghi ra) vẫn đúng — và `test_lunar_table.mjs` thì vẫn xanh, do bản sao
+JavaScript trong đó nhân đúng 1000: **bản sao đã lặng lẽ trôi khỏi thứ nó mô
+phỏng**. Nay phép thử soi thẳng vào mã Kotlin — đơn vị của từng bảng,
+`monthStart` không được đi qua `localize` — và kiểm cả dải giá trị thật trong
+hai tệp dữ liệu, nên một bản sao lệch nữa sẽ đỏ chứ không im.
+
+Widget hiện **cả 24 tiết khí của năm**, xếp hai cột 12 — đúng hình dạng bảng ở
+tab Lịch, kể cả vách ngăn giữa hai nửa và ô tô màu cho tiết khí đang hiệu lực.
+
+Chừng ấy nội dung cần chiều cao thật: 6 hàng lịch cộng 13 hàng bảng. Chiều cao
+được chia theo đúng tỉ lệ của tab Lịch (hàng lịch cao gấp ~3,7 lần hàng tiết
+khí), rồi kẹp hàng tiết khí trong khoảng 9–18dp.
+
+Bảng tiết khí là một khối **cố định**, không đổi khi lật tháng:
+
+* Phần chia luôn tính theo **6 hàng lịch** (`GRID_WEEKS`) — số hàng của tháng dài
+  nhất — chứ không theo số hàng của tháng đang xem. Tính theo tháng đang xem thì
+  tháng gọn 5 hàng làm bảng phình thêm ~12%: bấm ‹ › một cái là cả khung lẫn cỡ
+  chữ nhảy. Chỗ dôi ra của tháng ngắn đổ vào lưới lịch, nơi ô cao thêm chỉ tốt lên.
+* Hai cột nằm ở **chỗ cố định**: cột tên rộng đúng bằng tên dài nhất (đo bằng
+  `measureText`, y như `width:1%` bên CSS), cột ngày bắt đầu ngay sau nó — giống
+  nhau ở cả hai nửa bảng và ở mọi tháng.
+* **Cỡ chữ lấy hai ràng buộc, không lấy hệ số đoán chừng.** Theo chiều cao:
+  `Paint.FontMetrics` của chính phông đang dùng cho biết một dòng chiếm bao
+  nhiêu, chia ra là được cỡ lớn nhất còn nằm trọn trong hàng — tiếng Việt dấu
+  chồng (Ậ, Ổ, ế) cao hơn Latin trơn, mà `ascent` đã tính sẵn khoản ấy. Theo bề
+  ngang: hạ tiếp cho tới khi "tên dài nhất + mốc ngày giờ dài nhất" nằm gọn
+  trong nửa bảng (đo bằng chữ đậm, vì dòng đang hiệu lực in đậm và rộng hơn).
+  Trần vẫn là 12dp cho khớp bảng ở tab Lịch. Hệ số 0,66 cũ chừa thừa quá tay:
+  trên widget 4×5 của S21 chữ chỉ còn 7,1dp trong khi hàng cao 10,7dp và bề
+  ngang vẫn dư hơn 40dp.
+* **Lề mỗi nửa bảng co giãn**: chật thì bóp về mức tối thiểu (4 · 4 · 5dp) để
+  dành chỗ cho chữ, dư ra bao nhiêu trả lại cho lề tới mức rộng rãi
+  (8 · 6 · 10dp — lề trái · khoảng hở giữa hai cột · lề phải, gần đúng bằng đệm
+  của bảng bên tab Lịch). Trên S21 nửa bảng chỉ rộng ~165dp nên vài dp lề ấy đổi
+  thẳng thành cỡ chữ.
+* Bề rộng cột ngày chốt theo **khuôn `00-00-0000 00:00`**, không theo mốc của
+  năm đang xem, nên cột không nhích khi lật sang năm khác.
+* **Đệm đáy tính theo chỗ cung góc thật sự ăn tới, không phải cả bán kính.**
+  Android 12 trở lên tự bo góc mọi widget theo
+  `system_app_widget_background_radius` (One UI để khá rộng); bảng chạm sát mép
+  thì cung tròn ăn mất chữ đầu của hàng cuối (Mang Chủng) và đuôi giờ của nửa
+  phải (Đại Tuyết). Nhưng cung chỉ sâu nhất ở SÁT mép: ở hoành độ *x* mà chữ bắt
+  đầu, nó mới xuống tới `d = r − √(2r·x − x²)`. Với góc 16dp và lề hẹp nhất 4dp
+  thì d = 5,4dp, không phải 16dp — chừa cả bán kính là hở ra một dải trắng vô cớ
+  dưới đáy bảng. Chừa đúng d cộng 1,5dp lề an toàn, tính theo lề HẸP NHẤT có thể
+  xảy ra vì lề thật chỉ rộng hơn, mà lề càng rộng thì cung càng ăn nông.
+  Bán kính đọc thẳng từ hệ thống, không dưới 16dp của `widget_bg.xml` và không
+  quá 32dp.
+
+Cỡ chữ bảng tiết khí đo trên ba máy đích (`node tools/test_widget_layout.mjs`):
+
+| Máy · cỡ widget | Trước | Sau | Ràng buộc |
+|---|---|---|---|
+| S21 · 4×5 (330×440dp) | 7,1dp | **9,8dp** | chiều cao hàng |
+| S21 · 4×6 (330×530dp) | 8,8dp | **10,5dp** | bề ngang nửa bảng |
+| S21 FE · 4×5 (360×450dp) | 7,3dp | **10,1dp** | chiều cao hàng |
+| S21 FE · 4×6 (360×545dp) | 9,0dp | **11,5dp** | bề ngang nửa bảng |
+| A51 · 4×5 (380×460dp) | 7,4dp | **10,3dp** | chiều cao hàng |
+| A51 · 4×6 (380×560dp) | 9,3dp | **12,0dp** | chạm trần 12dp |
+
+Ba máy chỉ khác nhau ở bề ngang màn hình (360 · 393 · 412dp) và mật độ
+(3 · 2,75 · 2,625). Bố cục tính hết theo dp và theo `measureText` của chính phông
+đang dùng, nên **không có nhánh riêng cho máy nào** — cùng một luật cho ra ba kết
+quả xếp đúng theo bề ngang. Mật độ lẻ 2,75 của S21 FE cũng không gây lệch: mọi
+mốc đều là số thực, chỉ có bề rộng bitmap mới làm tròn.
+
+Ở cỡ 4×6 trở lên, **S21 và S21 FE bị bề ngang chặn** chứ không phải chiều cao:
+nửa bảng rộng ~165dp (S21) và ~180dp (S21 FE), mà "Sương Giáng" cộng
+"07-12-2026 09:52" đã chiếm gần hết, nên trần thật là ~10,5dp và ~11,5dp — kéo
+widget cao thêm không làm chữ to hơn nữa. Chỉ A51 (nửa bảng ~190dp) mới chạm được
+trần 12dp. Muốn phá trần ấy thì phải đổi cách hiện mốc ngày giờ, mà như thế lại
+lệch với bảng ở tab Lịch.
+
+Sàn 250dp (`minResizeWidth`, phải tự tay bóp mới có) cho chữ 7,8dp. Không nâng
+sàn ấy bằng manifest được: `minWidth` quá 250dp thì công thức ô của Android đòi
+5 cột, widget hết đặt được lên lưới 4 cột của One UI.
+
+Sàn đặt ở 4×5 để còn đặt được trên lưới màn hình chính 5 hàng mặc định của One
+UI; kéo cao thêm một hàng là khác hẳn.
+
+Giờ giao tiết hiện theo **múi giờ của địa điểm đang chọn trong ứng dụng**, đọc
+từ `qmdj.location` trong SharedPreferences. Bảng `jieqi.txt` lưu giờ ở UTC+7 nên
+widget quy đổi lại bằng `TimeZone.getOffset()` — tra theo từng thời điểm, nên
+giờ mùa đông của nước có DST không bị cộng nhầm offset mùa hè. Không có bước
+này thì cùng một tiết khí, widget và ứng dụng lệch nhau tới mấy tiếng.
+
+Bố cục bảng có phép thử riêng, đo số chứ không nhìn ảnh:
+
+```bash
+node tools/test_widget_layout.mjs
+```
+
+Nó dựng `widget_preview.html` ở đúng cấu hình S21 (360dp @3x), S21 FE (393dp
+@2,75x) và A51 (412dp @2,625x), quét dải cỡ widget mà lưới One UI dựng ra, rồi
+canh năm điều: giá trị
+không tràn qua vách ngăn, chữ không nhỏ dưới ngưỡng đọc được, hàng cuối nằm trên
+cung góc bo mà cũng không hở thừa quá 4dp, lưới lịch không bị bảng nuốt, và
+**bảng không đổi khi lật tháng** —
+tháng 4, 5 và 6 hàng lịch phải cho ra cùng một khung, cùng cỡ chữ, cùng vị trí
+cột. Phông của Chromium rộng hơn Roboto nên cỡ chữ đo được là phía an toàn: trên
+máy thật chữ chỉ có thể to hơn con số ấy.
+
+Xem trước widget mà không cần dựng APK:
+
+```bash
+node tools/shot_widget.mjs         # ảnh widget ở 4 kích thước
+```
+
+`tools/widget_preview.html` vẽ lại y hệt `drawBody()` bằng Canvas của trình
+duyệt (cùng mô hình vẽ với Canvas của Android) và đọc **chính hai tệp assets mà
+widget dùng**, nên bản xem trước không thể lệch với widget thật.
+
+Widget tự vẽ lại sau nửa đêm bằng một báo thức lặp không chính xác — chỉ cần
+đúng ngày, đỡ tốn pin hơn nhiều so với đánh thức nửa tiếng một lần.
+
+## Vì sao chạy được offline
+
+Không có `android.permission.INTERNET` trong `AndroidManifest.xml` — đây là
+bằng chứng kỹ thuật, không phải lời hứa: hệ điều hành sẽ chặn mọi kết nối ra
+ngoài kể cả khi có mã cố tình gọi.
+
+* `lunar.js`, CSS, JS, và CSDL thành phố nằm trong `assets/` của APK.
+* Trang chạy trên `file:///android_asset/` nên `fetch()` bị CORS chặn — dữ liệu
+  được đọc qua cầu native `QMDJNative.readAsset()`.
+* GPS không cần mạng. Múi giờ của một toạ độ được suy ra bằng cách tra thành
+  phố gần nhất trong CSDL đóng gói sẵn (kiểm thử đúng cho mọi ca thử).
+
+## Tốc độ
+
+Đo trên Node 22 (WebView của điện thoại nhanh hơn hoặc tương đương):
+
+| Việc | Thời gian |
+|---|---|
+| Lập một lá số (`processAll`) | ~12 ms |
+| Nạp CSDL 34.006 thành phố | ~70 ms, **nạp lười** — chỉ khi mở bảng chọn vị trí |
+| Tìm kiếm thành phố | 1–5 ms |
+| Tra thành phố gần nhất | ~9 ms |
+
+CSDL thành phố không đụng tới lúc khởi động, nên màn hình đầu tiên chỉ tốn
+thời gian phân tích `lunar.js` + một lần `processAll`.
+
+## Độ chính xác thiên văn
+
+`js/astro.js` được đối chiếu với **PyEphem** trên 9 toạ độ khắp thế giới
+(xem `tools/test_astro.mjs`):
+
+| Đại lượng | Sai lệch so với PyEphem |
+|---|---|
+| Chính Ngọ (giờ Mặt Trời thật = 12:00) | < 0,02 phút |
+| Mặt Trời mọc / lặn | < 0,5 phút (< 1,5 phút ở vĩ độ ≥ 64°) |
+| Mặt Trăng mọc / lặn | < 0,7 phút |
+| Tỉ lệ chiếu sáng Mặt Trăng | < 0,3 % |
+| Thời điểm Sóc / Vọng | < 0,6 phút |
+
+Các ca ở vùng cực (Tromsø tháng 1, Reykjavík hạ chí) được xử lý riêng: ngày
+không có mặt trời mọc/lặn, và ngày mặt trời lặn *sau* nửa đêm.
+
+---
+
+## Dựng ứng dụng
+
+Cần **Android Studio** (hoặc Android SDK command-line tools) và **JDK 17+**.
+
+```bash
+cd android
+./gradlew :app:assembleDebug      # APK gỡ lỗi
+./gradlew :app:assembleRelease    # APK phát hành (chưa ký)
+./gradlew :app:installDebug       # cài thẳng vào máy đang cắm USB
+```
+
+APK nằm ở `app/build/outputs/apk/`.
+
+Mở bằng Android Studio: **File → Open** rồi chọn thư mục `android/`.
+
+| | |
+|---|---|
+| `minSdk` | 24 (Android 7.0) |
+| `targetSdk` / `compileSdk` | 35 (Android 15) |
+| Ngôn ngữ | Kotlin 2.2.21, AGP 8.13.0, Gradle 9.3.0 |
+| Phụ thuộc | chỉ `androidx.core:core-ktx` |
+
+`assembleRelease` tạo APK **chưa ký**. Muốn ký thì thêm `signingConfigs` vào
+`app/build.gradle.kts` hoặc dùng **Build → Generate Signed Bundle / APK**.
+
+### Về Gradle 9
+
+Bản Gradle nằm trong `gradle/wrapper/gradle-wrapper.properties` mới là bản
+quyết định: chạy `./gradlew` thì Gradle cài sẵn trên máy không được dùng tới,
+nên hai bên không cần trùng nhau.
+
+Lên Gradle 9 kéo theo hai thứ bắt buộc:
+
+* **AGP 8.7 không chạy được** — nó chỉ hỗ trợ tới Gradle 8.x và dừng ngay với
+  "Minimum supported Gradle version". Phải là bản AGP có hỗ trợ Gradle 9.
+* **`kotlinOptions { }` đã bị bỏ ở Kotlin 2.2**, thay bằng
+  `kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }`.
+
+Cả hai số phiên bản đều nằm gọn trong `build.gradle.kts` ở thư mục gốc. Nếu
+Android Studio báo AGP quá cũ hoặc quá mới so với Gradle bạn đang dùng, mở
+**Tools → AGP Upgrade Assistant** hoặc sửa thẳng con số đó — không có chỗ nào
+khác trong dự án phụ thuộc vào nó.
+
+## Kiểm thử
+
+Chạy headless bằng jsdom, không cần thiết bị hay giả lập:
+
+```bash
+cd android/tools
+npm install
+npm test
+```
+
+* `test_astro.mjs` — đối chiếu Mặt Trời/Mặt Trăng với giá trị PyEphem.
+* `test_app.mjs` — nạp cả trang web trong jsdom với cầu native giả lập; kiểm
+  Tứ Trụ (so với bản web gốc), tìm kiếm thành phố, suy múi giờ, luồng GPS,
+  nhập toạ độ tay, nút Back.
+
+### Đối chiếu 1-1 với bản web gốc
+
+Nạp CẢ HAI bản trong jsdom rồi so từng trường hiển thị một:
+
+```bash
+node diff_vs_original.mjs /đường/dẫn/QMDJ_1_1.html 1000
+node diff_vs_original.mjs /đường/dẫn/QMDJ_1_1.html 1000 987654321   # hạt giống khác
+```
+
+Bộ ca gồm các mốc dễ sai — ranh giới giờ Tý (22h–1h), quanh Lập Xuân và
+Đông/Hạ Chí, ngày đổi giờ mùa hè ở châu Âu và Bắc Mỹ, 29/2 năm nhuận, cuối
+tháng — cộng phần ngẫu nhiên phủ 1900–2100 × 28 vị trí × 3 phái × 2 ngôn ngữ.
+
+So sánh 35 trường mỗi ca: 4 trụ can/chi, nạp âm, Chính Ngọ, Tiết khí, Cục,
+Tuần thủ, Trực Phù/Trực Sử, lịch âm, **toàn bộ HTML của bàn Kỳ Môn 9 cung**, và
+bảng chi tiết của cả ba phái.
+
+Kết quả: **2000 ca (2 hạt giống), 70.000 trường, 0 khác biệt.**
+
+### Đối chiếu MÀN HÌNH với bản web gốc
+
+```bash
+node test_visual_parity.mjs /đường/dẫn/QMDJ_1_1.html
+```
+
+Dựng cây DOM chỉ gồm phần **thực sự nhìn thấy** (theo computed style, nên phần
+bị CSS ẩn không tính) của cả hai bản rồi so từng phần tử một — bắt được mọi
+thứ thừa hoặc thiếu. Kết quả: **246–249 phần tử, giống hệt** trên cả ba ca
+(hai ngôn ngữ × ba phái).
+
+### Bố cục trên nhiều kích thước màn hình
+
+```bash
+npm install playwright && npx playwright install chromium
+node test_responsive.mjs
+```
+
+Mở trang bằng Chromium thật (WebView Android cũng là Chromium) ở 7 kích thước —
+S21, **S21 FE** (393×790 @2,75x), **A51** (412×852 @2,625x), S21 Ultra, S21 xoay
+ngang, một máy nhỏ 320×520 và Z Fold mở — rồi bắt: tràn ngang, chữ bị cắt bởi
+ellipsis, và phóng to trong khi nội dung đã phải cuộn. Chiều cao ở đây là chiều
+cao **WebView thật** (đã trừ thanh trạng thái và thanh điều hướng), không phải
+chiều cao màn hình.
+
+Mặc định chạy **cả hai tab** (14 lượt đo). Trước đây tab Lịch chỉ được đo khi
+đặt `TAB=cal`, mà phép canh "vừa một màn hình" thì chỉ tab ấy mới có — nên một
+lần `fitGrid()` quên trừ hàng dùng chung dưới hai tab đã lọt qua trọn bộ kiểm
+thử. `TAB=cal` / `TAB=qmdj` vẫn chạy riêng một tab được.
+
+Lượt tab Lịch **bật nút Ghim lên trước khi đo**. Nút ấy `display:none` ngoài ứng dụng Android, nên
+mọi phép đo trên trình duyệt vốn không thấy nó — bố cục trên máy thật vì thế cao
+hơn phép thử tưởng và nút bị thanh tab cố định che mất. Phép thử giờ canh thêm
+hai điều: không phần tử nào bị thanh tab che khi trang vừa màn hình, và **tab
+Lịch trên điện thoại dựng đứng phải vừa đúng một màn hình** — tràn ra là dấu
+hiệu `fitGrid()` quên trừ một khối nào đó, mà `viewport.js` sẽ che lỗi ấy bằng
+cách thu nhỏ cả trang xuống đáy 0,95.
+
+Phép thử còn đo riêng **bảng tiết khí trong tab Lịch**. Bảng nằm trong khối cuộn
+của chính nó (`.cal-jq-body`, `overflow:auto`), nên nội dung rộng quá thì nó cuộn
+ngang BÊN TRONG: trang không tràn, không ô lá nào bị "…" nuốt, hai phép quét
+chung đều không thấy — mà người dùng thì mất đuôi cột "Dương lịch". Giờ đo thẳng
+`scrollWidth` của khối ấy và mép phải của cột cuối. Nhân đây cũng xác nhận: ở
+cả bảy kích thước, kể cả S21 (360px) và A51 (412px), bảng **không** tràn — cột
+ngày trong app vốn đã vừa, khác hẳn bảng vẽ tay của widget.
+
+Gỡ `viewport.js` ra thì ca "S21 ngang" lập tức đỏ — nên phép thử này có thật,
+không phải lúc nào cũng xanh. Trước đây nó **đọc `body.style.zoom`** (thuộc tính
+inline, luôn rỗng) nên vẫn xanh với cả bản hỏng; giờ đọc computed style.
+
+### Hàng dùng chung và hai ô chọn
+
+```bash
+node test_shared_bar.mjs
+```
+
+Canh bốn nhóm: **vị trí** (hàng dùng chung nằm dưới hai tab, đúng một hàng, hiện
+ở cả hai tab, thanh dưới vẫn dính đáy và không đè lên nội dung); **bề rộng**
+(không ô nào bị cắt chữ, trang không tràn ngang, ở 360/393/412px × hai ngôn
+ngữ); **đồng bộ** (đổi ngôn ngữ lẫn địa điểm từ tab Lịch thì tab Kỳ Môn theo, và
+ngược lại); **hai ô chọn** (đủ mục, đúng thứ tự cũ, đánh dấu đúng mục đang chọn,
+bấm Hủy không đổi gì, chọn thật thì cả ô lẫn engine lẫn bảng chi tiết đổi theo,
+nút Back đóng bảng) — cộng phần chia bề rộng: ô phái giữ nguyên bề rộng qua cả
+ba phái, và ô ngày giờ phải rộng hơn hẳn, tức nó là ô **ăn** phần thừa chứ không
+phải ô bị bóp.
+
+Chính phép thử này bắt được lỗi `#optOverlay` bị luật ẩn của tab Lịch xoá mất.
+
+### Lịch đã ghim có khớp ứng dụng không
+
+```bash
+node test_widget_sync.mjs
+```
+
+Chạy ứng dụng thật trong Chromium, giả lập lớp native để hứng đúng những gì nó
+ghi ra kho tuỳ chọn, rồi **dựng lại đường tra của widget** (bản sao
+`LunarTable.lunarOf`, cả bảng của ứng dụng lẫn bảng đóng sẵn) trên chính dữ liệu
+ấy và so **từng ngày** trong 120 ngày quanh hôm nay.
+
+Ca quan trọng nhất là **KHÔNG mở tab Lịch** — đúng thói quen thật, vì ứng dụng
+mở ra ở tab Kỳ Môn. Phép thử canh cả việc widget có THẬT SỰ dùng bảng của ứng
+dụng hay không, chứ không chỉ canh con số cuối: bảng đóng sẵn thường cho cùng
+đáp án, nên nếu chỉ so số thì lỗi "ứng dụng không ghi gì cho widget" vẫn lọt.
+Gỡ bản sửa ra thì phép thử đỏ ngay: *0/120 ngày* tra được trong bảng của ứng
+dụng.
+
+### Hai mục của tab Lịch và ngôn ngữ của widget
+
+```bash
+node test_cal_sections.mjs
+```
+
+Bốn nhóm: mục **Tiết khí** (đúng 24 hàng liền, ba ô mỗi hàng, không còn vách
+ngăn chia đôi, cột can chi không ô nào trống và mỗi trụ tháng phủ đúng hai mục);
+mục **Lịch âm** (so **từng dòng một** với bảng chi tiết Âm Bàn pháp ở tab Kỳ
+Môn); **gập/mở** (mở được cả hai, đóng mục này không đụng mục kia, mục dài thì
+cuộn được, trang không tràn dọc, trạng thái được nhớ); **ngôn ngữ** (đổi ngôn
+ngữ thì khoá `qmdj.lang` đổi theo VÀ widget được bảo vẽ lại — cầu native được
+giả lập để đếm số lần gọi).
+
+`test_jieqi_parity.mjs` canh thêm cột can chi: dòng đang hiệu lực phải khớp đúng
+trụ tháng mà tab Kỳ Môn đang hiện, ở cả năm múi giờ.
+
+### Mùng 1 và điểm Sóc
+
+```bash
+node test_soc_parity.mjs
+```
+
+Mở ứng dụng ở sáu múi giờ, canh bốn điều: mùng 1 đúng là ngày chứa điểm Sóc
+**tính theo Chính Tý**, Rằm = mùng 1 + 14, hai tab nói cùng một ngày âm, và
+bảng mà ứng dụng ghi ra cho widget khớp luôn. Mốc mong đợi được tính lại **độc
+lập** từ `Astro.solarNoonMinutes` chứ không gọi `zi_dayOf` của `app.js`, nên
+sai cùng chiều thì vẫn đỏ.
+
+Bộ ngày thử gồm năm tháng mà điểm Sóc rơi sát Chính Tý, đủ cả hai chiều — và
+phép thử **tự kiểm** rằng ít nhất một ca chạm ranh giới, để nó không lặng lẽ
+hoá vô nghĩa khi đổi ngày thử. Lùi `js/app.js` về bản cũ thì 3/6 ca đỏ ngay.
+
+### Tiết khí giữa các bảng
+
+```bash
+node test_jieqi_parity.mjs
+```
+
+Mở ứng dụng ở năm múi giờ khác nhau, đọc bảng Sách Bổ pháp ở tab Kỳ Môn và bảng
+tiết khí ở tab Lịch, dựng lại bảng của **widget** từ chính `jieqi.txt` (kể cả
+bước quy đổi múi giờ), rồi so cả ba **từng tên và từng mốc giờ**. Cũng kiểm mục được tô
+đậm: hai bên chỉ được lệch tối đa một mục, đúng vào ngày giao tiết (tab Kỳ Môn
+lấy cả giờ phút đang nhập, tab Lịch chỉ có độ phân giải một ngày).
+
+### Ảnh chụp màn hình
+
+```bash
+node tools/shot_calendar.mjs       # tab Lịch + tab Kỳ Môn trên S21 / S21 FE / A51
+```
+
+Chụp bằng Chromium ở đúng kích thước WebView của từng máy: tiết khí mở, tiết khí
+gập, tháng sau, và tab Kỳ Môn — đủ để kiểm bằng mắt mà không phải cài APK.
+
+## Sinh lại CSDL thành phố
+
+```bash
+pip install geonamescache pytz
+python3 android/tools/build_cities.py
+```
+
+---
+
+## Cấu trúc
+
+```
+android/
+├── app/src/main/
+│   ├── AndroidManifest.xml          không có quyền INTERNET
+│   ├── java/com/bazi/qimen/
+│   │   ├── MainActivity.kt          WebView + window insets + nút Back
+│   │   ├── WebAppBridge.kt          @JavascriptInterface: assets, prefs, GPS
+│   │   ├── LunarTable.kt            tra âm lịch + tiết khí cho widget
+│   │   └── CalendarWidgetProvider.kt  widget màn hình chính
+│   ├── res/                         icon, theme, layout widget, quy tắc sao lưu
+│   ├── assets/lunar_months.txt      2.510 mốc Sóc, 1900–2100 (sinh sẵn)
+│   ├── assets/jieqi.txt             4.824 mốc tiết khí (sinh sẵn)
+│   └── assets/web/
+│       ├── index.html               khung trang + bảng chọn (vị trí, ngôn ngữ,
+│       │                            phái)
+│       ├── css/app.css              CSS của bản gốc, giữ nguyên
+│       ├── css/location.css         phần giao diện mới
+│       ├── css/calendar.css         MỚI — thanh dưới (tab + hàng dùng chung)
+│       │                            + lịch âm dương
+│       ├── js/astro_table.js        MỚI — mốc tiết khí/Sóc/Vọng từ JPL DE423
+│       ├── js/lunar.js              thư viện lịch âm của 6tail — ĐÃ SỬA: ba chỗ
+│       │                            nối tra astro_table.js (xem NOTICE.md)
+│       ├── js/app.js                engine Bát Tự / Kỳ Môn của bản gốc
+│       ├── js/astro.js              MỚI — Mặt Trời & Mặt Trăng theo toạ độ
+│       ├── js/ephem.js              MỚI — engine thiên văn dùng chung hai tab
+│       ├── js/location.js           MỚI — GPS, tra thành phố, toạ độ tay
+│       ├── js/viewport.js           MỚI — vừa khít mọi kích thước màn hình
+│       ├── js/calendar.js           MỚI — tab Lịch: lưới, tiết khí, ghim widget
+│       └── data/cities.txt          34.006 thành phố + múi giờ IANA
+└── tools/                           bộ sinh dữ liệu và kiểm thử
+    └── almanac/                     MỚI — oracle Python sinh astro_table.js
+```
+
+Ghi công thư viện và dữ liệu bên thứ ba: xem [`NOTICE.md`](NOTICE.md).

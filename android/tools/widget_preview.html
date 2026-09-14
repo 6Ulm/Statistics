@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8"><title>Xem trước widget Lịch</title><style>
+body{margin:0;background:#79889a;font:14px/1.4 system-ui,sans-serif;padding:16px;
+     display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+figure{margin:0}
+figcaption{color:#fff;font:600 12px system-ui,sans-serif;padding-bottom:5px}
+.widget{border-radius:16px;overflow:hidden;background:#FDECEF;
+        box-shadow:0 3px 10px rgba(0,0,0,.28)}
+.whead{height:32px;display:flex;align-items:center;background:#D32F2F;color:#fff}
+.wnav{width:42px;text-align:center;font-size:19px;line-height:1}
+.wtitle{flex:1;text-align:center;font:700 12px system-ui,sans-serif;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+canvas{display:block}
+</style></head><body>
+<script type="module">
+/* ════════════════════════════════════════════════════════════════════
+   Bản mô phỏng CalendarWidgetProvider.kt để xem widget mà không cần build.
+
+   Canvas của trình duyệt và Canvas của Android dùng cùng một mô hình vẽ
+   (drawText / fillRect / textAlign / textSize) nên hình ra rất sát widget
+   thật. Thanh tiêu đề ở đây là HTML vì trong widget nó cũng là View thật
+   (widget_calendar.xml), không nằm trong bitmap.
+
+   Dữ liệu âm lịch và tiết khí đọc thẳng từ chính hai tệp assets mà widget
+   dùng — sai lệch giữa bản xem trước và widget thật là không thể xảy ra.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Ngôn ngữ: ?lang=zh xem trước bản tiếng Trung, y như LunarTable.langOf đọc
+   khoá qmdj.lang mà ứng dụng ghi ra. */
+const ZH = new URLSearchParams(location.search).get('lang') === 'zh';
+
+const CAN = ZH ? ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸']
+               : ['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'];
+const CHI = ZH ? ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥']
+               : ['Tý','Sửu','Dần','Mão','Thìn','Tỵ','Ngọ','Mùi','Thân','Dậu','Tuất','Hợi'];
+const TIET_KHI = ZH
+  ? ['冬至','小寒','大寒','立春','雨水','惊蛰','春分','清明','谷雨','立夏','小满','芒种',
+     '夏至','小暑','大暑','立秋','处暑','白露','秋分','寒露','霜降','立冬','小雪','大雪']
+  : ['Đông Chí','Tiểu Hàn','Đại Hàn','Lập Xuân','Vũ Thủy','Kinh Trập',
+    'Xuân Phân','Thanh Minh','Cốc Vũ','Lập Hạ','Tiểu Mãn','Mang Chủng','Hạ Chí',
+    'Tiểu Thử','Đại Thử','Lập Thu','Xử Thử','Bạch Lộ','Thu Phân','Hàn Lộ',
+    'Sương Giáng','Lập Đông','Tiểu Tuyết','Đại Tuyết'];
+
+function jdn(y,m,d){const a=Math.floor((14-m)/12),yy=y+4800-a,mm=m+12*a-3;
+  return d+Math.floor((153*mm+2)/5)+365*yy+Math.floor(yy/4)-Math.floor(yy/100)+Math.floor(yy/400)-32045;}
+function civilOf(j){const a=j+32044,b=Math.floor((4*a+3)/146097),c=a-Math.floor(146097*b/4),
+  d=Math.floor((4*c+3)/1461),e=c-Math.floor(1461*d/4),m=Math.floor((5*e+2)/153);
+  return [100*b+d-4800+Math.floor(m/10), m+3-12*Math.floor(m/10), e-Math.floor((153*m+2)/5)+1];}
+
+/* ── Đọc đúng hai bảng mà LunarTable.kt đọc ── */
+const base = new URL('assets/', location.href);
+const [lunTxt, jqTxt] = await Promise.all([
+    fetch(new URL('lunar_months.txt', base)).then(r => r.text()),
+    fetch(new URL('jieqi.txt', base)).then(r => r.text()),
+]);
+const lunLines = lunTxt.trim().split('\n');
+const GZ_EPOCH = parseInt(lunLines[0], 10);
+// [jdn điểm Sóc ở UTC+7, GIÂY trong ngày, năm âm, tháng âm, nhuận]
+const MONTHS = lunLines.slice(1).map(l => l.split(' ').map(Number));
+const JQ = jqTxt.trim().split('\n').map(l => l.split(' ').map(Number)); // [jdn, phút, chỉ số tên]
+
+function ganzhi(j){const i=((j-GZ_EPOCH)%60+60)%60;return [CAN[i%10],CHI[i%12]];}
+/**
+ * Mùng 1 của tháng thứ i, xét ở múi giờ đang xem — y như LunarTable.monthStart.
+ * Cột 2 của lunar_months.txt là GIÂY (jieqi.txt mới là phút), nên nhân 1000.
+ */
+function monthStart(i){
+    const utcMs=(MONTHS[i][0]-2440588)*86400000+MONTHS[i][1]*1000-7*3600000;
+    return Math.floor((utcMs+tzOffsetMs(utcMs))/86400000)+2440588;
+}
+/** Tra tháng âm chứa ngày j — tìm nhị phân, y như LunarTable.lunarOf. */
+function lunarOf(j){
+    let lo=0, hi=MONTHS.length-1, at=-1;
+    while(lo<=hi){const mid=(lo+hi)>>1; if(monthStart(mid)<=j){at=mid;lo=mid+1;} else hi=mid-1;}
+    if(at<0) return null;
+    return {day: j-monthStart(at)+1, month: MONTHS[at][3], leap: MONTHS[at][4]===1};
+}
+/** 24 tiết khí của năm chứa ngày ref — bắt đầu từ Đông Chí, y như LunarTable. */
+function jieQiYearOf(ref){
+    let lo=0, hi=JQ.length-1, at=-1;
+    while(lo<=hi){const mid=(lo+hi)>>1; if(JQ[mid][0]<=ref){at=mid;lo=mid+1;} else hi=mid-1;}
+    if(at<0) return [];
+    let start=at; while(start>=0 && JQ[start][2]!==0) start--;
+    if(start<0 || start+23>=JQ.length) return [];
+    return JQ.slice(start,start+24).map(r=>localize({name:TIET_KHI[r[2]], jdn:r[0], minutes:r[1]}));
+}
+/** LunarTable.localize — bảng lưu giờ UTC+7, đổi sang múi giờ đang xem. */
+const TZ = new URLSearchParams(location.search).get('tz') || 'Asia/Ho_Chi_Minh';
+function tzOffsetMs(utcMs){
+    const f=new Intl.DateTimeFormat('en-US',{timeZone:TZ,hour12:false,year:'numeric',
+        month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const p=Object.fromEntries(f.formatToParts(new Date(utcMs)).map(x=>[x.type,x.value]));
+    return Date.UTC(+p.year,+p.month-1,+p.day,(+p.hour)%24,+p.minute,+p.second)-utcMs;
+}
+function localize(it){
+    const utcMs=(it.jdn-2440588)*86400000+it.minutes*60000-7*3600000;
+    const local=utcMs+tzOffsetMs(utcMs);
+    const days=Math.floor(local/86400000);
+    return {name:it.name, jdn:days+2440588, minutes:Math.floor((local-days*86400000)/60000)};
+}
+
+/* ── drawBody() của CalendarWidgetProvider.kt ── */
+function drawBody(canvas, wDp, hDp, density, year, month, todayJdn) {
+    const w = Math.round(wDp*density), h = Math.round(hDp*density);
+    canvas.width=w; canvas.height=h;
+    canvas.style.width=wDp+'px'; canvas.style.height=hDp+'px';
+    const c = canvas.getContext('2d');
+    const dp = v => v*density;
+
+    const first=new Date(year,month-1,1);
+    const lead=(first.getDay()+6)%7;
+    const daysInMonth=new Date(year,month,0).getDate();
+    const weeks=Math.max(1,Math.ceil((lead+daysInMonth)/7));
+
+    const ROW_RATIO = 3.7, GRID_WEEKS = 6;
+    const jieQi=jieQiYearOf(jdn(year,month,15));
+    const dowH=Math.min(h*0.09, dp(15));
+    const jqRows = jieQi.length===24 ? 13 : 0;
+    // Đệm đáy cho góc bo — widget thật đọc bán kính của hệ thống
+    // (system_app_widget_background_radius), không dưới 16dp của widget_bg.xml.
+    // Cung góc chỉ ăn sâu d = r − √(2r·x − x²) ở hoành độ x chữ bắt đầu, không
+    // phải cả bán kính — xem cornerBottomPad() bên Kotlin.
+    const cornerPad = (r, x) => (x >= r ? 0 : r - Math.sqrt(2*r*x - x*x)) + dp(1.5);
+    const safeBottom = jqRows===0 ? 0 : cornerPad(dp(CORNER_DP), dp(PAD_NARROWEST));
+    // Chia theo GRID_WEEKS chứ không theo `weeks`: bảng tiết khí phải y hệt
+    // nhau ở mọi tháng, không phình ra ở tháng gọn 5 hàng.
+    const jqRowH = jqRows===0 ? 0
+        : Math.min(dp(18), Math.max(dp(9), (h-dowH-safeBottom)/(GRID_WEEKS*ROW_RATIO + jqRows)));
+    const jqH = jqRows===0 ? 0 : jqRowH*jqRows + dp(5) + safeBottom;
+    const gridH=Math.max(0, h-dowH-jqH);
+    const cellW=w/7, cellH=gridH/weeks;
+
+    c.fillStyle='#FDECEF'; c.fillRect(0,0,w,h);
+
+    const dows = ZH ? ['一','二','三','四','五','六','日']
+                    : ['T2','T3','T4','T5','T6','T7','CN'];
+    c.textAlign='center'; c.textBaseline='alphabetic';
+    c.font='bold '+Math.min(dowH*0.62, dp(9))+'px sans-serif';
+    for(let i=0;i<7;i++){
+        c.fillStyle = i===6 ? '#C62828' : '#7A2B33';
+        c.fillText(dows[i], cellW*(i+0.5), dowH*0.70);
+    }
+
+    const dayPx=Math.min(cellH*0.36, dp(17));
+    const lunPx=Math.min(cellH*0.27, dp(11.5));
+    const gzPx =Math.min(cellH*0.25, dp(11));
+    const showGanZhi = cellH >= dayPx + gzPx*2 + dp(6);
+
+    const startJdn=jdn(year,month,1)-lead;
+    for(let idx=0; idx<weeks*7; idx++){
+        const j=startJdn+idx, [cy,cm,cd]=civilOf(j);
+        const outside = cm!==month || cy!==year;
+        const x=cellW*(idx%7), y=dowH+cellH*Math.floor(idx/7);
+        const isToday = j===todayJdn;
+
+        if(isToday){
+            c.fillStyle='#FFFBEA'; c.fillRect(x+1,y+1,cellW-2,cellH-2);
+            c.strokeStyle='#D32F2F'; c.lineWidth=dp(1.6);
+            c.strokeRect(x+2,y+2,cellW-4,cellH-4);
+        } else if(outside){
+            c.fillStyle='#FDF5F6'; c.fillRect(x+1,y+1,cellW-2,cellH-2);
+        }
+
+        const fg = isToday?'#C62828': outside?'#B9A3A7':'#222222';
+        const dim= isToday?'#A06B30': outside?'#C2AEB2':'#6B6B6B';
+
+        c.textAlign='left';
+        c.font='bold '+dayPx+'px sans-serif';
+        c.fillStyle=fg;
+        const dayBase = y + dayPx + dp(3);
+        c.fillText(String(cd), x+cellW*0.09, dayBase);
+
+        c.textAlign='right';
+        c.font=lunPx+'px sans-serif';
+        c.fillStyle=dim;
+        const L=lunarOf(j);
+        c.fillText(L ? (L.day===1 ? L.day+'/'+L.month : String(L.day)) : '', x+cellW*0.93, dayBase);
+
+        if (showGanZhi) {
+            const [can,chi]=ganzhi(j);
+            c.textAlign='center';
+            c.font=(isToday?'bold ':'')+gzPx+'px sans-serif';
+            c.fillStyle = isToday?'#7A4A1C':dim;
+            const rest = cellH - (dayBase - y);
+            const lineGap = gzPx*1.28;
+            const top = dayBase + (rest - (lineGap + gzPx))/2;
+            c.fillText(can, x+cellW/2, top + gzPx*0.75);
+            c.fillText(chi, x+cellW/2, top + gzPx*0.75 + lineGap);
+        }
+    }
+
+    c.strokeStyle='#F3C6CD'; c.lineWidth=1;
+    for(let i=1;i<7;i++){c.beginPath();c.moveTo(cellW*i,dowH);c.lineTo(cellW*i,dowH+gridH);c.stroke();}
+    for(let r=0;r<=weeks;r++){const y=dowH+cellH*r;c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke();}
+
+    const jq = jqRows
+        ? drawJieQi(c, dp, w, dowH+gridH+dp(5), jqRowH, safeBottom, jieQi, todayJdn)
+        : null;
+
+    // Số đo trả về cho tools/test_widget_layout.mjs — phép thử cần biết cột nằm
+    // đâu, chữ to bao nhiêu, đáy chừa bao nhiêu, chứ nhìn ảnh thì không đo được.
+    return { wDp, hDp, density, weeks, dowH, jqRowH, jqH, gridH, cellH, safeBottom, jq };
+}
+
+/* ── drawJieQi() của CalendarWidgetProvider.kt ── */
+function drawJieQi(c, dp, w, top, rowH, bottomPad, jieQi, todayJdn) {
+    const halfW = w/2;
+    // Lề co giãn: chật thì bóp về mức tối thiểu để dành chỗ cho chữ, rộng thì
+    // nới ra cho thoáng (xem drawJieQi bên Kotlin).
+    const padMin=dp(PAD_NARROWEST), padMax=dp(8), gapMin=dp(4), gapMax=dp(6),
+          endMin=dp(5), endMax=dp(10);
+
+    let active = -1;
+    for (let i=0;i<jieQi.length;i++) if (jieQi[i].jdn <= todayJdn) active = i;
+
+    const p=n=>(n<10?'0':'')+n;
+    const dates = jieQi.map(it => {
+        const [jy,jm,jd]=civilOf(it.jdn);
+        return p(jd)+'-'+p(jm)+'-'+jy+' '+p(Math.floor(it.minutes/60))+':'+p(it.minutes%60);
+    });
+
+    // Cỡ chữ lớn nhất mà dòng dài nhất còn nằm gọn trong nửa bảng — đo bằng chữ
+    // ĐẬM vì dòng đang hiệu lực in đậm, rộng hơn dòng thường.
+    const avail = halfW - padMin - gapMin - endMin;
+    // Cột ngày chốt theo KHUÔN cố định (chữ số Roboto rộng bằng nhau) nên không
+    // nhích khi lật sang năm khác; vẫn so với mốc thật cho chắc.
+    const DATE_TEMPLATE = '00-00-0000 00:00';
+    const widest = size => {
+        c.font = 'bold '+size+'px sans-serif';
+        let nw=0, dw=c.measureText(DATE_TEMPLATE).width;
+        for (const it of jieQi) nw = Math.max(nw, c.measureText(it.name).width);
+        for (const d of dates)  dw = Math.max(dw, c.measureText(d).width);
+        return [nw, dw];
+    };
+    // Cỡ chữ theo chiều cao hàng, tính bằng FontMetrics thật (Paint.FontMetrics
+    // bên Kotlin) chứ không nhân hệ số đoán chừng — chữ Việt dấu chồng cao hơn
+    // Latin trơn, ascent đã tính sẵn khoản ấy.
+    const lineRatio = size => {
+        c.font = 'bold '+size+'px sans-serif';
+        const m = c.measureText('Ậy');
+        return (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent) / size;
+    };
+    const minPx = dp(7);
+    let txtPx = Math.min(rowH/lineRatio(100), dp(12));
+    for (let i=0;i<6;i++) {
+        const [nw,dw] = widest(txtPx);
+        if (nw+dw <= avail || txtPx <= minPx) break;
+        txtPx = Math.max(minPx, txtPx*(avail/(nw+dw))*0.99);
+    }
+    const [nameW, maxDateW] = widest(txtPx);
+    // Chỗ chữ không dùng hết trả lại cho ba khoản lề theo tỉ lệ dư địa.
+    const room = (padMax-padMin) + (gapMax-gapMin) + (endMax-endMin);
+    const slack = Math.max(0, Math.min(room, avail - nameW - maxDateW));
+    const f = room <= 0 ? 0 : slack/room;
+    const padX   = padMin + (padMax-padMin)*f;
+    const gap    = gapMin + (gapMax-gapMin)*f;
+    const padEnd = endMin + (endMax-endMin)*f;
+    const dateDx = padX + nameW + gap;   // cột ngày: một chỗ cố định cho cả hai nửa
+    // Đường cơ sở: khối chữ cân giữa hàng theo metrics của chính cỡ chữ ấy.
+    const fmM = (c.font = 'bold '+txtPx+'px sans-serif', c.measureText('Ậy'));
+    const baseDy = (rowH - (fmM.fontBoundingBoxAscent + fmM.fontBoundingBoxDescent)) / 2
+                 + fmM.fontBoundingBoxAscent;
+
+    const headH = rowH, tableH = headH + rowH*12 + bottomPad;
+    c.fillStyle='#fff'; c.fillRect(0, top, w, tableH);
+
+    c.textAlign='left'; c.textBaseline='alphabetic';
+    c.font='bold '+txtPx+'px sans-serif'; c.fillStyle='#222222';
+    const headBase = top + baseDy;
+    for (let half=0; half<2; half++) {
+        const x0 = halfW*half;
+        c.fillText(ZH ? '节气' : 'Tiết Khí', x0+padX, headBase);
+        c.fillText(ZH ? '公历' : 'Dương lịch', x0+dateDx, headBase);
+    }
+    c.strokeStyle='#DDDDDD'; c.lineWidth=dp(1.2);
+    c.beginPath(); c.moveTo(0, top+headH); c.lineTo(w, top+headH); c.stroke();
+
+    for (let r=0; r<12; r++) {
+        const y = top + headH + rowH*r;
+        if (r%2===0) { c.fillStyle='#FAFAFA'; c.fillRect(0, y, w, rowH); }
+        for (let half=0; half<2; half++) {
+            const k = r + half*12, it = jieQi[k], x0 = halfW*half, on = k===active;
+            if (on) { c.fillStyle='#E8EDFF'; c.fillRect(x0, y, halfW, rowH); }
+            const base = y + baseDy;
+            c.textAlign='left';
+            c.font=(on?'bold ':'')+txtPx+'px sans-serif';
+            c.fillStyle='#222222';
+            c.fillText(it.name, x0+padX, base);
+            c.fillStyle = on ? '#222222' : '#666666';
+            c.fillText(dates[k], x0+dateDx, base);
+        }
+        // Hàng cuối không kẻ vạch: viền ngoài lo, và phần đệm góc bo bên dưới
+        // sẽ trông như một hàng trống nếu kẻ.
+        if (r < 11) {
+            c.strokeStyle='#EEEEEE'; c.lineWidth=1;
+            c.beginPath(); c.moveTo(0, y+rowH); c.lineTo(w, y+rowH); c.stroke();
+        }
+    }
+    c.strokeStyle='#DDDDDD'; c.lineWidth=1;
+    c.beginPath(); c.moveTo(halfW, top); c.lineTo(halfW, top+tableH); c.stroke();
+    c.strokeRect(0, top, w, tableH);
+
+    return { txtPx, nameW, maxDateW, dateDx, padX, gap, padEnd, halfW, top, tableH,
+             bottomPad, baseDy, lineH: fmM.fontBoundingBoxAscent + fmM.fontBoundingBoxDescent };
+}
+
+const HEADER_DP = 32;
+// Bán kính góc bo dùng cho bản xem trước; widget thật hỏi hệ thống.
+const CORNER_DP = 16;
+// Lề hẹp nhất chữ có thể nằm cách mép bảng — đệm đáy tính theo con số này.
+const PAD_NARROWEST = 4;
+const params = new URLSearchParams(location.search);
+const today = params.get('today') || new Date().toISOString().slice(0,10);
+const [ty,tm,td] = today.split('-').map(Number);
+const todayJdn = jdn(ty,tm,td);
+const view = (params.get('month') || `${ty}-${tm}`).split('-').map(Number);
+
+// Kích thước widget thật trên lưới màn hình chính của Samsung One UI.
+// Sàn là 4×4 ô (xem calendar_widget_info.xml); các cỡ dưới đó đã bị chặn vì ô
+// lịch thấp tới mức can chi tự tắt và số ngày không đọc nổi. Ở đây chỉ xem 4×4
+// và các cỡ KÉO TO ra, vì đó là tất cả những gì người dùng dựng được.
+const SIZES = params.get('sizes')
+    // ?sizes=330x440,380x530 — tools/test_widget_layout.mjs dựng ma trận cỡ
+    // widget của từng máy qua đây thay vì phải chép lại bố cục lần nữa.
+    ? params.get('sizes').split(',').map(s => {
+        const [wd, hd] = s.split('x').map(Number);
+        return [wd, hd, `${wd}×${hd}dp`];
+      })
+    : [
+        // Cỡ widget 4 cột trên lưới One UI của ba máy đích. Bề ngang ≈ 0,92×
+        // bề ngang màn hình: S21 (360dp) ra ~330dp, S21 FE (393dp) ra ~360dp,
+        // A51 (412dp) ra ~380dp. Mật độ ba máy khác nhau (3 · 2,75 · 2,625)
+        // nhưng bố cục tính theo dp nên ra gần như y hệt — xem
+        // tools/test_widget_layout.mjs.
+        [330, 440, 'S21 · 4×5 ô (sàn)'],
+        [330, 530, 'S21 · 4×6 ô (mặc định)'],
+        [360, 450, 'S21 FE · 4×5 ô (sàn)'],
+        [360, 545, 'S21 FE · 4×6 ô (mặc định)'],
+        [380, 460, 'A51 · 4×5 ô (sàn)'],
+        [380, 560, 'A51 · 4×6 ô (mặc định)'],
+      ];
+// Mật độ màn hình: S21 là 3, A51 là 2,625 — cỡ chữ tính bằng px nên khác nhau.
+const DENSITY = Number(params.get('density')) || 3;
+window.__wlayout = [];
+for (const [wd,hd,label] of SIZES) {
+    const fig=document.createElement('figure');
+    fig.innerHTML = `<figcaption>${label} — ${wd}×${hd}dp</figcaption>
+        <div class="widget" style="width:${wd}px">
+          <div class="whead"><div class="wnav">‹</div>
+            <div class="wtitle">${ZH ? `农历 ${view[0]}年${view[1]}月`
+                                              : `LỊCH ÂM THÁNG ${view[1]}/${view[0]}`}</div>
+            <div class="wnav">›</div></div>
+        </div>`;
+    const cv=document.createElement('canvas');
+    fig.querySelector('.widget').append(cv);
+    document.body.append(fig);
+    window.__wlayout.push(
+        drawBody(cv, wd, hd-HEADER_DP, DENSITY, view[0], view[1], todayJdn)
+    );
+}
+document.body.dataset.ready='1';
+</script>
+</body></html>

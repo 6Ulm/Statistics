@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Chỉ sao lưu tuỳ chọn người dùng (vị trí đã chọn, ngôn ngữ, phương pháp). -->
+<full-backup-content>
+    <include domain="sharedpref" path="qmdj_prefs.xml" />
+</full-backup-content>

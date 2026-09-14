@@ -1,0 +1,231 @@
+/**
+ * Kiểm thử toàn bộ trang web đóng gói trong assets, chạy headless bằng jsdom
+ * với cầu native giả lập.
+ *
+ * Chạy:  cd android/tools && npm install && node test_app.mjs
+ *
+ * Các giá trị Tứ Trụ mong đợi dưới đây được đối chiếu với bản web gốc (một
+ * file HTML duy nhất) trước khi tách thành assets — bảo đảm việc tách file và
+ * lớp vị trí mới KHÔNG làm đổi kết quả của engine.
+ */
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { JSDOM, VirtualConsole } from 'jsdom';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const WEB = path.join(HERE, '..', 'app', 'src', 'main', 'assets', 'web');
+
+const PILLARS = [
+    // y, m, d, h, min, vị trí, phương pháp, Tứ Trụ mong đợi
+    [1988, 3, 15, 7, 25, 'VN-HCM', 'amban', '戊辰乙卯己巳戊辰'],
+    [2026, 8, 25, 23, 40, 'VN-HN', 'trinhuan', '丙午丙申壬申庚子'],
+    [2000, 2, 4, 12, 0, 'CN', 'bophap', '己卯丁丑壬辰丙午'],
+    [1975, 12, 31, 0, 5, 'FR', 'amban', '乙卯戊子辛亥戊子'],
+    [2019, 6, 21, 18, 30, 'US_ET', 'trinhuan', '己亥庚午己丑癸酉'],
+    [2033, 11, 3, 4, 15, 'JP', 'bophap', '癸丑壬戌戊午甲寅'],
+];
+
+const SEARCHES = [
+    ['ha noi', 'Hanoi'], ['hà nội', 'Hanoi'], ['saigon', 'Ho Chi Minh City'],
+    ['北京', 'Beijing'], ['da lat', 'Ðà Lạt'], ['tokyo', 'Tokyo'],
+    ['new york', 'New York City'], ['vung tau', 'Vũng Tàu'],
+];
+
+const TZ_GUESSES = [
+    [21.0278, 105.8342, 'Asia/Ho_Chi_Minh'],
+    [48.8566, 2.3522, 'Europe/Paris'],
+    [-33.8688, 151.2093, 'Australia/Sydney'],
+    [40.7128, -74.0060, 'America/New_York'],
+    [35.6895, 139.6917, 'Asia/Tokyo'],
+];
+
+let fail = 0, checks = 0;
+function check(label, got, want) {
+    checks++;
+    const ok = got === want;
+    if (!ok) fail++;
+    console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${label.padEnd(34)} ${ok ? got : `got=${got}  want=${want}`}`);
+}
+
+const errors = [];
+const vc = new VirtualConsole();
+vc.on('jsdomError', e => errors.push(e.message));
+vc.on('error', (...a) => errors.push(a.join(' ')));
+
+const dom = new JSDOM(fs.readFileSync(path.join(WEB, 'index.html'), 'utf8'), {
+    url: 'file://' + path.join(WEB, 'index.html'),
+    runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true,
+    virtualConsole: vc,
+});
+const store = {};
+let gpsCalls = 0;
+dom.window.QMDJNative = {
+    readAsset: p => fs.readFileSync(path.join(WEB, p), 'utf8'),
+    getPref: k => (k in store ? store[k] : null),
+    setPref: (k, v) => { store[k] = v; },
+    deviceTimeZone: () => 'Asia/Ho_Chi_Minh',
+    hasLocationPermission: () => true,
+    platform: () => 'android',
+    requestLocation: () => {
+        gpsCalls++;
+        setTimeout(() => dom.window.__onNativeLocation(
+            { lat: 16.0678, lon: 108.2208, accuracy: 12, tzId: 'Asia/Ho_Chi_Minh' }), 5);
+    },
+};
+await new Promise(r => dom.window.addEventListener('load', r));
+await new Promise(r => setTimeout(r, 400));
+const w = dom.window, doc = w.document;
+const val = id => { const e = doc.getElementById(id); return e ? (e.innerText ?? e.textContent) : ''; };
+
+console.log('Tứ Trụ (đối chiếu bản web gốc)');
+for (const [y, m, d, h, mi, loc, method, want] of PILLARS) {
+    for (const [id, v] of [['inYear', y], ['inMonth', m], ['inDay', d], ['solarHour', h],
+                           ['solarMinute', mi], ['country', loc], ['methodSelect', method]]) {
+        doc.getElementById(id).value = String(v);
+    }
+    w.processAll();
+    const got = ['ttCanNam', 'ttChiNam', 'ttCanThang', 'ttChiThang',
+                 'ttCanNgay', 'ttChiNgay', 'ttCanGio', 'ttChiGio'].map(val).join('');
+    check(`${y}-${m}-${d} ${h}:${mi} ${loc}/${method}`, got, want);
+}
+
+console.log('\nTra cứu thành phố offline');
+await w.QMDJLocation.loadCities();
+for (const [q, want] of SEARCHES) {
+    const r = w.QMDJLocation.searchCities(q, 5);
+    check(`search ${JSON.stringify(q)}`, r.length ? r[0].name : '(none)', want);
+}
+
+console.log('\nSuy múi giờ từ toạ độ (offline, không cần mạng)');
+for (const [lat, lon, want] of TZ_GUESSES) {
+    check(`${lat},${lon}`, w.QMDJLocation.guessTz(lat, lon), want);
+}
+
+console.log('\nGPS → tính lại lá số');
+doc.getElementById('locGpsBtn').dispatchEvent(new w.Event('click'));
+await new Promise(r => setTimeout(r, 300));
+check('gọi cầu native', String(gpsCalls), '1');
+// Bảng Nhật–Nguyệt đã gỡ, nên đọc thẳng toạ độ mà GPS nạp vào engine.
+check('toạ độ vào engine', (function () {
+    var l = w.QMDJLocation.current();
+    return l ? l.lat.toFixed(2) + ',' + l.lon.toFixed(2) : '—';
+})(), '16.07,108.22');
+check('vị trí được lưu', String(JSON.parse(store['qmdj.location']).tzId), 'Asia/Ho_Chi_Minh');
+
+console.log('\nNhập toạ độ thủ công');
+w.openCountryPicker();
+await new Promise(r => setTimeout(r, 50));
+doc.getElementById('locLat').value = '21.0278';
+doc.getElementById('locLon').value = '105.8342';
+doc.getElementById('locTz').value = 'Asia/Ho_Chi_Minh';
+doc.getElementById('locApply').dispatchEvent(new w.Event('click'));
+await new Promise(r => setTimeout(r, 100));
+check('múi giờ áp dụng', val('out-chinhngo').split(' ')[1], '(GMT+7)');
+
+console.log('\nBảng Nhật–Nguyệt đã gỡ hẳn');
+check('không còn trong trang', String(doc.getElementById('astroPanel') === null), 'true');
+check('chạm Chính Ngọ không mở gì', String(!!doc.querySelector('.info-pair-chinhngo')), 'true');
+
+console.log('\nĐổi ngôn ngữ');
+w.setLang('vi');
+check('nhãn Chính Ngọ (vi)', val('lblChinhNgo'), 'Chính Ngọ:');
+w.setLang('zh');
+check('nhãn Chính Ngọ (zh)', val('lblChinhNgo'), '正午时间:');
+
+console.log('\nTab Lịch âm dương');
+w.setLang('vi');            // can chi tiếng Việt
+await new Promise(r => setTimeout(r, 200));
+w.showTab('cal');
+await new Promise(r => setTimeout(r, 200));
+
+// "Hôm nay tô đỏ" chỉ đúng khi đang ở tháng hiện tại — canh trước khi lật đi.
+check('hôm nay được tô đỏ', String(doc.querySelectorAll('.cal-today').length), '1');
+
+// Chốt vào THÁNG 8/2026 rồi mới canh. Mọi mốc dưới đây là ngày âm và can chi
+// cố định — canh được chặt hơn hẳn mấy phép canh chung chung — nhưng chúng chỉ
+// đúng cho đúng tháng ấy. Trước đây phép thử dựa vào "tháng hiện tại" nên tự vỡ
+// lúc 0h ngày 01-09-2026: lịch nhảy sang tháng 9 (35 ô, 30 ngày) trong khi mọi
+// con số vẫn viết cho tháng 8. Lật bằng chính hai nút ‹ › của giao diện.
+{
+    const now = new Date();
+    const delta = (2026 - now.getFullYear()) * 12 + (8 - (now.getMonth() + 1));
+    const nav = doc.getElementById(delta < 0 ? 'calPrev' : 'calNext');
+    for (let i = 0; i < Math.abs(delta); i++) nav.click();
+    await new Promise(r => setTimeout(r, 200));
+}
+const cells = [...doc.querySelectorAll('.cal-day')];
+check('lưới kín 42 ô, không ô trống', `${cells.length}/${doc.querySelectorAll('.cal-empty').length}`, '42/0');
+const inMonth = cells.filter(c => !c.classList.contains('cal-out'));
+check('31 ngày của tháng 8', String(inMonth.length), '31');
+check('11 ngày tháng trước/sau', String(doc.querySelectorAll('.cal-out').length), '11');
+const cellTxt = c => c.querySelector('.cal-lunar').textContent + ' ' +
+    [...c.querySelector('.cal-gz').children].map(x => x.textContent).join(' ');
+check('ô đầu = 27/7 tháng trước', cells[0].getAttribute('data-d') + '/' +
+    cells[0].getAttribute('data-m') + ' ' + cellTxt(cells[0]), '27/7 14 Nhâm Dần');
+check('ô cuối = 6/9 tháng sau', cells[41].getAttribute('data-d') + '/' +
+    cells[41].getAttribute('data-m') + ' ' + cellTxt(cells[41]), '6/9 25 Quý Mùi');
+check('can chi luôn 2 dòng', String(cells.every(c => c.querySelector('.cal-gz').children.length === 2)), 'true');
+check('không còn chấm hoàng đạo', String(doc.querySelectorAll('.cal-dot').length), '0');
+check('không còn hộp chi tiết', String(!!doc.getElementById('calDetail')), 'false');
+const c1 = inMonth[0], c13 = inMonth[12], c26 = inMonth[25];
+const gz = c => [...c.querySelector('.cal-gz').children].map(x => x.textContent).join(' ');
+check('01/08 âm + can chi', c1.querySelector('.cal-lunar').textContent + ' ' + gz(c1), '19 Đinh Mùi');
+check('13/08 mùng 1 tháng 7', c13.querySelector('.cal-lunar').textContent + ' ' + gz(c13), '1/7 Kỷ Mùi');
+check('26/08 can chi', c26.querySelector('.cal-lunar').textContent + ' ' + gz(c26), '14 Nhâm Thân');
+w.showTab('qmdj');
+await new Promise(r => setTimeout(r, 200));
+
+console.log('\nNút Back của Android');
+w.openCountryPicker();
+check('1. đóng hộp thoại vị trí trước', String(w.__onBackPressed()), 'true');
+check('   hộp thoại đã đóng', String(doc.getElementById('locOverlay').classList.contains('open')), 'false');
+check('2. không còn gì để đóng', String(w.__onBackPressed()), 'false');
+
+console.log('\nMúi giờ máy không khớp mục nào có sẵn (mở app lần đầu, danh sách chỉ hơn chục nước)');
+{
+    const store2 = {};
+    const errors2 = [];
+    const vc2 = new VirtualConsole();
+    vc2.on('jsdomError', e => errors2.push(e.message));
+    vc2.on('error', (...a) => errors2.push(a.join(' ')));
+    const dom2 = new JSDOM(fs.readFileSync(path.join(WEB, 'index.html'), 'utf8'), {
+        url: 'file://' + path.join(WEB, 'index.html'),
+        runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true,
+        virtualConsole: vc2,
+    });
+    dom2.window.QMDJNative = {
+        readAsset: p => fs.readFileSync(path.join(WEB, p), 'utf8'),
+        getPref: k => (k in store2 ? store2[k] : null),
+        setPref: (k, v) => { store2[k] = v; },
+        deviceTimeZone: () => 'America/Los_Angeles', // không nằm trong countryData
+        hasLocationPermission: () => false,
+        platform: () => 'android',
+        requestLocation: () => {},
+    };
+    await new Promise(r => dom2.window.addEventListener('load', r));
+    await new Promise(r => setTimeout(r, 400));
+    const w2 = dom2.window;
+
+    // Lỗi từng lọt lưới: không mục nào trong countryData khớp múi giờ máy thì
+    // trước đây BỎ QUA LUÔN — #country đứng ở mặc định 'FR' của app.js (Pháp)
+    // còn qmdj.location trống trơn. Widget đọc thấy trống lại tự suy múi giờ
+    // khác (trước đây chốt cứng Việt Nam) — hai bên lệch giờ tiết khí ngay từ
+    // lần mở app đầu tiên, mà đây lại đúng lúc NGƯỜI DÙNG CHƯA TỪNG CHỌN GÌ
+    // nên không hề biết để mà sửa.
+    check('có ghi qmdj.location dù múi giờ máy không khớp mục nào có sẵn',
+        String(!!store2['qmdj.location']), 'true');
+    const loc2 = store2['qmdj.location'] ? JSON.parse(store2['qmdj.location']) : null;
+    check('khoá đúng múi giờ máy (không lặng lẽ đổi sang nước khác)',
+        loc2 ? loc2.tzId : '(không ghi gì)', 'America/Los_Angeles');
+    const cur2 = w2.QMDJLocation.current();
+    check('vị trí app đang dùng cũng đúng múi giờ máy',
+        cur2 ? cur2.tzId : '(không có)', 'America/Los_Angeles');
+
+    if (errors2.length) { fail++; console.log('  lỗi JS:', errors2.slice(0, 5)); }
+}
+
+console.log('\nLỗi JS trong lúc chạy:', errors.length ? errors.slice(0, 5) : 'không có');
+if (errors.length) fail++;
+console.log(`\n${checks - fail}/${checks} phép kiểm đạt.`);
+process.exit(fail ? 1 : 0);
