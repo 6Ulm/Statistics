@@ -138,11 +138,14 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     ok('tiêu đề "Dương lịch" trùng tâm giá trị',
         Math.abs(r.dateHeadCx - r.dateValCx) <= 1.5,
         `tiêu đề ${r.dateHeadCx?.toFixed(1)} vs giá trị ${r.dateValCx?.toFixed(1)}`);
-    // Cột giữa phải nằm GIỮA hai cột bên, không dán vào cột tên. Ngưỡng 25%:
-    // hai khoảng hở không bằng nhau tuyệt đối được (ba nhãn dài ngắn khác
-    // nhau), nhưng chênh gấp năm lần như bản căn trái thì phải đỏ.
-    ok('hai khoảng hở quanh "Dương lịch" xấp xỉ nhau',
-        r.gaps && Math.abs(r.gaps.ho1 - r.gaps.ho2) <= 0.25 * Math.max(r.gaps.ho1, r.gaps.ho2),
+    // Cột giữa phải nằm GIỮA hai cột bên, không dán vào cột tên. KHÔNG đòi hai
+    // khoảng hở bằng nhau: ba cột nay dùng chung một bộ bề rộng với mục Lịch âm
+    // (xem phần "Cột tiêu đề không trượt ngang"), nên cột cuối rộng bằng mốc
+    // ngày giờ của Vọng chứ không bằng can chi, và chữ căn giữa cột ấy tất
+    // nhiên lệch khỏi tâm hình học của hàng. Chênh gấp đôi thì còn tự nhiên;
+    // gấp năm như bản căn trái (33px một bên, 169px bên kia) thì phải đỏ.
+    ok('cột giữa không dán vào cột tên',
+        r.gaps && Math.max(r.gaps.ho1, r.gaps.ho2) <= 2 * Math.min(r.gaps.ho1, r.gaps.ho2),
         `trái ${r.gaps?.ho1.toFixed(1)} · phải ${r.gaps?.ho2.toFixed(1)}`);
     ok('"Can chi" không dán vào mép phải', r.gaps && r.gaps.phai >= 18,
         `cách mép ${r.gaps?.phai.toFixed(1)}px`);
@@ -378,6 +381,54 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
             worst < 1,
             seq.map(([label, p]) => `${label}: [${p[k].join(',')}]`).join(' · '));
     }
+
+    // Hai mục là HAI bảng riêng, nhưng nằm ngay trên dưới nhau nên phải thẳng
+    // cột với nhau: "Dương lịch" trên "Sóc", "Can chi" trên "Vọng". Để mỗi bảng
+    // tự co theo dữ liệu của mình thì lệch 9px và 89px trên máy 393px.
+    await setOpen(page, 'jq', true); await setOpen(page, 'am', true);
+    await page.waitForTimeout(700);
+    const pair = await page.evaluate(() => {
+        const cx = el => {
+            const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+            const n = w.nextNode();
+            if (!n) return null;
+            const rg = document.createRange();
+            rg.selectNodeContents(n);
+            const b = rg.getBoundingClientRect();
+            return (b.left + b.right) / 2;
+        };
+        const one = id => {
+            const body = document.getElementById(id);
+            const bl = body.getBoundingClientRect().left;
+            const ths = [...body.querySelectorAll('thead th')];
+            let spill = 0;
+            for (const cell of body.querySelectorAll('th, td')) {
+                spill = Math.max(spill, cell.scrollWidth - cell.clientWidth);
+            }
+            return {
+                edges: ths.map(x => +(x.getBoundingClientRect().left - bl).toFixed(1)),
+                headCx: ths.map(cx),
+                spill,
+            };
+        };
+        return { jq: one('calJieQi'), am: one('calAmBan') };
+    });
+    ok('mép ba cột của hai mục trùng nhau',
+        pair.jq.edges.every((v, i) => Math.abs(v - pair.am.edges[i]) < 1),
+        `Tiết khí [${pair.jq.edges}] · Lịch âm [${pair.am.edges}]`);
+    ok('"Dương lịch" thẳng cột với "Sóc"',
+        Math.abs(pair.jq.headCx[1] - pair.am.headCx[1]) <= 1.5,
+        `${pair.jq.headCx[1]?.toFixed(1)} vs ${pair.am.headCx[1]?.toFixed(1)}`);
+    ok('"Can chi" thẳng cột với "Vọng"',
+        Math.abs(pair.jq.headCx[2] - pair.am.headCx[2]) <= 1.5,
+        `${pair.jq.headCx[2]?.toFixed(1)} vs ${pair.am.headCx[2]?.toFixed(1)}`);
+    // Ghim bề rộng cột thì phải ghim ĐỦ RỘNG: cột hẹp hơn chữ là chữ tràn sang
+    // ô bên hoặc bị cắt, mà `white-space: nowrap` thì không xuống dòng được.
+    ok('không ô nào có chữ rộng hơn cột của nó',
+        Math.max(pair.jq.spill, pair.am.spill) <= 0.5,
+        `thừa ${Math.max(pair.jq.spill, pair.am.spill).toFixed(1)}px`);
+    await setOpen(page, 'am', false);
+    await page.waitForTimeout(500);
 
     // Đóng lại vẫn phải là ĐÓNG: kẹp chiều cao chứ không phải để lộ cả bảng.
     const shut = await page.evaluate(() => {

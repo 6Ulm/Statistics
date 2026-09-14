@@ -627,6 +627,32 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         val fm = paint.fontMetrics
         val baseDy = (rowH - (fm.descent - fm.ascent)) / 2f - fm.ascent
 
+        // MỘT bộ bề rộng cột cho CẢ HAI mục: lấy cột rộng nhất của từng vị trí
+        // rồi dùng chung. Để mỗi mục tự co theo dữ liệu của riêng nó thì "Dương
+        // lịch" không thẳng hàng với "Sóc", "Can chi" không thẳng hàng với
+        // "Vọng" — hai bảng nằm ngay trên dưới nhau nên lệch một chút là thấy
+        // ngay. Cột cuối vì thế rộng bằng mốc ngày giờ của Vọng, và can chi
+        // tháng đứng giữa cột ấy.
+        val cols = sharedColWidths(paint, secs)
+        // Chỗ chữ không dùng hết thì trả lại cho ba khoản lề, chia theo đúng tỉ
+        // lệ dư địa của từng khoản — rộng rãi khi có chỗ, chật khi không.
+        // Phần của `gap` không tiêu vào đâu cả: hai cột sau căn giữa hộp của
+        // chúng, nên chỗ dôi ra tự nở thành khoảng hở giữa ba nhóm chữ. Vẫn
+        // phải tính nó vào `room`, không thì padX/padEnd nuốt trọn chỗ dôi và
+        // ba cột dính sát nhau ở giữa.
+        val room = (padMax - padMin) + 2 * (gapMax - gapMin) + (endMax - endMin)
+        val slack = (w - padMin - 2 * gapMin - endMin - cols.sum()).coerceIn(0f, room)
+        val f = if (room <= 0f) 0f else slack / room
+        val padX = padMin + (padMax - padMin) * f
+        val padEnd = endMin + (endMax - endMin) * f
+
+        // Ba mốc vẽ chữ, dùng chung cho cả hai mục: tên căn TRÁI, hai cột sau
+        // căn GIỮA hộp của chúng. Cột giữa lấy trọn khoảng trống giữa hai cột
+        // bên rồi đứng CHÍNH GIỮA khoảng ấy — hai khoản `gap` hai bên bằng nhau
+        // nên triệt tiêu khỏi phép tính tâm.
+        val lastCx = w - padEnd - cols[2] / 2f
+        val midCx = (padX + cols[0] + (w - padEnd - cols[2])) / 2f
+
         var y = top
         val tableH = rowH * (secs.size + shown.sum()) + bottomPad
         paint.style = Paint.Style.FILL
@@ -634,26 +660,6 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         c.drawRect(0f, top, w.toFloat(), top + tableH, paint)
 
         for ((si, sec) in secs.withIndex()) {
-            val cols = colWidths(paint, sec)
-            // Chỗ chữ không dùng hết thì trả lại cho ba khoản lề, chia theo đúng
-            // tỉ lệ dư địa của từng khoản — rộng rãi khi có chỗ, chật khi không.
-            // Phần của `gap` không tiêu vào đâu cả: hai cột sau căn giữa hộp
-            // của chúng, nên chỗ dôi ra tự nở thành khoảng hở giữa ba nhóm chữ.
-            // Vẫn phải tính nó vào `room`, không thì padX/padEnd nuốt trọn chỗ
-            // dôi và ba cột dính sát nhau ở giữa.
-            val room = (padMax - padMin) + 2 * (gapMax - gapMin) + (endMax - endMin)
-            val slack = (w - padMin - 2 * gapMin - endMin - cols.sum()).coerceIn(0f, room)
-            val f = if (room <= 0f) 0f else slack / room
-            val padX = padMin + (padMax - padMin) * f
-            val padEnd = endMin + (endMax - endMin) * f
-
-            // Ba mốc vẽ chữ: tên căn TRÁI, hai cột sau căn GIỮA hộp của chúng.
-            // Cột giữa lấy trọn khoảng trống giữa hai cột bên rồi đứng CHÍNH
-            // GIỮA khoảng ấy — hai khoản `gap` hai bên bằng nhau nên triệt tiêu
-            // khỏi phép tính tâm.
-            val lastCx = w - padEnd - cols[2] / 2f
-            val midCx = (padX + cols[0] + (w - padEnd - cols[2])) / 2f
-
             /* ── hàng tiêu đề ── */
             paint.color = sec.headBg
             c.drawRect(0f, y, w.toFloat(), y + rowH, paint)
@@ -731,6 +737,20 @@ class CalendarWidgetProvider : AppWidgetProvider() {
     }
 
     /**
+     * Bề rộng ba cột DÙNG CHUNG cho mọi mục: cột rộng nhất của từng vị trí.
+     * Nhờ nó mà "Dương lịch" thẳng hàng với "Sóc" và "Can chi" thẳng hàng với
+     * "Vọng", dù hai bảng là hai bảng riêng.
+     */
+    private fun sharedColWidths(paint: Paint, secs: List<Sec>): FloatArray {
+        val out = FloatArray(3)
+        for (sec in secs) {
+            val w = colWidths(paint, sec)
+            for (i in 0..2) out[i] = maxOf(out[i], w[i])
+        }
+        return out
+    }
+
+    /**
      * Bề rộng ba cột của một mục, đo trên TOÀN BỘ số hàng — kể cả hàng đang bị
      * cửa sổ cắt ra ngoài — nên cột không nhích khi cuộn hay khi lật tháng.
      *
@@ -763,8 +783,9 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         var size = start
         for (i in 0 until 8) {
             paint.textSize = size
-            var need = 0f
-            for (sec in secs) need = maxOf(need, colWidths(paint, sec).sum())
+            // Đo theo bộ cột DÙNG CHUNG, không phải theo từng mục: ba cột rộng
+            // nhất gộp lại mới là thứ phải nằm vừa bề ngang.
+            val need = sharedColWidths(paint, secs).sum()
             if (need <= avail || size <= min) break
             // Hạ thêm 1% cho chắc: đo lại ở vòng sau vẫn có thể nhỉnh hơn tỉ lệ.
             size = maxOf(min, size * (avail / need) * 0.99f)

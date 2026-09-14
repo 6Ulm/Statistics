@@ -82,6 +82,14 @@
     var ROW_MIN = 58, ROW_MAX = 80;
     /** Mục đang mở không bao giờ thấp hơn chừng này — thấp quá thì vô dụng. */
     var SEC_MIN = 96;
+
+    /**
+     * Chỗ để syncSectionColumns() đặt bề rộng ba cột. Hai mục là HAI bảng riêng
+     * nên mỗi bảng tự co theo dữ liệu của mình — "Dương lịch" không thẳng hàng
+     * với "Sóc", "Can chi" không thẳng hàng với "Vọng" (đo trên máy 393px: lệch
+     * 9px và 89px). Hai bảng nằm ngay trên dưới nhau nên lệch là thấy ngay.
+     */
+    var COLGROUP = '<colgroup><col><col><col></colgroup>';
     /** Lề trên #calSections cộng lề giữa hai mục (xem calendar.css). */
     var SEC_MARGIN = 11;
 
@@ -232,8 +240,11 @@
         lastWeeks = cells.length / 7;
         fitGrid(lastWeeks);
         renderAmBan();
-        // Hai bảng vừa dựng lại từ đầu nên mất trần kẹp của mục đang đóng —
-        // đặt lại, không thì mục đóng bung ra đủ 24 hàng sau mỗi lần vẽ.
+        // Hai bảng vừa dựng lại từ đầu: ghim lại bề rộng cột dùng chung, rồi
+        // đặt lại trần kẹp của mục đang đóng — không thì mục đóng bung ra đủ
+        // 24 hàng sau mỗi lần vẽ. Đúng thứ tự này: kẹp chiều cao đo <thead>,
+        // mà <thead> chỉ đứng yên sau khi cột đã ghim xong.
+        syncSectionColumns();
         applySections();
         publishLunarCache();
     }
@@ -381,7 +392,8 @@
         // lớp `.cal-jq-date` chỉ gắn cho <td>, nên bỏ "c" ở đây là tiêu đề một
         // đằng giá trị một nẻo, lệch ~60px trên máy 393px.
         box.innerHTML =
-            '<table class="dp-table cal-jq"><thead><tr class="cal-sec-head">' +
+            '<table class="dp-table cal-jq">' + COLGROUP +
+            '<thead><tr class="cal-sec-head">' +
             '<th>' + t('colTk') + '</th>' +
             '<th class="c">' + t('colDate') + '</th>' +
             '<th class="c cal-jq-last">' + t('colGz') +
@@ -520,7 +532,8 @@
                     '</tr>';
             }
             box.innerHTML =
-                '<table class="dp-table cal-jq"><thead><tr class="cal-sec-head">' +
+                '<table class="dp-table cal-jq">' + COLGROUP +
+                '<thead><tr class="cal-sec-head">' +
                 '<th>' + t('colMonth') + '</th>' +
                 '<th class="c">' + t('colSoc') + '</th>' +
                 '<th class="c cal-jq-last">' + t('colVong') +
@@ -534,6 +547,71 @@
 
     /** Bảng 24 dòng phải cuộn; đưa tiết khí đang hiệu lực vào giữa khung nhìn. */
     /* ─────────────── Hai mục gập được ─────────────── */
+
+    /**
+     * Bắt HAI bảng dùng CHUNG một bộ bề rộng cột, để "Dương lịch" thẳng hàng
+     * với "Sóc" và "Can chi" thẳng hàng với "Vọng".
+     *
+     * Cột tên và cột cuối vốn co đúng bằng chữ (mẹo `width:1%`), nên bề rộng tự
+     * nhiên của chúng CHÍNH LÀ nhu cầu thật — lấy cột rộng nhất của từng vị trí
+     * giữa hai bảng rồi ghim vào <col>. Cột giữa thì không: bề rộng của nó là
+     * phần CÒN LẠI, không phải nhu cầu, nên cứ để trống cho nó tự ăn chỗ thừa —
+     * hai bảng rộng bằng nhau nên phần còn lại cũng bằng nhau.
+     *
+     * Đo ở chế độ `auto` rồi mới ghim: đọc bề rộng khi <col> còn giữ trần của
+     * lần trước thì đo lại chính con số mình vừa đặt, và cột không bao giờ co
+     * lại được khi đổi ngôn ngữ hay đổi tháng.
+     */
+    function syncSectionColumns() {
+        var tables = [];
+        var ids = ['calJieQi', 'calAmBan'];
+        for (var i = 0; i < ids.length; i++) {
+            var box = document.getElementById(ids[i]);
+            var tb = box && box.querySelector('table');
+            if (tb && tb.tHead && tb.tHead.rows.length &&
+                tb.tHead.rows[0].cells.length >= 3 &&
+                tb.querySelectorAll('col').length >= 3) tables.push(tb);
+        }
+        if (tables.length < 2) return;
+
+        var t, k, cols;
+        // 1. Trả cả hai bảng về `auto` để đo được bề rộng TỰ NHIÊN.
+        for (t = 0; t < tables.length; t++) {
+            tables[t].style.tableLayout = 'auto';
+            cols = tables[t].querySelectorAll('col');
+            for (k = 0; k < 3; k++) cols[k].style.width = '';
+        }
+        // 2. Cột tên và cột cuối co đúng bằng chữ (mẹo `width:1%`) nên bề rộng
+        //    tự nhiên của chúng CHÍNH LÀ nhu cầu thật; lấy cột rộng nhất của
+        //    từng vị trí giữa hai bảng.
+        var w0 = 0, w2 = 0, tableW = 0;
+        for (t = 0; t < tables.length; t++) {
+            var cells = tables[t].tHead.rows[0].cells;
+            w0 = Math.max(w0, cells[0].getBoundingClientRect().width);
+            w2 = Math.max(w2, cells[2].getBoundingClientRect().width);
+            tableW = Math.max(tableW, tables[t].getBoundingClientRect().width);
+        }
+        w0 = Math.ceil(w0); w2 = Math.ceil(w2);
+        // Cột giữa phải còn chỗ cho một mốc ngày giờ. Chật quá thì bóp hai cột
+        // bên theo tỉ lệ chứ không để cột giữa âm — thà ba cột cùng hẹp còn hơn
+        // bảng vỡ. Trên máy hẹp nhất đo được vẫn còn dư, nên đây là lưới an
+        // toàn, không phải đường chạy thường ngày.
+        var minMid = Math.min(tableW * 0.3, 120);
+        if (w0 + w2 > tableW - minMid) {
+            var scale = (tableW - minMid) / (w0 + w2);
+            w0 = Math.floor(w0 * scale); w2 = Math.floor(w2 * scale);
+        }
+        // 3. Ghim cả ba cột rồi khoá `fixed`: ở chế độ `auto`, `width:1%` trên
+        //    chính các ô vẫn tranh phần với <col> và bảng lại co theo dữ liệu
+        //    của riêng nó; `fixed` thì <col> nói sao nghe vậy.
+        for (t = 0; t < tables.length; t++) {
+            cols = tables[t].querySelectorAll('col');
+            cols[0].style.width = w0 + 'px';
+            cols[1].style.width = Math.max(0, tableW - w0 - w2) + 'px';
+            cols[2].style.width = w2 + 'px';
+            tables[t].style.tableLayout = 'fixed';
+        }
+    }
 
     /**
      * Chiều cao kẹp một mục đã đóng: đúng hàng <thead>, cộng hai đường viền

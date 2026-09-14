@@ -350,6 +350,15 @@ function drawSections(c, dp, w, top, rowH, bottomPad, secs, shown) {
         return out;
     };
     const sum3 = a => a[0]+a[1]+a[2];
+    /** Bề rộng ba cột DÙNG CHUNG cho mọi mục — sharedColWidths() bên Kotlin. */
+    const sharedCols = size => {
+        const out=[0,0,0];
+        for (const sec of secs){
+            const w = colWidths(sec, size);
+            for (let i=0;i<3;i++) out[i]=Math.max(out[i], w[i]);
+        }
+        return out;
+    };
     // Cỡ chữ theo chiều cao hàng, tính bằng FontMetrics thật (Paint.FontMetrics
     // bên Kotlin) chứ không nhân hệ số đoán chừng — chữ Việt dấu chồng cao hơn
     // Latin trơn, ascent đã tính sẵn khoản ấy.
@@ -362,8 +371,8 @@ function drawSections(c, dp, w, top, rowH, bottomPad, secs, shown) {
     const minPx = dp(7), avail = w - padMin - 2*gapMin - endMin;
     let txtPx = Math.min(rowH/lineRatio(100), dp(12));
     for (let i=0;i<8;i++) {
-        let need = 0;
-        for (const sec of secs) need = Math.max(need, sum3(colWidths(sec, txtPx)));
+        // Đo theo bộ cột DÙNG CHUNG, không theo từng mục.
+        const need = sum3(sharedCols(txtPx));
         if (need <= avail || txtPx <= minPx) break;
         txtPx = Math.max(minPx, txtPx*(avail/need)*0.99);
     }
@@ -376,23 +385,26 @@ function drawSections(c, dp, w, top, rowH, bottomPad, secs, shown) {
     const tableH = rowH*(secs.length + bodyRows) + bottomPad;
     c.fillStyle='#fff'; c.fillRect(0, top, w, tableH);
 
+    // MỘT bộ bề rộng cột cho CẢ HAI mục, để "Dương lịch" thẳng hàng với "Sóc"
+    // và "Can chi" thẳng hàng với "Vọng".
+    const cols = sharedCols(txtPx);
+    // Chỗ chữ không dùng hết trả lại cho ba khoản lề theo tỉ lệ dư địa. Phần
+    // của `gap` không tiêu vào đâu cả — hai cột sau căn giữa hộp của chúng nên
+    // chỗ dôi ra tự nở thành khoảng hở (xem bản Kotlin).
+    const room = (padMax-padMin) + 2*(gapMax-gapMin) + (endMax-endMin);
+    const slack = Math.max(0, Math.min(room, w - padMin - 2*gapMin - endMin - sum3(cols)));
+    const f = room <= 0 ? 0 : slack/room;
+    const padX   = padMin + (padMax-padMin)*f;
+    const padEnd = endMin + (endMax-endMin)*f;
+    // Tên căn TRÁI, hai cột sau căn GIỮA hộp của chúng.
+    const lastCx = w - padEnd - cols[2]/2;
+    const midCx  = (padX + cols[0] + (w - padEnd - cols[2])) / 2;
+
     let y = top;
     const out = [];
     c.textBaseline='alphabetic';
     for (let si=0; si<secs.length; si++) {
         const sec = secs[si];
-        const cols = colWidths(sec, txtPx);
-        // Chỗ chữ không dùng hết trả lại cho ba khoản lề theo tỉ lệ dư địa.
-        const room = (padMax-padMin) + 2*(gapMax-gapMin) + (endMax-endMin);
-        const slack = Math.max(0, Math.min(room, w - padMin - 2*gapMin - endMin - sum3(cols)));
-        // Phần của `gap` không tiêu vào đâu cả — hai cột sau căn giữa hộp của
-        // chúng nên chỗ dôi ra tự nở thành khoảng hở (xem bản Kotlin).
-        const f = room <= 0 ? 0 : slack/room;
-        const padX   = padMin + (padMax-padMin)*f;
-        const padEnd = endMin + (endMax-endMin)*f;
-        // Tên căn TRÁI, hai cột sau căn GIỮA hộp của chúng.
-        const lastCx = w - padEnd - cols[2]/2;
-        const midCx  = (padX + cols[0] + (w - padEnd - cols[2])) / 2;
 
         c.fillStyle=sec.headBg; c.fillRect(0, y, w, rowH);
         c.fillStyle=sec.bar;    c.fillRect(0, y, dp(3), rowH);
@@ -435,16 +447,15 @@ function drawSections(c, dp, w, top, rowH, bottomPad, secs, shown) {
             c.strokeStyle='#DDDDDD'; c.lineWidth=dp(1.2);
             c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke();
         }
-        out.push({ cols, padX, padEnd, midCx, lastCx, shown: n, from,
-                   open: sec.open, rows: sec.rows.length });
+        out.push({ shown: n, from, open: sec.open, rows: sec.rows.length });
     }
     c.strokeStyle='#DDDDDD'; c.lineWidth=1;
     c.strokeRect(0, top, w, tableH);
 
     // Mép phải xa nhất mà chữ chạm tới, và mép mà nó KHÔNG được vượt.
-    const right = Math.max(...out.map(s => s.lastCx + s.cols[2]/2));
-    const limit = w - Math.min(...out.map(s => s.padEnd));
-    return { txtPx, top, tableH, bottomPad, baseDy, right, limit, secs: out,
+    const right = lastCx + cols[2]/2, limit = w - padEnd;
+    return { txtPx, top, tableH, bottomPad, baseDy, right, limit, cols, padX, padEnd,
+             midCx, lastCx, secs: out,
              lineH: fmM.fontBoundingBoxAscent + fmM.fontBoundingBoxDescent };
 }
 

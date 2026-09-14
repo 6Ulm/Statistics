@@ -657,13 +657,28 @@ nguyên tắc.
 và thêm cột **Can chi** (trụ tháng mà tiết khí ấy mở ra), thành một dãy 24 hàng
 liền × ba cột, cuộn trong khung của mục.
 
-Cột tên co đúng bằng chữ (`width:1%`) và căn trái; cột "Can chi" cũng co bằng
-chữ, căn giữa, chừa 20px tới mép phải; cột "Dương lịch" ăn hết phần còn lại và
-**căn GIỮA** — cả tiêu đề lẫn giá trị, nên hai bên vẫn chung một tâm. Căn trái
-(bản trước) dán cột ngày vào sát cột tên trong khi phía Can chi hở ra một mảng
-trống rộng gấp năm: đo trên máy 393px là 33px một bên và 169px bên kia. Cột
-giữa rộng gấp ba hai cột bên, nên chỉ cần đổi chỗ đứng của CHỮ trong nó là ba
-nhóm chữ chia đều bề ngang bảng, không phải nắn lại bề rộng cột.
+Cột tên căn trái; cột "Dương lịch" và cột "Can chi" **căn GIỮA** — cả tiêu đề
+lẫn giá trị, nên hai bên chung một tâm. Căn trái (bản trước) dán cột ngày vào
+sát cột tên trong khi phía Can chi hở ra một mảng trống rộng gấp năm: đo trên
+máy 393px là 33px một bên và 169px bên kia.
+
+**Hai mục dùng CHUNG một bộ bề rộng cột** (`syncSectionColumns`), nên "Dương
+lịch" thẳng hàng với "Sóc" và "Can chi" thẳng hàng với "Vọng". Hai mục là hai
+`<table>` riêng, mỗi bảng tự co theo dữ liệu của mình thì lệch nhau 9px và 89px
+trên máy 393px — mà chúng nằm ngay trên dưới nhau nên lệch là thấy ngay.
+
+Cách làm: cột tên và cột cuối vốn co đúng bằng chữ (mẹo `width:1%`) nên bề rộng
+tự nhiên của chúng CHÍNH LÀ nhu cầu thật; đo ở chế độ `auto`, lấy cột rộng nhất
+của từng vị trí giữa hai bảng, ghim vào `<col>` rồi khoá `table-layout: fixed`.
+Phải khoá `fixed`: ở chế độ `auto`, `width:1%` trên chính các ô vẫn tranh phần
+với `<col>` và bảng lại co theo dữ liệu của riêng nó. Cột giữa nhận phần còn
+lại — bề rộng của nó không phải nhu cầu mà là chỗ thừa, nên lấy `max` của hai
+bảng là sai.
+
+Hệ quả có chủ đích: cột cuối rộng bằng mốc ngày giờ của Vọng chứ không bằng can
+chi, nên "Can chi" đứng giữa một cột rộng hơn nó nhiều. Ba nhãn vì thế không
+chia đều tuyệt đối bề ngang (đo được 64px và 94px) — đổi lại hai bảng thẳng cột
+với nhau, và đó là thứ nhìn vào là thấy.
 
 ## Widget lịch trên màn hình chính
 
@@ -787,6 +802,10 @@ Khối bảng là một khối **cố định**, không đổi khi lật tháng 
   `measureText`, y như `width:1%` bên CSS) và căn trái; cột cuối căn giữa trong
   phần chừa sát mép phải; cột giữa căn giữa khoảng trống còn lại — cùng luật với
   `.cal-jq-date` bên CSS.
+* **Một bộ bề rộng cho CẢ HAI mục** (`sharedColWidths`): cột rộng nhất của từng
+  vị trí, đúng như `syncSectionColumns` bên tab Lịch, nên "Dương lịch" thẳng
+  hàng với "Sóc" và "Can chi" thẳng hàng với "Vọng". Cỡ chữ cũng đo theo bộ cột
+  chung ấy, không theo từng mục.
 * Bề rộng đo trên **toàn bộ số hàng** (kể cả hàng đang bị cửa sổ cắt ra ngoài)
   **cộng khuôn**: mốc ngày giờ lấy `00-00-0000 00:00`, cột can chi tháng lấy cả
   60 trụ, cột tháng âm lấy cả 24 nhãn có thể có. Đo riêng năm đang xem thì cột

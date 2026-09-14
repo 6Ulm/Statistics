@@ -170,11 +170,10 @@ for (const dev of DEVICES) {
         for (const m of MONTHS.slice(1)) {
             const o = byMonth[m][i], oq = o.jq;
             const same = ['jqRowH', 'jqH'].every(k => Math.abs(L[k] - o[k]) < 0.01)
-                && ['txtPx', 'top', 'tableH', 'right']
+                && ['txtPx', 'top', 'tableH', 'right', 'midCx', 'lastCx']
                     .every(k => Math.abs(q[k] - oq[k]) < 0.01)
-                // Bề rộng ba cột của TỪNG mục cũng phải đứng yên khi lật tháng.
-                && q.secs.every((s0, si) => s0.cols
-                    .every((v, ci) => Math.abs(v - oq.secs[si].cols[ci]) < 0.01));
+                // Bề rộng ba cột (dùng chung cho cả hai mục) cũng phải đứng yên.
+                && q.cols.every((v, ci) => Math.abs(v - oq.cols[ci]) < 0.01);
             if (!same) {
                 bad(`${tag}: tháng ${m} cho bảng khác tháng ${MONTHS[0]} `
                     + `(cao ${px(oq.tableH).toFixed(1)} vs ${px(q.tableH).toFixed(1)}dp, `
