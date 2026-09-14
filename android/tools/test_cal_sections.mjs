@@ -303,7 +303,9 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     // nên tiêu đề của nó phải đứng đúng MỘT chỗ qua toàn bộ 5 trạng thái sau,
     // bất kể trạng thái của MỤC KIA.
     const seq = [];
-    seq.push(['jq mở · am đóng (ban đầu)', await pos()]);
+    // Trạng thái đầu tuỳ chiều cao máy (xem decideAmDefault) nên chỉ ghi
+    // "ban đầu"; các bước sau đều đặt trạng thái tường minh.
+    seq.push(['ban đầu', await pos()]);
     await setOpen(page, 'jq', false); await page.waitForTimeout(500);
     seq.push(['jq đóng · am đóng', await pos()]);
     await setOpen(page, 'am', true); await page.waitForTimeout(500);
@@ -335,6 +337,122 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
 
     ok('không lỗi JS', errs.length === 0, errs.join('; '));
     await ctx.close();
+}
+
+/* ── 3d. Lấp đầy chiều cao màn hình trên hai máy đích ──
+   Tab Lịch phải dùng HẾT chiều cao một màn hình: không tràn xuống dưới thanh
+   tab, mà cũng không chừa một dải trống to ở đáy.
+   Hai lỗi đã sửa, đều làm dải trống ấy phình ra:
+   a) fitGrid() trừ hai hàng tiêu đề khỏi `avail` (để rowH không phụ thuộc
+      trạng thái gập/mở) rồi đem CHÍNH con số đã trừ ấy đi đặt max-height cho
+      cả khung — mà khung thì chứa luôn <thead>. Hai hàng tiêu đề bị trừ hai
+      lần: đo trên A51 thì cụm hai mục hụt đúng 48px.
+   b) Trần của Tiết khí là 65% ngân sách và cố định (xem shareSectionHeight),
+      nên 35% còn lại là phần của riêng Lịch âm — đóng sẵn Lịch âm là bỏ không
+      chừng ấy chỗ. Trên máy cao thì đó là hơn 100px trống dưới hàng tiêu đề
+      "Tháng âm". Nay decideAmDefault() mở sẵn Lịch âm khi máy đủ cao. */
+{
+    console.log('\nLấp đầy chiều cao trên máy đích');
+    // Nút "Ghim lịch" CHỈ hiện khi có cầu nối Android; trình duyệt không có
+    // nên phải ép hiện, bằng không phép đo rộng rãi hơn máy thật 32px.
+    const showPin = page => page.evaluate(() => {
+        const b = document.getElementById('calPinBtn');
+        if (b) b.style.display = 'block';
+        if (window.__calRefreshLabels) window.__calRefreshLabels();
+    });
+    const geom = page => page.evaluate(() => {
+        const z = parseFloat(getComputedStyle(document.body).zoom) || 1;
+        const view = document.getElementById('calView');
+        const dock = document.getElementById('bottomDock');
+        const kids = [...view.children].filter(e => getComputedStyle(e).display !== 'none');
+        const low = Math.max(...kids.map(e => e.getBoundingClientRect().bottom / z));
+        const h = id => {
+            const el = document.getElementById(id);
+            return el ? +(el.getBoundingClientRect().height / z).toFixed(1) : 0;
+        };
+        return {
+            slack: +(dock.getBoundingClientRect().top / z - low).toFixed(1),
+            amOpen: document.getElementById('calSecAm').classList.contains('cal-sec-open'),
+            amPref: localStorage.getItem('qmdj.calSecAm'),
+            jqH: h('calJieQi'), amH: h('calAmBan'),
+        };
+    });
+
+    // Hai máy người dùng chỉ đích danh. Dải trống còn lại chỉ là phần đệm
+    // chống tràn của GRID_CHROME cộng mấy pixel làm tròn.
+    for (const d of [{ n: 'S21 FE', w: 393, h: 790 }, { n: 'A51', w: 412, h: 852 }]) {
+        const ctx = await browser.newContext({ viewport: { width: d.w, height: d.h }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+        const { page, errs } = await openCal(ctx);
+        await showPin(page);
+        await page.waitForTimeout(500);
+        const g = await geom(page);
+        ok(`${d.n}: không tràn xuống dưới thanh tab`, g.slack >= 0, `${g.slack}px`);
+        ok(`${d.n}: không còn dải trống ở đáy`, g.slack <= 16, `còn thừa ${g.slack}px`);
+        ok(`${d.n}: máy đủ cao nên mở sẵn Lịch âm`, g.amOpen);
+        // Widget gập/mở theo ĐÚNG khoá này, nên chốt xong phải ghi ra.
+        check(`${d.n}: ghi khoá cho widget theo kịp`, g.amPref, '1');
+        ok(`${d.n}: không lỗi JS`, errs.length === 0, errs.join('; '));
+        await ctx.close();
+    }
+
+    // Máy thấp: mở sẵn cả hai thì Lịch âm chỉ được một hai hàng, vô dụng —
+    // vẫn phải đóng, và vẫn không được tràn.
+    {
+        const ctx = await browser.newContext({ viewport: { width: 360, height: 640 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+        const { page, errs } = await openCal(ctx);
+        await showPin(page);
+        await page.waitForTimeout(500);
+        const g = await geom(page);
+        ok('máy thấp 360×640: vẫn đóng sẵn Lịch âm', !g.amOpen);
+        ok('máy thấp 360×640: không tràn xuống dưới thanh tab', g.slack >= 0, `${g.slack}px`);
+        ok('máy thấp 360×640: không lỗi JS', errs.length === 0, errs.join('; '));
+        await ctx.close();
+    }
+
+    // Tháng 6 hàng (lưới cao thêm một hàng 58px) là lúc chật nhất. Quét trọn
+    // một năm trên cả hai máy: không tháng nào được tràn xuống dưới thanh tab.
+    for (const d of [{ n: 'S21 FE', w: 393, h: 790 }, { n: 'A51', w: 412, h: 852 }]) {
+        const ctx = await browser.newContext({ viewport: { width: d.w, height: d.h }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+        const { page, errs } = await openCal(ctx);
+        await showPin(page);
+        await page.waitForTimeout(400);
+        let worst = { slack: 1e9, m: 0 }, weeks6 = 0;
+        for (let m = 1; m <= 12; m++) {
+            await page.evaluate(mm => window.__calGoto(2026, mm, 1), m);
+            await page.waitForTimeout(260);
+            const g = await geom(page);
+            const rows = await page.evaluate(
+                () => document.querySelectorAll('#calGrid .cal-row').length);
+            if (rows === 6) weeks6++;
+            if (g.slack < worst.slack) worst = { slack: g.slack, m: m };
+        }
+        ok(`${d.n}: cả 12 tháng đều không tràn`, worst.slack >= 0,
+            `chật nhất tháng ${worst.m}: ${worst.slack}px`);
+        ok(`${d.n}: có gặp tháng 6 hàng trong phép quét`, weeks6 > 0, `${weeks6} tháng`);
+        ok(`${d.n}: quét 12 tháng không lỗi JS`, errs.length === 0, errs.join('; '));
+        await ctx.close();
+    }
+
+    // Lần vẽ ĐẦU TIÊN phải cho ra đúng con số của mọi lần vẽ sau. Lỗi đã sửa:
+    // lượt fitGrid trong render() chạy TRƯỚC renderAmBan(), nên lần đầu nó
+    // không thấy hàng tiêu đề Lịch âm và `avail` dôi ra 24px — Tiết khí được
+    // 224px lúc vừa mở tab rồi tụt còn 208px ngay khi người dùng chạm vào
+    // Lịch âm, tiêu đề nhảy 16px ngay dưới ngón tay.
+    {
+        const ctx = await browser.newContext({ viewport: { width: 412, height: 852 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+        const { page, errs } = await openCal(ctx);
+        await showPin(page);
+        await page.waitForTimeout(500);
+        const first = await geom(page);
+        await setOpen(page, 'am', false); await page.waitForTimeout(400);
+        await setOpen(page, 'am', true); await page.waitForTimeout(400);
+        const after = await geom(page);
+        ok('lần vẽ đầu chia chiều cao y hệt các lần sau',
+            Math.abs(first.jqH - after.jqH) < 1,
+            `lúc mới mở tab ${first.jqH}px · sau một vòng gập/mở ${after.jqH}px`);
+        ok('không lỗi JS', errs.length === 0, errs.join('; '));
+        await ctx.close();
+    }
 }
 
 /* ── 3c. Cột tiêu đề CỐ ĐỊNH NGANG bất kể gập hay mở ──

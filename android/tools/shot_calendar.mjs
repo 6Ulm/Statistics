@@ -54,6 +54,9 @@ for (const d of DEVICES) {
     // che mất.
     await page.evaluate(() => {
         document.getElementById('calPinBtn').style.display = 'block';
+        // Vẽ lại sau khi nút đã hiện: fitGrid() trừ chiều cao nút ra khỏi chỗ
+        // trống, mà lượt vẽ lúc chuyển tab chạy trước khi nút kịp hiện.
+        if (typeof window.__calRefreshLabels === 'function') window.__calRefreshLabels();
         if (typeof window.__fitScreen === 'function') window.__fitScreen();
     });
     await page.waitForTimeout(700);

@@ -101,12 +101,10 @@ gốc) và **Lịch** (lịch âm dương).
 * **Hôm nay** có viền đỏ đậm trên nền vàng nhạt — tô đặc màu đỏ thì nổi hơn
   thật, nhưng chữ phải đảo sang trắng và ô hoá thành một mảng đặc, đọc ngày âm
   với can chi khó hơn hẳn.
-* Bảng **tiết khí trong năm** nằm ngay dưới lưới, không có hộp tiêu đề gập/mở:
-  xếp hai cột thì cả 24 mục vừa một màn hình trên S21, S21 FE, A51, S21 Ultra và
-  Z Fold, chẳng còn gì để gập. `fitGrid()` đo chiều cao THẬT của bảng rồi mới
-  chia phần còn lại cho các hàng lịch — giữ sẵn một khoản cố định thì phần dư
-  hoá thành khoảng hở ở đáy màn hình. Máy quá thấp (320×520) thì bảng tự cuộn
-  và hàng tiêu đề dính lại.
+* Dưới lưới là **hai mục gập được**: "Tiết khí" (24 mục trong năm) và "Lịch âm"
+  (Sóc/Vọng từng tháng) — xem mục riêng bên dưới. `fitGrid()` chốt chiều cao
+  hàng lịch ở `ROW_MIN` rồi nhường trọn phần dư cho hai mục ấy; mục nào dài hơn
+  chỗ được chia thì tự cuộn trong khung của nó, hàng tiêu đề dính lại.
 * Hai tab ngăn nhau bằng một vạch dọc, tab đang mở có **nền màu nhấn** chứ
   không chỉ đổi màu chữ.
 
@@ -195,6 +193,68 @@ không ảnh hưởng tới bất cứ tiêu đề nào — mở một mình th�
 trống, không phải chừa vô cớ (bản test `test_cal_sections.mjs` canh cả hai:
 tiêu đề Tiết khí đứng yên qua đủ 5 tổ hợp gập/mở, và gập/mở CHÍNH Lịch âm không
 tự dịch chuyển tiêu đề của chính nó).
+
+### Lấp kín chiều cao trên A51 và S21 FE
+
+Hai máy này cao hơn hẳn S21 (852px và 790px so với 740px), và chính chỗ cao
+thêm ấy lại bỏ không: đo trong app (có tính nút "Ghim lịch", thứ chỉ hiện khi
+chạy trên Android) thì tab Lịch chừa **128px trống ở đáy trên A51, 107px trên
+S21 FE**. Hai nguyên nhân, đều nằm trong phép chia chiều cao:
+
+**1. Hai hàng tiêu đề bị trừ hai lần.** `fitGrid` trừ chiều cao `<thead>` của
+cả hai mục ra khỏi `avail` để `rowH` không phụ thuộc trạng thái gập/mở (xem
+mục trên) — rồi đem CHÍNH con số đã trừ ấy đi chia cho hai mục. Nhưng thứ
+`shareSectionHeight` đặt là `max-height` của CẢ KHUNG, mà khung thì chứa luôn
+`<thead>`: hai hàng tiêu đề bị tính vào phần trừ một lần rồi lại nằm trong
+phần chia một lần nữa, nên cụm hai mục luôn thấp hơn chỗ nó được phép chiếm
+đúng `jqHead + amHead` = **48px**. Nay cộng lại hai hàng ấy trước khi chia.
+
+**2. Đóng sẵn Lịch âm là bỏ không phần của nó.** Trần của Tiết khí cố định ở
+65% ngân sách và KHÔNG đổi theo việc Lịch âm mở hay đóng — đó là điều kiện để
+tiêu đề Lịch âm không nhảy dưới ngón tay, và không được đụng tới. Hệ quả: 35%
+còn lại là phần dành riêng cho Lịch âm, đóng nó lại thì chẳng ai nhận. Trên máy
+cao, 35% ấy là hơn 100px. Nên `decideAmDefault()` chốt MỘT LẦN, ở lần chạy đầu
+khi chưa có lựa chọn cũ nào: máy nào đủ cao để Lịch âm được ít nhất `SEC_MIN`
+thì mở sẵn cả hai mục; máy thấp (đo 360×640) vẫn đóng, vì mở ra cũng chỉ được
+một hai hàng. Đây là một hằng số theo MÁY, không phải một phép đổi lúc bấm, nên
+không sinh ra cú nhảy nào. Chốt xong ghi thẳng vào `qmdj.calSecAm` rồi gọi
+widget vẽ lại — widget gập/mở theo đúng khoá ấy, mà widget thì phải khớp tab
+Lịch.
+
+Nhân tiện lộ ra một cú nhảy còn sót: trong `render()`, lượt `fitGrid` chạy
+TRƯỚC `renderAmBan()` nên lần vẽ đầu tiên nó chưa thấy hàng tiêu đề Lịch âm và
+`avail` dôi ra đúng 24px — Tiết khí được 224px lúc vừa mở tab rồi tụt còn 208px
+ngay khi người dùng chạm vào Lịch âm, tiêu đề nhảy **16px ngay dưới ngón tay**.
+Nay `render()` chia lại chiều cao LẦN CUỐI, sau khi hai bảng đã dựng xong và
+cột đã ghim.
+
+Kết quả (đo bằng Chromium, ép hiện nút Ghim để giống lúc chạy trong app, cả
+tiếng Việt lẫn tiếng Trung):
+
+| Máy | Trước | Sau |
+|---|---|---|
+| S21 FE 393×790 @2,75x | thừa 107px | thừa **9px** |
+| A51 412×852 @2,625x | thừa 128px | thừa **9px** |
+
+9px còn lại là phần đệm chống tràn của `GRID_CHROME` cộng mấy pixel làm tròn.
+Tab Kỳ Môn vốn đã khít sẵn (hở 0,1px) và không đụng tới. `test_cal_sections.mjs`
+canh cả ba điều: không tràn xuống dưới thanh tab, không còn dải trống (≤16px),
+và quét trọn 12 tháng của một năm — kể cả tháng 6 hàng, lúc lưới cao thêm 58px
+— trên cả hai máy.
+
+### Vệt chữ rò trên đỉnh mục khi đang cuộn
+
+Hàng tiêu đề là `<th>` `position: sticky` NẰM TRONG khung cuộn. Trên máy có tỉ
+lệ điểm ảnh **lẻ** — đúng hai máy đang ngắm: A51 (2,625) và S21 FE (2,75) —
+Chromium chốt vị trí đã "dính" của `<th>` và mép cắt của khung cuộn về hai số
+nguyên điểm ảnh khác nhau, nên 1–2px đầu của hàng đang trượt bên dưới ló lên
+phía TRÊN hàng tiêu đề: nhìn ra một vệt chữ cụt mờ mờ ngay dưới viền trên của
+mục. Không phải lỗi bố cục — `getBoundingClientRect` nói `<th>` nằm đúng mép
+khung (369px, trùng khít) — nên đẩy `top`, dày viền hay bỏ bo góc đều không
+chữa được (đã thử đủ). Cách chữa: dán một dải đục cao 4px đúng màu tiêu đề lên
+đỉnh mục bằng `.cal-sec::after`. Dải nằm trên `.cal-sec` chứ KHÔNG phải trên
+khung cuộn nên không bị chính khung ấy cắt mất; thụt vào 1px để viền của mục
+vẫn hiện nguyên, và `pointer-events: none` để bấm vào vẫn gập/mở được.
 
 ## Widget theo kịp ngôn ngữ
 

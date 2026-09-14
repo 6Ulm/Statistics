@@ -246,6 +246,13 @@
         // mà <thead> chỉ đứng yên sau khi cột đã ghim xong.
         syncSectionColumns();
         applySections();
+        // Chia lại chiều cao LẦN CUỐI, khi hai bảng đã dựng xong và cột đã
+        // ghim. Lượt fitGrid ở trên chạy TRƯỚC renderAmBan(), nên lúc ấy hàng
+        // tiêu đề Lịch âm còn là của lần vẽ trước (lần vẽ đầu tiên thì chưa
+        // có) và `avail` dôi ra đúng một hàng tiêu đề. Đo trên A51: Tiết khí
+        // được 224px lúc vừa mở tab rồi tụt còn 208px ngay khi người dùng chạm
+        // vào Lịch âm — tiêu đề nhảy 16px ngay dưới ngón tay.
+        fitGrid(lastWeeks);
         publishLunarCache();
     }
 
@@ -314,7 +321,44 @@
 
         var rowH = Math.max(ROW_MIN, Math.min(ROW_MAX, Math.floor((avail - secH) / weeks)));
         document.documentElement.style.setProperty('--cal-row-h', rowH + 'px');
-        shareSectionHeight(Math.max(SEC_MIN, Math.floor(avail - rowH * weeks)));
+
+        // CỘNG LẠI hai hàng tiêu đề trước khi đem chia. Ở trên đã trừ chúng ra
+        // để `rowH` không phụ thuộc mục nào đang mở — nhưng thứ
+        // shareSectionHeight() đặt là `max-height` của CẢ KHUNG, mà khung thì
+        // chứa luôn <thead>. Đưa thẳng con số đã trừ ấy đi chia là trừ hai hàng
+        // tiêu đề tới hai lần: đo trên A51 (852px) thì cụm hai mục thấp hơn chỗ
+        // nó được phép chiếm đúng 48px, hiện ra thành một dải trống ở đáy.
+        var budget = Math.max(SEC_MIN, Math.floor(avail - rowH * weeks)) + jqHeadH + amHeadH;
+        // Chỉ chốt khi CẢ HAI bảng đã dựng xong — lượt fitGrid đầu của mỗi lần
+        // vẽ chạy trước renderAmBan() nên có thể chưa thấy hàng tiêu đề nào.
+        decideAmDefault(budget, jqHeadH > 0 && amHeadH > 0);
+        shareSectionHeight(budget);
+    }
+
+    /**
+     * Lần chạy đầu tiên (chưa có lựa chọn cũ nào): chốt MỘT LẦN xem có mở sẵn
+     * Lịch âm hay không, theo chỗ trống thật của máy.
+     *
+     * Trần của Tiết khí là JQ_SHARE phần trăm ngân sách và KHÔNG đổi theo việc
+     * Lịch âm mở hay đóng (xem shareSectionHeight) — nên phần còn lại là phần
+     * dành riêng cho Lịch âm, đóng nó lại thì phần ấy bỏ không. Trên máy cao
+     * (A51 852px, S21 FE 790px) phần bỏ không ấy trên 100px, thành một dải
+     * trống thấy rõ dưới hàng tiêu đề "Tháng âm". Máy đủ cao để Lịch âm có chỗ
+     * dùng được thì mở sẵn, dải trống ấy hết; máy thấp thì vẫn đóng, vì mở ra
+     * cũng chỉ được một hai hàng.
+     *
+     * Chốt xong thì GHI vào kho tuỳ chọn chứ không giữ riêng trong bộ nhớ:
+     * widget gập/mở theo đúng khoá này, mà widget thì phải khớp với tab Lịch.
+     */
+    var amDefaultPending = false;
+    function decideAmDefault(budget, measured) {
+        if (!amDefaultPending || !measured) return;
+        amDefaultPending = false;
+        if (budget - Math.floor(budget * JQ_SHARE) < SEC_MIN) return;
+        openAm = true;
+        prefSet(K_SEC_AM, '1');
+        applySections();
+        pokeWidget();
     }
 
     /**
@@ -882,11 +926,13 @@
         viewM = now.getMonth() + 1;
         selected = { y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate() };
 
-        // Trạng thái gập: mặc định mở Tiết khí, đóng Lịch âm — mở cả hai ngay
-        // từ đầu thì trên máy thấp lưới lịch bị bóp về ROW_MIN.
+        // Trạng thái gập: Tiết khí luôn mở sẵn. Lịch âm thì tuỳ máy — chưa có
+        // lựa chọn cũ thì để fitGrid() chốt một lần theo chỗ trống đo được
+        // (xem decideAmDefault); có rồi thì nghe người dùng.
         var sj = prefGet(K_SEC_JQ), sa = prefGet(K_SEC_AM);
         if (sj === '0' || sj === '1') openJq = sj === '1';
         if (sa === '0' || sa === '1') openAm = sa === '1';
+        else amDefaultPending = true;
         applySections();
 
         // Công bố ngay từ lúc MỞ ỨNG DỤNG — widget phải đúng kể cả khi người
