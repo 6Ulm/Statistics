@@ -1,0 +1,67 @@
+# Dựng APK trên máy chủ GitHub — không cần Android Studio, không cần máy ảo.
+#
+# Chạy tay: tab Actions → "Dựng APK" → Run workflow → chọn nhánh → Run.
+# Xong thì tải ở mục Artifacts của lần chạy ấy (tệp .zip chứa APK).
+#
+# Bản DEBUG ký bằng khoá debug tự sinh của Gradle: cài thẳng lên máy được,
+# không lên được CH Play. Đổi sang assembleRelease thì phải có khoá ký riêng.
+name: Dựng APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'android/**'
+      - '.github/workflows/build-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cài JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Máy chủ ubuntu-latest có sẵn Android SDK; bước này chỉ đặt ANDROID_HOME
+      # và nhận điều khoản cho các gói còn thiếu.
+      - name: Chuẩn bị Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Nhớ kho Gradle giữa các lần chạy
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Dựng bản debug
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon --stacktrace assembleDebug
+
+      - name: Đặt tên APK theo phiên bản
+        run: |
+          mkdir -p out
+          cp app/build/outputs/apk/debug/*.apk "out/BaTuKyMon-${GITHUB_SHA::7}-debug.apk"
+          ls -la out
+
+      - name: Nộp APK lên Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: BaTuKyMon-debug-apk
+          path: android/out/*.apk
+          if-no-files-found: error
+          retention-days: 30
