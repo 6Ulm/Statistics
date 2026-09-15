@@ -136,6 +136,16 @@ object WidgetPrefs {
         else app(context).getString(SEC_AM, null) == "1"
 
     /**
+     * Lật gập/mở một mục rồi ghi lại NGAY vào đúng khoá mà tab Lịch đọc.
+     *
+     * Trạng thái này dùng chung cho mọi widget và cho cả ứng dụng — không phải
+     * của riêng một widget — nên bấm ở đâu cũng đổi cho tất cả.
+     */
+    fun toggleSec(context: Context, key: String) {
+        app(context).edit().putString(key, if (secOpen(context, key)) "0" else "1").apply()
+    }
+
+    /**
      * Múi giờ của địa điểm người dùng đã chọn trong ứng dụng. Ứng dụng ghi cả
      * cụm vị trí thành JSON dưới khoá `qmdj.location` (xem location.js).
      *

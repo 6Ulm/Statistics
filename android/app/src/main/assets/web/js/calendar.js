@@ -857,6 +857,29 @@
      * đang có — nên mọi tỉ lệ trong [0,95; 1] đều "đúng" và app dừng ở đâu là
      * tuỳ thứ tự chạy. Cùng một máy, cùng một tháng, hai lần mở ra hai cỡ chữ.
      */
+    /**
+     * Đọc lại trạng thái gập/mở từ kho tuỳ chọn và áp lên trang.
+     *
+     * Widget cũng gập/mở được hai mục và ghi thẳng vào hai khoá này. Không có
+     * hàm này thì quay lại ứng dụng sau khi bấm ở widget, tab Lịch vẫn hiện
+     * trạng thái cũ — mà cú bấm tiếp theo trong ứng dụng lại lật từ trạng thái
+     * sai ấy, thành ra hai bên cãi nhau. MainActivity.onResume() gọi hàm này.
+     */
+    window.__calSyncSections = function () {
+        var sj = prefGet(K_SEC_JQ), sa = prefGet(K_SEC_AM);
+        var nj = (sj === '0' || sj === '1') ? sj === '1' : openJq;
+        var na = (sa === '0' || sa === '1') ? sa === '1' : openAm;
+        if (nj === openJq && na === openAm) return;
+        openJq = nj; openAm = na;
+        // Đã có lựa chọn rõ ràng rồi thì đừng để fitGrid tự chốt lại nữa.
+        amDefaultPending = false;
+        applySections();
+        if (document.body.classList.contains('view-cal')) {
+            fitGrid(lastWeeks);
+            if (openJq) setTimeout(scrollToActiveJieQi, 40);
+        }
+    };
+
     window.__calFit = function () {
         if (!document.body.classList.contains('view-cal')) return;
         try { fitGrid(lastWeeks); } catch (e) {}

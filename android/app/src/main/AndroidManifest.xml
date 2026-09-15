@@ -71,6 +71,7 @@
                 <action android:name="com.bazi.qimen.WIDGET_NEXT" />
                 <action android:name="com.bazi.qimen.WIDGET_TODAY" />
                 <action android:name="com.bazi.qimen.WIDGET_PICK" />
+                <action android:name="com.bazi.qimen.WIDGET_SEC" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

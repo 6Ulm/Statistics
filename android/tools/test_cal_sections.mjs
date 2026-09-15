@@ -885,7 +885,7 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         /<service[\s\S]{0,260}\.WidgetSectionService[\s\S]{0,260}android\.permission\.BIND_REMOTEVIEWS/
             .test(manifest));
     ok('provider nối adapter cho cả hai ListView',
-        /setRemoteAdapter\(listId, sectionIntent\(context, id, sec\.key\)\)/.test(provKt));
+        /setRemoteAdapter\(sv\.listId, sectionIntent\(context, id, sv\.key\)\)/.test(provKt));
     // filterEquals bỏ qua extras: hai mục chỉ khác extras thì dùng chung một
     // factory và cùng hiện một bảng.
     ok('khoá mục nằm trong Intent.data, không chỉ trong extras',
@@ -894,7 +894,7 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         /notifyAppWidgetViewDataChanged\(id, R\.id\.jqList\)/.test(provKt) &&
         /notifyAppWidgetViewDataChanged\(id, R\.id\.amList\)/.test(provKt));
     ok('mục đang mở thì cuộn tới hàng đang hiệu lực',
-        /setScrollPosition\(listId, sec\.active\)/.test(provKt));
+        /setScrollPosition\(sv\.listId, sec\.active\)/.test(provKt));
 
     // Chạm ngày: 42 ô, mỗi ô một PendingIntent riêng.
     const cellIds = (layXml.match(/@\+id\/cell\d\d/g) || []).length;
@@ -907,6 +907,40 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         !/MainActivity::class\.java/.test(provKt) && !/EXTRA_TAB/.test(provKt));
     ok('ngày đang chọn có viền riêng, khác hôm nay',
         /isSel/.test(provKt) && /#007BFF/.test(provKt));
+
+    /* ── Gập/mở ngay trên widget ──
+       Lỗi người dùng gặp: "trong lịch đã ghim, mục Tiết khí không mở ra được".
+       Widget vốn chỉ SOI trạng thái của ứng dụng, không có chỗ nào bấm để lật —
+       ai lỡ gập Tiết khí trong ứng dụng thì ngoài màn hình chính đành chịu. */
+    ok('hàng tiêu đề hai mục bấm được',
+        /setOnClickPendingIntent\(sv\.headId/.test(provKt)
+        && /R\.id\.jqHead\b/.test(provKt) && /R\.id\.amHead\b/.test(provKt));
+    ok('bấm vào là lật đúng khoá mà tab Lịch đọc',
+        /ACTION_SEC/.test(provKt) && /WidgetPrefs\.toggleSec\(context, key\)/.test(provKt)
+        && /putString\(key, if \(secOpen\(context, key\)\) "0" else "1"\)/.test(supKt));
+    ok('…rồi vẽ lại MỌI widget, vì trạng thái là của chung',
+        /ACTION_SEC -> \{[\s\S]{0,400}?refreshAll\(context\)/.test(provKt));
+    ok('manifest khai action gập/mở',
+        /com\.bazi\.qimen\.WIDGET_SEC/.test(manifest));
+    ok('hai hàng tiêu đề dùng hai PendingIntent khác nhau',
+        /toggle\/\$key/.test(provKt) && /if \(key == WidgetPrefs\.SEC_JQ\) 4 else 5/.test(provKt));
+    ok('tiêu đề có dấu ▾/▸ cho biết bấm được', /"  ▾" else "  ▸"/.test(provKt));
+
+    /* ── Mục dựng hụt không được để lại ListView mồ côi ──
+       WidgetSections.build() bỏ hẳn một mục nếu năm đang xem thiếu dữ liệu.
+       Vòng vẽ mà duyệt theo `secs` thì ListView của mục ấy giữ nguyên trạng
+       thái mặc định của XML — đang HIỆN, KHÔNG có adapter — thành một mảng
+       trắng chiếm chỗ mà chẳng bao giờ có hàng nào. */
+    ok('vòng vẽ duyệt danh sách CỐ ĐỊNH hai mục, không duyệt theo secs',
+        /for \(sv in SECTION_VIEWS\)/.test(provKt) && !/for \(sec in secs\)/.test(provKt));
+    ok('mục không dựng được thì ẩn cả tiêu đề lẫn danh sách',
+        /setViewVisibility\(sv\.headId, if \(sec == null\)/.test(provKt)
+        && /setViewVisibility\(sv\.listId, if \(open\)/.test(provKt));
+
+    /* ── Chiều ngược lại: bấm ở widget thì ứng dụng phải biết ── */
+    ok('ứng dụng đọc lại trạng thái mỗi lần trở lại',
+        /override fun onResume\(\)/.test(mainKt)
+        && /__calSyncSections/.test(mainKt) && /__calSyncSections/.test(calJs));
     // Lưới bitmap phải luôn 6 hàng, không thì ô chạm lệch khỏi ô nhìn thấy.
     ok('lưới luôn 6 hàng cho khớp lưới bắt chạm',
         /GRID_WEEKS \* 7/.test(provKt) && /GRID_WEEKS = 6/.test(provKt));

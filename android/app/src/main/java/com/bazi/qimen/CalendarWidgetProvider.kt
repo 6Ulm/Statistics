@@ -61,6 +61,14 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         super.onReceive(context, intent)
         when (intent.action) {
             ACTION_REFRESH -> refreshAll(context)
+            ACTION_SEC -> {
+                val key = intent.getStringExtra(EXTRA_SEC_KEY)
+                if (key != WidgetPrefs.SEC_JQ && key != WidgetPrefs.SEC_AM) return
+                WidgetPrefs.toggleSec(context, key)
+                // Gập/mở là trạng thái CHUNG của ứng dụng chứ không của riêng
+                // một widget (tab Lịch đọc cùng khoá ấy), nên vẽ lại tất cả.
+                refreshAll(context)
+            }
             ACTION_PREV, ACTION_NEXT, ACTION_TODAY, ACTION_PICK -> {
                 val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, 0)
                 if (id == 0) return
@@ -166,25 +174,41 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             )
         }
 
-        // hai mục
-        for (sec in secs) {
-            val jq = sec.key == WidgetSections.JQ
-            val headIds = if (jq) JQ_HEAD_IDS else AM_HEAD_IDS
+        // hai mục — duyệt theo DANH SÁCH CỐ ĐỊNH, không duyệt theo `secs`.
+        //
+        // WidgetSections.build() bỏ hẳn một mục nếu lần này không dựng được
+        // (bảng tra thiếu dữ liệu cho năm đang xem). Duyệt theo `secs` thì mục
+        // ấy không được đụng tới một lần nào: ListView của nó giữ nguyên trạng
+        // thái mặc định của XML — ĐANG HIỆN, KHÔNG có adapter — nên hiện ra
+        // thành một mảng trắng chiếm đúng phần chiều cao của mình mà chẳng bao
+        // giờ có hàng nào, còn hàng tiêu đề thì vẫn đủ chữ. Nhìn y như "mục này
+        // mở không ra".
+        for (sv in SECTION_VIEWS) {
+            val sec = secs.firstOrNull { it.key == sv.key }
+            val open = sec != null && sec.open
+            views.setViewVisibility(sv.headId, if (sec == null) View.GONE else View.VISIBLE)
+            views.setViewVisibility(sv.listId, if (open) View.VISIBLE else View.GONE)
+            if (sec == null) continue
             for (i in 0..2) {
-                views.setTextViewText(headIds[i], sec.heads[i])
-                views.setTextColor(headIds[i], sec.headFg)
+                // Dấu ▾/▸ ở cột đầu: hàng tiêu đề bấm được thì phải có dấu cho
+                // biết, và cột đầu là cột căn trái duy nhất nên thêm vào đây
+                // không đẩy hai cột kia lệch tâm.
+                views.setTextViewText(
+                    sv.headIds[i],
+                    if (i == 0) sec.heads[0] + (if (open) "  ▾" else "  ▸") else sec.heads[i]
+                )
+                views.setTextColor(sv.headIds[i], sec.headFg)
                 // Cùng luật co chữ với hàng giá trị, không thì tiêu đề to hơn
                 // hẳn phần dưới trên widget bóp hẹp.
                 views.setTextViewTextSize(
-                    headIds[i], TypedValue.COMPLEX_UNIT_SP, WidgetLayout.rowTextSp(wDp)
+                    sv.headIds[i], TypedValue.COMPLEX_UNIT_SP, WidgetLayout.rowTextSp(wDp)
                 )
             }
-            val listId = if (jq) R.id.jqList else R.id.amList
-            views.setViewVisibility(listId, if (sec.open) View.VISIBLE else View.GONE)
-            views.setRemoteAdapter(listId, sectionIntent(context, id, sec.key))
+            views.setOnClickPendingIntent(sv.headId, secToggleIntent(context, id, sv.prefKey))
+            views.setRemoteAdapter(sv.listId, sectionIntent(context, id, sv.key))
             // Cuộn tới hàng đang hiệu lực, y như tab Lịch tự cuộn tới tiết khí
             // của hôm nay khi mở mục.
-            if (sec.open && sec.active > 0) views.setScrollPosition(listId, sec.active)
+            if (open && sec.active > 0) views.setScrollPosition(sv.listId, sec.active)
         }
 
         views.setOnClickPendingIntent(R.id.widgetPrev, navIntent(context, id, ACTION_PREV))
@@ -236,6 +260,27 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             .putExtra(EXTRA_JDN, jdn)
         return PendingIntent.getBroadcast(
             context, id * CODES_PER_WIDGET + CELL_CODE_BASE + idx, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    /**
+     * PendingIntent cho hàng tiêu đề của một mục: bấm là gập/mở.
+     *
+     * `data` riêng cho từng widget và từng mục vì `filterEquals` bỏ qua extras —
+     * để trong extras không thôi thì hai hàng tiêu đề dùng chung một
+     * PendingIntent và bấm cái nào cũng lật cùng một mục.
+     */
+    private fun secToggleIntent(context: Context, id: Int, key: String): PendingIntent {
+        val intent = Intent(context, CalendarWidgetProvider::class.java)
+            .setAction(ACTION_SEC)
+            .setData(Uri.parse("qmdj://widget/$id/toggle/$key"))
+            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
+            .putExtra(EXTRA_SEC_KEY, key)
+        return PendingIntent.getBroadcast(
+            context,
+            id * CODES_PER_WIDGET + if (key == WidgetPrefs.SEC_JQ) 4 else 5,
+            intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
@@ -423,8 +468,11 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         const val ACTION_NEXT = "com.bazi.qimen.WIDGET_NEXT"
         const val ACTION_TODAY = "com.bazi.qimen.WIDGET_TODAY"
         const val ACTION_PICK = "com.bazi.qimen.WIDGET_PICK"
+        /** Chạm hàng tiêu đề một mục: gập/mở đúng như trong tab Lịch. */
+        const val ACTION_SEC = "com.bazi.qimen.WIDGET_SEC"
 
         private const val EXTRA_JDN = "com.bazi.qimen.JDN"
+        private const val EXTRA_SEC_KEY = "com.bazi.qimen.SEC_KEY"
 
         /**
          * Lưới LUÔN sáu hàng — số hàng của tháng dài nhất — nên lưới bắt chạm
@@ -446,6 +494,17 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         )
         private val JQ_HEAD_IDS = intArrayOf(R.id.jqHead0, R.id.jqHead1, R.id.jqHead2)
         private val AM_HEAD_IDS = intArrayOf(R.id.amHead0, R.id.amHead1, R.id.amHead2)
+
+        /** Mọi id của MỘT mục, để vòng vẽ không phải rẽ nhánh theo khoá. */
+        private class SecViews(
+            val key: String, val prefKey: String,
+            val headId: Int, val headIds: IntArray, val listId: Int,
+        )
+
+        private val SECTION_VIEWS = listOf(
+            SecViews(WidgetSections.JQ, WidgetPrefs.SEC_JQ, R.id.jqHead, JQ_HEAD_IDS, R.id.jqList),
+            SecViews(WidgetSections.AM, WidgetPrefs.SEC_AM, R.id.amHead, AM_HEAD_IDS, R.id.amList),
+        )
 
         /** 42 ô của lưới bắt chạm, theo thứ tự đọc (hàng rồi cột). */
         private val CELL_IDS = intArrayOf(

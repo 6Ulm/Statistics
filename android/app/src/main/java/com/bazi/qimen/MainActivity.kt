@@ -160,6 +160,21 @@ class MainActivity : android.app.Activity() {
         CalendarWidgetProvider.refreshNow(this)
     }
 
+    /**
+     * Chiều ngược lại: widget cũng gập/mở được hai mục, và nó ghi thẳng vào
+     * kho tuỳ chọn. Trang web chỉ đọc kho ấy MỘT LẦN lúc nạp, nên quay lại
+     * ứng dụng sau khi bấm ở widget thì tab Lịch vẫn hiện trạng thái cũ — và
+     * cú bấm tiếp theo trong ứng dụng sẽ lật từ trạng thái sai ấy. Bảo trang
+     * đọc lại mỗi lần ứng dụng trở lại.
+     */
+    override fun onResume() {
+        super.onResume()
+        if (webViewGone) return
+        webView.evaluateJavascript(
+            "window.__calSyncSections && window.__calSyncSections()", null
+        )
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         if (!webViewGone) webView.saveState(outState)

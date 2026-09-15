@@ -347,7 +347,9 @@ function headEl(sec, sp) {
         t.style.cssText = `flex:${COL[i]} 1 0;text-align:${grav[i]};` +
             `color:${sec.headFg};font-weight:700;font-size:${sp}px`;
         if (i === 0) t.style.paddingLeft = '5px';
-        t.textContent = txt;
+        // Dấu ▾/▸ ở cột đầu — giống hệt CalendarWidgetProvider.render(): hàng
+        // tiêu đề bấm được thì phải có dấu cho biết.
+        t.textContent = i === 0 ? txt + (sec.open ? '  ▾' : '  ▸') : txt;
         el.append(t);
     });
     return el;

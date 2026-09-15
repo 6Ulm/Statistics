@@ -940,6 +940,37 @@ theo múi giờ" — suy như vậy còn lệch ~0,35% số tháng và ~1% nhãn
 UTC+7. Bảng đóng sẵn vẫn giữ làm đường lùi (đúng tuyệt đối ở UTC+7, và vẫn hơn
 hẳn cách cũ là chốt cứng mùng 1, vốn lệch tới 16% ở UTC+2).
 
+### Gập/mở hai mục ngay trên widget
+
+Triệu chứng người dùng gặp: trong lịch đã ghim, mục **Tiết khí không mở ra
+được**, chỉ có Lịch âm là mở sẵn.
+
+Widget vốn chỉ **soi** trạng thái của ứng dụng: nó đọc `qmdj.calSecJq` và
+`qmdj.calSecAm` rồi vẽ theo, không có chỗ nào bấm được để lật. Ai lỡ gập Tiết
+khí trong tab Lịch thì ngoài màn hình chính đành chịu — mà hai hàng tiêu đề
+trông y hệt trong ứng dụng, nơi bấm vào là gập/mở được, nên chẳng có gì gợi ý
+rằng ở đây chúng chỉ để nhìn.
+
+Nay hàng tiêu đề của mỗi mục là một `PendingIntent`: bấm là lật đúng khoá mà
+tab Lịch đọc, rồi vẽ lại **mọi** widget — trạng thái này là của chung, không
+phải của riêng một widget. Cột đầu thêm dấu `▾`/`▸` cho biết bấm được (cột đầu
+là cột căn trái duy nhất, thêm vào đấy không đẩy hai cột kia lệch tâm).
+
+Kèm chiều ngược lại: trang web chỉ đọc hai khoá ấy MỘT LẦN lúc nạp, nên bấm ở
+widget rồi quay lại ứng dụng thì tab Lịch vẫn hiện trạng thái cũ — và cú bấm
+tiếp theo trong ứng dụng sẽ lật từ trạng thái sai ấy. `MainActivity.onResume()`
+nay gọi `window.__calSyncSections()` để trang đọc lại.
+
+Và một lỗi nữa lòi ra khi soi chỗ này: `WidgetSections.build()` **bỏ hẳn** một
+mục nếu năm đang xem thiếu dữ liệu trong bảng tra (ví dụ lật tới mép bảng, nơi
+`jieQiYearOf` không gom đủ 24 mốc). Vòng vẽ duyệt theo danh sách trả về nên mục
+bị bỏ ấy không được đụng tới một lần nào: `ListView` của nó giữ nguyên trạng
+thái mặc định của XML — **đang hiện, không có adapter** — thành một mảng trắng
+chiếm đúng phần chiều cao của mình mà chẳng bao giờ có hàng nào, còn hàng tiêu
+đề thì vẫn đủ chữ. Nhìn đúng như "mục này mở không ra". Nay vòng vẽ duyệt một
+danh sách CỐ ĐỊNH hai mục và luôn đặt trạng thái cho cả hai; mục nào không dựng
+được thì ẩn cả tiêu đề lẫn danh sách.
+
 ### Thẻ `<View>` làm widget hỏng hẳn — không có lỗi nào hiện ra
 
 Triệu chứng người dùng gặp: bấm "Ghim lịch ra màn hình chính", hộp thoại của
