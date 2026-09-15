@@ -56,6 +56,18 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
+      # Gradle tự sinh ~/.android/debug.keystore nếu chưa có — mà máy chủ thì
+      # sạch trơn mỗi lần chạy, nên MỖI lần dựng ra một khoá KHÁC. Hai APK khác
+      # chữ ký thì Android không cho cài đè: người dùng phải gỡ bản cũ đi mới
+      # cài được bản mới. Nhớ lại khoá ấy giữa các lần chạy để bản sau cài đè
+      # được lên bản trước. Đây là khoá debug, ai cũng biết mật khẩu
+      # ("android") — không phải khoá phát hành, không có gì để giữ kín.
+      - name: Nhớ khoá debug để còn cài đè được
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: debug-keystore-v1
+
       - name: Dựng bản debug
         run: |
           chmod +x ./gradlew
