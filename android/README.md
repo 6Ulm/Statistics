@@ -940,6 +940,35 @@ theo múi giờ" — suy như vậy còn lệch ~0,35% số tháng và ~1% nhãn
 UTC+7. Bảng đóng sẵn vẫn giữ làm đường lùi (đúng tuyệt đối ở UTC+7, và vẫn hơn
 hẳn cách cũ là chốt cứng mùng 1, vốn lệch tới 16% ở UTC+2).
 
+### Soi bằng ẢNH CHỤP, không suy từ mã — hai lỗi nữa
+
+Mọi phép soi trước đều đo DOM rồi suy ra; lượt này chụp thật 28 tấm (2 máy × 2
+thứ tiếng × 7 trạng thái) rồi nhìn từng tấm một. Hai chỗ chỉ lộ ra khi nhìn:
+
+**1. Mở bảng chi tiết ở tab Kỳ Môn thì chẳng thấy gì xảy ra.** Hàng tiêu đề
+"Bảng chi tiết — …" là khối CUỐI CÙNG của trang, mà `viewport.js` thì căn cho
+đáy nó chạm đúng mép thanh tab — nên toàn bộ phần vừa mở nằm dưới mép màn
+hình. Đo trên A51: bảng cao 362px, **không một pixel nào** lọt vào khung nhìn.
+Người dùng bấm, mũi tên lật, trang đứng im — tưởng nút hỏng, mà thật ra phải
+tự vuốt xuống mới thấy. Nay mở xong thì trang cuộn tới, vừa đủ để thấy hết
+bảng mà vẫn còn hàng tiêu đề trên màn hình.
+
+**2. Mục Tiết khí tự cuộn xong để lại một hàng cụt dưới hàng tiêu đề.** Hàng
+tiêu đề là `<th>` dính, đè lên phần trên khung cuộn; `scrollToActiveJieQi()`
+thả `scrollTop` rơi tự do nên hàng trên cùng bị cắt ngang ngay dưới nó — nhìn
+ra một vệt chữ cụt, giống lỗi vẽ chứ không giống "còn cuộn được nữa". Hàng
+bảng tiếng Trung cao 22px, tiếng Việt 20px, nên chỗ dừng tự do rơi giữa hàng ở
+thứ tiếng này mà lại đúng mép ở thứ tiếng kia — cùng một máy, hai kiểu. Nay
+nắn `scrollTop` về đúng mép một hàng (đo bằng rect chứ không bằng `offsetTop`:
+`offsetTop` của một `<tr>` đo theo `offsetParent`, mà `offsetParent` không chắc
+là khung cuộn).
+
+Còn một chỗ KHÔNG phải lỗi nhưng đáng biết: **bản tiếng Trung không có ba bảng
+chi tiết** (Trí Nhuận / Sách Bổ / Âm Bàn). Mã gác chúng sau điều kiện `notZH`
+ở cả hai chỗ — cố ý, vì nội dung ba bảng ấy chưa dịch (ngay nhãn cũng còn là
+"Bảng chi tiết - Âm Bàn pháp"). Đổi sang tiếng Trung là mất hẳn một tính năng
+mà không có dấu hiệu gì.
+
 ### Gập/mở hai mục ngay trên widget
 
 Triệu chứng người dùng gặp: trong lịch đã ghim, mục **Tiết khí không mở ra

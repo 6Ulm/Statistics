@@ -819,8 +819,30 @@
         var row = document.getElementById('calJqActive');
         var body = document.getElementById('calJieQi');
         if (!row || !body) return;
-        body.scrollTop = Math.max(0,
-            row.offsetTop - body.clientHeight / 2 + row.offsetHeight / 2);
+        // Hàng tiêu đề DÍNH nên nó che mất phần trên của khung cuộn: chỗ thấy
+        // được chỉ là phần dưới nó.
+        var thead = body.querySelector('thead');
+        var headH = thead ? thead.getBoundingClientRect().height : 0;
+        // Toạ độ trong KHÔNG GIAN NỘI DUNG của khung cuộn. Dùng rect chứ không
+        // dùng offsetTop: offsetTop đo theo offsetParent, mà offsetParent của
+        // một <tr> không chắc là khung cuộn này.
+        var base = body.getBoundingClientRect().top - body.scrollTop;
+        var yOf = function (el) { return el.getBoundingClientRect().top - base; };
+        var rowH = row.getBoundingClientRect().height;
+        var want = yOf(row) - headH - (body.clientHeight - headH - rowH) / 2;
+        // NẮN về đúng mép một hàng. Thả tự do thì hàng trên cùng bị cắt ngang
+        // ngay dưới hàng tiêu đề — nhìn ra một vệt chữ cụt, giống lỗi vẽ chứ
+        // không giống "còn cuộn được nữa". Tiếng Trung hàng cao 22px, tiếng
+        // Việt 20px, nên chỗ dừng tự do rơi giữa hàng ở thứ tiếng này mà lại
+        // đúng mép ở thứ tiếng kia — cùng một máy, hai kiểu.
+        var rows = body.querySelectorAll('tbody tr');
+        var best = want, bestD = Infinity;
+        for (var i = 0; i < rows.length; i++) {
+            var top = yOf(rows[i]) - headH;      // scrollTop để hàng này nằm sát tiêu đề
+            var d = Math.abs(top - want);
+            if (d < bestD) { bestD = d; best = top; }
+        }
+        body.scrollTop = Math.max(0, Math.round(best));
     }
 
 

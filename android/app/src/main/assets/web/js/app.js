@@ -44,6 +44,24 @@ window.toggleDetailPanel = function(which) {
     const isOpen = body.style.display === 'block';
     body.style.display = isOpen ? 'none' : 'block';
     if (chev) chev.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+    if (isOpen) return;
+
+    // Vừa mở ra thì phải CUỘN TỚI. Hàng tiêu đề của bảng là khối CUỐI CÙNG của
+    // trang và viewport.js căn cho đáy nó chạm đúng mép thanh tab, nên 100%
+    // phần vừa mở nằm dưới mép màn hình: bấm vào, mũi tên lật, và không có gì
+    // khác xảy ra — người dùng tưởng nút hỏng. Đo trên A51: bảng cao 362px,
+    // không một pixel nào lọt vào khung nhìn.
+    requestAnimationFrame(function () {
+        const panel = body.parentElement || body;
+        const dock  = getDOM('bottomDock');
+        const limit = dock ? dock.getBoundingClientRect().top : window.innerHeight;
+        const r = panel.getBoundingClientRect();
+        if (r.bottom <= limit) return;                  // đã thấy trọn
+        // Cuộn vừa đủ để thấy hết bảng, nhưng KHÔNG đẩy hàng tiêu đề lên khỏi
+        // mép trên — mất tiêu đề thì không biết mình đang xem bảng nào.
+        const by = Math.min(r.bottom - limit, r.top);
+        if (by > 1) window.scrollBy({ top: by, behavior: 'smooth' });
+    });
 };
 
 // --- COUNTRY DATA & TIMEZONE HELPER ---

@@ -537,6 +537,95 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     }
 }
 
+/* ── 3e2. Mở bảng gập ở tab Kỳ Môn thì phải CUỘN TỚI ──
+   Hàng tiêu đề của bảng chi tiết là khối cuối cùng của trang, mà viewport.js
+   căn cho đáy nó chạm đúng mép thanh tab — nên 100% phần vừa mở nằm dưới mép
+   màn hình. Bấm vào: mũi tên lật, và không có gì khác xảy ra. Đo trên A51:
+   bảng cao 362px, không một pixel nào lọt vào khung nhìn. */
+{
+    console.log('\nMở bảng gập ở tab Kỳ Môn');
+    for (const [nm, w, h] of [['A51', 412, 852], ['S21 FE', 393, 790]]) {
+        const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+        const page = await ctx.newPage();
+        const errs = []; page.on('pageerror', e => errs.push(e.message));
+        await page.goto(base, { waitUntil: 'networkidle' });
+        await page.waitForTimeout(1200);
+        await page.evaluate(() => window.showTab('qmdj'));
+        await page.waitForTimeout(700);
+        const truoc = await page.evaluate(() => {
+            const p = document.getElementById('ambanPanel');
+            const d = document.getElementById('bottomDock');
+            return p.getBoundingClientRect().bottom <= d.getBoundingClientRect().top + 1;
+        });
+        ok(`${nm}: lúc đóng, bảng nằm trọn trong màn hình`, truoc);
+        await page.evaluate(() => document.getElementById('ambanHeader').click());
+        await page.waitForTimeout(1400);
+        const sau = await page.evaluate(() => {
+            const p = document.getElementById('ambanPanel');
+            const head = document.getElementById('ambanHeader');
+            const d = document.getElementById('bottomDock');
+            const lim = d.getBoundingClientRect().top;
+            return {
+                mo: getComputedStyle(document.getElementById('ambanBody')).display === 'block',
+                thayHet: p.getBoundingClientRect().bottom <= lim + 1,
+                conTieuDe: head.getBoundingClientRect().top >= -1,
+                cuonRoi: window.scrollY > 0,
+            };
+        });
+        ok(`${nm}: bấm là bảng mở ra`, sau.mo);
+        ok(`${nm}: …và trang cuộn tới cho thấy hết bảng`, sau.cuonRoi && sau.thayHet,
+            JSON.stringify(sau));
+        ok(`${nm}: …mà vẫn còn thấy hàng tiêu đề`, sau.conTieuDe);
+        ok(`${nm}: không lỗi JS`, errs.length === 0, errs.join('; '));
+        await ctx.close();
+    }
+}
+
+/* ── 3e3. Mục Tiết khí tự cuộn thì phải DỪNG ĐÚNG MÉP HÀNG ──
+   Hàng tiêu đề dính đè lên phần trên khung cuộn. Thả cho scrollTop rơi tự do
+   thì hàng trên cùng bị cắt ngang ngay dưới nó — nhìn ra một vệt chữ cụt,
+   giống lỗi vẽ chứ không giống "còn cuộn được nữa". Hàng bảng tiếng Trung cao
+   22px, tiếng Việt 20px, nên chỗ dừng tự do rơi giữa hàng ở thứ tiếng này mà
+   lại đúng mép ở thứ tiếng kia — cùng một máy, hai kiểu. */
+{
+    console.log('\nMục Tiết khí dừng đúng mép hàng');
+    for (const lang of ['vi', 'zh']) {
+        const ctx = await browser.newContext({ viewport: { width: 412, height: 852 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+        const page = await ctx.newPage();
+        const errs = []; page.on('pageerror', e => errs.push(e.message));
+        await page.goto(base, { waitUntil: 'networkidle' });
+        await page.waitForTimeout(1100);
+        await page.click('#langDisplayBtn');
+        await page.waitForSelector(`#optOverlay.open .opt-row[data-value="${lang}"]`);
+        await page.click(`.opt-row[data-value="${lang}"]`);
+        await page.waitForTimeout(800);
+        await page.evaluate(() => {
+            const p = document.getElementById('calPinBtn');
+            if (p) p.style.display = 'block';
+        });
+        await page.evaluate(() => window.showTab('cal'));
+        await page.waitForTimeout(800);
+        await page.evaluate(() => window.__calRefreshLabels && window.__calRefreshLabels());
+        await page.waitForTimeout(800);
+        const m = await page.evaluate(() => {
+            const body = document.getElementById('calJieQi');
+            const thead = body.querySelector('thead');
+            const headBot = body.getBoundingClientRect().top + thead.getBoundingClientRect().height;
+            const rows = [...body.querySelectorAll('tbody tr')];
+            const first = rows.find(r => r.getBoundingClientRect().bottom > headBot + 0.5);
+            return {
+                daCuon: body.scrollTop > 0,
+                lech: first ? +(first.getBoundingClientRect().top - headBot).toFixed(1) : null,
+            };
+        });
+        ok(`${lang}: mục Tiết khí có tự cuộn tới hàng đang hiệu lực`, m.daCuon);
+        ok(`${lang}: hàng đầu không bị cắt ngang dưới tiêu đề`,
+            m.lech !== null && Math.abs(m.lech) < 1.5, `lệch ${m.lech}px`);
+        ok(`${lang}: không lỗi JS`, errs.length === 0, errs.join('; '));
+        await ctx.close();
+    }
+}
+
 /* ── 3f. Nút Back của Android ──
    Không còn hộp thoại nào mà đang ở tab Lịch thì Back đưa về tab Kỳ Môn — tab
    ứng dụng mở lên đầu tiên — chứ không thoát thẳng ra màn hình chính. */
