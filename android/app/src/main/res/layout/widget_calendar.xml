@@ -326,21 +326,21 @@
             android:layout_weight="27" android:gravity="center_vertical"
             android:paddingStart="5dp" android:paddingLeft="5dp"
             android:singleLine="true" android:ellipsize="end"
-            android:textSize="10sp" android:textStyle="bold" />
+            android:textSize="11.5sp" android:textStyle="bold" />
 
         <TextView android:id="@+id/jqHead1"
             android:text="@string/col_solar"
             android:layout_width="0dp" android:layout_height="match_parent"
             android:layout_weight="35" android:gravity="center"
             android:singleLine="true" android:ellipsize="end"
-            android:textSize="10sp" android:textStyle="bold" />
+            android:textSize="11.5sp" android:textStyle="bold" />
 
         <TextView android:id="@+id/jqHead2"
             android:text="@string/col_ganzhi"
             android:layout_width="0dp" android:layout_height="match_parent"
             android:layout_weight="38" android:gravity="center"
             android:singleLine="true" android:ellipsize="end"
-            android:textSize="10sp" android:textStyle="bold" />
+            android:textSize="11.5sp" android:textStyle="bold" />
     </LinearLayout>
 
     <ListView
@@ -373,21 +373,21 @@
             android:layout_weight="27" android:gravity="center_vertical"
             android:paddingStart="5dp" android:paddingLeft="5dp"
             android:singleLine="true" android:ellipsize="end"
-            android:textSize="10sp" android:textStyle="bold" />
+            android:textSize="11.5sp" android:textStyle="bold" />
 
         <TextView android:id="@+id/amHead1"
             android:text="@string/col_soc"
             android:layout_width="0dp" android:layout_height="match_parent"
             android:layout_weight="35" android:gravity="center"
             android:singleLine="true" android:ellipsize="end"
-            android:textSize="10sp" android:textStyle="bold" />
+            android:textSize="11.5sp" android:textStyle="bold" />
 
         <TextView android:id="@+id/amHead2"
             android:text="@string/col_vong"
             android:layout_width="0dp" android:layout_height="match_parent"
             android:layout_weight="38" android:gravity="center"
             android:singleLine="true" android:ellipsize="end"
-            android:textSize="10sp" android:textStyle="bold" />
+            android:textSize="11.5sp" android:textStyle="bold" />
     </LinearLayout>
 
     <ListView

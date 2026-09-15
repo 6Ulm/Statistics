@@ -208,12 +208,12 @@ function buildSections(year, month, todayJdn){
    ════════════════════════════════════════════════════════════════════ */
 
 /* Phải khớp values/dimens.xml và WidgetLayout.kt. */
-const HEADER_DP = 32, DOW_DP = 16, SEC_HEAD_DP = 20, ROW_DP = 18, CORNER_PAD_DP = 6;
+const HEADER_DP = 32, DOW_DP = 16, SEC_HEAD_DP = 22, ROW_DP = 20, CORNER_PAD_DP = 6;
 const W_GRID = 58, W_JQ = 26, W_AM = 16;
 const COL = [27, 35, 38];
 const BAR_DP = 3;
 const GRID_WEEKS = 6;
-const TEXT_SP = 10, TEXT_SP_MIN = 7.5, TEXT_FULL_DP = 300;
+const TEXT_SP = 11.5, TEXT_SP_MIN = 8.5, TEXT_FULL_DP = 340;
 /** WidgetLayout.rowTextSp — cột chia bằng weight nên chữ phải co theo bề ngang. */
 function rowTextSp(wDp) {
     return Math.min(TEXT_SP, Math.max(TEXT_SP_MIN, TEXT_SP * wDp / TEXT_FULL_DP));

@@ -25,17 +25,17 @@
             android:layout_weight="27" android:gravity="center_vertical"
             android:paddingStart="5dp" android:paddingLeft="5dp"
             android:singleLine="true" android:ellipsize="end"
-            android:textSize="10sp" />
+            android:textSize="11.5sp" />
 
         <TextView android:id="@+id/rowCol1"
             android:layout_width="0dp" android:layout_height="match_parent"
             android:layout_weight="35" android:gravity="center"
             android:singleLine="true" android:ellipsize="end"
-            android:textSize="10sp" />
+            android:textSize="11.5sp" />
 
         <TextView android:id="@+id/rowCol2"
             android:layout_width="0dp" android:layout_height="match_parent"
             android:layout_weight="38" android:gravity="center"
             android:singleLine="true" android:ellipsize="end"
-            android:textSize="10sp" />
+            android:textSize="11.5sp" />
 </LinearLayout>

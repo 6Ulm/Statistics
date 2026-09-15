@@ -10,9 +10,9 @@
     <!-- Hàng thứ trong tuần (T2…CN). -->
     <dimen name="widget_dow">16dp</dimen>
     <!-- Hàng tiêu đề của mỗi mục gập được. -->
-    <dimen name="widget_sec_head">20dp</dimen>
+    <dimen name="widget_sec_head">22dp</dimen>
     <!-- Một hàng giá trị trong ListView của mục. -->
-    <dimen name="widget_row">18dp</dimen>
+    <dimen name="widget_row">20dp</dimen>
     <!--
       Chỗ chừa dưới đáy cho góc bo của widget. Android 12 trở lên tự bo góc mọi
       widget khá rộng; hàng cuối của ListView chạm sát mép thì bị cung tròn gặm

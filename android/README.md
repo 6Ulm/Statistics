@@ -940,6 +940,30 @@ theo múi giờ" — suy như vậy còn lệch ~0,35% số tháng và ~1% nhãn
 UTC+7. Bảng đóng sẵn vẫn giữ làm đường lùi (đúng tuyệt đối ở UTC+7, và vẫn hơn
 hẳn cách cũ là chốt cứng mùng 1, vốn lệch tới 16% ở UTC+2).
 
+### Cỡ chữ hai mục: thôi dùng ké cỡ của bảng phụ
+
+Hai mục của tab Lịch dựng lại trên `.dp-table` của bảng Sách Bổ pháp ở tab Kỳ
+Môn, nên thừa hưởng luôn cỡ chữ của nó: **12px** cho bảng và **11px** cho
+`.dp-num` — tức mọi mốc ngày giờ. Nhưng hai chỗ ấy khác nhau về việc: bảng phụ
+tab Kỳ Môn để liếc qua, còn đây là chỗ người dùng ĐỌC SỐ (giờ giao tiết, giờ
+Sóc/Vọng). Ở 11px thì "22-07-2026 19:13" phải nhíu mắt mới đọc được.
+
+Nay hai mục có cỡ chữ riêng: **13,5px** cho bảng, **13px** cho mốc ngày giờ,
+**14px** cho hàng tiêu đề (máy hẹp dưới 375px: 12 / 11,5 / 12,5). Đổi lại mỗi
+mục hiện được ít hơn khoảng một hàng — `fitGrid` vẫn chia đúng vì nó ĐO chiều
+cao thật chứ không đoán, và phép quét lại cho thấy không chỗ nào cắt chữ, không
+chỗ nào phải kéo ngang, đáy vẫn thừa đúng 9px trên cả hai máy đích.
+
+Widget cũng nâng theo cho khớp: **11,5sp** thay cho 10sp, hàng cao 20dp (18) và
+hàng tiêu đề 22dp (20). Kèm một chỉnh nhỏ: mốc `TEXT_FULL_DP` — bề ngang mà ở
+đó chữ còn giữ nguyên cỡ — nới từ 300 lên **340dp**. Giữ 300 thì widget bị bóp
+về sàn 250dp có chữ to hơn trước và cột giữa cụt mất 1px đuôi mốc giờ; nới ra
+thì widget cỡ thường vẫn 11,5sp mà widget bóp hẹp trở về đúng cỡ cũ.
+
+Ba nơi phải cùng một con số — `dimens.xml`, `WidgetLayout.kt` và
+`tools/widget_preview.html` — và `tools/test_widget_layout.mjs` canh chúng khớp
+nhau ở 18 cỡ widget.
+
 ### Soi bằng ẢNH CHỤP, không suy từ mã — hai lỗi nữa
 
 Mọi phép soi trước đều đo DOM rồi suy ra; lượt này chụp thật 28 tấm (2 máy × 2

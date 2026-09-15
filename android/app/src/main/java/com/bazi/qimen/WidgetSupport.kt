@@ -21,8 +21,8 @@ import org.json.JSONObject
 object WidgetLayout {
     const val HEADER_DP = 32
     const val DOW_DP = 16
-    const val SEC_HEAD_DP = 20
-    const val ROW_DP = 18
+    const val SEC_HEAD_DP = 22
+    const val ROW_DP = 20
     const val CORNER_PAD_DP = 6
 
     /** Phần chia chiều cao giữa lưới lịch và thân hai mục. */
@@ -36,10 +36,14 @@ object WidgetLayout {
     const val COL2 = 38
 
     /** Cỡ chữ mặc định của hàng và hàng tiêu đề hai mục (sp), theo XML. */
-    const val TEXT_SP = 10f
-    private const val TEXT_SP_MIN = 7.5f
-    /** Bề ngang mà ở đó chữ còn để nguyên cỡ; hẹp hơn thì co lại theo tỉ lệ. */
-    private const val TEXT_FULL_DP = 300f
+    const val TEXT_SP = 11.5f
+    private const val TEXT_SP_MIN = 8.5f
+    /** Bề ngang mà ở đó chữ còn để nguyên cỡ; hẹp hơn thì co lại theo tỉ lệ.
+     *  340 chứ không phải 300: cỡ chữ cơ bản vừa nâng từ 10sp lên 11,5sp, giữ
+     *  nguyên 300 thì widget bị bóp về sàn 250dp có chữ to hơn trước và cột
+     *  giữa cụt mất 1px đuôi mốc giờ. Nới mốc ra là widget cỡ thường vẫn 11,5sp
+     *  mà widget bóp hẹp trở về đúng cỡ cũ. */
+    private const val TEXT_FULL_DP = 340f
 
     /**
      * Cỡ chữ (sp) cho hai mục, theo bề ngang widget.
