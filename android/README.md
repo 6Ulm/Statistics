@@ -940,6 +940,42 @@ theo múi giờ" — suy như vậy còn lệch ~0,35% số tháng và ~1% nhãn
 UTC+7. Bảng đóng sẵn vẫn giữ làm đường lùi (đúng tuyệt đối ở UTC+7, và vẫn hơn
 hẳn cách cũ là chốt cứng mùng 1, vốn lệch tới 16% ở UTC+2).
 
+### Thẻ `<View>` làm widget hỏng hẳn — không có lỗi nào hiện ra
+
+Triệu chứng người dùng gặp: bấm "Ghim lịch ra màn hình chính", hộp thoại của
+hệ thống hiện lên đúng, nhưng chỗ xem trước chỉ có dòng **"Couldn't add
+widget"** trên một ô đen.
+
+`RemoteViews` KHÔNG dựng bố cục bằng `LayoutInflater` thường: nó cài một bộ lọc
+chỉ cho qua các lớp có chú thích `@RemoteView`. Quét `android.jar` API 34 thì
+danh sách ấy là `FrameLayout`, `LinearLayout`, `RelativeLayout`, `GridLayout`,
+`TextView`, `ImageView`, `Button`, `ImageButton`, `ListView`, `GridView`,
+`StackView`, `ViewFlipper`, `AdapterViewFlipper`, `ProgressBar`, `Chronometer`,
+`AnalogClock`, `TextClock`, `ViewStub`, `CheckBox`, `RadioButton`, `RadioGroup`,
+`Switch`, `AbsoluteLayout`, `DateTimeView` — và **không** có
+`android.view.View`, cũng **không** có `android.widget.Space`.
+
+Bố cục widget dùng `<View>` trần 45 lần: 42 ô trong suốt của lưới bắt chạm và
+ba vạch ngăn 3dp. Nghĩa là widget CHƯA BAO GIỜ dựng nổi — vừa xem trước vừa đặt
+thật đều hỏng. Nay tất cả là `<FrameLayout>`.
+
+Chỗ khó chịu của lỗi này là nó im lặng với mọi phép kiểm sẵn có: `aapt2` dựng
+bình thường (bố cục hợp lệ với `LayoutInflater` thường), APK cài được, bản mô
+phỏng HTML của widget vẫn đo ra đúng từng pixel, và việc dựng thì xảy ra trong
+tiến trình **launcher** nên không có dòng log nào của ứng dụng. `aapt2` không
+biết bố cục này dành cho RemoteViews.
+
+Nên có thêm `tools/test_widget_remoteviews.mjs`: đọc mọi `res/layout/widget_*.xml`
+và soi từng thẻ theo đúng danh sách trên, chặn luôn `<merge>`, `<include>` và
+lớp view tự viết, rồi kiểm cả bố cục mà `appwidget-provider` với
+`RemoteViewsFactory` trỏ tới.
+
+Kèm theo: các ô chữ trong bố cục nay có `android:text` mặc định (tên thứ, tên
+ba cột của hai mục, tên widget). Bố cục này cũng là `previewLayout`, mà lúc xem
+trước thì không có tiến trình nào chạy để rót dữ liệu vào — không có chữ mặc
+định thì hộp thoại ghim hiện một khung trống trơn. Kotlin ghi đè mọi ô ấy ở MỖI
+lần vẽ nên lúc chạy thật không đổi gì.
+
 ### Hai bảng, hai đơn vị — chỗ đã sai một lần
 
 `jieqi.txt` ghi cột 2 là **phút** trong ngày (≤ 1439); `lunar_months.txt` ghi

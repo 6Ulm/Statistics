@@ -8,7 +8,9 @@
   Đổi ở đây thì phải đổi cả hai chỗ kia — tools/test_widget_layout.mjs canh.
 
   Vạch 3dp đầu hàng là chỗ trống cho khớp với vạch màu của hàng tiêu đề; thiếu
-  nó là cả hàng giá trị lệch 3dp so với tiêu đề.
+  nó là cả hàng giá trị lệch 3dp so với tiêu đề. Nó là <FrameLayout> chứ không
+  phải <View>: RemoteViews chỉ dựng được lớp có @RemoteView, mà View trần thì
+  không có — xem khối ghi chú trong widget_calendar.xml.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/rowRoot"
@@ -16,7 +18,7 @@
     android:layout_height="@dimen/widget_row"
     android:orientation="horizontal">
 
-    <View android:layout_width="3dp" android:layout_height="match_parent" />
+    <FrameLayout android:layout_width="3dp" android:layout_height="match_parent" />
 
         <TextView android:id="@+id/rowCol0"
             android:layout_width="0dp" android:layout_height="match_parent"
