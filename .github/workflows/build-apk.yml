@@ -33,10 +33,19 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # Máy chủ ubuntu-latest có sẵn Android SDK; bước này chỉ đặt ANDROID_HOME
-      # và nhận điều khoản cho các gói còn thiếu.
+      # KHÔNG dùng android-actions/setup-android: nó gọi `sdkmanager tools`, mà
+      # gói "tools" đã bị Google gỡ khỏi kho từ lâu — lần chạy đầu tiên chết ở
+      # đúng chỗ này sau 20 giây ("Failed to find package 'tools'").
+      # Máy chủ ubuntu-latest vốn đã có sẵn Android SDK; chỉ cần nhận điều khoản
+      # rồi lấy đúng hai gói dự án cần.
       - name: Chuẩn bị Android SDK
-        uses: android-actions/setup-android@v3
+        run: |
+          set -eu
+          SDKMANAGER="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | tail -1)"
+          echo "dùng $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" > /dev/null
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
 
       - name: Nhớ kho Gradle giữa các lần chạy
         uses: actions/cache@v4
