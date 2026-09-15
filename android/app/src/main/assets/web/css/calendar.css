@@ -4,8 +4,11 @@
 
 /* ── Thanh dưới cố định đáy màn hình: hàng tab, rồi hàng dùng chung ── */
 /* Chiều cao một hàng của thanh dưới — hàng tab và hàng dùng chung dùng chung
-   con số này để cao bằng nhau ở cả hai ngôn ngữ. */
-:root { --dock-row-h: 28px; }
+   con số này để cao bằng nhau ở cả hai ngôn ngữ.
+   24 chứ không phải 28: thanh dưới ăn THẲNG vào chiều cao của hai mục trong
+   tab Lịch, mà nội dung một hàng (biểu tượng 13px + nhãn 11,5px + đệm 3px)
+   chỉ cần 22px — 28 là chừa thừa 6px mỗi hàng, 12px cho cả thanh. */
+:root { --dock-row-h: 24px; }
 
 #bottomDock {
     position: fixed;
@@ -33,7 +36,7 @@
     display: flex; align-items: stretch;
     gap: 0;
     padding: 0;
-    margin-top: 6px;                 /* khe giữa hai hàng */
+    margin-top: 3px;                 /* khe giữa hai hàng */
     background: var(--bg-white, #fff);
 }
 /* Cao ĐÚNG BẰNG một tab. Con số này phải bám .tab-item (đệm 5px + một dòng
@@ -41,7 +44,7 @@
 #sharedBar .picker-btn {
     flex: 1 1 0; min-width: 0;
     border: none; border-radius: 0;
-    min-height: var(--dock-row-h, 28px); padding: 4px 6px;
+    min-height: var(--dock-row-h, 24px); padding: 2px 6px;
 }
 #sharedBar #countryDisplayBtn { border-left: 1px solid var(--border-color, #ddd); }
 /* Thanh tab thấp thôi — nó ăn vào chiều cao vốn đã chật của màn Kỳ Môn.
@@ -50,12 +53,12 @@
    hàng dùng chung bên dưới không tài nào cao bằng ở cả hai thứ tiếng. Chốt số
    rồi dùng chung cho cả hai hàng thì bằng nhau theo cấu trúc. */
 .tab-item {
-    min-height: var(--dock-row-h, 28px);
+    min-height: var(--dock-row-h, 24px);
     flex: 1;
     display: flex; flex-direction: row;
     align-items: center; justify-content: center;
     gap: 5px;
-    padding: 5px 4px;
+    padding: 3px 4px;
     cursor: pointer; user-select: none;
     color: var(--text-dim, #777);
     border-top: 2px solid transparent;
@@ -92,7 +95,7 @@ body.view-cal #calView { display: block; }
     background: #d32f2f;
     color: #fff;
     border-radius: 8px 8px 0 0;
-    padding: 8px 6px;
+    padding: 6px 6px;
 }
 #calTitle {
     flex: 1; text-align: center;
@@ -112,7 +115,7 @@ body.view-cal #calView { display: block; }
    scrollWidth lớn hơn clientWidth, và mọi phép soi "chữ có bị cắt không" —
    kể cả test_responsive.mjs — sẽ báo nhầm là mũi tên bị cắt. */
 .cal-nav {
-    width: 38px; padding: 8px 6px; margin: -8px -6px;
+    width: 38px; padding: 6px 6px; margin: -6px -6px;
     flex-shrink: 0; text-align: center;
     font-size: 20px; line-height: 1;
     cursor: pointer; user-select: none;
@@ -219,8 +222,15 @@ body.view-cal #calView { display: block; }
    trong chính bảng nên tên cột luôn thẳng hàng với giá trị bên dưới. */
 .cal-sec-head { cursor: pointer; user-select: none; }
 .cal-sec-head:active th { filter: brightness(.96); }
+/* Co theo bề ngang, không chốt cứng rồi rẽ nhánh ở một mốc @media: ba cột chia
+   bằng bề rộng ĐO ĐƯỢC của chữ, nên "cỡ lớn nhất còn vừa" tăng dần theo bề
+   ngang máy — đo được (tiếng Việt, chữ dài hơn tiếng Trung nên nó mới là bên
+   chặn): 15px ở 360, 16px ở 384, 16,5px ở 393, 17,5px ở 412. Một mốc @media
+   cứng thì hoặc cụt chữ ở máy hẹp hoặc chữ bé vô cớ ở máy rộng; hệ số vw dưới
+   đây bám sát đường ấy mà vẫn chừa ~3% phòng khi phông máy thật (Samsung) rộng
+   hơn phông ở máy đo. 4,18 = 4,05 × 16,5/16, để hai cỡ giữ đúng tỉ lệ. */
 table.cal-jq thead tr.cal-sec-head th {
-    font-size: 14px; font-weight: 700;
+    font-size: clamp(13.5px, 4.18vw, 16.5px); font-weight: 700;
 }
 /* Dấu mũi nằm nép bên phải ô cuối, không đẩy chữ lệch khỏi tâm cột. */
 /* KHÔNG đặt position ở đây. `position: sticky` (khai ở .cal-jq thead th) đã là
@@ -278,16 +288,29 @@ table.cal-jq thead tr.cal-sec-head th {
    trên của mục. Không phải lỗi bố cục — mọi phép đo đều nói <th> nằm đúng mép
    khung — nên không sửa được bằng cách đẩy `top` hay dày viền lên.
    Dán một dải đục đúng màu tiêu đề lên trên cùng. Dải nằm trên .cal-sec (KHÔNG
-   phải khung cuộn) nên không bị chính khung ấy cắt mất; thụt vào 1px để viền
-   của mục vẫn hiện nguyên, và không bắt chạm để bấm vào vẫn gập/mở được. */
+   phải khung cuộn) nên không bị chính khung ấy cắt mất, và không bắt chạm để
+   bấm vào vẫn gập/mở được.
+
+   Dải phủ CẢ VIỀN (top/left/right = 0) rồi tự vẽ lại viền ấy bằng border của
+   chính nó, chứ không thụt vào 1px như bản trước. Thụt vào thì mép trên của
+   dải chốt theo hộp ĐÃ CỘNG 1px, mà 1px ấy ở tỉ lệ điểm ảnh lẻ không rơi đúng
+   số nguyên: đo trên A51 (2,625) dải bắt đầu ở điểm ảnh 1095 trong khi vệt rò
+   nằm ở 1094 — hụt đúng MỘT điểm ảnh thiết bị, vẫn thấy rõ khi cỡ chữ lớn.
+   .cal-sec và .cal-sec-body trùng khít nhau từng phần nghìn pixel (đo: cùng
+   top 415,563 / left 6 / right 406), nên dán từ 0 là trùng đúng hộp mà vệt rò
+   chốt theo — không còn chỗ cho phép làm tròn chen vào.
+   `background-clip: padding-box` để nền màu tiêu đề không loang ra dưới viền. */
 .cal-sec { position: relative; }
 .cal-sec::after {
     content: ''; position: absolute; z-index: 3; pointer-events: none;
-    top: 1px; left: 1px; right: 1px; height: 4px;
-    border-radius: 5px 5px 0 0;
+    top: 0; left: 0; right: 0; height: 6px;
+    box-sizing: border-box;
+    border: 1px solid transparent; border-bottom: 0;
+    border-radius: 6px 6px 0 0;
+    background-clip: padding-box;
 }
-#calSecJq::after { background: #fdeeee; }
-#calSecAm::after { background: #eef1fd; }
+#calSecJq::after { background: #fdeeee; border-color: #f0c4c4; }
+#calSecAm::after { background: #eef1fd; border-color: #c4cbf0; }
 
 /* Mục đang mở: nối liền thanh tiêu đề với thân, thành một khối. */
 .cal-sec-open .cal-sec-head { border-radius: 6px 6px 0 0; border-bottom: none; }
@@ -309,8 +332,8 @@ table.cal-jq thead tr.cal-sec-head th {
    "22-07-2026 19:13" bé tới mức phải nhíu mắt. Đổi lại mỗi mục hiện được ít
    hơn một hàng — fitGrid vẫn chia đúng vì nó ĐO chiều cao thật, không đoán. */
 table.cal-jq { width: 100%; border-collapse: separate; border-spacing: 0;
-    font-size: 13.5px; }
-table.cal-jq .dp-num { font-size: 13px; }
+    font-size: clamp(13px, 4.05vw, 16px); }
+table.cal-jq .dp-num { font-size: clamp(13px, 4.05vw, 16px); }
 /* Đệm 2px chứ không phải 3: đúng 12 hàng nên vừa trọn màn hình S21 (740px)
    thay vì cụt mất hàng cuối — rẻ hơn nhiều so với bóp thấp hàng lịch. */
 table.cal-jq td {
@@ -340,12 +363,17 @@ table.cal-jq .cal-jq-name { width: 1%; white-space: nowrap; }
    ra một mảng trống rộng: ba cột trông lệch hẳn về bên trái dù bảng thì cân.
    Cột giữa rộng gấp ba hai cột bên, nên chỉ cần đổi chỗ đứng của CHỮ trong nó
    là ba nhóm chữ chia đều bề ngang bảng, không phải nắn lại bề rộng cột. */
+/* KHÔNG có đệm trái riêng. Cột này CĂN GIỮA, mà `text-align: center` căn theo
+   hộp NỘI DUNG chứ không theo hộp ô: đệm trái của <td> lệch 2px so với <th>
+   (lớp này chỉ gắn cho <td>) là tâm chữ hai bên lệch nhau — đúng thứ
+   test_cal_sections.mjs canh, và cỡ chữ càng lớn thì càng lộ. Đệm trái 8px là
+   di sản của thời cột này còn căn TRÁI. */
 table.cal-jq .cal-jq-date {
     text-align: center;
     color: var(--text-dim, #666);
-    padding-left: 8px;
 }
-table.cal-jq thead th + th { padding-left: 8px; }
+/* Cùng lý do: mọi ô tiêu đề dùng ĐÚNG phần đệm của ô giá trị dưới nó. */
+table.cal-jq thead th + th { padding-left: 6px; }
 /* Cột cuối phải có lề thật, không dính vào mép máy. Rộng hơn hẳn phần đệm
    thường: cột cuối co đúng bằng chữ (width:1%) nên phần đệm này CHÍNH LÀ
    khoảng cách từ chữ tới mép bảng — 10px cũ để "Can chi" gần như dán vào mép
@@ -357,11 +385,7 @@ table.cal-jq .cal-jq-last { padding-right: 20px; }
    11:37" nên bảng phải cuộn ngang. Hạ cỡ chữ một nấc là vừa, đỡ hơn hẳn so với
    bắt người dùng kéo ngang. */
 @media (max-width: 375px) {
-    table.cal-jq { font-size: 12px; }
-    table.cal-jq .dp-num { font-size: 11.5px; }
-    table.cal-jq thead tr.cal-sec-head th { font-size: 12.5px; }
     table.cal-jq td, table.cal-jq thead th { padding-left: 4px; padding-right: 4px; }
-    table.cal-jq .cal-jq-date { padding-left: 6px; }
     table.cal-jq .cal-jq-last { padding-right: 14px; }
 }
 /* Tiết khí đang hiệu lực: tô đúng như dòng được tô ở bảng Sách Bổ pháp. */
@@ -374,8 +398,8 @@ table.cal-jq .cal-jq-on {
 /* ── Ghim widget lịch ra màn hình chính ── */
 #calPinBtn {
     display: none;                 /* chỉ hiện khi chạy trong app Android */
-    width: 100%; margin-top: 6px;
-    padding: 7px;
+    width: 100%; margin-top: 4px;
+    padding: 5px;
     border: var(--border-accent, 1.5px solid #007bff);
     border-radius: 6px;
     background: var(--accent-light, #e8edff);

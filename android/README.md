@@ -184,7 +184,7 @@ mục ĐANG MỞ lúc này (bản trước làm vậy) — phần của Tiết k
 việc Lịch âm CÓ đang mở hay không, nên bấm mở Lịch âm là Tiết khí bị bớt lại
 ngay lập tức dù bản thân nó không đổi trạng thái, kéo tiêu đề Lịch âm nhảy
 đúng lúc người dùng vừa chạm vào nó. Nay BẤT ĐỐI XỨNG có chủ đích: Tiết khí
-(đứng trước) luôn được nhắm tới **65% phần dư**, không đổi dù Lịch âm mở hay
+(đứng trước) luôn được nhắm tới **55% phần dư**, không đổi dù Lịch âm mở hay
 đóng; Lịch âm (đứng sau cùng) lấy hết PHẦN CÒN LẠI sau khi trừ đúng phần Tiết
 khí đang dùng thật. Vì Tiết khí đứng trước Lịch âm nên chiều cao thật của nó
 ảnh hưởng tới vị trí tiêu đề Lịch âm — khoá cứng phần của nó triệt tiêu hẳn
@@ -210,16 +210,14 @@ phần chia một lần nữa, nên cụm hai mục luôn thấp hơn chỗ nó 
 đúng `jqHead + amHead` = **48px**. Nay cộng lại hai hàng ấy trước khi chia.
 
 **2. Đóng sẵn Lịch âm là bỏ không phần của nó.** Trần của Tiết khí cố định ở
-65% ngân sách và KHÔNG đổi theo việc Lịch âm mở hay đóng — đó là điều kiện để
-tiêu đề Lịch âm không nhảy dưới ngón tay, và không được đụng tới. Hệ quả: 35%
-còn lại là phần dành riêng cho Lịch âm, đóng nó lại thì chẳng ai nhận. Trên máy
-cao, 35% ấy là hơn 100px. Nên `decideAmDefault()` chốt MỘT LẦN, ở lần chạy đầu
-khi chưa có lựa chọn cũ nào: máy nào đủ cao để Lịch âm được ít nhất `SEC_MIN`
-thì mở sẵn cả hai mục; máy thấp (đo 360×640) vẫn đóng, vì mở ra cũng chỉ được
-một hai hàng. Đây là một hằng số theo MÁY, không phải một phép đổi lúc bấm, nên
-không sinh ra cú nhảy nào. Chốt xong ghi thẳng vào `qmdj.calSecAm` rồi gọi
-widget vẽ lại — widget gập/mở theo đúng khoá ấy, mà widget thì phải khớp tab
-Lịch.
+55% ngân sách và KHÔNG đổi theo việc Lịch âm mở hay đóng — đó là điều kiện để
+tiêu đề Lịch âm không nhảy dưới ngón tay, và không được đụng tới. Hệ quả: phần
+còn lại là của riêng Lịch âm, đóng nó lại thì chẳng ai nhận. Trên máy cao, phần
+ấy là hơn 100px. Nên `decideAmDefault()` tự quyết hộ khi chưa có lựa chọn cũ
+nào: còn đủ chỗ cho hàng tiêu đề cộng ÍT NHẤT MỘT hàng dữ liệu thì mở sẵn cả
+hai mục. Quyết theo CHỖ TRỐNG chứ không theo cú bấm nào, nên không sinh ra cú
+nhảy nào. Chốt xong ghi thẳng vào `qmdj.calSecAm` rồi gọi widget vẽ lại —
+widget gập/mở theo đúng khoá ấy, mà widget thì phải khớp tab Lịch.
 
 Nhân tiện lộ ra một cú nhảy còn sót: trong `render()`, lượt `fitGrid` chạy
 TRƯỚC `renderAmBan()` nên lần vẽ đầu tiên nó chưa thấy hàng tiêu đề Lịch âm và
@@ -233,14 +231,17 @@ tiếng Việt lẫn tiếng Trung):
 
 | Máy | Trước | Sau |
 |---|---|---|
-| S21 FE 393×790 @2,75x | thừa 107px | thừa **9px** |
-| A51 412×852 @2,625x | thừa 128px | thừa **9px** |
+| S21 FE 393×790 @2,75x | thừa 107px | thừa **2,4px** |
+| A51 412×852 @2,625x | thừa 128px | thừa **2,4px** |
 
-9px còn lại là phần đệm chống tràn của `GRID_CHROME` cộng mấy pixel làm tròn.
+Chỗ thừa còn lại là phần đệm chống tràn của `GRID_CHROME` cộng mấy pixel làm
+tròn (9px ở vòng này, 2,4px sau khi `fitGrid` ĐO phần khung thay vì cộng tay —
+xem "Chữ to hơn, đáy khít hơn" bên dưới), cộng tối đa 3px nữa ở những cấu hình
+phải hạ mục để mép cắt không ăn mất dấu.
 Tab Kỳ Môn vốn đã khít sẵn (hở 0,1px) và không đụng tới. `test_cal_sections.mjs`
 canh cả ba điều: không tràn xuống dưới thanh tab, không còn dải trống (≤16px),
-và quét trọn 12 tháng của một năm — kể cả tháng 6 hàng, lúc lưới cao thêm 58px
-— trên cả hai máy.
+và quét trọn 12 tháng của một năm — kể cả tháng 6 hàng, lúc lưới cao thêm trọn
+một hàng — trên cả hai máy.
 
 ### Soi kỹ toàn bộ giao diện — năm lỗi nữa
 
@@ -303,20 +304,19 @@ từng ô một.
 Mất 58px ấy làm ngưỡng mở sẵn Lịch âm phải đo lại cho đúng: lấy `SEC_MIN`
 (96px) làm ngưỡng thì trên S21 FE — nơi phần của Lịch âm là 88px, thừa sức
 chứa vài hàng — nó bị đóng lại một cách vô lý và 71px đáy màn hình bỏ trống.
-Nay ngưỡng ĐO trên chính bảng đang có: hàng tiêu đề cộng **hai** hàng dữ liệu,
-lấy chiều cao hàng thật. Hai chứ không phải ba, vì hàng bảng tiếng Trung cao
-hơn tiếng Việt vài pixel — ngưỡng ba hàng khiến CÙNG MỘT MÁY mở sẵn Lịch âm ở
-tiếng Việt mà đóng ở tiếng Trung.
+Nay ngưỡng ĐO trên chính bảng đang có: hàng tiêu đề cộng **một** hàng dữ liệu,
+lấy chiều cao hàng thật của chính bảng ấy (hàng tiếng Trung cao hơn tiếng Việt
+vài pixel, nên một con số px chốt cứng sẽ xử khác nhau ở hai thứ tiếng).
 
 Chỗ thừa ở đáy tab Lịch sau tất cả (đo trong app, cả hai thứ tiếng):
 
 | Máy | Thừa | Lịch âm |
 |---|---|---|
-| 360×640 | 8–9px | đóng (không đủ chỗ) |
-| S21 360×740 | 9px | mở sẵn |
-| S21 FE 393×790 | 9px | mở sẵn |
-| A51 412×852 | 9px | mở sẵn |
-| tablet 768×1024 | 17px | mở sẵn |
+| 360×640 | 2,5–5,4px | mở sẵn (1 hàng) |
+| S21 360×740 | 2,4–5,4px | mở sẵn (3–4 hàng) |
+| S21 FE 393×790 | 2,4–2,5px | mở sẵn (4–5 hàng) |
+| A51 412×852 | 2,4px | mở sẵn (5–6 hàng) |
+| tablet 768×1024 | 11–12px | mở sẵn |
 
 Máy quá thấp (320×520) và màn hình ngang (800×360) vẫn phải cuộn — `MIN_SCALE`
 0,95 là cố ý ("thà cuộn còn hơn chữ li ti") — nhưng cuộn tới đáy là thấy hết,
@@ -431,7 +431,7 @@ là viền trái của ô thứ hai, y như `.tab-item + .tab-item`.
 Hai hàng **cao bằng nhau** nhờ cùng chốt vào `--dock-row-h`, chứ không thả theo
 chữ: chữ Hán cao hơn chữ Latin nên một tab tự nhiên cao 27px ở tiếng Trung mà
 chỉ 25px ở tiếng Việt — pin một con số cho riêng hàng dưới thì không tài nào
-bằng ở cả hai thứ tiếng. Giữa hai hàng chừa 6px, và nền thanh dưới lấy màu nền
+bằng ở cả hai thứ tiếng. Giữa hai hàng chừa 3px, và nền thanh dưới lấy màu nền
 TRANG (không phải trắng) nên cái khe ấy hiện ra thành một vạch, hai hàng tách
 bạch chứ không dính liền một khối.
 
@@ -952,7 +952,8 @@ Nay hai mục có cỡ chữ riêng: **13,5px** cho bảng, **13px** cho mốc n
 **14px** cho hàng tiêu đề (máy hẹp dưới 375px: 12 / 11,5 / 12,5). Đổi lại mỗi
 mục hiện được ít hơn khoảng một hàng — `fitGrid` vẫn chia đúng vì nó ĐO chiều
 cao thật chứ không đoán, và phép quét lại cho thấy không chỗ nào cắt chữ, không
-chỗ nào phải kéo ngang, đáy vẫn thừa đúng 9px trên cả hai máy đích.
+chỗ nào phải kéo ngang, đáy vẫn thừa đúng 9px trên cả hai máy đích. (Vòng sau
+còn nâng tiếp — xem "Chữ to hơn, đáy khít hơn".)
 
 Widget cũng nâng theo cho khớp: **11,5sp** thay cho 10sp, hàng cao 20dp (18) và
 hàng tiêu đề 22dp (20). Kèm một chỉnh nhỏ: mốc `TEXT_FULL_DP` — bề ngang mà ở
@@ -963,6 +964,145 @@ thì widget cỡ thường vẫn 11,5sp mà widget bóp hẹp trở về đúng 
 Ba nơi phải cùng một con số — `dimens.xml`, `WidgetLayout.kt` và
 `tools/widget_preview.html` — và `tools/test_widget_layout.mjs` canh chúng khớp
 nhau ở 18 cỡ widget.
+
+### Chữ to hơn, đáy khít hơn
+
+13,5px vẫn còn bé. Vòng này nâng lên **16,5px** cho hàng tiêu đề (Tiết Khí /
+Tháng âm) và **16px** cho cả tên lẫn mốc ngày giờ — nhưng KHÔNG chốt cứng:
+
+```css
+table.cal-jq { font-size: clamp(13px, 4.05vw, 16px); }
+table.cal-jq thead tr.cal-sec-head th { font-size: clamp(13.5px, 4.18vw, 16.5px); }
+```
+
+Ba cột chia nhau bề ngang theo bề rộng ĐO ĐƯỢC của chữ, nên "cỡ lớn nhất còn
+vừa" tăng dần theo bề ngang máy. Dò từng nấc 0,25px cho tới lúc có ô đầu tiên
+phải cuộn ngang (bên chặn luôn là **tiếng Việt** — chữ dài hơn tiếng Trung):
+
+| Bề ngang | Cỡ lớn nhất còn vừa | = vw |
+|---|---|---|
+| 360px (S21) | 15px | 4,17 |
+| 384px (S21 Ultra) | 16px | 4,17 |
+| 393px (S21 FE) | 16,5px | 4,20 |
+| 412px (A51) | 17,5px | 4,25 |
+
+Một mốc `@media` cứng thì hoặc cụt chữ ở máy hẹp, hoặc chữ bé vô cớ ở máy rộng.
+Hệ số **4,05vw** bám sát đường ấy mà vẫn chừa ~3% phòng khi phông máy thật
+(Samsung) rộng hơn phông ở máy đo, và 4,18 = 4,05 × 16,5/16 để hai cỡ giữ đúng
+tỉ lệ. Kết quả: A51 được đúng **16,5 / 16px** như yêu cầu, S21 FE 16,4 / 15,9,
+S21 15,0 / 14,6. Nhân tiện bỏ luôn nấc `@media (max-width: 375px)` cho cỡ chữ
+(phần đệm vẫn giữ) — `clamp()` đã lo.
+
+Chữ to lên thì mỗi mục mất một hàng, nên phải moi chỗ ở nơi khác:
+
+**1. Thanh dưới gọn lại 63px → 52px.** `--dock-row-h` 28 → 24 (nội dung một
+hàng chỉ cần 22px: biểu tượng 13px + nhãn 11,5px + đệm), khe giữa hai hàng 6 →
+3, đệm tab 5 → 3, đệm `#calHead` 8 → 6, nút Ghim lịch 7/6 → 5/4. Thanh dưới ăn
+THẲNG vào chiều cao hai mục, nên 11px ấy về hết cho chúng.
+
+**2. `fitGrid` ĐO phần khung thay vì cộng tay.** Bản trước cộng nhẩm lề/khe
+bằng một hằng số, và nhân `ROW_MIN × số tuần` để đoán chiều cao lưới — sai 30px
+(ô lịch tự cao thêm vì nội dung). Nay `measureChrome()` đọc đệm của `#calView`
+và các khe giữa bốn khối con của nó, còn chiều cao lưới thì đo thẳng
+`getBoundingClientRect` sau khi đã đặt `--cal-row-h`. `GRID_CHROME` tụt xuống
+còn 14px và chỉ còn là đệm chống tràn. Đáy màn hình từ thừa 9px xuống **2,4px**
+— dôi thêm gần một hàng nữa.
+
+`JQ_SHARE` 0,65 → **0,55** và `ROW_MIN` 58 → **52** chia lại chỗ vừa moi được
+cho đều hai mục. Kết quả (đo trong app, ép hiện nút Ghim lịch):
+
+| Máy | Tiết khí | Lịch âm | Thừa đáy |
+|---|---|---|---|
+| A51 412×852 vi / zh | 7 / 6 hàng | 6 / 5 hàng | 2,4px |
+| S21 FE 393×790 vi / zh | 5 / 5 hàng | 5 / 4 hàng | 2,5px |
+| S21 360×740 vi / zh | 4 / 4 hàng | 4 / 3 hàng | 2,4 / 5,4px |
+| 360×640 vi / zh | 2 / 2 hàng | 1 / 1 hàng | 5,4 / 2,5px |
+
+**Hai ngưỡng cho Lịch âm, không phải một.** `AM_KEEP_ROWS = 2` là chỗ
+`shareSectionHeight` CHỪA LẠI cho Lịch âm khi chia với Tiết khí — chừa vô điều
+kiện, dù Lịch âm đang mở hay đóng, đúng như cái bất biến "trạng thái Lịch âm
+không được quyết chiều cao Tiết khí". Thiếu nó thì sàn `SEC_MIN` (96px) của
+Tiết khí vét sạch phần còn lại: đo trên 360×640 (có nút Ghim lịch) Lịch âm mở
+ra mà cao đúng 28px, thấy mỗi hàng tiêu đề — y như một cái nút bấm không ăn.
+Nhưng không bao giờ chừa quá NỬA phần thân chung, để máy quá thấp thì hai mục
+cùng ngắn chứ không phải Tiết khí co về đúng hàng tiêu đề.
+
+`AM_OPEN_ROWS = 1` là ngưỡng MỞ SẴN, dễ tính hơn hẳn: vì chỗ của Lịch âm không
+chuyển sang cho Tiết khí khi nó đóng, đóng lại chỉ đổi lấy một dải trống ở đáy
+— đúng thứ người dùng kêu. Trên 360×640 phần ấy chỉ đủ một hàng rưỡi; một hàng
+đọc được cộng thanh cuộn vẫn hơn hẳn 66px trống trơn.
+
+**Và quyết đi quyết lại, chứ không chốt một lần.** Chỗ trống còn đổi SAU lượt
+dựng đầu tiên: nút "Ghim lịch" chỉ hiện khi có cầu nối Android và hiện muộn hơn
+lượt `fitGrid` đầu, lấy mất 32px; tháng 6 hàng thì lưới cao thêm một hàng. Chốt
+một lần trên con số cũ là mở sẵn Lịch âm rồi lượt sau cấp thật lại không đủ —
+đúng cái bẫy `amRendered` đã chặn một nửa. Nay `amAuto` giữ quyền tự quyết cho
+tới khi người dùng (hoặc widget) tự bấm, và `decideAmDefault` chạy lại mỗi lượt
+chia. Không sinh vòng lật qua lật lại, vì cả hai đầu vào của nó — chỗ trống và
+chiều cao hàng — đều KHÔNG phụ thuộc vào chính trạng thái đang quyết.
+
+**Hàng cuối bị cắt mất DẤU — thành chữ khác.** Chụp S21 FE rồi phóng to đáy
+mục Tiết khí: hàng cuối hiện 73,9% chiều cao, tức vừa đúng dưới đường cơ sở —
+thân chữ còn nguyên mà dấu nặng thì mất, nên **"Hàn Lộ" đọc ra "Hàn Lô"** và
+**"Mậu Tuất" ra "Mâu Tuất"**. Đó không phải một hàng cụt, đó là một chữ KHÁC:
+tiếng Việt dày dấu dưới nên chỗ này là lỗi đọc sai, không phải lỗi thẩm mỹ. Cỡ
+chữ cũ cũng có, chỉ là bé nên ít ai để ý.
+
+Mép cắt nay chỉ được rơi vào một trong hai vùng an toàn:
+
+* từ **đáy mực** trở xuống — thấy trọn chữ, kể cả dấu;
+* từ **72% hộp dòng** trở lên — cắt phạm vào thân chữ, nhìn là biết ngay hàng
+  còn nữa, không ai đọc nhầm.
+
+Rơi vào khoảng giữa thì hạ chiều cao mục xuống đúng mốc 72%. Trả giá tối đa
+28% một dòng chữ (đo được 3px ở đáy màn hình, vì phần Tiết khí nhả ra chảy
+thẳng sang Lịch âm chứ không mất đi đâu).
+
+Hai chi tiết khiến nó CHẠY ĐÚNG, mà bản đầu tiên thiếu cả hai:
+
+1. **Đáy MỰC, không phải đáy hộp dòng.** Hộp dòng cao hơn chỗ nét chữ thật sự
+   chạm tới: trên S21 FE hộp dòng kết thúc ở 19px mà nét thấp nhất của
+   "Lộ"/"Mậu" chỉ tới 18px. Lấy nhầm đáy hộp thì vùng "thấy trọn chữ" bị khai
+   rộng ra 1px — và đúng 1px ấy là chỗ mép cắt hay rơi vào. Lấy qua
+   `canvas.measureText().actualBoundingBoxDescent` với đúng phông đang dùng,
+   nhớ theo chuỗi phông nên mỗi lần đổi cỡ chữ/ngôn ngữ mới đo lại một lần.
+2. **ĐO sau khi đặt, chứ không tính trước.** Bản tính tay phải dựng lại "chỗ
+   các hàng bắt đầu" từ `max-height` trừ viền trừ hàng tiêu đề, mà chuỗi ấy
+   còn dính `box-sizing`, `thead` sticky và phép làm tròn nửa pixel — chạy ra
+   vẫn lệch 0,5–1px, tức vẫn rơi vào đúng dải nguy hiểm ở 3/10 cấu hình. Đặt
+   chiều cao xong thì mọi thứ đã nằm trên trang, hỏi thẳng là xong; hạ chiều
+   cao không làm các hàng nhúc nhích (chúng nằm trong phần cuộn) nên một lượt
+   là đủ.
+
+`test_cal_sections.mjs` canh cả 10 cấu hình (4 máy × 2 thứ tiếng × 2 mục).
+
+Hộp dòng chữ chỉ hỏi được qua `Range.getBoundingClientRect()` — mà jsdom (nền
+của `test_app.mjs`) có `Range` nhưng KHÔNG có hàm ấy, nên lượt đầu cả tab Lịch
+ném `TypeError` ngay lúc dựng. Bọc try/catch và kiểm tra hàm có tồn tại không:
+thiếu thì `rowMetrics` trả `null` và phép canh này tự tắt, chứ không kéo sập
+cả tab.
+
+**Vệt rò trên đỉnh mục, lần thứ hai.** Dải `::after` dán lên đỉnh mục để che
+vệt rò của `<thead>` sticky (xem "Soi bằng ẢNH CHỤP" bên dưới) vẫn HỤT đúng một
+điểm ảnh thiết bị, và cỡ chữ lớn làm nó lộ hẳn ra: chụp A51 ở 2,625x rồi dò
+từng điểm ảnh thì hàng 1094 còn 13 điểm ảnh chữ đen nằm TRÊN hàng tiêu đề.
+Nguyên do là dải thụt vào 1px, nên mép của nó chốt theo hộp đã cộng 1px — mà ở
+tỉ lệ lẻ 1px không rơi đúng số nguyên. Nay dải phủ CẢ VIỀN (`top/left/right:
+0`) và tự vẽ lại viền bằng `border` của chính nó; `.cal-sec` với `.cal-sec-body`
+trùng khít nhau từng phần nghìn pixel nên không còn chỗ cho phép làm tròn chen
+vào. Dò lại: 0 điểm ảnh rò trên cả ba máy, cả hai mục.
+
+(Thử vá từ bên trong khung cuộn trước — kéo dài hàng tiêu đề lên bằng
+`box-shadow` đặc — chỉ bớt được 2 trong 13 điểm ảnh: phần còn lại nằm ở lớp hợp
+thành của chính khung cuộn, không thứ gì vẽ BÊN TRONG nó che được.)
+
+Kèm hai lỗi canh hàng cùng một gốc: **`text-align: center` căn theo hộp NỘI
+DUNG, không phải hộp ô** — nên chỉ cần `<th>` và `<td>` của một cột đệm ngang
+khác nhau là tâm chữ hai bên lệch, và chữ càng to thì lệch càng lộ (ngưỡng
+`test_cal_sections.mjs` canh là 1,5px). Cột giữa: `thead th + th` đệm trái 8px
+trong khi ô giá trị đệm 6px; và `.cal-jq-date` — lớp CHỈ gắn cho `<td>` — còn
+thêm `padding-left: 8px` nữa, di sản của thời cột này căn TRÁI, đẩy tâm giá trị
+lệch 2,2px khỏi tâm tiêu đề. Bỏ cả hai lệ riêng: mọi ô của cột đều 6px.
 
 ### Soi bằng ẢNH CHỤP, không suy từ mã — hai lỗi nữa
 

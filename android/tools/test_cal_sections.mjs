@@ -375,6 +375,14 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
             amOpen: document.getElementById('calSecAm').classList.contains('cal-sec-open'),
             amPref: localStorage.getItem('qmdj.calSecAm'),
             jqH: h('calJieQi'), amH: h('calAmBan'),
+            amRows: (() => {
+                const box = document.getElementById('calAmBan');
+                const c = box.getBoundingClientRect();
+                return [...box.querySelectorAll('tbody tr')].filter(r => {
+                    const q = r.getBoundingClientRect();
+                    return q.top >= c.top - 1 && q.bottom <= c.bottom + 1;
+                }).length;
+            })(),
         };
     });
 
@@ -403,10 +411,79 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         await showPin(page);
         await page.waitForTimeout(500);
         const g = await geom(page);
-        ok('máy thấp 360×640: vẫn đóng sẵn Lịch âm', !g.amOpen);
+        // Máy thấp: mở sẵn Lịch âm cũng được, MIỄN LÀ mở ra có hàng đọc được
+        // — ngưỡng AM_OPEN_ROWS của decideAmDefault. Trước đây phép kiểm này
+        // đòi "phải đóng"; nhưng chỗ của Lịch âm KHÔNG chuyển sang cho Tiết
+        // khí khi nó đóng (xem shareSectionHeight), nên đóng lại chỉ đổi lấy
+        // một dải trống — đúng cái người dùng kêu. Hai phép kiểm dưới đây chặn
+        // cả hai lối hỏng: mở mà rỗng, và đóng mà bỏ phí đáy màn hình.
+        ok('máy thấp 360×640: mở sẵn Lịch âm thì phải đủ hàng đọc được',
+            !g.amOpen || g.amRows >= 1, `mở=${g.amOpen} hàng=${g.amRows}`);
         ok('máy thấp 360×640: không tràn xuống dưới thanh tab', g.slack >= 0, `${g.slack}px`);
+        ok('máy thấp 360×640: không còn dải trống ở đáy', g.slack <= 16, `còn thừa ${g.slack}px`);
         ok('máy thấp 360×640: không lỗi JS', errs.length === 0, errs.join('; '));
         await ctx.close();
+    }
+
+    // ── Mép cắt của hàng cuối không được rơi vào chỗ DẤU ──
+    //
+    // Hàng cuối của một mục đang cuộn thì bị mép dưới cắt ngang; cắt ở đâu mới
+    // là chuyện. Chụp S21 FE thấy hàng cuối hiện gần trọn — thân chữ còn
+    // nguyên mà dấu nặng thì mất, nên "Hàn Lộ" đọc ra "Hàn Lô", "Mậu Tuất" ra
+    // "Mâu Tuất". Đó không phải hàng cụt, đó là chữ KHÁC; tiếng Việt dày dấu
+    // dưới nên chỗ này là lỗi ĐỌC SAI.
+    //
+    // Mép cắt phải nằm ở một trong hai vùng an toàn: từ đáy mực trở xuống
+    // (thấy trọn chữ) hoặc từ 72% hộp dòng trở lên (cắt phạm thân chữ, nhìn là
+    // biết còn nữa). Đáy mực lấy qua canvas với đúng phông đang dùng — đáy HỘP
+    // DÒNG cao hơn đáy mực 1px, mà đúng 1px ấy là chỗ mép cắt hay rơi vào.
+    for (const d of [{ n: 'S21', w: 360, h: 740 }, { n: 'S21 FE', w: 393, h: 790 },
+                     { n: 'A51', w: 412, h: 852 }, { n: 'thấp', w: 360, h: 640 }]) {
+        for (const lang of ['vi', 'zh']) {
+            const ctx = await browser.newContext({ viewport: { width: d.w, height: d.h }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+            const { page } = await openCal(ctx);
+            if (lang === 'zh') { await page.evaluate(() => window.setLang && window.setLang('zh')); await page.waitForTimeout(400); }
+            await showPin(page);
+            await page.waitForTimeout(500);
+            const cut = await page.evaluate(() => {
+                const z = parseFloat(getComputedStyle(document.body).zoom) || 1;
+                const one = id => {
+                    const box = document.getElementById(id);
+                    const rows = [...box.querySelectorAll('tbody tr')];
+                    if (!rows.length) return null;
+                    const r0 = rows[0].getBoundingClientRect();
+                    const cell = rows[0].cells[0];
+                    const rg = document.createRange(); rg.selectNodeContents(cell);
+                    const t = rg.getBoundingClientRect();
+                    const cs = getComputedStyle(cell);
+                    const cx = document.createElement('canvas').getContext('2d');
+                    cx.font = cs.font;
+                    const m = cx.measureText('Lộ Mậu gy 露');
+                    const lineH = t.height / z, top = (t.top - r0.top) / z;
+                    const ink = top + (lineH - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2
+                        + m.fontBoundingBoxAscent + (m.actualBoundingBoxDescent || 0);
+                    const bcs = getComputedStyle(box), br = box.getBoundingClientRect();
+                    const edge = (br.bottom - (parseFloat(bcs.borderBottomWidth) || 0)) / z;
+                    let shown = null, text = '';
+                    for (const r of rows) {
+                        const q = r.getBoundingClientRect();
+                        if (q.top / z < edge - 0.5 && q.bottom / z > edge + 0.5) {
+                            shown = edge - q.top / z; text = (r.cells[0].textContent || '').trim();
+                        }
+                    }
+                    return { ink, safe: top + (ink - top) * 0.72, shown, text };
+                };
+                return { jq: one('calJieQi'), am: one('calAmBan') };
+            });
+            for (const [id, c] of Object.entries(cut)) {
+                const good = !c || c.shown === null || c.shown >= c.ink - 0.05 || c.shown <= c.safe + 0.05;
+                ok(`${d.n} ${lang}: mép cắt hàng cuối mục ${id} không ăn mất dấu`, good,
+                    c && c.shown !== null
+                        ? `"${c.text}" hiện ${c.shown.toFixed(1)}px, vùng cấm (${c.safe.toFixed(1)}; ${c.ink.toFixed(1)})`
+                        : '');
+            }
+            await ctx.close();
+        }
     }
 
     // Tháng 6 hàng (lưới cao thêm một hàng 58px) là lúc chật nhất. Quét trọn

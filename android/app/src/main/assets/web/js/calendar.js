@@ -74,12 +74,18 @@
         }
     }
 
-    // Lề trên/dưới của trang cộng khoảng cách giữa các khối trong tab Lịch.
-    var GRID_CHROME = 28;
-    // Hàng vừa đủ chứa 3 dòng (ngày dương/âm, can, chi) mà không dềnh dàng.
-    // Chỗ thừa của màn hình cao giờ đổ vào bảng tiết khí 24 dòng, không kéo
-    // hàng lịch cao ra nữa.
-    var ROW_MIN = 58, ROW_MAX = 80;
+    /**
+     * Đệm dự phòng, KHÔNG phải phép cộng lề — lề nay do measureChrome() đo.
+     * Giữ vài pixel để phép làm tròn nửa pixel của trình duyệt không đẩy khối
+     * cuối thò xuống dưới thanh tab.
+     */
+    var GRID_CHROME = 14;
+    // SÀN chiều cao một hàng lịch — `min-height`, không phải chiều cao chốt.
+    // Ô ngày chứa ba dòng (số ngày + ngày âm, can, chi); ba dòng ấy cần hơn thì
+    // hàng tự cao thêm, và fitGrid ĐO lưới thật chứ không nhân ROW_MIN × số
+    // tuần. Chỗ thừa của màn hình cao đổ vào hai mục, không kéo hàng lịch cao
+    // ra nữa.
+    var ROW_MIN = 52;
     /** Mục đang mở không bao giờ thấp hơn chừng này — thấp quá thì vô dụng. */
     var SEC_MIN = 96;
 
@@ -90,8 +96,38 @@
      * 9px và 89px). Hai bảng nằm ngay trên dưới nhau nên lệch là thấy ngay.
      */
     var COLGROUP = '<colgroup><col><col><col></colgroup>';
-    /** Lề trên #calSections cộng lề giữa hai mục (xem calendar.css). */
-    var SEC_MARGIN = 11;
+    /**
+     * Phần khung cố định của tab Lịch, ĐO THẲNG trên DOM:
+     *   outer  — lề trên/dưới của #calView cộng mọi khe giữa các khối con
+     *            (đầu lịch, lưới, cụm hai mục, nút ghim);
+     *   secGap — khe giữa hai mục.
+     * Toàn là lề CSS nên không đổi theo chiều cao đang chia.
+     */
+    function measureChrome() {
+        var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
+        var view = document.getElementById('calView');
+        var out = { outer: 0, secGap: 0 };
+        if (!view) return out;
+        var cs = getComputedStyle(view);
+        out.outer = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+        var kids = [];
+        for (var i = 0; i < view.children.length; i++) {
+            var el = view.children[i];
+            if (getComputedStyle(el).display !== 'none') kids.push(el);
+        }
+        for (i = 1; i < kids.length; i++) {
+            out.outer += Math.max(0,
+                (kids[i].getBoundingClientRect().top
+                 - kids[i - 1].getBoundingClientRect().bottom) / zoom);
+        }
+        var jq = document.getElementById('calSecJq');
+        var am = document.getElementById('calSecAm');
+        if (jq && am) {
+            out.secGap = Math.max(0,
+                (am.getBoundingClientRect().top - jq.getBoundingClientRect().bottom) / zoom);
+        }
+        return out;
+    }
 
     /** Khoá kho tuỳ chọn: bảng tháng âm cho widget (xem publishLunarCache). */
     var K_LUNAR_CACHE = 'qmdj.lunarCache';
@@ -297,99 +333,226 @@
         var vis = function (el) {
             return (el && getComputedStyle(el).display !== 'none') ? h(el) : 0;
         };
-        var avail = window.innerHeight / zoom
-            - h(head) - h(dow) - h(bar) - vis(pin) - GRID_CHROME;
+        // ĐO phần khung cố định thay vì cộng hằng số: lề trên/dưới của #calView
+        // và các khe giữa bốn khối con của nó. Hai hằng số GRID_CHROME và
+        // SEC_MARGIN trước đây phải gánh đúng những con số ấy bằng tay, mà chỉ
+        // cần sửa một lề trong CSS là chúng lệch — lệch rồi thì nội dung tràn
+        // khỏi màn hình, viewport.js thu nhỏ cả trang để chữa, và chữ bé lại
+        // đúng lúc ta vừa cố phóng to. Lề là hằng số của CSS, không phụ thuộc
+        // chiều cao đang chia, nên đo lúc nào cũng ra một kết quả.
+        var chrome = measureChrome();
 
-        // Thanh tiêu đề nay là hàng <thead> NẰM TRONG khung cuộn của mỗi mục,
-        // và luôn hiện — chỉ tbody mới bị ẩn khi mục đóng. Đo THẲNG <thead>
-        // (không đo cả DIV) nên con số này KHÔNG phụ thuộc mục đang mở hay
-        // đóng: <thead> cao như nhau bất kể tbody bên trong có hiện hay
-        // không. Đo cả DIV như trước sẽ khiến chiều cao trừ ra đổi theo trạng
-        // thái, kéo theo "avail" — và do đó mọi phép chia bên dưới — trôi
-        // theo mục nào đang mở, đúng thứ ta đang cố xoá bỏ.
-        var jqHeadH = h(document.querySelector('#calJieQi thead'));
-        var amHeadH = h(document.querySelector('#calAmBan thead'));
-        avail -= jqHeadH + amHeadH + SEC_MARGIN;
-
-        // CHỐT rowH — KHÔNG phụ thuộc openJq/openAm, để tiêu đề hai mục đứng
-        // đúng một chỗ dù gập hay mở.
+        // CHỐT chiều cao hàng lịch TRƯỚC, rồi ĐO lưới thật — không nhân
+        // rowH × weeks nữa.
         //
-        // Bản trước có một nhánh riêng "không mục nào mở thì lưới lấy hết
-        // avail" (rowH có thể chạm ROW_MAX), khác hẳn nhánh "còn mục mở thì
-        // lưới chỉ lấy ROW_MIN, phần dư nhường cho mục". Hai công thức cho hai
-        // con số rowH khác nhau tới 20px/hàng — nhân với 5-6 hàng thì lưới lịch
-        // (và do đó CẢ HAI tiêu đề bên dưới) nhảy hơn 100px mỗi lần bấm gập/mở,
-        // dù người dùng chỉ đóng/mở một mục.
-        //
-        // Nay CHỈ một công thức, luôn chạy, không rẽ nhánh: lưới luôn giữ
-        // ROW_MIN, mọi phần dư (avail - ROW_MIN*weeks) luôn được "nhường" cho
-        // các mục — có mục nào mở hay không cũng vậy. Không mục nào mở thì
-        // phần dư ấy chẳng ai nhận (shareSectionHeight thấy danh sách rỗng thì
-        // bỏ qua), hoá thành một khoảng trống dưới hai hàng tiêu đề — đánh đổi
-        // chấp nhận được, vì thứ người dùng thấy khó chịu là tiêu đề NHẢY, chứ
-        // không phải một khoảng trống đứng yên.
-        var secH = Math.max(SEC_MIN, avail - ROW_MIN * weeks);
+        // rowH chỉ là SÀN: ô ngày chứa ba dòng (số ngày + ngày âm, can, chi) và
+        // nếu ba dòng ấy cần hơn rowH thì hàng tự cao thêm, `min-height` không
+        // cản. Đem rowH × weeks đi trừ là khai thiếu đúng phần chênh — đo trên
+        // A51 với cỡ chữ mới: khai 6×52 = 312px trong khi lưới thật cao 342px,
+        // hụt 30px. Hụt bao nhiêu thì cụm hai mục thò xuống dưới thanh tab bấy
+        // nhiêu, và viewport.js thu nhỏ CẢ TRANG để chữa — chữ bé lại đúng lúc
+        // vừa cố phóng to. Đo thẳng thì sai số ấy biến mất.
+        document.documentElement.style.setProperty('--cal-row-h', ROW_MIN + 'px');
+        var gridH = h(grid);
 
-        var rowH = Math.max(ROW_MIN, Math.min(ROW_MAX, Math.floor((avail - secH) / weeks)));
-        document.documentElement.style.setProperty('--cal-row-h', rowH + 'px');
+        // Phần còn lại là của HAI KHUNG MỤC (kể cả hàng tiêu đề nằm trong
+        // chúng) cộng khe giữa hai mục.
+        var budget = window.innerHeight / zoom
+            - h(head) - gridH - h(bar) - vis(pin)
+            - chrome.outer - chrome.secGap - GRID_CHROME;
+        budget = Math.max(0, Math.floor(budget));
 
-        // CỘNG LẠI hai hàng tiêu đề trước khi đem chia. Ở trên đã trừ chúng ra
-        // để `rowH` không phụ thuộc mục nào đang mở — nhưng thứ
-        // shareSectionHeight() đặt là `max-height` của CẢ KHUNG, mà khung thì
-        // chứa luôn <thead>. Đưa thẳng con số đã trừ ấy đi chia là trừ hai hàng
-        // tiêu đề tới hai lần: đo trên A51 (852px) thì cụm hai mục thấp hơn chỗ
-        // nó được phép chiếm đúng 48px, hiện ra thành một dải trống ở đáy.
-        // KHÔNG kê lên SEC_MIN ở đây: SEC_MIN là mong muốn ("mục mở ra thấp quá
-        // thì vô dụng"), không phải chỗ có thật. Kê lên là bịa ra chỗ không có
-        // — trên máy 360×640, lưới 6 hàng đã ăn gần hết `avail`, phần còn lại
-        // chỉ 51px mà công thức cũ khai 96px, nên cụm hai mục thò 14px xuống
-        // dưới thanh tab. Cứ khai đúng chỗ còn lại; sàn SEC_MIN để
-        // shareSectionHeight lo, và nó kẹp theo chỗ có thật.
-        var budget = Math.max(0, Math.floor(avail - rowH * weeks)) + jqHeadH + amHeadH;
-        // Chỉ chốt khi CẢ HAI bảng đã dựng xong — lượt fitGrid đầu của mỗi lần
-        // vẽ chạy trước renderAmBan() nên có thể chưa thấy hàng tiêu đề nào.
-        decideAmDefault(budget, amHeadH, jqHeadH > 0 && amHeadH > 0);
         shareSectionHeight(budget);
     }
 
     /**
-     * Lần chạy đầu tiên (chưa có lựa chọn cũ nào): chốt MỘT LẦN xem có mở sẵn
-     * Lịch âm hay không, theo chỗ trống thật của máy.
+     * Chừng nào người dùng chưa tự bấm: quyết hộ xem có mở sẵn Lịch âm hay
+     * không, theo chỗ trống thật của máy.
      *
      * Trần của Tiết khí là JQ_SHARE phần trăm ngân sách và KHÔNG đổi theo việc
      * Lịch âm mở hay đóng (xem shareSectionHeight) — nên phần còn lại là phần
      * dành riêng cho Lịch âm, đóng nó lại thì phần ấy bỏ không. Trên máy cao
      * (A51 852px, S21 FE 790px) phần bỏ không ấy trên 100px, thành một dải
-     * trống thấy rõ dưới hàng tiêu đề "Tháng âm". Máy đủ cao để Lịch âm có chỗ
-     * dùng được thì mở sẵn, dải trống ấy hết; máy thấp thì vẫn đóng, vì mở ra
-     * cũng chỉ được một hai hàng.
+     * trống thấy rõ dưới hàng tiêu đề "Tháng âm"; ngay cả trên 360×640 nó cũng
+     * là 66px. Còn đủ chỗ cho lấy một hàng đọc được thì mở, dải trống ấy hết.
      *
      * "Dùng được" ĐO trên chính bảng đang có, không phải một con số chọn bừa:
-     * hàng tiêu đề cộng AM_MIN_ROWS hàng dữ liệu, lấy chiều cao hàng thật của
+     * hàng tiêu đề cộng AM_OPEN_ROWS hàng dữ liệu, lấy chiều cao hàng thật của
      * bảng Lịch âm. Lấy SEC_MIN (96px) làm ngưỡng thì trên S21 FE — nơi phần
      * của Lịch âm là 88px, thừa sức chứa ba hàng — nó bị đóng lại một cách vô
      * lý và 71px đáy màn hình bỏ trống.
      *
-     * HAI hàng, không phải ba: hàng bảng tiếng Trung cao hơn tiếng Việt vài
-     * pixel, nên ngưỡng ba hàng khiến CÙNG MỘT MÁY mở sẵn Lịch âm ở tiếng Việt
-     * mà đóng ở tiếng Trung (S21 FE: 9px thừa so với 85px). Hai hàng vẫn ra
-     * hình một cái bảng, mà bảng thì cuộn được — dù sao cũng hơn một dải trống.
+     * Hai ngưỡng KHÁC NHAU, vì chừa rộng tay mà mở thì dễ tính:
+     *
+     *   AM_KEEP_ROWS — chỗ shareSectionHeight chừa lại cho Lịch âm khi chia
+     *     với Tiết khí. HAI hàng, không phải ba: hàng bảng tiếng Trung cao hơn
+     *     tiếng Việt vài pixel, nên ngưỡng ba hàng khiến CÙNG MỘT MÁY xử khác
+     *     nhau ở hai ngôn ngữ (S21 FE: 9px thừa so với 85px).
+     *
+     *   AM_OPEN_ROWS — ngưỡng mở sẵn. MỘT hàng, vì mở hay đóng KHÔNG đổi chỗ
+     *     Tiết khí được cấp (xem shareSectionHeight): đóng lại thì phần của
+     *     Lịch âm bỏ không, thành dải trống ở đáy. Trên 360×640 phần ấy chỉ đủ
+     *     một hàng rưỡi; một hàng đọc được cộng thanh cuộn vẫn hơn hẳn 66px
+     *     trống trơn, nên chừng nào còn đủ MỘT hàng thì cứ mở.
      *
      * Chốt xong thì GHI vào kho tuỳ chọn chứ không giữ riêng trong bộ nhớ:
      * widget gập/mở theo đúng khoá này, mà widget thì phải khớp với tab Lịch.
      */
-    var AM_MIN_ROWS = 2;
-    var amDefaultPending = false;
-    function decideAmDefault(budget, amHeadH, measured) {
-        if (!amDefaultPending || !measured) return;
-        amDefaultPending = false;
+    var AM_KEEP_ROWS = 2;
+    var AM_OPEN_ROWS = 1;
+    /**
+     * Trạng thái gập/mở của Lịch âm còn đang do máy tự quyết (chưa ai bấm).
+     *
+     * Quyết đi quyết lại chứ KHÔNG chốt một lần: chỗ trống còn đổi sau lượt
+     * dựng đầu tiên — nút "Ghim lịch" chỉ hiện khi có cầu nối Android và hiện
+     * muộn hơn lượt fitGrid đầu, lấy mất 32px; tháng 6 hàng thì lưới cao thêm
+     * một hàng. Chốt một lần trên con số cũ là mở sẵn Lịch âm rồi lượt sau cấp
+     * thật lại không đủ. Hai đầu vào của quyết định (chỗ trống, chiều cao hàng)
+     * đều không phụ thuộc vào chính trạng thái ấy, nên quyết lại không sinh ra
+     * vòng lật qua lật lại.
+     */
+    var amAuto = false;
+    /**
+     * Bảng Lịch âm đã dựng xong ÍT NHẤT MỘT LẦN chưa.
+     *
+     * fitGrid chạy hai lượt mỗi lần vẽ, và lượt ĐẦU đi trước renderAmBan() —
+     * lúc ấy chiều cao hàng tiêu đề, chiều cao hàng và do đó cả phần chia cho
+     * Lịch âm đều là số của lần vẽ trước. Chốt mặc định trên những con số ấy
+     * thì trên máy thấp ra "đủ chỗ" rồi lượt sau cấp thật lại không đủ lấy một
+     * hàng: mục mở ra mà chỉ thấy đúng hàng tiêu đề.
+     */
+    var amRendered = false;
+    /**
+     * Số đo MỘT hàng dữ liệu, đo trên chính bảng đang có (hàng tiếng Trung cao
+     * hơn tiếng Việt vài pixel, nên không chốt cứng con số nào):
+     *   h      — chiều cao cả hàng;
+     *   trên   — mép TRÊN của hộp dòng chữ, tính từ đỉnh hàng;
+     *   dưới   — mép DƯỚI của hộp dòng chữ. Hộp dòng đã gồm phần rơi xuống
+     *            dưới đường cơ sở, tức cả dấu nặng của "Lộ", "Mậu".
+     * Trả null khi bảng chưa dựng — người gọi hiểu là "chưa biết".
+     */
+    var inkCache = {};
+    function rowMetrics(id) {
+        var row = document.querySelector('#' + id + ' tbody tr');
+        if (!row || !row.cells.length) return null;
+        var cell = row.cells[0];
+        // Hộp DÒNG CHỮ, không phải hộp ô: ô còn có đệm trên/dưới. Range là
+        // cách duy nhất hỏi được hộp dòng. jsdom (bộ kiểm thử test_app.mjs)
+        // có Range nhưng KHÔNG có getBoundingClientRect trên nó — thiếu chỗ
+        // canh này thì cả tab Lịch ném lỗi ngay lúc dựng.
+        var t = null;
+        try {
+            var rg = document.createRange();
+            rg.selectNodeContents(cell);
+            if (typeof rg.getBoundingClientRect === 'function') t = rg.getBoundingClientRect();
+        } catch (e) {}
+        var r = row.getBoundingClientRect();
+        if (!t || !t.height || !r.height) return null;
         var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
-        var row = document.querySelector('#calAmBan tbody tr');
-        if (!row) return;
-        var rowH = row.getBoundingClientRect().height / zoom;
-        if (budget - Math.floor(budget * JQ_SHARE) < amHeadH + AM_MIN_ROWS * rowH) return;
-        openAm = true;
-        prefSet(K_SEC_AM, '1');
+        var lineH = t.height / zoom;
+        var trên = (t.top - r.top) / zoom;
+
+        // ĐÁY MỰC, không phải đáy hộp dòng. Hộp dòng cao hơn chỗ chữ thật sự
+        // chạm tới: trên S21 FE hộp dòng kết thúc ở 19px mà nét thấp nhất của
+        // "Lộ"/"Mậu" chỉ tới 18px. Lấy nhầm đáy hộp thì vùng "thấy trọn chữ"
+        // bị khai rộng ra 1px, và đúng 1px ấy là chỗ mép cắt hay rơi vào.
+        // Lấy qua canvas với ĐÚNG phông đang dùng; nhớ theo chuỗi phông nên
+        // mỗi lần đổi cỡ chữ/ngôn ngữ mới đo lại một lần.
+        var cs = getComputedStyle(cell);
+        var font = cs.font || (cs.fontStyle + ' ' + cs.fontWeight + ' ' +
+                               cs.fontSize + '/' + cs.lineHeight + ' ' + cs.fontFamily);
+        var ink = inkCache[font];
+        if (ink === undefined) {
+            ink = null;
+            try {
+                var cx = document.createElement('canvas').getContext('2d');
+                cx.font = font;
+                // Chuỗi mẫu gom đủ dấu rơi xuống dưới đường cơ sở của cả hai
+                // thứ tiếng: dấu nặng, chữ có nét thòng, và một chữ Hán.
+                var mt = cx.measureText('Lộ Mậu gy 露');
+                if (mt.fontBoundingBoxAscent) {
+                    ink = { lên: mt.fontBoundingBoxAscent + mt.fontBoundingBoxDescent,
+                            cơsở: mt.fontBoundingBoxAscent,
+                            xuống: mt.actualBoundingBoxDescent || 0 };
+                }
+            } catch (e) {}
+            inkCache[font] = ink;
+        }
+        var dưới = (t.bottom - r.top) / zoom;
+        if (ink) dưới = trên + (lineH - ink.lên) / 2 + ink.cơsở + ink.xuống;
+        return { h: r.height / zoom, trên: trên, dưới: dưới };
+    }
+    function amRowHeight() {
+        var m = rowMetrics('calAmBan');
+        return m ? m.h : 0;
+    }
+
+    /**
+     * Hàng cuối của một mục đang cuộn thì bị mép dưới cắt ngang — cắt ở ĐÂU
+     * mới là chuyện.
+     *
+     * Đo trên S21 (360×740, tiếng Việt): hàng cuối hiện 90,9% chiều cao, đủ
+     * trọn chữ nên đọc đúng. Nhưng trên S21 FE hàng cuối hiện 73,9%: vừa đúng
+     * dưới đường cơ sở — thân chữ còn nguyên mà DẤU NẶNG thì mất, nên "Hàn Lộ"
+     * đọc ra "Hàn Lô" và "Mậu Tuất" ra "Mâu Tuất". Đó không phải một hàng cụt,
+     * đó là một chữ KHÁC. Tiếng Việt dày dấu dưới nên chỗ này là lỗi đọc sai,
+     * không phải lỗi thẩm mỹ.
+     *
+     * Nên mép cắt chỉ được rơi vào một trong hai vùng an toàn:
+     *   • từ `dưới` trở xuống — thấy trọn chữ, kể cả dấu;
+     *   • từ `an` trở lên — cắt phạm vào THÂN chữ, nhìn là biết ngay hàng còn
+     *     nữa, không ai đọc nhầm.
+     * Rơi vào khoảng giữa thì HẠ chiều cao mục xuống đúng `an`. Trả giá tối đa
+     * 28% chiều cao dòng chữ (đo được: 4-5px), và phần bị cắt của Tiết khí
+     * chảy thẳng sang Lịch âm chứ không mất đi đâu.
+     *
+     * 0,72 là ước lượng đường cơ sở trong hộp dòng: mọi phông trong bộ này đều
+     * có phần dưới đường cơ sở chừng một phần tư hộp dòng, nên cắt ở 72% là
+     * chắc chắn phạm vào thân chữ.
+     */
+    var CUT_SAFE = 0.72;
+    /**
+     * Gọi SAU khi đã đặt max-height: ĐO xem mép cắt rơi vào đâu trong hàng
+     * cuối, rồi hạ thêm vài pixel nếu nó rơi đúng vào chỗ dấu.
+     *
+     * Đo chứ không tính: bản tính tay phải tự dựng lại "chỗ các hàng bắt đầu"
+     * từ max-height trừ viền trừ hàng tiêu đề, mà chuỗi ấy còn dính box-sizing,
+     * `thead` sticky và phép làm tròn nửa pixel — chạy ra vẫn lệch 0,5-1px, tức
+     * vẫn rơi vào đúng dải nguy hiểm ở ba cấu hình. Sau khi đã đặt chiều cao
+     * thì mọi thứ đã nằm trên trang, hỏi thẳng là xong. Hạ chiều cao KHÔNG làm
+     * các hàng nhúc nhích (chúng nằm trong phần cuộn), nên một lượt là đủ.
+     *
+     * @returns {number} chiều cao cuối cùng của khung, px chưa nhân zoom.
+     */
+    function snapCut(el, m) {
+        var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
+        var box = el.getBoundingClientRect();
+        var cao = box.height / zoom;
+        if (!m || !m.h) return cao;
+        var cs = getComputedStyle(el);
+        var cắt = (box.bottom - (parseFloat(cs.borderBottomWidth) || 0)) / zoom;
+        var rows = el.querySelectorAll('tbody tr');
+        for (var i = 0; i < rows.length; i++) {
+            var q = rows[i].getBoundingClientRect();
+            if (q.top / zoom >= cắt - 0.5 || q.bottom / zoom <= cắt + 0.5) continue;
+            var hiện = cắt - q.top / zoom;         // hàng cuối hiện được bấy nhiêu
+            if (hiện >= m.dưới) return cao;        // thấy trọn chữ, kể cả dấu
+            var an = m.trên + (m.dưới - m.trên) * CUT_SAFE;
+            if (hiện <= an) return cao;            // đã cắt sâu vào thân chữ
+            cao = Math.max(0, cao - (hiện - an) - 0.5);
+            el.style.maxHeight = cao + 'px';
+            return cao;
+        }
+        return cao;
+    }
+    function decideAmDefault(amRoom, amHeadH, measured) {
+        if (!amAuto || !measured) return;
+        var rowH = amRowHeight();
+        if (!rowH) return;                      // bảng chưa dựng: quyết lần sau
+        var want = amRoom >= amHeadH + AM_OPEN_ROWS * rowH;
+        if (want === openAm) return;
+        openAm = want;
+        prefSet(K_SEC_AM, want ? '1' : '0');
         applySections();
         pokeWidget();
     }
@@ -616,6 +779,7 @@
                 '<th class="c cal-jq-last">' + t('colVong') +
                 '<span class="cal-sec-chev"></span></th>' +
                 '</tr></thead><tbody>' + rows + '</tbody></table>';
+            amRendered = true;
         } catch (e) {
             console.warn('calAmBan:', e);
             box.innerHTML = '';
@@ -735,7 +899,9 @@
 
     function toggleSection(which) {
         if (which === 'jq') { openJq = !openJq; prefSet(K_SEC_JQ, openJq ? '1' : '0'); }
-        else                { openAm = !openAm; prefSet(K_SEC_AM, openAm ? '1' : '0'); }
+        // Người dùng đã tự bấm thì thôi tự quyết — kể cả khi họ bấm đúng cái
+        // trạng thái máy vừa chọn hộ.
+        else                { openAm = !openAm; amAuto = false; prefSet(K_SEC_AM, openAm ? '1' : '0'); }
         // Widget gập/mở hai mục THEO ĐÚNG hai khoá này, nên ghi khoá xong phải
         // bảo nó vẽ lại — không thì lịch đã ghim còn hiện trạng thái cũ cho tới
         // nửa đêm. Chỉ gọi vẽ lại, KHÔNG công bố bảng tháng: bảng ấy không đổi
@@ -764,7 +930,7 @@
      * Lịch âm (mục cuối, không ai đứng sau nó) thì được ngay cái lợi cũ —
      * mở một mình thì Lịch âm vẫn chiếm trọn chỗ trống, không phải chừa vô cớ.
      */
-    var JQ_SHARE = 0.65;
+    var JQ_SHARE = 0.55;
     function shareSectionHeight(avail) {
         var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
         var natOf = function (id) {
@@ -787,19 +953,55 @@
         // có điều kiện là để trạng thái của Lịch âm quyết chiều cao Tiết khí,
         // đúng cái vòng lây mà cả hàm này sinh ra để cắt đứt.
         var jqRoom = Math.max(jqMin, avail - amMin);
+
+        // Chỗ Lịch âm phải được CHỪA LẠI, dù nó đang mở hay đóng — lại là để
+        // giữ đúng cái bất biến trên: trạng thái của Lịch âm không được quyết
+        // chiều cao Tiết khí. Chừa hàng tiêu đề cộng AM_KEEP_ROWS hàng — rộng
+        // hơn ngưỡng decideAmDefault lấy làm "dùng được", nên một khi Lịch âm
+        // mở — tự quyết hay người dùng bấm — nó chắc chắn có hàng thật.
+        // Thiếu chỗ này thì sàn SEC_MIN của Tiết khí vét sạch phần còn lại: đo
+        // trên 360×640 (có nút Ghim lịch) Lịch âm mở ra mà cao đúng 28px, chỉ
+        // thấy mỗi hàng tiêu đề — y như một cái nút bấm không ăn.
+        //
+        // Nhưng không bao giờ chừa quá NỬA phần thân chung: máy thấp tới mức
+        // cả hai mục đều chật thì hai mục cùng ngắn, chứ không phải Tiết khí
+        // co về đúng hàng tiêu đề để Lịch âm đủ hai hàng.
+        var pool = Math.max(0, avail - jqMin - amMin);
+        var amNeed = amMin + AM_KEEP_ROWS * amRowHeight();
+        var amKeep = Math.min(amNeed, amMin + Math.floor(pool / 2));
+
         var jqUsed;
         if (openJq) {
             // Sàn SEC_MIN kẹp theo chỗ CÓ THẬT: máy thấp thì thà mục ngắn còn
             // hơn đẩy cả cụm xuống dưới thanh tab.
             var jqCap = Math.max(Math.min(SEC_MIN, jqRoom), Math.floor(jqRoom * JQ_SHARE));
+            jqCap = Math.min(jqCap, Math.max(jqMin, Math.floor(avail - amKeep)));
             jqUsed = Math.min(natOf('calJieQi'), jqCap);
-            if (jqEl) jqEl.style.maxHeight = jqUsed + 'px';
+            if (jqEl) {
+                jqEl.style.maxHeight = jqUsed + 'px';
+                // Hạ TRƯỚC khi chia phần cho Lịch âm: vài pixel Tiết khí nhả
+                // ra phải chảy sang Lịch âm, chứ không thành khe trống.
+                jqUsed = snapCut(jqEl, rowMetrics('calJieQi'));
+            }
         } else {
             jqUsed = jqMin;
         }
+        // Chốt mặc định của Lịch âm Ở ĐÂY, nơi biết CHỖ THẬT nó sẽ được cấp.
+        // Trước đây chốt trong fitGrid bằng `budget − budget × JQ_SHARE`, mà đó
+        // chỉ là phần theo tỉ lệ: trên máy thấp, sàn SEC_MIN kê phần của Tiết
+        // khí lên cao hơn tỉ lệ ấy, nên Lịch âm được cấp ÍT hơn con số đem ra
+        // quyết định — đo trên 360×640: mở sẵn rồi mà không đủ chỗ cho một
+        // hàng nào.
+        var amRoom = Math.max(0, avail - jqUsed);
+        decideAmDefault(amRoom, amMin, amRendered);
+
         if (openAm) {
-            var amCap = Math.max(amMin, avail - jqUsed);
-            if (amEl) amEl.style.maxHeight = Math.min(natOf('calAmBan'), amCap) + 'px';
+            var amCap = Math.max(amMin, amRoom);
+            amCap = Math.min(natOf('calAmBan'), amCap);
+            if (amEl) {
+                amEl.style.maxHeight = amCap + 'px';
+                snapCut(amEl, rowMetrics('calAmBan'));
+            }
         }
     }
 
@@ -893,8 +1095,8 @@
         var na = (sa === '0' || sa === '1') ? sa === '1' : openAm;
         if (nj === openJq && na === openAm) return;
         openJq = nj; openAm = na;
-        // Đã có lựa chọn rõ ràng rồi thì đừng để fitGrid tự chốt lại nữa.
-        amDefaultPending = false;
+        // Đã có lựa chọn rõ ràng rồi thì đừng để fitGrid tự quyết lại nữa.
+        amAuto = false;
         applySections();
         if (document.body.classList.contains('view-cal')) {
             fitGrid(lastWeeks);
@@ -1052,7 +1254,7 @@
         var sj = prefGet(K_SEC_JQ), sa = prefGet(K_SEC_AM);
         if (sj === '0' || sj === '1') openJq = sj === '1';
         if (sa === '0' || sa === '1') openAm = sa === '1';
-        else amDefaultPending = true;
+        else amAuto = true;
         applySections();
 
         // Công bố ngay từ lúc MỞ ỨNG DỤNG — widget phải đúng kể cả khi người
