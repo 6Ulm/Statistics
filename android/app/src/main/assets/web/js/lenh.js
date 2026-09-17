@@ -17,8 +17,9 @@
    không rơi đúng vào tiết sau.
 
    Đo bằng độ thì hết hẳn: 7° + 7° + 16° = 30° = đúng khoảng cách hai tiết,
-   theo định nghĩa. Ảnh mẫu người dùng gửi cũng ghi cột "Hoàng kinh" chứ
-   không ghi số ngày.
+   theo định nghĩa. Ảnh mẫu người dùng gửi cũng ghi cột "Hoàng kinh" chứ không
+   ghi số ngày. (Cột ấy nay hiện SỐ ĐỘ của từng đoạn — 7 · 7 · 16 — chứ không
+   hiện khoảng 285~294°: bộ số mới là thứ phân biệt ba sách bên dưới.)
 
    MỘT NGUỒN DUY NHẤT VỚI BẢNG TIẾT KHÍ.
 
@@ -31,6 +32,24 @@
    có — nó chỉ lưu 24 tiết khí. Chỗ ấy giải bằng chuỗi giải tích saLonT của
    chính lunar.js. Hai nguồn lệch nhau ≤ 2 giây tại các mốc dùng chung (đo
    trên cả năm 2026), tức không bao giờ đủ để đổi con số phút hiện ra.
+
+   BA BỘ SỐ, BA CUỐN SÁCH — chọn bằng ô bên cạnh ô ngày giờ.
+
+   Cổ thư không thống nhất phần chia này, và chênh nhau không phải vài phút
+   mà là cả tuần: tháng Dần, 渊海 chia 7·7·16 còn 三命通会 chia 5·5·20, nên
+   một người sinh mùng 6 sau Lập Xuân có thể là Bính cầm lệnh ở bảng này mà
+   Giáp cầm lệnh ở bảng kia. Không có cách nào "trung hoà" ba bộ số ấy thành
+   một; chỉ có cách nói rõ đang dùng bộ nào.
+
+   Xuất xứ từng bộ (xem RULES bên dưới, mỗi bộ kèm nguyên văn chữ Hán):
+
+     • 三命通会 và 子平真诠 chép THẲNG từ nguyên văn, đối chiếu nhiều bản độc
+       lập; cả 12 tháng của cả hai bộ đều cộng đúng 30.
+     • 渊海子平 là BẢN THÔNG HÀNH mà giới mệnh lý ngày nay quy cho hệ Uyên
+       Hải — cũng đúng bộ số trong ảnh mẫu người dùng gửi. Bản 渊海子平 tìm
+       được chỉ có bài "论天地干支暗藏总诀" chia theo nửa tháng, không phải
+       bảng ba đoạn này, nên chỗ quy cho ấy là theo tập quán chứ không phải
+       một dòng đọc được trong sách.
    ════════════════════════════════════════════════════════════════════ */
 (function () {
     'use strict';
@@ -46,9 +65,10 @@
         now:      { vi: 'Lệnh',        zh: '司令' },
         colMonth: { vi: 'Tháng',       zh: '月' },
         colCan:   { vi: 'Can',         zh: '天干' },
-        colLon:   { vi: 'Hoàng kinh',  zh: '黄经' },
+        colLon:   { vi: 'Số độ',       zh: '度数' },
         colIn:    { vi: 'Vào lệnh',    zh: '入令' },
         colOut:   { vi: 'Hết lệnh',    zh: '退令' },
+        pickRule: { vi: 'Chọn quy tắc', zh: '选择流派' },
     };
     function isZH() { return typeof currentLang !== 'undefined' && currentLang === 'zh'; }
     function t(k) { return T[k][isZH() ? 'zh' : 'vi']; }
@@ -66,18 +86,23 @@
     }
     function pad2(n) { return (n < 10 ? '0' : '') + n; }
 
-    /* ─────────────── Bảng phân dã ───────────────
+    /* ─────────────── Ba bảng phân dã ───────────────
      *
      * Khoá = chỉ số TIẾT mở tháng trong TK_VI/TK_ZH (0 = Đông Chí), luôn LẺ:
      * tháng khí mở bằng TIẾT (Tiểu Hàn, Lập Xuân…), còn KHÍ (Đại Hàn, Vũ
      * Thủy…) rơi vào giữa tháng và không phải ranh giới của gì cả.
      *
-     * Giá trị = [chỉ số can, số độ] theo đúng thứ tự cầm lệnh. Tổng ba số độ
-     * của mỗi tháng phải bằng 30 — buildYear() kiểm lại và ném lỗi nếu không,
-     * vì gõ nhầm một số ở đây thì mọi mốc phía sau trong tháng ấy trôi theo mà
-     * bảng vẫn trông bình thường.
+     * Giá trị = [chỉ số can, số độ] theo đúng thứ tự cầm lệnh. Tổng của mỗi
+     * tháng phải bằng 30 — buildYear() kiểm lại và ném lỗi nếu không, vì gõ
+     * nhầm một số ở đây thì mọi mốc phía sau trong tháng ấy trôi theo mà bảng
+     * vẫn trông bình thường.
+     *
+     * Cổ thư chép bằng NGÀY ("Mậu 7 ngày"); ở đây đọc là ĐỘ hoàng kinh — xem
+     * khối ghi chú đầu tệp về việc vì sao ngày không cộng ra 30.
      */
-    var FEN = {
+
+    /** Bản thông hành (hệ Uyên Hải): 寅 7·7·16, 巳 5·9·16, 申 7·7·16… */
+    var FEN_YHZP = {
         1:  [[9, 9], [7, 3], [5, 18]],    // Sửu  (Tiểu Hàn):  Quý 9 · Tân 3 · Kỷ 18
         3:  [[4, 7], [2, 7], [0, 16]],    // Dần  (Lập Xuân):  Mậu 7 · Bính 7 · Giáp 16
         5:  [[0, 10], [1, 20]],           // Mão  (Kinh Trập): Giáp 10 · Ất 20
@@ -91,6 +116,88 @@
         21: [[4, 7], [0, 5], [8, 18]],    // Hợi  (Lập Đông):  Mậu 7 · Giáp 5 · Nhâm 18
         23: [[8, 10], [9, 20]],           // Tý   (Đại Tuyết): Nhâm 10 · Quý 20
     };
+
+    /**
+     * 三命通会 卷二「论人元司事」, nguyên văn:
+     *
+     *   如正月建寅，寅中有艮土用事五日，丙火长生五日，甲木二十日；二月建卯，卯中
+     *   有甲木用事七日，乙木二十三日；三月建辰，辰中有乙木用事七日，壬水墓库五日，
+     *   戊土一十八日；四月建巳，巳中有戊土七日，庚金长生五日，丙火一十八日；五月
+     *   建午，午中丙火用事七日，丁火二十三日；六月建未，未中有丁火用事七日，甲木
+     *   墓库五日，己土一十八日；七月建申，申中有坤土用事五日，壬水长生五日，庚金
+     *   二十日；八月建酉，酉中有庚金用事七日，辛金二十三日；九月建戌，戌中有辛金
+     *   用事七日，丙火墓库五日，戊土一十八日；十月建亥，亥中有戊土五日，甲木长生
+     *   五日，壬水用事二十日；十一月建子，子中有壬水用事七日，癸水二十三日；十二
+     *   月建丑，丑中有癸水用事七日，庚金墓库五日，己土一十八日。
+     *
+     * "艮土" và "坤土" đều là MẬU (hai quẻ ấy thuộc thổ, và chi Dần/Thân tàng
+     * Mậu chứ không tàng Kỷ). Nét riêng dễ nhận của bộ này: bốn tháng mộ khố
+     * (Thìn Mùi Tuất Sửu) lấy can DƯƠNG làm trung khí — Thìn dùng Nhâm chứ
+     * không Quý, Mùi dùng Giáp chứ không Ất — ngược hẳn hai bộ kia.
+     */
+    var FEN_SMTH = {
+        1:  [[9, 7], [6, 5], [5, 18]],    // Sửu:  Quý 7 · Canh 5 · Kỷ 18
+        3:  [[4, 5], [2, 5], [0, 20]],    // Dần:  Mậu 5 · Bính 5 · Giáp 20
+        5:  [[0, 7], [1, 23]],            // Mão:  Giáp 7 · Ất 23
+        7:  [[1, 7], [8, 5], [4, 18]],    // Thìn: Ất 7 · Nhâm 5 · Mậu 18
+        9:  [[4, 7], [6, 5], [2, 18]],    // Tỵ:   Mậu 7 · Canh 5 · Bính 18
+        11: [[2, 7], [3, 23]],            // Ngọ:  Bính 7 · Đinh 23
+        13: [[3, 7], [0, 5], [5, 18]],    // Mùi:  Đinh 7 · Giáp 5 · Kỷ 18
+        15: [[4, 5], [8, 5], [6, 20]],    // Thân: Mậu 5 · Nhâm 5 · Canh 20
+        17: [[6, 7], [7, 23]],            // Dậu:  Canh 7 · Tân 23
+        19: [[7, 7], [2, 5], [4, 18]],    // Tuất: Tân 7 · Bính 5 · Mậu 18
+        21: [[4, 5], [0, 5], [8, 20]],    // Hợi:  Mậu 5 · Giáp 5 · Nhâm 20
+        23: [[8, 7], [9, 23]],            // Tý:   Nhâm 7 · Quý 23
+    };
+
+    /**
+     * 子平真诠评注, bảng 「十二月令人元司令分野表」, nguyên văn:
+     *
+     *   寅月立春后戊土七日，丙火七日，甲木十六日
+     *   卯月惊蛰后甲木十日，乙木二十日
+     *   辰月清明后乙木九日，癸水三日，戊土十八日
+     *   巳月立夏后戊土五日，庚金九日，丙火十六日
+     *   午月芒种后丙火十日，己土九日，丁火十一日
+     *   未月小暑后丁火九日，乙木三日，己土十八日
+     *   申月立秋后戊己土十日，壬水三日，庚金十七日
+     *   酉月白露后庚金十日，辛金二十日
+     *   戌月寒露后辛金九日，丁火三日，戊土十八日
+     *   亥月立冬后戊土七日，甲木五日，壬水十八日
+     *   子月大雪后壬水十日，癸水二十日
+     *   丑月小寒后癸水九日，辛金三日，己土十八日
+     *
+     * Chỉ khác bản thông hành ở ĐÚNG MỘT tháng — tháng Thân: 10·3·17 thay vì
+     * 7·7·16. ("戊己土" gộp làm một đoạn; lấy MẬU vì chi Thân tàng Mậu.)
+     */
+    var FEN_ZPZQ = {
+        1:  [[9, 9], [7, 3], [5, 18]],    // Sửu:  Quý 9 · Tân 3 · Kỷ 18
+        3:  [[4, 7], [2, 7], [0, 16]],    // Dần:  Mậu 7 · Bính 7 · Giáp 16
+        5:  [[0, 10], [1, 20]],           // Mão:  Giáp 10 · Ất 20
+        7:  [[1, 9], [9, 3], [4, 18]],    // Thìn: Ất 9 · Quý 3 · Mậu 18
+        9:  [[4, 5], [6, 9], [2, 16]],    // Tỵ:   Mậu 5 · Canh 9 · Bính 16
+        11: [[2, 10], [5, 9], [3, 11]],   // Ngọ:  Bính 10 · Kỷ 9 · Đinh 11
+        13: [[3, 9], [1, 3], [5, 18]],    // Mùi:  Đinh 9 · Ất 3 · Kỷ 18
+        15: [[4, 10], [8, 3], [6, 17]],   // Thân: Mậu 10 · Nhâm 3 · Canh 17
+        17: [[6, 10], [7, 20]],           // Dậu:  Canh 10 · Tân 20
+        19: [[7, 9], [3, 3], [4, 18]],    // Tuất: Tân 9 · Đinh 3 · Mậu 18
+        21: [[4, 7], [0, 5], [8, 18]],    // Hợi:  Mậu 7 · Giáp 5 · Nhâm 18
+        23: [[8, 10], [9, 20]],           // Tý:   Nhâm 10 · Quý 20
+    };
+
+    /** Thứ tự trong ô chọn: theo niên đại sách (Tống → Minh → Thanh). */
+    var RULES = [
+        { key: 'yhzp', fen: FEN_YHZP, vi: 'Uyên Hải Tử Bình',  zh: '渊海子平' },
+        { key: 'smth', fen: FEN_SMTH, vi: 'Tam Mệnh Thông Hội', zh: '三命通会' },
+        { key: 'zpzq', fen: FEN_ZPZQ, vi: 'Tử Bình Chân Thuyên', zh: '子平真诠' },
+    ];
+    var K_RULE = 'qmdj.lenhRule';
+    var rule = RULES[0];
+    function ruleByKey(k) {
+        for (var i = 0; i < RULES.length; i++) if (RULES[i].key === k) return RULES[i];
+        return RULES[0];
+    }
+    function ruleLabel(r) { return isZH() ? r.zh : r.vi; }
+
     /** Chi của tháng mà mỗi TIẾT mở ra. */
     var CHI_OF_JIE = { 1: 1, 3: 2, 5: 3, 7: 4, 9: 5, 11: 6, 13: 7, 15: 8, 17: 9, 19: 10, 21: 11, 23: 0 };
     /** Thứ tự 12 tháng trong một NĂM DƯƠNG LỊCH: Sửu (tháng 1) → Tý (tháng 12). */
@@ -144,6 +251,7 @@
     /* ─────────────── Dựng bảng một năm ─────────────── */
 
     var _yearCache = {};
+    function cacheKey(Y) { return rule.key + '|' + Y; }
 
     /**
      * 12 tháng lệnh của NĂM DƯƠNG LỊCH `Y`, từ Sửu (Tiểu Hàn, tháng 1) tới Tý
@@ -155,7 +263,8 @@
      * với `from`/`to` là hoàng kinh ĐÃ MỞ VÒNG (cộng dồn qua các năm).
      */
     function buildYear(Y) {
-        if (_yearCache[Y]) return _yearCache[Y];
+        var ck = cacheKey(Y);
+        if (_yearCache[ck]) return _yearCache[ck];
         // Người dùng bấm tới bấm lui vài trăm năm thì bộ nhớ đệm phình mãi.
         // Dựng một năm chỉ mất chừng một mili giây, nên dọn sạch rồi dựng lại
         // là rẻ hơn hẳn so với việc giữ một danh sách LRU.
@@ -170,7 +279,7 @@
             var k = JIE_ORDER[i];
             var n0 = termIndexNear(jds[k + 1]);
             var parts = [], off = 0;
-            var fen = FEN[k];
+            var fen = rule.fen[k];
             for (var j = 0; j < fen.length; j++) {
                 var can = fen[j][0], span = fen[j][1];
                 parts.push({
@@ -187,7 +296,7 @@
             if (off !== 30) throw new Error('lenh.js: tháng ' + k + ' cộng ra ' + off + '°');
             out.push({ chi: CHI_OF_JIE[k], jie: k, n: n0, parts: parts });
         }
-        _yearCache[Y] = out;
+        _yearCache[ck] = out;
         return out;
     }
 
@@ -311,8 +420,7 @@
                         ' <span class="lenh-jie">(' + esc(jieName(mo.jie)) + ')</span></td>';
                 }
                 rows += '<td class="c lenh-can">' + esc(canName(p.can)) + '</td>' +
-                    '<td class="c dp-num lenh-lon">' +
-                    esc(norm360(p.from) + '~' + norm360(p.to) + '°') + '</td>' +
+                    '<td class="c dp-num lenh-lon">' + (p.to - p.from) + '</td>' +
                     '<td class="c dp-num">' + esc(fmtLocal(p.jdFrom, tzId, inp.y)) + '</td>' +
                     '<td class="c dp-num lenh-last">' + esc(fmtLocal(p.jdTo, tzId, inp.y)) + '</td>' +
                     '</tr>';
@@ -335,8 +443,6 @@
         fit();
         setTimeout(scrollToActive, 40);
     }
-
-    function norm360(deg) { return ((deg % 360) + 360) % 360; }
 
     /**
      * Cuộn để hàng đang cầm lệnh nằm giữa khung — bảng dài 33 hàng, mở ra mà
@@ -459,9 +565,38 @@
 
     /* ─────────────── Nhãn + móc nối ─────────────── */
 
+    /* ─────────────── Ô chọn quy tắc ─────────────── */
+
+    function showRule() {
+        var el = document.getElementById('lenhRuleText');
+        if (el) el.textContent = ruleLabel(rule);
+    }
+
+    /**
+     * Đổi bộ số thì NHỚ LẠI: người dùng theo một phái chứ không chọn lại mỗi
+     * lần mở app. Cùng cách app.js nhớ ngôn ngữ và phái Kỳ Môn.
+     */
+    function setRule(key) {
+        if (key === rule.key) return;
+        rule = ruleByKey(key);
+        if (typeof safeStorage !== 'undefined') safeStorage.setItem(K_RULE, rule.key);
+        showRule();
+        render();
+    }
+
+    window.openLenhRulePicker = function () {
+        if (typeof openOptionPicker !== 'function') return;
+        var opts = [];
+        for (var i = 0; i < RULES.length; i++) {
+            opts.push({ value: RULES[i].key, label: ruleLabel(RULES[i]) });
+        }
+        openOptionPicker(t('pickRule'), opts, rule.key, setRule);
+    };
+
     function refreshLabels() {
         var tab = document.getElementById('tabLenh');
         if (tab) tab.querySelector('.tab-lbl').textContent = t('tabLenh');
+        showRule();
         if (document.body.classList.contains('view-lenh')) render();
     }
 
@@ -474,8 +609,13 @@
     /** Chỉ dùng cho bộ kiểm thử: đọc thẳng bảng đã tính, khỏi phải đọc DOM. */
     window.__lenhData = function (Y) { return buildYear(Y); };
     window.__lenhActive = function () { return lastActive; };
+    window.__lenhRule = function (k) { if (k) setRule(k); return rule.key; };
 
     document.addEventListener('DOMContentLoaded', function () {
+        if (typeof safeStorage !== 'undefined') {
+            var saved = safeStorage.getItem(K_RULE);
+            if (saved) rule = ruleByKey(saved);
+        }
         refreshLabels();
 
         // Vẽ lại sau MỌI lần engine tính lại — đổi ngày, đổi địa điểm, đổi

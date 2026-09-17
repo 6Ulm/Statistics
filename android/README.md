@@ -460,6 +460,41 @@ Mỗi tháng khí (từ TIẾT này tới TIẾT sau) không do một can duy nh
 tháng tàng 2–3 can, và chúng thay nhau cầm lệnh theo thứ tự dư khí → trung khí
 → bản khí. Tháng Dần chẳng hạn: Mậu, rồi Bính, rồi Giáp.
 
+### Ba bộ số, ba cuốn sách
+
+Cổ thư không thống nhất phần chia này, và chênh nhau không phải vài phút mà là
+cả tuần: tháng Dần, bản thông hành chia **7·7·16** còn 《三命通会》 chia
+**5·5·20** — người sinh mùng 6 sau Lập Xuân là **Bính** cầm lệnh ở bảng này mà
+**Giáp** cầm lệnh ở bảng kia. Không có cách nào trung hoà; chỉ có cách nói rõ
+đang dùng bộ nào. Ô chọn nằm **cùng hàng với ô ngày giờ**, chỉ hiện ở tab Lệnh,
+và nhớ lựa chọn qua lần mở sau (`qmdj.lenhRule`).
+
+| Sách | Dần | Mão | Thìn | Thân | Nét riêng |
+|---|---|---|---|---|---|
+| Uyên Hải Tử Bình *(mặc định)* | 7·7·16 | 10·20 | Ất 9 · **Quý** 3 · Mậu 18 | 7·7·16 | bản thông hành |
+| Tam Mệnh Thông Hội | 5·5·20 | 7·23 | Ất 7 · **Nhâm** 5 · Mậu 18 | 5·5·20 | mộ khố lấy can DƯƠNG |
+| Tử Bình Chân Thuyên | 7·7·16 | 10·20 | Ất 9 · **Quý** 3 · Mậu 18 | 10·3·17 | chỉ khác tháng Thân |
+
+Xuất xứ, và mức tin cậy của từng bộ — khác nhau, nên nói thẳng:
+
+* **Tam Mệnh Thông Hội** — chép thẳng từ nguyên văn 卷二「论人元司事」, đối chiếu
+  sáu bản độc lập. Nguyên văn nằm ngay trong khối ghi chú trên bảng ở
+  `lenh.js`, và `test_lenh.mjs` ĐỌC chữ Hán ấy rồi so với bảng bên dưới — sửa
+  một bên mà quên bên kia là đỏ. ("艮土"/"坤土" đều là Mậu.)
+* **Tử Bình Chân Thuyên** — chép thẳng từ 「十二月令人元司令分野表」 trong
+  《子平真诠评注》, cũng canh bằng nguyên văn như trên. Chỉ khác bản thông hành ở
+  **đúng một tháng**: Thân 10·3·17 thay vì 7·7·16 ("戊己土十日，壬水三日，庚金
+  十七日").
+* **Uyên Hải Tử Bình** — là **bản thông hành** mà giới mệnh lý ngày nay quy cho
+  hệ Uyên Hải, và cũng đúng bộ số trong ảnh mẫu người dùng gửi (nên nó là mặc
+  định). Bản 《渊海子平》 tìm được chỉ có bài 「论天地干支暗藏总诀」 chia theo
+  nửa tháng, không phải bảng ba đoạn này — chỗ quy cho ấy là **theo tập quán**,
+  không phải một dòng đọc được trong sách.
+
+Cả ba bộ đều phải qua cùng bộ phép canh: mỗi tháng cộng đủ 30, các đoạn nối
+liền không hở không chồng, đoạn cuối là bản khí của chi, mốc mở tháng trùng
+khít bảng tiết khí, và chi của tháng lệnh trùng trụ tháng ở mọi múi giờ.
+
 ### Đo bằng ĐỘ hoàng kinh, không phải số ngày
 
 Sách xưa chép phần chia theo **ngày** ("Mậu 7 ngày, Bính 7 ngày, Giáp 16 ngày"),
@@ -471,9 +506,12 @@ khoảng cách thật giữa hai tiết — **29,44 ngày** mùa đông, **31,44
 tiết sau.
 
 Đo bằng độ thì hết hẳn: 7° + 7° + 16° = 30° = đúng khoảng cách hai tiết, **theo
-định nghĩa**. Ảnh mẫu người dùng gửi cũng ghi cột "Hoàng kinh" chứ không ghi số
-ngày. `test_lenh.mjs` canh tổng ấy cho cả 12 tháng, và canh các đoạn nối liền
-nhau không hở không chồng.
+định nghĩa**. `test_lenh.mjs` canh tổng ấy cho cả 12 tháng của cả ba bộ, và
+canh các đoạn nối liền nhau không hở không chồng.
+
+Cột thứ ba của bảng vì thế hiện **số độ của từng đoạn** (7 · 7 · 16), không
+phải khoảng hoàng kinh (285~294°): bộ số là thứ phân biệt ba sách, nên đó mới
+là con số người dùng cần liếc thấy.
 
 ### Một nguồn duy nhất với bảng tiết khí
 
@@ -510,9 +548,11 @@ cùng `#country` và cùng `currentLang`; `lenh.js` bọc `processAll()` đúng 
 
 ### Bảng của năm
 
-Cấu trúc theo đúng ảnh mẫu: **Tháng · Can · Hoàng kinh · Vào lệnh · Hết lệnh**,
+Cấu trúc theo đúng ảnh mẫu: **Tháng · Can · Số độ · Vào lệnh · Hết lệnh**,
 12 tháng từ Sửu (Tiểu Hàn, tháng 1) tới Tý (Đại Tuyết, tháng 12) — tức 12 TIẾT
-rơi vào năm dương lịch đang chọn — thành 33 đoạn. Ô tháng gộp 2–3 hàng.
+rơi vào năm dương lịch đang chọn. Bản thông hành và Tử Bình Chân Thuyên ra 33
+đoạn; Tam Mệnh Thông Hội ra 32, vì bốn tháng tứ chính (Mão Ngọ Dậu Tý) chỉ chia
+hai đoạn. Ô tháng gộp 2–3 hàng.
 
 Giờ viết "05/01 16:23", chỉ thêm năm khi mốc rơi ra ngoài năm của bảng
 ("05/01/2027 14:09" ở hàng cuối). Bỏ năm ở 32/33 hàng thì cột hẹp đi chừng
@@ -1667,9 +1707,12 @@ quét 244 thời điểm của năm ở bốn múi giờ (UTC+7/+8/+2/−5), chi
 phải trùng chi của trụ tháng trong bảng Bát Tự, và can cầm lệnh phải là một
 trong những can tàng trong chi ấy. **Giao diện**: bảng Bát Tự ở tab Lệnh phải
 là CHÍNH phần tử của tab Kỳ Môn (đánh dấu `data-moc` rồi chuyển tab xem dấu còn
-không), đổi địa điểm ngay tại tab Lệnh thì giờ vào lệnh đổi theo, giờ mở tháng
-trùng bảng tiết khí ở tab Lịch, và sáu cấu hình máy × tiếng đều không cắt chữ,
-không kéo ngang, không tràn xuống dưới thanh tab.
+không); ô chọn bộ số đứng đúng hàng với ô ngày giờ, ẩn hẳn ở tab Kỳ Môn, đổi
+sang Tam Mệnh thì tháng Dần từ 7·7·16 thành 5·5·20 VÀ giờ vào lệnh dịch theo
+(đổi mỗi cái nhãn thì vô nghĩa), và nhớ lựa chọn qua lần tải lại; đổi địa điểm
+ngay tại tab Lệnh thì giờ vào lệnh đổi theo; giờ mở tháng trùng bảng tiết khí ở
+tab Lịch; và sáu cấu hình máy × tiếng đều không cắt chữ, không kéo ngang, không
+tràn xuống dưới thanh tab.
 
 ### Mùng 1 và điểm Sóc
 

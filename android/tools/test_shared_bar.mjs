@@ -112,8 +112,13 @@ for (const d of DEVICES) {
                 if (!e) { clipped.push(id + '(thiếu)'); continue; }
                 if (e.scrollWidth > e.clientWidth + 1) clipped.push(id);
             }
+            // Chỉ đếm ô ĐANG HIỆN: #qmRow còn mang ô chọn bộ số của tab Lệnh,
+            // vốn display:none ở tab Kỳ Môn. Ô ẩn có hình chữ nhật toàn số 0
+            // nên tính cả nó vào thì "cùng một hàng" luôn sai.
+            const shown = el => [...el.children]
+                .filter(k => getComputedStyle(k).display !== 'none');
             const oneRow = el => {
-                const kids = [...el.children];
+                const kids = shown(el);
                 if (!kids.length) return false;
                 // Cùng một hàng = các ô chồng lấn nhau theo chiều dọc.
                 const first = kids[0].getBoundingClientRect();
@@ -126,8 +131,8 @@ for (const d of DEVICES) {
             const shared = document.getElementById('sharedBar');
             return {
                 clipped,
-                qmOneRow: oneRow(row), qmKids: row.children.length,
-                sharedOneRow: oneRow(shared), sharedKids: shared.children.length,
+                qmOneRow: oneRow(row), qmKids: shown(row).length,
+                sharedOneRow: oneRow(shared), sharedKids: shown(shared).length,
                 bodyOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
             };
         });

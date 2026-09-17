@@ -60,6 +60,13 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
             <input type="checkbox" id="chkHienThiCoBan" onchange="applyCobanFilter()">
             <span id="lblHienThiCoBan">Đầy đủ</span>
         </label>
+        <!-- Ô chọn bộ số phân dã của tab Lệnh. Nằm trong CHÍNH hàng này (chứ
+             không phải một hàng riêng trong #lenhView) để nó đứng cùng hàng
+             với ô ngày giờ, đúng như người dùng yêu cầu; css/lenh.css chỉ cho
+             nó hiện ở tab Lệnh, và ẩn ô phái với ô "Đầy đủ" ở đó. -->
+        <div id="lenhRuleBtn" onclick="openLenhRulePicker()" class="picker-btn">
+            <span id="lenhRuleText" class="picker-text">—</span>
+        </div>
     </div>
 </div>
 
