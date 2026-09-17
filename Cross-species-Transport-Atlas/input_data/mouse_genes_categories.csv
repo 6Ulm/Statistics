@@ -1,0 +1,212 @@
+genes,Categorie,human_gene
+Pcna,Complexe PCNA,PCNA
+Rfc1,Complexe PCNA,RFC1
+Rfc2,Complexe PCNA,RFC2
+Rfc3,Complexe PCNA,RFC3
+Rfc4,Complexe PCNA,RFC4
+Rfc5,Complexe PCNA,RFC5
+Pold1,Complexe PCNA,POLD1
+Pold2,Complexe PCNA,POLD2
+Pold3,Complexe PCNA,POLD3
+Pold4,Complexe PCNA,POLD4
+Pole,Complexe PCNA,POLE
+Pole2,Complexe PCNA,POLE2
+Pole3,Complexe PCNA,POLE3
+Pole4,Complexe PCNA,POLE4
+Fen1,Complexe PCNA,FEN1
+Lig1,Complexe PCNA,LIG1
+Dnmt1,Complexe PCNA,DNMT1
+Cdkn1a,Complexe PCNA,CDKN1A
+Chaf1a,Complexe PCNA,CHAF1A
+Chaf1b,Complexe PCNA,CHAF1B
+Rad18,Complexe PCNA,RAD18
+Usp1,Complexe PCNA,USP1
+Ube2a,Complexe PCNA,UBE2A
+Ube2b,Complexe PCNA,UBE2B
+Sprtn,Complexe PCNA,SPRTN
+Atad5,Complexe PCNA,ATAD5
+Msh2,Réparation de l'ADN,MSH2
+Msh3,Réparation de l'ADN,MSH3
+Msh6,Réparation de l'ADN,MSH6
+Mlh1,Réparation de l'ADN,MLH1
+Mlh3,Réparation de l'ADN,MLH3
+Pms1,Réparation de l'ADN,PMS1
+Pms2,Réparation de l'ADN,PMS2
+Ercc1,Réparation de l'ADN,ERCC1
+Ercc2,Réparation de l'ADN,ERCC2
+Ercc3,Réparation de l'ADN,ERCC3
+Ercc4,Réparation de l'ADN,ERCC4
+Ercc5,Réparation de l'ADN,ERCC5
+Ercc6,Réparation de l'ADN,ERCC6
+Ercc8,Réparation de l'ADN,ERCC8
+Xpa,Réparation de l'ADN,XPA
+Xpc,Réparation de l'ADN,XPC
+Ddb1,Réparation de l'ADN,DDB1
+Ddb2,Réparation de l'ADN,DDB2
+Rpa1,Réparation de l'ADN,RPA1
+Ogg1,Réparation de l'ADN,OGG1
+Apex1,Réparation de l'ADN,APEX1
+Xrcc1,Réparation de l'ADN,XRCC1
+Polb,Réparation de l'ADN,POLB
+Neil1,Réparation de l'ADN,NEIL1
+Neil2,Réparation de l'ADN,NEIL2
+Nthl1,Réparation de l'ADN,NTHL1
+Ung,Réparation de l'ADN,UNG
+Fan1,Réparation de l'ADN,FAN1
+Rad51,Réparation de l'ADN,RAD51
+Rad52,Réparation de l'ADN,RAD52
+Brca1,Réparation de l'ADN,BRCA1
+Brca2,Réparation de l'ADN,BRCA2
+Mre11,Réparation de l'ADN,MRE11
+Rad50,Réparation de l'ADN,RAD50
+Nbn,Réparation de l'ADN,NBN
+Atm,Réparation de l'ADN,ATM
+Atr,Réparation de l'ADN,ATR
+Xrcc4,Réparation de l'ADN,XRCC4
+Xrcc5,Réparation de l'ADN,XRCC5
+Xrcc6,Réparation de l'ADN,XRCC6
+Prkdc,Réparation de l'ADN,PRKDC
+Lig4,Réparation de l'ADN,LIG4
+Rrm2b,Réparation de l'ADN,RRM2B
+Tcerg1,Réparation de l'ADN,TCERG1
+Ubr5,Réparation de l'ADN,UBR5
+Fan1,GWAS GeM-HD,FAN1
+Msh3,GWAS GeM-HD,MSH3
+Mlh1,GWAS GeM-HD,MLH1
+Pms1,GWAS GeM-HD,PMS1
+Pms2,GWAS GeM-HD,PMS2
+Msh2,GWAS GeM-HD,MSH2
+Lig1,GWAS GeM-HD,LIG1
+Tcerg1,GWAS GeM-HD,TCERG1
+Rrm2b,GWAS GeM-HD,RRM2B
+Ccdc82,GWAS GeM-HD,CCDC82
+Crebbp,Hors voie ADN,CREBBP
+Rest,Hors voie ADN,REST
+Sp1,Hors voie ADN,SP1
+Tbp,Hors voie ADN,TBP
+Pou3f2,Hors voie ADN,POU3F2
+Ncor1,Hors voie ADN,NCOR1
+Hdac4,Hors voie ADN,HDAC4
+Ppargc1a,Hors voie ADN,PPARGC1A
+Sirt1,Hors voie ADN,SIRT1
+Sirt3,Hors voie ADN,SIRT3
+Nampt,Hors voie ADN,NAMPT
+Ucp2,Hors voie ADN,UCP2
+Pde10a,Hors voie ADN,PDE10A
+Tfam,Hors voie ADN,TFAM
+Ndufb2,Hors voie ADN,NDUFB2
+Grin2a,Hors voie ADN,GRIN2A
+Grin2b,Hors voie ADN,GRIN2B
+Grik2,Hors voie ADN,GRIK2
+Grm5,Hors voie ADN,GRM5
+Slc1a2,Hors voie ADN,SLC1A2
+Adora2a,Hors voie ADN,ADORA2A
+Drd1,Hors voie ADN,DRD1
+Drd2,Hors voie ADN,DRD2
+Cnr1,Hors voie ADN,CNR1
+Atg7,Hors voie ADN,ATG7
+Becn1,Hors voie ADN,BECN1
+Ulk1,Hors voie ADN,ULK1
+Sqstm1,Hors voie ADN,SQSTM1
+Tsc1,Hors voie ADN,TSC1
+Mtor,Hors voie ADN,MTOR
+Ubqln2,Hors voie ADN,UBQLN2
+Psmd9,Hors voie ADN,PSMD9
+Casp1,Hors voie ADN,CASP1
+Casp3,Hors voie ADN,CASP3
+Bax,Hors voie ADN,BAX
+Bcl2,Hors voie ADN,BCL2
+Tp53,Hors voie ADN,TP53
+Bdnf,Hors voie ADN,BDNF
+Ntrk2,Hors voie ADN,NTRK2
+Igf1,Hors voie ADN,IGF1
+Uchl1,Hors voie ADN,UCHL1
+Mthfr,Hors voie ADN,MTHFR
+Apoe,Hors voie ADN,APOE
+Fkbp5,Hors voie ADN,FKBP5
+Comt,Hors voie ADN,COMT
+Foxo1,Voie FOXO,FOXO1
+Foxo3,Voie FOXO,FOXO3
+Foxo4,Voie FOXO,FOXO4
+Foxo6,Voie FOXO,FOXO6
+Akt1,Voie FOXO,AKT1
+Akt2,Voie FOXO,AKT2
+Sgk1,Voie FOXO,SGK1
+Pik3ca,Voie FOXO,PIK3CA
+Pik3cb,Voie FOXO,PIK3CB
+Ikbkb,Voie FOXO,IKBKB
+Sod2,Voie FOXO,SOD2
+Cat,Voie FOXO,CAT
+Gadd45a,Voie FOXO,GADD45A
+Bnip3,Voie FOXO,BNIP3
+H3-3a,Histones / chromatine,H3-3A
+H3-3b,Histones / chromatine,H3-3B
+H3c1,Histones / chromatine,H3C1
+H4c1,Histones / chromatine,H4C1
+H2ac1,Histones / chromatine,H2AC1
+H2bc1,Histones / chromatine,H2BC1
+Ep300,Histones / chromatine,EP300
+Kat2a,Histones / chromatine,KAT2A
+Kat2b,Histones / chromatine,KAT2B
+Hdac1,Histones / chromatine,HDAC1
+Hdac2,Histones / chromatine,HDAC2
+Hdac3,Histones / chromatine,HDAC3
+Hdac5,Histones / chromatine,HDAC5
+Hdac6,Histones / chromatine,HDAC6
+Hdac7,Histones / chromatine,HDAC7
+Hdac11,Histones / chromatine,HDAC11
+Sirt2,Histones / chromatine,SIRT2
+Ezh2,Histones / chromatine,EZH2
+Suz12,Histones / chromatine,SUZ12
+Eed,Histones / chromatine,EED
+Ehmt2,Histones / chromatine,EHMT2
+Setd1a,Histones / chromatine,SETD1A
+Kmt2a,Histones / chromatine,KMT2A
+Kdm1a,Histones / chromatine,KDM1A
+Kdm5c,Histones / chromatine,KDM5C
+Brd4,Histones / chromatine,BRD4
+Brd1,Histones / chromatine,BRD1
+Shmt2,Histones / chromatine,SHMT2
+Aars1,Histones / chromatine,AARS1
+Mthfd1,Histones / chromatine,MTHFD1
+Hap1,Interactome HTT + UPS,HAP1
+Hip1,Interactome HTT + UPS,HIP1
+Hip1r,Interactome HTT + UPS,HIP1R
+Git1,Interactome HTT + UPS,GIT1
+Sh3gl3,Interactome HTT + UPS,SH3GL3
+Optn,Interactome HTT + UPS,OPTN
+F8a1,Interactome HTT + UPS,F8A1
+Zdhhc17,Interactome HTT + UPS,ZDHHC17
+Dctn1,Interactome HTT + UPS,DCTN1
+Kif5c,Interactome HTT + UPS,KIF5C
+Vcp,Interactome HTT + UPS,VCP
+Stub1,Interactome HTT + UPS,STUB1
+Usp14,Interactome HTT + UPS,USP14
+Hspa8,Interactome HTT + UPS,HSPA8
+Setx,Instabilité somatique,SETX
+Rnaseh2a,Instabilité somatique,RNASEH2A
+Rnaseh2b,Instabilité somatique,RNASEH2B
+Rnaseh2c,Instabilité somatique,RNASEH2C
+Top1,Instabilité somatique,TOP1
+Lig3,Instabilité somatique,LIG3
+Tnf,Neuroinflammation / calcium / lipides,TNF
+Il6,Neuroinflammation / calcium / lipides,IL6
+Trem2,Neuroinflammation / calcium / lipides,TREM2
+C1qa,Neuroinflammation / calcium / lipides,C1QA
+C1qb,Neuroinflammation / calcium / lipides,C1QB
+C3,Neuroinflammation / calcium / lipides,C3
+Itpr1,Neuroinflammation / calcium / lipides,ITPR1
+Ppp3ca,Neuroinflammation / calcium / lipides,PPP3CA
+Camk2a,Neuroinflammation / calcium / lipides,CAMK2A
+Srebf2,Neuroinflammation / calcium / lipides,SREBF2
+Cyp46a1,Neuroinflammation / calcium / lipides,CYP46A1
+Hmgcr,Neuroinflammation / calcium / lipides,HMGCR
+Atf4,UPR + famille polyQ,ATF4
+Xbp1,UPR + famille polyQ,XBP1
+Hspa5,UPR + famille polyQ,HSPA5
+Eif2ak3,UPR + famille polyQ,EIF2AK3
+Atxn1,UPR + famille polyQ,ATXN1
+Atxn2,UPR + famille polyQ,ATXN2
+Atxn3,UPR + famille polyQ,ATXN3
+Atn1,UPR + famille polyQ,ATN1
+Ar,UPR + famille polyQ,AR
