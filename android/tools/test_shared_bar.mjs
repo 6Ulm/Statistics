@@ -83,6 +83,31 @@ function ok(what, cond, detail) {
     ok('hàng dùng chung nằm DƯỚI hai tab', st.sharedBelowTabs);
     check('thanh dưới vẫn dính đáy', st.dockFixed, 'fixed');
     check('tab Kỳ Môn chỉ còn MỘT hàng điều khiển', st.controlRows, 1);
+
+    // ── Nhãn tab: chỉ CHỮ, in hoa, đậm, và đủ to ──
+    // Không ký hiệu ▦ ▤ ◷ nữa. Và phải in hoa bằng text-transform chứ không
+    // viết hoa sẵn trong HTML: refreshLabels() ghi lại nhãn mỗi lần đổi ngôn
+    // ngữ, và chính tệp này so textContent với 'Lịch' / '日历'.
+    const nh = await page.evaluate(() => {
+        const l = [...document.querySelectorAll('#tabBar .tab-lbl')];
+        return {
+            ico: document.querySelectorAll('#tabBar .tab-ico').length,
+            con: [...document.querySelectorAll('#tabBar .tab-item')]
+                    .every(t => t.children.length === 1),
+            hoa: l.every(e => getComputedStyle(e).textTransform === 'uppercase'),
+            đậm: l.every(e => parseInt(getComputedStyle(e).fontWeight, 10) >= 700),
+            cỡ: Math.min(...l.map(e => parseFloat(getComputedStyle(e).fontSize))),
+            chữThường: l.every(e => e.textContent === e.textContent.trim()
+                                 && /[a-zà-ỹ]/.test(e.textContent)),
+        };
+    });
+    check('nhãn tab không còn ký hiệu', nh.ico, 0);
+    ok('mỗi tab chỉ chứa ĐÚNG một nhãn', nh.con);
+    ok('nhãn tab in hoa bằng text-transform', nh.hoa);
+    ok('nhãn tab in đậm (≥700)', nh.đậm);
+    ok('nhãn tab đủ to (≥14px)', nh.cỡ >= 14, `${nh.cỡ}px`);
+    ok('HTML vẫn giữ chữ thường để refreshLabels và phép kiểm đọc được',
+        nh.chữThường);
     await ctx.close();
 }
 

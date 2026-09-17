@@ -435,6 +435,21 @@ bằng ở cả hai thứ tiếng. Giữa hai hàng chừa 3px, và nền thanh 
 TRANG (không phải trắng) nên cái khe ấy hiện ra thành một vạch, hai hàng tách
 bạch chứ không dính liền một khối.
 
+Nhãn tab là **chữ không, in hoa, in đậm, 14,5px** — trước có ký hiệu ▦ ▤ ◷
+đứng cạnh và chữ chỉ 11,5px, bé hơn mọi chữ khác trên màn trong khi đây lại là
+thứ người dùng chạm nhiều nhất. Ba chi tiết phải giữ:
+
+* In hoa bằng `text-transform`, **không** viết hoa sẵn trong HTML: `refreshLabels()`
+  ghi lại nhãn mỗi lần đổi ngôn ngữ, và các phép kiểm so `textContent` với
+  "Lịch" / "日历". Chữ Hán không có hoa/thường nên luật này không đụng tiếng Trung.
+* Chữ hoa tiếng Việt **đội dấu** (Ỳ, Ô, Ệ) nên dòng chữ cao hơn hẳn chữ thường —
+  `--dock-row-h` nâng 24px → 29px theo. Hạ lại mà không đo là cụt dấu.
+* `--dock-row-h` dùng chung cho cả hàng dưới, nên nâng một chỗ là hai hàng vẫn
+  cao bằng nhau (đo lại: 29px/29px ở cả hai thứ tiếng, ba máy).
+
+Thanh dưới dày thêm 5px mà màn Kỳ Môn **không phải thu nhỏ** (đo ở S21/S21FE/A51,
+hai thứ tiếng: tỉ lệ vẫn 1, thừa 0,1–0,2px).
+
 Trên máy hẹp nhất (S21, 360px) ô ngày giờ chốt ở 50% và ô phái chốt ở một phần
 tư, nên chỗ dự phòng chỉ còn lấy được từ ô "Đầy đủ": dưới 412px nó bóp lề trái
 và khe trong còn 2–3px. Phông trên máy thật (Samsung) rộng hơn phông ở máy
