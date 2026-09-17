@@ -597,6 +597,58 @@ for (const d of [{ n: 'S21', w: 360, h: 740 }, { n: 'S21 FE', w: 393, h: 790 }, 
         ok(`${tag}: không còn dải trống ở đáy`, g.thừa <= 16, `còn thừa ${g.thừa}px`);
         ok(`${tag}: hàng đầu không nằm cụt dưới hàng tiêu đề`, !g.cụt, g.cụt);
         ok(`${tag}: hiện được ít nhất 12 đoạn`, g.hiện >= 12, `${g.hiện} đoạn`);
+
+        // ── Kéo được tới đủ 12 tháng ──
+        // Bảng 33 đoạn không bao giờ vừa một màn, nên KÉO ĐƯỢC là chuyện sống
+        // còn, không phải tiện nghi. Và phải thử bằng NGÓN TAY thật: lỗi đã gặp
+        // là `overflow-y: hidden` (thừa kế luật "mục đang đóng" của tab Lịch),
+        // mà nó vẫn cho JS đặt scrollTop — kiểm bằng `box.scrollTop = n` thì
+        // đạt, người dùng vẫn chịu chết.
+        const cuộn = await page.evaluate(() => {
+            const b = document.getElementById('lenhBody');
+            return { của: getComputedStyle(b).overflowY, dư: b.scrollHeight - b.clientHeight };
+        });
+        ok(`${tag}: khung bảng mở quyền cuộn dọc`,
+            cuộn.của === 'auto' || cuộn.của === 'scroll', cuộn.của);
+
+        const hộp = await page.evaluate(() => {
+            const q = document.getElementById('lenhBody').getBoundingClientRect();
+            return { x: q.left + q.width / 2, y: q.top + q.height / 2, h: q.height };
+        });
+        await page.evaluate(() => { document.getElementById('lenhBody').scrollTop = 0; });
+        await page.waitForTimeout(150);
+        const cdp = await ctx.newCDPSession(page);
+        await cdp.send('Input.dispatchTouchEvent',
+            { type: 'touchStart', touchPoints: [{ x: hộp.x, y: hộp.y + hộp.h / 3 }] });
+        for (let i = 1; i <= 8; i++) {
+            await cdp.send('Input.dispatchTouchEvent',
+                { type: 'touchMove', touchPoints: [{ x: hộp.x, y: hộp.y + hộp.h / 3 - i * 25 }] });
+            await page.waitForTimeout(25);
+        }
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await page.waitForTimeout(600);
+        const sauKéo = await page.evaluate(() => document.getElementById('lenhBody').scrollTop);
+        ok(`${tag}: ngón tay kéo được bảng`, sauKéo > 0, `scrollTop vẫn ${sauKéo}`);
+
+        // Kéo hết cỡ: đủ 12 tháng phải với tới được, tháng cuối (Sửu) hiện trọn.
+        await page.evaluate(() => {
+            const b = document.getElementById('lenhBody');
+            b.scrollTop = b.scrollHeight;
+        });
+        await page.waitForTimeout(250);
+        const đáy = await page.evaluate(() => {
+            const b = document.getElementById('lenhBody');
+            const c = b.getBoundingClientRect();
+            const cuối = [...b.querySelectorAll('tbody tr')].pop();
+            return {
+                tháng: new Set([...b.querySelectorAll('.lenh-mon')]
+                    .map(e => e.textContent.replace(/\s+/g, ' ').trim())).size,
+                cuốiTrọn: cuối.getBoundingClientRect().bottom <= c.bottom + 1,
+            };
+        });
+        ok(`${tag}: bảng có đủ 12 tháng`, đáy.tháng === 12, `${đáy.tháng} tháng`);
+        ok(`${tag}: kéo tới đáy thì đoạn cuối hiện trọn`, đáy.cuốiTrọn);
+
         ok(`${tag}: không lỗi JS`, errs.length === 0, errs.join('; '));
         await ctx.close();
     }

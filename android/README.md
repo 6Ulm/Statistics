@@ -588,6 +588,25 @@ phần CÒN LẠI sau khi trừ đệm, chứ không phải của hàng — ô n
 123,7px thay vì 120px. Cho cả hai `box-sizing: border-box` thì hai vạch trùng
 nhau trong 0,7px.
 
+### Khung bảng phải tự mở quyền cuộn
+
+`#lenhSec` mượn `.cal-sec`/`.cal-sec-body` của tab Lịch, nên mượn luôn luật
+`.cal-sec:not(.cal-sec-open) .cal-sec-body { overflow-y: hidden }`. Ở tab Lịch
+luật ấy đúng — mục nào người dùng chưa bấm mở thì đừng cuộn. Nhưng tab Lệnh
+**không có nút đóng/mở**, nên `#lenhSec` không bao giờ nhận lớp `cal-sec-open`,
+và lĩnh đủ luật của mục đang đóng.
+
+Lỗi này khó thấy vì `overflow-y: hidden` **vẫn cho JS đặt `scrollTop`**: bảng
+vẫn tự cuộn tới tháng đang cầm lệnh lúc mở tab, ảnh chụp trông bình thường, đo
+hình học cũng không bắt được. Chỉ NGÓN TAY là không kéo được — 12 tháng chỉ với
+tới chừng một nửa. Nên `lenh.css` ghi đè thẳng `#lenhSec .cal-sec-body
+{ overflow-y: auto }`, không mượn lớp `cal-sec-open` (lớp ấy nghĩa là "người
+dùng vừa bấm mở mục này", còn mục này không bao giờ đóng).
+
+Phép kiểm trong `test_lenh.mjs` vì thế phải **kéo bằng ngón tay thật**
+(`Input.dispatchTouchEvent` qua CDP) rồi đọc lại `scrollTop`, chứ kiểm bằng
+`box.scrollTop = n` thì bản hỏng vẫn đạt.
+
 ### Một màu chữ duy nhất: ĐEN
 
 Bảng Lệnh ban đầu mượn màu chàm của mục Lịch âm: tiêu đề "LỆNH NĂM ….." là dải

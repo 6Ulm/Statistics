@@ -17,8 +17,8 @@ android {
         // trong Settings → Apps hai bản trông y hệt nhau, mà cài đè thất bại
         // (thường do khác chữ ký) lại nhìn giống hệt cài thành công — không có
         // cách nào biết máy đang chạy bản nào.
-        versionCode = 11
-        versionName = "1.10"
+        versionCode = 12
+        versionName = "1.11"
     }
 
     buildTypes {

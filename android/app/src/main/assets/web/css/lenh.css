@@ -87,6 +87,18 @@ body.view-lenh #qmRow #lenhRuleText {
    miếng vá vệt rò của hàng tiêu đề dính (xem khối ghi chú ở .cal-sec::after).
    Chỉ bỏ bo góc TRÊN để nối liền #lenhHead. */
 #lenhSec .cal-sec-body { border-radius: 0 0 6px 6px; border-top-color: var(--border-color, #ddd); }
+
+/* PHẢI trả lại quyền cuộn dọc.
+   calendar.css có luật `.cal-sec:not(.cal-sec-open) .cal-sec-body
+   { overflow-y: hidden }` — ở tab Lịch nó đúng: mục nào người dùng chưa bấm mở
+   thì đừng cuộn. Nhưng tab Lệnh KHÔNG có nút đóng/mở, nên #lenhSec không bao
+   giờ nhận lớp `cal-sec-open`, và dính luôn luật của mục ĐANG ĐÓNG.
+   Hậu quả không thấy ngay, vì `overflow-y: hidden` vẫn cho JS đặt scrollTop:
+   bảng vẫn tự cuộn tới tháng đang cầm lệnh lúc mở tab, trông y như bình
+   thường — chỉ là NGÓN TAY không kéo được, nên 12 tháng chỉ với tới được
+   chừng một nửa. Phải ghi đè thẳng, không mượn lớp `cal-sec-open`: lớp ấy có
+   nghĩa "người dùng vừa bấm mở mục này", còn ở đây mục không bao giờ đóng. */
+#lenhSec .cal-sec-body { overflow-y: auto; }
 /* Miếng vá phải bỏ BO GÓC: ở mục của tab Lịch nó bo 6px trên vì khung bảng
    cũng bo, còn khung này vuông góc trên (đã nối vào #lenhHead). Để nguyên bo
    góc thì hai góc trên hở ra đúng chỗ vệt rò hay lọt.
