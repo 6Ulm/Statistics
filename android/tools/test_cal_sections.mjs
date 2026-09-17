@@ -1162,6 +1162,47 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         /scheduleMidnight\(context\)/.test(refreshFn));
 }
 
+/* ── Máy thấp: KHÔNG được để lại nửa hàng ──
+   Trước đây trên 320×568 mục Tiết khí được 38px mà riêng hàng tiêu đề đã 25px:
+   13px còn lại hiện ra một DẢI NỬA CHỮ, thấy nửa trên của "Bạch Lộ 07-09-2026"
+   mà đọc không ra. Luật: mục nào không đủ hàng tiêu đề + MỘT hàng trọn vẹn thì
+   hạ hẳn về hàng tiêu đề — trông như đang đóng, sạch, và vài pixel nhả ra chảy
+   sang mục kia. */
+{
+    console.log('\nMáy thấp: không để lại nửa hàng');
+    for (const d of [{ n: '320×568', w: 320, h: 568 }, { n: '360×640', w: 360, h: 640 },
+                     { n: 'ngang 740×360', w: 740, h: 360 }]) {
+        const ctx = await browser.newContext({ viewport: { width: d.w, height: d.h },
+            deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+        const { page } = await openCal(ctx);
+        await page.waitForTimeout(700);
+        const đo = await page.evaluate(() => {
+            const z = parseFloat(getComputedStyle(document.body).zoom) || 1;
+            return ['calJieQi', 'calAmBan'].map(id => {
+                const box = document.getElementById(id);
+                const thead = box.querySelector('thead');
+                const row = box.querySelector('tbody tr');
+                if (!thead || !row) return null;
+                const cao = box.getBoundingClientRect().height / z;
+                const đầu = thead.getBoundingClientRect().height / z;
+                const hàng = row.getBoundingClientRect().height / z;
+                return { id, cao: +cao.toFixed(1), đầu: +đầu.toFixed(1), hàng: +hàng.toFixed(1),
+                         // phần thân hiện ra, ngoài hàng tiêu đề
+                         thân: +(cao - đầu).toFixed(1) };
+            });
+        });
+        for (const m of đo) {
+            if (!m) continue;
+            // Hoặc thân KHÔNG hiện gì (≤ viền, tức chỉ có hàng tiêu đề),
+            // hoặc hiện được TRỌN ít nhất một hàng. Không có cửa giữa.
+            const sạch = m.thân <= 3 || m.thân >= m.hàng - 0.5;
+            ok(`${d.n} · ${m.id}: không để lại nửa hàng`, sạch,
+                `thân ${m.thân}px, hàng ${m.hàng}px`);
+        }
+        await ctx.close();
+    }
+}
+
 await browser.close();
 server.close();
 console.log(`\n${pass} đạt · ${fail} hỏng`);

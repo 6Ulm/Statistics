@@ -603,6 +603,30 @@ phần CÒN LẠI sau khi trừ đệm, chứ không phải của hàng — ô n
 123,7px thay vì 120px. Cho cả hai `box-sizing: border-box` thì hai vạch trùng
 nhau trong 0,7px.
 
+### Không bao giờ để lại NỬA HÀNG
+
+Hai mục của tab Lịch nhận chiều cao còn lại sau khi lưới lịch lấy phần của nó.
+Trên máy rất thấp phần còn lại nhỏ hơn một hàng: đo trên 320×568, mục Tiết khí
+được 38px mà riêng hàng tiêu đề đã 25px — 13px còn lại hiện ra một **dải nửa
+chữ**, thấy được nửa trên của "Bạch Lộ 07-09-2026 14:41" mà đọc không ra. Nửa
+hàng như thế tệ hơn không có hàng nào: nó chiếm chỗ và trông như lỗi hiển thị.
+
+`noPartialRow()` chốt luật: mục đang mở mà chỗ được cấp **không đủ hàng tiêu đề
+cộng MỘT hàng trọn vẹn** thì hạ hẳn về đúng hàng tiêu đề. Mục trông như đang
+đóng — sạch, vẫn chạm được — và vài pixel nhả ra chảy sang mục kia (đo lại trên
+320×568: Lịch âm từ chỗ bị đóng hẳn nay mở ra với một hàng thật).
+
+Luật này **không** đặt được trong `snapCut`. `snapCut` canh mép dưới theo chỗ
+ĐANG cuộn, mà chỗ cuộn đổi sau đó (`scrollJqToActive` chạy sau khi chia chiều
+cao) — canh xong là hỏng lại. Đây là quyết định về CỠ nên phải chốt đúng lúc
+cấp chiều cao. Cũng vì thế mà không được "sửa" `snapCut` để nó giấu hàng bị cắt
+sâu: ở khung cao bình thường, một hàng hiện dở dang dưới đáy là **dấu hiệu còn
+cuộn được**, không phải lỗi.
+
+Xoay ngang thì hai mục chỉ còn hàng tiêu đề (lưới lịch 6 tuần ăn gần hết 412px)
+— nhưng trang **cuộn được** 117px nên vẫn với tới. Đó là chỗ đã đo, không phải
+chỗ đoán.
+
 ### Khung bảng phải tự mở quyền cuộn
 
 `#lenhSec` mượn `.cal-sec`/`.cal-sec-body` của tab Lịch, nên mượn luôn luật

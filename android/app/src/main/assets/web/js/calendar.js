@@ -877,6 +877,30 @@
         return Math.ceil(thead.getBoundingClientRect().height / zoom) + 2;
     }
 
+    /**
+     * Mục đang mở mà chỗ được cấp không đủ MỘT hàng trọn vẹn thì hạ hẳn về
+     * đúng hàng tiêu đề.
+     *
+     * Xoay ngang máy là thấy vì sao: màn A51 nằm ngang chỉ cao 412px, lưới
+     * lịch ăn gần hết, mục Tiết khí được 28,5px mà riêng hàng tiêu đề đã 26,6px
+     * — 1,9px còn lại hiện lên thành một DẢI NỬA CHỮ cắt ngang thân chữ. Trên
+     * 320×568 thì 13px, đủ để thấy nửa trên của "Bạch Lộ 07-09-2026 14:41" mà
+     * đọc không ra. Nửa hàng như thế tệ hơn không có hàng nào: nó chiếm chỗ,
+     * trông như lỗi hiển thị, và vẫn không đọc được.
+     *
+     * Hạ về hàng tiêu đề thì mục trông đúng như đang đóng — sạch, vẫn chạm
+     * được, và vài pixel nhả ra chảy sang mục kia.
+     *
+     * Việc này KHÔNG làm được trong snapCut: snapCut canh mép dưới theo chỗ
+     * đang cuộn, mà cuộn thì đổi sau đó (scrollJqToActive chạy sau khi chia
+     * chiều cao). Đây là quyết định về CỠ, phải chốt lúc cấp chiều cao.
+     */
+    function noPartialRow(body, used, headH) {
+        var m = rowMetrics(body);
+        if (!m || !m.h) return used;           // chưa dựng bảng: để nguyên
+        return used >= headH + m.h ? used : headH;
+    }
+
     /** Áp trạng thái mở/đóng lên DOM (không chia lại chiều cao). */
     function applySections() {
         var pairs = [['calSecJq', openJq], ['calSecAm', openAm]];
@@ -980,6 +1004,7 @@
             jqCap = Math.min(jqCap, Math.max(jqMin, Math.floor(avail - amKeep)));
             jqUsed = Math.min(natOf('calJieQi'), jqCap);
             if (jqEl) {
+                jqUsed = noPartialRow(jqEl, jqUsed, jqMin);
                 jqEl.style.maxHeight = jqUsed + 'px';
                 // Hạ TRƯỚC khi chia phần cho Lịch âm: vài pixel Tiết khí nhả
                 // ra phải chảy sang Lịch âm, chứ không thành khe trống.
@@ -1001,6 +1026,7 @@
             var amCap = Math.max(amMin, amRoom);
             amCap = Math.min(natOf('calAmBan'), amCap);
             if (amEl) {
+                amCap = noPartialRow(amEl, amCap, amMin);
                 amEl.style.maxHeight = amCap + 'px';
                 snapCut(amEl);
             }
