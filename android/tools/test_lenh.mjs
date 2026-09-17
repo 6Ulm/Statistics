@@ -401,35 +401,51 @@ console.log('\nÔ chọn bộ số: cùng hàng với ô ngày giờ, và đổi
     const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     const { page, errs } = await open(ctx);
 
-    // Ở tab Kỳ Môn ô này phải ẨN: hàng ấy vốn đã khít (ngày giờ · phái · Đầy đủ).
-    const qm = await page.evaluate(() =>
-        getComputedStyle(document.getElementById('lenhRuleBtn')).display === 'none');
-    ok('ở tab Kỳ Môn ô chọn bộ số ẩn hẳn', qm);
+    // Ở tab Kỳ Môn hai ô này phải ẨN: hàng ấy vốn đã khít (ngày giờ · phái · Đầy đủ).
+    const qm = await page.evaluate(() => ({
+        rule: getComputedStyle(document.getElementById('lenhRuleBtn')).display === 'none',
+        gender: getComputedStyle(document.getElementById('lenhGenderBtn')).display === 'none',
+    }));
+    ok('ở tab Kỳ Môn ô chọn bộ số ẩn hẳn', qm.rule);
+    ok('ở tab Kỳ Môn ô Giới tính ẩn hẳn', qm.gender);
 
     await page.click('#tabLenh');
     await page.waitForTimeout(900);
     const hàng = await page.evaluate(() => {
         const r = id => document.getElementById(id).getBoundingClientRect();
-        const d = r('dateDisplayBtn'), l = r('lenhRuleBtn'), row = r('qmRow');
+        const d = r('dateDisplayBtn'), g = r('lenhGenderBtn'), l = r('lenhRuleBtn'), row = r('qmRow');
         return {
-            cùngHàng: Math.abs(d.top - l.top) < 2 && Math.abs(d.bottom - l.bottom) < 2,
-            phủHàng: Math.abs((d.width + l.width) - row.width) < 12,
+            cùngHàng: Math.abs(d.top - l.top) < 2 && Math.abs(d.bottom - l.bottom) < 2
+                   && Math.abs(g.top - l.top) < 2 && Math.abs(g.bottom - l.bottom) < 2,
+            phủHàng: Math.abs((d.width + g.width + l.width) - row.width) < 14,
+            // Ba ô đúng thứ tự trái→phải theo vạch 50%|75% của bảng Bát Tự.
+            đúngThứTự: d.right <= g.left + 1 && g.right <= l.left + 1,
             nhãn: document.getElementById('lenhRuleText').textContent.trim(),
+            nhãnGiới: document.getElementById('lenhGenderText').textContent.trim(),
             cắt: document.getElementById('lenhRuleText').scrollWidth >
                  document.getElementById('lenhRuleText').clientWidth + 1,
+            cắtGiới: document.getElementById('lenhGenderText').scrollWidth >
+                     document.getElementById('lenhGenderText').clientWidth + 1,
         };
     });
-    ok('ô chọn bộ số nằm ĐÚNG hàng với ô ngày giờ', hàng.cùngHàng);
-    ok('hai ô chia nhau trọn hàng', hàng.phủHàng);
+    ok('ô chọn bộ số nằm ĐÚNG hàng với ô ngày giờ và ô Giới tính', hàng.cùngHàng);
+    ok('ba ô chia nhau trọn hàng', hàng.phủHàng);
+    ok('ba ô đúng thứ tự: ngày giờ → Giới tính → Quy tắc', hàng.đúngThứTự);
     ok('nhãn bộ số không bị cắt chữ', !hàng.cắt, hàng.nhãn);
-    check('mặc định là bản thông hành', hàng.nhãn, 'Uyên Hải Tử Bình');
+    ok('nhãn Giới tính không bị cắt chữ', !hàng.cắtGiới, hàng.nhãnGiới);
+    check('mặc định là bản thông hành, viết tắt UHTB', hàng.nhãn, 'UHTB');
+    check('mặc định Giới tính là Nam', hàng.nhãnGiới, 'Nam');
 
-    // Bảng chọn có đúng ba sách.
+    // Bảng chọn có đúng ba sách, tiêu đề rút gọn còn "Quy tắc".
     await page.click('#lenhRuleBtn');
     await page.waitForTimeout(400);
+    check('tiêu đề bảng chọn là "Quy tắc" (không phải "Chọn quy tắc")',
+        await page.textContent('#optTitle'), 'Quy tắc');
     const opts = await page.$$eval('#optList .opt-row',
         els => els.map(e => e.getAttribute('data-value')));
     check('bảng chọn có đúng ba sách', opts.join(','), 'yhzp,smth,zpzq');
+    const optLabels = await page.$$eval('#optList .opt-name', els => els.map(e => e.textContent.trim()));
+    check('ba sách hiện viết tắt UHTB/TMTH/TBCT', optLabels.join(','), 'UHTB,TMTH,TBCT');
 
     // Đổi sang 三命通会: tháng Dần phải từ 7·7·16 thành 5·5·20, và giờ vào
     // lệnh của đoạn giữa phải dịch theo — đổi mỗi cái nhãn thì vô nghĩa.
@@ -456,7 +472,7 @@ console.log('\nÔ chọn bộ số: cùng hàng với ô ngày giờ, và đổi
         trước.dan[1].split('|')[2] !== sau.dan[1].split('|')[2],
         `vẫn ${sau.dan[1].split('|')[2]}`);
     check('Tam Mệnh có 32 đoạn (bốn tháng chỉ hai đoạn)', sau.sốHàng, 32);
-    check('nhãn ô đã đổi', await page.textContent('#lenhRuleText'), 'Tam Mệnh Thông Hội');
+    check('nhãn ô đã đổi, viết tắt TMTH', await page.textContent('#lenhRuleText'), 'TMTH');
 
     // Nhớ lựa chọn qua lần mở sau — người dùng theo một phái, không chọn lại
     // mỗi lần mở app.
@@ -464,13 +480,39 @@ console.log('\nÔ chọn bộ số: cùng hàng với ô ngày giờ, và đổi
     await page.waitForTimeout(1000);
     await page.click('#tabLenh');
     await page.waitForTimeout(900);
-    check('mở lại vẫn nhớ bộ số đã chọn', await page.textContent('#lenhRuleText'), 'Tam Mệnh Thông Hội');
+    check('mở lại vẫn nhớ bộ số đã chọn', await page.textContent('#lenhRuleText'), 'TMTH');
     check('…và bảng vẫn là bộ ấy', (await dan()).dan.map(x => x.split('|')[1]).join('·'), '5·5·20');
 
-    // Tên sách sang tiếng Trung.
+    // Tên sách sang tiếng Trung — KHÔNG viết tắt (giữ nguyên chuyện đã kiểm
+    // ở nhóm số học phía trên: chỉ tiếng Việt được rút gọn).
     await page.evaluate(() => window.setLang('zh'));
     await page.waitForTimeout(800);
     check('tên sách sang tiếng Trung', await page.textContent('#lenhRuleText'), '三命通会');
+    await page.evaluate(() => window.setLang('vi'));
+    await page.waitForTimeout(600);
+
+    // ── Ô Giới tính: mở picker, tiêu đề đúng, đổi giá trị, nhớ qua lần mở sau.
+    await page.click('#lenhGenderBtn');
+    await page.waitForTimeout(400);
+    check('tiêu đề bảng chọn Giới tính là "Giới tính"', await page.textContent('#optTitle'), 'Giới tính');
+    const genderOpts = await page.$$eval('#optList .opt-row', els => els.map(e => e.getAttribute('data-value')));
+    check('bảng chọn Giới tính có đúng hai giá trị', genderOpts.join(','), 'nam,nu');
+    const genderLabels = await page.$$eval('#optList .opt-name', els => els.map(e => e.textContent.trim()));
+    check('hai giá trị là Nam/Nữ', genderLabels.join(','), 'Nam,Nữ');
+    await page.click('.opt-row[data-value="nu"]');
+    await page.waitForTimeout(500);
+    check('chọn Nữ thì ô hiện Nữ', await page.textContent('#lenhGenderText'), 'Nữ');
+    await page.evaluate(() => window.setLang('zh'));
+    await page.waitForTimeout(600);
+    check('Nữ sang tiếng Trung là 女', await page.textContent('#lenhGenderText'), '女');
+    await page.evaluate(() => window.setLang('vi'));
+    await page.waitForTimeout(600);
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(1000);
+    await page.click('#tabLenh');
+    await page.waitForTimeout(900);
+    check('mở lại vẫn nhớ Giới tính đã chọn', await page.textContent('#lenhGenderText'), 'Nữ');
+
     ok('không lỗi JS', errs.length === 0, errs.join('; '));
     await ctx.close();
 }
@@ -652,6 +694,166 @@ for (const d of [{ n: 'S21', w: 360, h: 740 }, { n: 'S21 FE', w: 393, h: 790 }, 
         ok(`${tag}: không lỗi JS`, errs.length === 0, errs.join('; '));
         await ctx.close();
     }
+}
+
+console.log('\nTuổi nhập đại vận: tam nhật nhất tuế, dựa tiết khí kế tiếp');
+{
+    // ── Số học trần trụi trên Node, dùng lại đúng ShouXingUtil/Solar mà
+    // lenh.js gọi — không mở trình duyệt cho phần đối chiếu công thức.
+    function termJd(n) { return ShouXingUtil.qiAccurate(n * Math.PI / 12, 8) + Solar.J2000; }
+    function termIndexNear(jd) {
+        const n = Math.round((jd - 2451259.0) / (365.2422 / 24));
+        for (let k = -2; k <= 2; k++) if (Math.abs(termJd(n + k) - jd) < 3) return n + k;
+        return n;
+    }
+    function nextTermAfter(jd) { let n = termIndexNear(jd) - 2; while (termJd(n) <= jd) n++; return termJd(n); }
+    function daiVanTuoi(diffDays) {
+        const ageY = diffDays / 3, years = Math.floor(ageY + 1e-9);
+        const monthsDec = (ageY - years) * 12, months = Math.floor(monthsDec + 1e-9);
+        let days = Math.round((monthsDec - months) * 30);
+        let Y = years, M = months;
+        if (days >= 30) { days -= 30; M += 1; }
+        if (M >= 12) { M -= 12; Y += 1; }
+        return { years: Y, months: M, days };
+    }
+
+    // Ví dụ đúng như người dùng cho: cách tiết khí kế tiếp 10,5 ngày.
+    const ex = daiVanTuoi(10.5);
+    ok('công thức: 10,5 ngày / 3 = 3,5 tuổi = 3 tuổi 6 tháng',
+        ex.years === 3 && ex.months === 6 && ex.days === 0, JSON.stringify(ex));
+
+    // Vài mốc bất kỳ: NEXT term luôn ở tương lai và không xa quá một chu kỳ
+    // tiết khí (~15,2 ngày) — bắt lỗi "next" vô tình trả về mốc quá khứ hay
+    // nhảy quá xa (sai chỗ dò termIndexNear).
+    for (const jd of [2451545.0, 2460000.3, 2461301.7, 2415021.0, 2470000.123]) {
+        const nx = nextTermAfter(jd);
+        ok(`mốc kế tiếp sau JD ${jd} nằm trong tương lai và trong vòng 16 ngày`,
+            nx > jd && (nx - jd) <= 16, `cách ${(nx - jd).toFixed(3)} ngày`);
+    }
+
+    // Tuổi không bao giờ âm, và không bao giờ vượt 3 tuổi (khoảng cách tối đa
+    // giữa hai tiết khí liên tiếp là ~15,2 ngày, chia 3 là dưới 6 tuổi — nhưng
+    // với sai số làm tròn ngày, mọi kết quả thực tế phải nằm trong [0, 6) tuổi
+    // tính theo NGÀY thô, tức years phải ≤ 5).
+    for (const jd of [2451545.0, 2460000.3, 2461301.7]) {
+        const diff = nextTermAfter(jd) - jd;
+        const dv = daiVanTuoi(diff);
+        ok(`tuổi nhập vận không âm (JD ${jd})`, dv.years >= 0 && dv.months >= 0 && dv.days >= 0,
+            JSON.stringify(dv));
+        ok(`tuổi nhập vận dưới 6 (JD ${jd})`, dv.years < 6, JSON.stringify(dv));
+    }
+
+    // ── Trên trình duyệt: hiện đúng, đổi ngôn ngữ đúng, không lỗi JS, và
+    // khớp với chính công thức vừa kiểm ở trên bằng cách đọc lại input thật.
+    const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const { page, errs } = await open(ctx);
+    await page.click('#tabLenh');
+    await page.waitForTimeout(700);
+
+    const chk = await page.evaluate(() => {
+        const inp = {
+            y: parseInt(document.getElementById('inYear').value, 10),
+            m: parseInt(document.getElementById('inMonth').value, 10),
+            d: parseInt(document.getElementById('inDay').value, 10),
+            h: parseInt(document.getElementById('solarHour').value, 10),
+            mi: parseInt(document.getElementById('solarMinute').value, 10),
+        };
+        const info = countryData[document.getElementById('country').value];
+        const tz = getTimezoneOffset(info.tzId, new Date(inp.y, inp.m - 1, inp.d, inp.h || 12));
+        const bj = window._readInputBJ(inp.y, inp.m, inp.d, inp.h, inp.mi, tz);
+        const birthJd = bj.solarBJ.getJulianDay();
+        function termJd(n) { return ShouXingUtil.qiAccurate(n * Math.PI / 12, 8) + Solar.J2000; }
+        function termIndexNear(jd) {
+            const n = Math.round((jd - 2451259.0) / (365.2422 / 24));
+            for (let k = -2; k <= 2; k++) if (Math.abs(termJd(n + k) - jd) < 3) return n + k;
+            return n;
+        }
+        let n = termIndexNear(birthJd) - 2; while (termJd(n) <= birthJd) n++;
+        const diff = termJd(n) - birthJd;
+        const ageY = diff / 3, years = Math.floor(ageY + 1e-9);
+        const monthsDec = (ageY - years) * 12, months = Math.floor(monthsDec + 1e-9);
+        const days = Math.round((monthsDec - months) * 30);
+        const dt = new Date(inp.y, inp.m - 1, inp.d);
+        dt.setFullYear(dt.getFullYear() + years);
+        dt.setMonth(dt.getMonth() + months);
+        dt.setDate(dt.getDate() + days);
+        const pad2 = x => (x < 10 ? '0' : '') + x;
+        const ngàyBắtĐầu = pad2(dt.getDate()) + '/' + pad2(dt.getMonth() + 1) + '/' + dt.getFullYear();
+        const nhãn = document.getElementById('lenhDaiVan')
+            ? document.getElementById('lenhDaiVan').firstChild.textContent.trim() : null;
+        return {
+            hiện: document.getElementById('lenhDaiVanVal') ? document.getElementById('lenhDaiVanVal').textContent : null,
+            tựTính: { years, months, days }, ngàySinh: inp, ngàyBắtĐầu, nhãn,
+        };
+    });
+    ok('dòng "Nhập vận" có hiện chữ', !!chk.hiện, JSON.stringify(chk));
+    const wantAge = [
+        chk.tựTính.years > 0 ? `${chk.tựTính.years} tuổi` : '',
+        chk.tựTính.months > 0 ? `${chk.tựTính.months} tháng` : '',
+        chk.tựTính.days > 0 ? `${chk.tựTính.days} ngày` : '',
+    ].filter(Boolean).join(' ') || '0 ngày';
+    const wantText = wantAge + ' · ' + chk.ngàyBắtĐầu;
+    check('số hiện ra khớp đúng công thức (tự tính lại từ CHÍNH input đang có)', chk.hiện, wantText);
+    check('nhãn tiếng Việt là "Nhập vận:"', chk.nhãn, 'Nhập vận:');
+    ok('có kèm ngày bắt đầu đại vận dd/mm/yyyy',
+        /\d{2}\/\d{2}\/\d{4}$/.test(chk.hiện), chk.hiện);
+
+    // Đối chiếu bằng TAY: sinh + tuổi nhập vận = ngày bắt đầu (đúng công thức
+    // người dùng cho, cộng LỊCH chứ không cộng ngày thô).
+    {
+        const d0 = new Date(chk.ngàySinh.y, chk.ngàySinh.m - 1, chk.ngàySinh.d);
+        d0.setFullYear(d0.getFullYear() + chk.tựTính.years);
+        d0.setMonth(d0.getMonth() + chk.tựTính.months);
+        d0.setDate(d0.getDate() + chk.tựTính.days);
+        const pad2 = x => (x < 10 ? '0' : '') + x;
+        const tayTính = pad2(d0.getDate()) + '/' + pad2(d0.getMonth() + 1) + '/' + d0.getFullYear();
+        check('ngày bắt đầu = sinh + tuổi nhập vận (cộng lịch tay)', chk.ngàyBắtĐầu, tayTính);
+    }
+
+    // Đổi ngôn ngữ: nhãn và đơn vị phải sang tiếng Trung, KHÔNG đổi số, và
+    // ngày bắt đầu GIỮ NGUYÊN dd/mm/yyyy (cố định, không đổi theo ngôn ngữ).
+    await page.evaluate(() => window.setLang('zh'));
+    await page.waitForTimeout(700);
+    const zh = await page.evaluate(() => ({
+        nhãn: document.getElementById('lenhDaiVan').firstChild.textContent.trim(),
+        hiện: document.getElementById('lenhDaiVanVal').textContent,
+    }));
+    check('nhãn tiếng Trung là "起运："', zh.nhãn, '起运：');
+    ok('đơn vị tiếng Trung dùng 岁/个月/天, không lẫn chữ Việt',
+        /^[0-9岁个月天]+ · \d{2}\/\d{2}\/\d{4}$/.test(zh.hiện), zh.hiện);
+    ok('ngày bắt đầu KHÔNG đổi theo ngôn ngữ', zh.hiện.endsWith(chk.hiện.split('· ')[1]),
+        `vi "${chk.hiện}" vs zh "${zh.hiện}"`);
+
+    // Đổi ngày sinh: số phải đổi theo (không phải một chuỗi tĩnh).
+    await page.evaluate(() => window.setLang('vi'));
+    await page.waitForTimeout(500);
+    const truoc = await page.textContent('#lenhDaiVanVal');
+    await page.evaluate(() => {
+        const sel = document.getElementById('inDay');
+        sel.value = (parseInt(sel.value, 10) % 27) + 1;   // đổi ngày, tránh out-of-range
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        if (window.processAll) window.processAll();
+    });
+    await page.waitForTimeout(700);
+    const sau = await page.textContent('#lenhDaiVanVal');
+    ok('đổi ngày sinh thì tuổi nhập vận đổi theo', sau !== truoc, `"${truoc}" → "${sau}"`);
+
+    // Hình học: dòng phụ không tràn, không cắt chữ, ở CẢ ba máy hẹp nhất.
+    for (const d of [{ n: 'S21', w: 360 }, { n: 'A51', w: 412 }]) {
+        const c2 = await browser.newContext({ viewport: { width: d.w, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+        const { page: p2 } = await open(c2);
+        await p2.click('#tabLenh');
+        await p2.waitForTimeout(700);
+        const g = await p2.evaluate(() => {
+            const e = document.getElementById('lenhDaiVan');
+            return e ? { cắt: e.scrollWidth > e.clientWidth + 1, cao: e.getBoundingClientRect().height } : null;
+        });
+        ok(`${d.n}: dòng "Nhập vận" không cắt chữ`, g && !g.cắt, JSON.stringify(g));
+        await c2.close();
+    }
+
+    ok('không lỗi JS suốt lượt kiểm tuổi nhập vận', errs.length === 0, errs.join(' ; '));
+    await ctx.close();
 }
 
 await browser.close();

@@ -674,6 +674,82 @@ tự nói nó là một khối — viền dưới chỉ cắt ở hàng cuối c
 Việc này chỉ đụng `css/lenh.css`. Mục Lịch âm ở tab Lịch và widget ghim **vẫn
 giữ màu chàm** — chúng là một bộ khác và phải khớp nhau (xem phần widget).
 
+### Tuổi nhập đại vận
+
+Dòng "Lệnh: Canh" có thêm một dòng phụ: **"Nhập vận: 1 tuổi 8 tháng 17 ngày ·
+17/06/2028"**. Công thức là quy ước "tam nhật nhất tuế" (三日一岁) của Tử
+Bình — **thuận hành** (dùng tiết khí KẾ TIẾP, không phải tiết khí trước):
+
+1. Lấy mốc TIẾT KHÍ kế tiếp (bất kỳ trong 24 mốc — cả 12 "tiết" lẫn 12 "khí"
+   giữa tháng, KHÔNG riêng 12 "tiết" mà `JIE_ORDER` lọc ra để dựng bảng Lệnh)
+   trừ giờ sinh, ra số NGÀY thập phân (giờ/phút đã gộp vào phần lẻ).
+2. Chia 3 → tuổi nhập vận, dạng thập phân (`daiVanTuoi()` trong `lenh.js`).
+   Phần lẻ của TUỔI quy ra THÁNG (1 tuổi = 12 tháng), phần lẻ còn lại của
+   THÁNG quy ra NGÀY (1 tháng = 30 ngày) — dừng ở ngày, không xuống giờ/phút.
+   Ví dụ đối chiếu: cách tiết khí kế tiếp 10,5 ngày → 10,5⁄3 = 3,5 tuổi =
+   3 tuổi + 6 tháng (không dư ngày).
+3. **Ngày bắt đầu đại vận** = ngày sinh (dương lịch, đúng ngày người dùng đã
+   chọn) **cộng LỊCH** ba con số năm/tháng/ngày ấy (`addYMD()`, dùng thẳng
+   `Date` gốc của JS để việc tràn tháng/năm tự đúng) — **không phải** cộng
+   thẳng số-ngày-thập-phân đã dùng để RA ba con số ở bước 2 (tháng ở bước 2 là
+   ước lệ 30 ngày, còn ở bước 3 là tháng thật, dài ngắn khác nhau — hai phép
+   cộng gần nhau nhưng không hệt nhau; làm đúng theo cách người dùng yêu cầu:
+   "ngày sinh + tuổi nhập vận"). Hiện cố định `dd/mm/yyyy`, không đổi theo
+   ngôn ngữ — mọi cột ngày tháng khác trong tab này (Vào lệnh/Hết lệnh) đã
+   theo đúng quy ước ấy bất kể tiếng Việt hay tiếng Trung.
+
+**Chỉ tính chiều thuận.** Bát Tự cổ điển đổi CHIỀU đại vận (thuận/nghịch) theo
+giới tính chéo với âm dương của can năm — nhưng đó là việc khác với việc vừa
+làm ở đây; xem mục "Ô Giới tính" ngay dưới.
+
+Dò mốc tiết khí kế tiếp KHÔNG dùng lại `termIndexNear` một mình: hàm ấy chỉ
+tìm chỉ số GẦN NHẤT (trước hoặc sau), nên `nextTermAfter()` lùi thêm 2 chỉ số
+rồi bước tới cho tới khi vượt qua giờ sinh — `termJd` đơn điệu tăng theo chỉ
+số nên cách này luôn đúng bất kể phỏng đoán ban đầu lệch bao nhiêu.
+
+### Ô Giới tính (Nam/Nữ)
+
+Cùng hàng với ô ngày giờ và ô Quy tắc, ở phần tư thứ ba của bảng Bát Tự (vạch
+50%–75%, đúng cột "Ngày"). Hiện tại đây là **một ô nhớ lựa chọn thuần tuý —
+KHÔNG đổi con số nào** trên bảng Lệnh. Bát Tự cổ điển dùng giới tính (chéo với
+âm dương của can năm) để quyết đại vận đi THUẬN hay NGHỊCH — nhưng ứng dụng
+chưa có khái niệm "năm dương/âm của người xem" tách rời khỏi việc chọn ngày
+giờ, nên phần nối giới tính vào chiều tính vẫn để dành cho một yêu cầu sau,
+rõ ràng hơn. `setGender()` vẫn gọi `render()` mỗi lần đổi, để chỗ móc nối sẵn
+đó khi cần.
+
+### "Chọn quy tắc" → "Quy tắc", và ba tên viết tắt
+
+Hai đổi riêng, cùng một chỗ:
+
+* Tiêu đề bảng chọn (`T.pickRule`) rút từ "Chọn quy tắc" còn **"Quy tắc"** —
+  ngắn hơn, và khớp cách đặt tên "Giới tính" (không phải "Chọn giới tính") của
+  ô mới bên cạnh.
+* **Chỉ tiếng Việt**: tên ba sách trong `RULES[].vi` đổi từ tên đầy đủ thành
+  chữ đầu viết tắt — **UHTB** (Uyên Hải Tử Bình), **TMTH** (Tam Mệnh Thông
+  Hội), **TBCT** (Tử Bình Chân Thuyên). Lý do là chỗ: ô Quy tắc bị đẩy từ nửa
+  hàng (50%) xuống một phần tư hàng (25%) để nhường chỗ cho ô Giới tính, và
+  "Tam Mệnh Thông Hội" không lọt nổi ở cỡ chữ đọc được trên máy 360px. Áp dụng
+  cho **cả** ô đóng lẫn danh sách trong bảng chọn — người dùng "replace ALL".
+  Tiếng Trung không đổi (渊海子平/三命通会/子平真诠 vốn đã ngắn). Tên đầy đủ vẫn
+  còn nguyên trong khối ghi chú xuất xứ ở đầu `lenh.js` và trong README —
+  viết tắt chỉ là CÁCH HIỆN, không đổi dữ liệu `FEN_*` hay việc đối chiếu
+  nguyên văn ở `test_lenh.mjs`.
+
+### Hàng ba ô: ngày giờ 50% · Giới tính 25% · Quy tắc 25%
+
+Trước đó ô Quy tắc `flex: 1 1 0` chiếm TRỌN nửa còn lại sau ô ngày giờ (50%–
+100%). Thêm ô Giới tính vào GIỮA thì đổi thành ba phần: ô ngày giờ giữ nguyên
+trần 50% (Năm+Tháng), ô Giới tính chốt cứng `flex: 0 0 calc(25% + 3px)` —
+ĐÚNG công thức `#qmRow #methodDisplayBtn` của tab Kỳ Môn đã dùng cho cùng cột
+ấy (xem mục "Hàng điều khiển và hàng dùng chung" — cùng một cột của cùng một
+bảng thì cùng một công thức, không suy luận lại từ đầu), còn ô Quy tắc vẫn để
+`flex: 1 1 0` nhận phần CÒN LẠI. Với hai ô kia đã chốt cứng, phần còn lại tự
+nhiên khớp đúng cột cuối (cột "Giờ") — đo lại: mép phải ô Quy tắc trùng đúng
+mép phải của `.controls` (kém mép bảng Bát Tự 6px, đúng độ lọt đã có từ trước,
+xem mục "Canh hàng theo thứ bên dưới/bên trên"), không cần tính bù trừ lần
+hai.
+
 ## Ngày âm lịch bắt đầu lúc nào
 
 Hai câu hỏi tách rời nhau: **mốc nào** (kinh tuyến nào) và **lúc mấy giờ** (ranh

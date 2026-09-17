@@ -75,7 +75,9 @@
         colLon:   { vi: 'Số độ',       zh: '度数' },
         colIn:    { vi: 'Vào lệnh',    zh: '入令' },
         colOut:   { vi: 'Hết lệnh',    zh: '退令' },
-        pickRule: { vi: 'Chọn quy tắc', zh: '选择流派' },
+        pickRule: { vi: 'Quy tắc', zh: '选择流派' },
+        daiVan:   { vi: 'Nhập vận',    zh: '起运' },
+        pickGender: { vi: 'Giới tính', zh: '性别' },
     };
     function isZH() { return typeof currentLang !== 'undefined' && currentLang === 'zh'; }
     function t(k) { return T[k][isZH() ? 'zh' : 'vi']; }
@@ -192,10 +194,16 @@
     };
 
     /** Thứ tự trong ô chọn: theo niên đại sách (Tống → Minh → Thanh). */
+    // Tên tiếng Việt là CHỮ ĐẦU viết tắt (UHTB/TMTH/TBCT), không phải tên
+    // đầy đủ — ô hiện có 25% bề ngang hàng (một phần tư bảng Bát Tự), tên đầy
+    // đủ dài nhất "Tam Mệnh Thông Hội" không lọt nổi ở cỡ chữ đọc được trên
+    // máy 360px. Tên đầy đủ vẫn còn NGUYÊN VĂN trong README và trong khối ghi
+    // chú xuất xứ ở đầu tệp — chữ viết tắt chỉ là CÁCH HIỆN, không đổi việc gì
+    // khác. Tiếng Trung không rút gọn: 渊海子平/三命通会/子平真诠 vốn đã ngắn.
     var RULES = [
-        { key: 'yhzp', fen: FEN_YHZP, vi: 'Uyên Hải Tử Bình',  zh: '渊海子平' },
-        { key: 'smth', fen: FEN_SMTH, vi: 'Tam Mệnh Thông Hội', zh: '三命通会' },
-        { key: 'zpzq', fen: FEN_ZPZQ, vi: 'Tử Bình Chân Thuyên', zh: '子平真诠' },
+        { key: 'yhzp', fen: FEN_YHZP, vi: 'UHTB', zh: '渊海子平' },
+        { key: 'smth', fen: FEN_SMTH, vi: 'TMTH', zh: '三命通会' },
+        { key: 'zpzq', fen: FEN_ZPZQ, vi: 'TBCT', zh: '子平真诠' },
     ];
     var K_RULE = 'qmdj.lenhRule';
     var rule = RULES[0];
@@ -204,6 +212,24 @@
         return RULES[0];
     }
     function ruleLabel(r) { return isZH() ? r.zh : r.vi; }
+
+    /* ─────────────── Ô Giới tính ───────────────
+     * Chỉ là một Ô LỰA CHỌN được LƯU LẠI — như rule ở trên, nó KHÔNG (còn)
+     * đổi số nào trên bảng Lệnh. Bát Tự cổ điển đổi CHIỀU đại vận (thuận/
+     * nghịch) theo giới tính chéo với âm dương của can năm, nhưng ứng dụng
+     * này chưa có khái niệm "năm dương/âm của người xem" tách khỏi việc chọn
+     * ngày giờ, nên phần đó để dành cho một yêu cầu sau, rõ ràng hơn. */
+    var GENDERS = [
+        { key: 'nam', vi: 'Nam', zh: '男' },
+        { key: 'nu',  vi: 'Nữ',  zh: '女' },
+    ];
+    var K_GENDER = 'qmdj.lenhGender';
+    var gender = GENDERS[0];
+    function genderByKey(k) {
+        for (var i = 0; i < GENDERS.length; i++) if (GENDERS[i].key === k) return GENDERS[i];
+        return GENDERS[0];
+    }
+    function genderLabel(g) { return isZH() ? g.zh : g.vi; }
 
     /** Chi của tháng mà mỗi TIẾT mở ra. */
     var CHI_OF_JIE = { 1: 1, 3: 2, 5: 3, 7: 4, 9: 5, 11: 6, 13: 7, 15: 8, 17: 9, 19: 10, 21: 11, 23: 0 };
@@ -253,6 +279,95 @@
             if (Math.abs(termJd(n + k) - jd) < 3) return n + k;
         }
         return n;
+    }
+
+    /**
+     * Mốc TIẾT KHÍ kế tiếp sau `jdUTC8` — bất kỳ trong 24 mốc (mọi bội số của
+     * 15° hoàng kinh), KHÔNG riêng 12 "tiết" mở tháng lệnh mà JIE_ORDER lọc
+     * ra. Tuổi nhập đại vận tính theo khoảng cách tới mốc GẦN NHẤT trong toàn
+     * bộ 24 tiết khí, kể cả "khí" giữa tháng (Vũ Thuỷ, Xuân Phân…).
+     *
+     * Lùi 2 chỉ số trước khi dò tới, rồi bước tới cho lần đầu vượt `jdUTC8`:
+     * termJd đơn điệu tăng theo n nên cách này luôn ra đúng mốc kế tiếp, bất
+     * kể phỏng đoán ban đầu của termIndexNear (dựa vào khoảng cách trung
+     * bình) lệch bao nhiêu — không dựa vào giả định "n gần nhất luôn ở phía
+     * trước hay phía sau".
+     */
+    function nextTermAfter(jdUTC8) {
+        var n = termIndexNear(jdUTC8) - 2;
+        while (termJd(n) <= jdUTC8) n++;
+        return termJd(n);
+    }
+
+    /**
+     * Tuổi nhập đại vận (thuận hành): quy ước "tam nhật nhất tuế" — 3 NGÀY
+     * cách tiết khí kế tiếp = 1 TUỔI.
+     *
+     * `diffDays` là khoảng cách ấy theo ngày thập phân (giờ/phút của giờ sinh
+     * đã gộp vào phần lẻ, vì `diffDays` tự nó là hiệu hai mốc Julian Day).
+     * Tuổi ra số thập phân; phần lẻ của TUỔI quy tiếp ra THÁNG (1 tuổi = 12
+     * tháng), rồi phần lẻ của THÁNG quy ra NGÀY (1 tháng = 30 ngày) — dừng ở
+     * ngày, không xuống giờ/phút.
+     *
+     * Ví dụ đối chiếu: cách tiết khí kế tiếp 10,5 ngày → 10,5 / 3 = 3,5 tuổi
+     * = 3 tuổi + (0,5 × 12 =) 6 tháng, không dư ngày → "3 tuổi 6 tháng".
+     */
+    function daiVanTuoi(diffDays) {
+        var ageY = diffDays / 3;
+        var years = Math.floor(ageY + 1e-9);
+        var monthsDec = (ageY - years) * 12;
+        var months = Math.floor(monthsDec + 1e-9);
+        var days = Math.round((monthsDec - months) * 30);
+        // Số lẻ dấu phẩy động hoạ hiếm khi tròn NGAY 30/12 — dồn lên đơn vị
+        // trên để không hiện "3 tuổi 11 tháng 30 ngày" cạnh "4 tuổi 0 tháng".
+        if (days >= 30) { days -= 30; months += 1; }
+        if (months >= 12) { months -= 12; years += 1; }
+        return { years: years, months: months, days: days };
+    }
+
+    /**
+     * "3 tuổi 6 tháng", bỏ đơn vị bằng 0 (kể cả ở giữa) — khớp đúng cách ví
+     * dụ đối chiếu ở trên viết ra: không có "0 ngày" thừa khi không dư ngày.
+     * Còn tất cả đều 0 (cực hiếm: sinh đúng thời khắc tiết khí) thì hiện
+     * "0 ngày" chứ không bỏ trắng.
+     */
+    function fmtTuoi(dv) {
+        var u = isZH() ? { y: '岁', m: '个月', d: '天' }
+                        : { y: ' tuổi', m: ' tháng', d: ' ngày' };
+        var parts = [];
+        if (dv.years  > 0) parts.push(dv.years  + u.y);
+        if (dv.months > 0) parts.push(dv.months + u.m);
+        if (dv.days   > 0) parts.push(dv.days   + u.d);
+        if (!parts.length) parts.push('0' + u.d);
+        return parts.join(isZH() ? '' : ' ');
+    }
+
+    /**
+     * Cộng lịch (không phải cộng ngày thô): thời điểm sinh (Y/M/D dương lịch,
+     * đúng ngày người dùng đã chọn) + tuổi nhập vận (năm, tháng, ngày) =
+     * thời điểm bắt đầu đại vận. Dùng Date gốc của JS để việc "tràn" tự
+     * đúng — cộng tháng mà lố qua năm sau, cộng ngày mà lố qua tháng sau đều
+     * do chính Date lo, khỏi tự viết lại lịch Gregory.
+     *
+     * Đây LÀ phép cộng người thường vẫn hiểu ("sinh năm nay, ba tuổi rưỡi
+     * thì vào vận năm kia"), không phải cộng thẳng số-ngày-thập-phân đã dùng
+     * để RA số năm/tháng/ngày ở trên — hai phép cộng cho kết quả gần nhau
+     * nhưng không hệt nhau (tháng quy ước 30 ngày trong `daiVanTuoi`, còn ở
+     * đây tháng dài ngắn thật). Đúng ý người dùng yêu cầu: cộng theo lịch.
+     */
+    function addYMD(y, m, d, dv) {
+        var dt = new Date(y, m - 1, d);
+        dt.setFullYear(dt.getFullYear() + dv.years);
+        dt.setMonth(dt.getMonth() + dv.months);
+        dt.setDate(dt.getDate() + dv.days);
+        return { y: dt.getFullYear(), m: dt.getMonth() + 1, d: dt.getDate() };
+    }
+
+    /** "17/06/2028" — CỐ ĐỊNH dd/mm/yyyy, không đổi theo ngôn ngữ: mọi cột
+     *  ngày tháng khác trong tab này (Vào lệnh/Hết lệnh) đã theo đúng quy
+     *  ước ấy bất kể tiếng Việt hay tiếng Trung. */
+    function fmtYMD(ymd) {
+        return pad2(ymd.d) + '/' + pad2(ymd.m) + '/' + ymd.y;
     }
 
     /* ─────────────── Dựng bảng một năm ─────────────── */
@@ -394,11 +509,21 @@
         // ngay bên trên — hai con số cãi nhau trên cùng một màn hình là lỗi
         // nặng hơn cả sai vài phút.
         var active = null;
+        var vanText = null;
         if (typeof _readInputBJ === 'function') {
             try {
                 var bj = _readInputBJ(inp.y, inp.m, inp.d, inp.h, inp.mi, inp.tz);
-                active = lenhAt(bj.solarBJ.getJulianDay(), inp.y);
-            } catch (e2) { active = null; }
+                var birthJd = bj.solarBJ.getJulianDay();
+                active = lenhAt(birthJd, inp.y);
+                // Cùng mốc giờ Bắc Kinh mà lenhAt() vừa dùng, nên "cách tiết
+                // khí kế tiếp bao lâu" và "đang cầm lệnh can nào" luôn khớp
+                // cùng MỘT thời điểm sinh, không lệch nguồn.
+                var dv = daiVanTuoi(nextTermAfter(birthJd) - birthJd);
+                // Cộng lịch vào ĐÚNG ngày sinh người dùng đã chọn (inp.y/m/d,
+                // dương lịch địa phương) — không phải birthJd giờ Bắc Kinh,
+                // vì đó là ngày mà "tuổi nhập vận" phải được hiểu theo.
+                vanText = fmtTuoi(dv) + ' · ' + fmtYMD(addYMD(inp.y, inp.m, inp.d, dv));
+            } catch (e2) { active = null; vanText = null; }
         }
         lastActive = active;
 
@@ -408,8 +533,13 @@
                 : (t('title') + ' ' + inp.y);
         }
         if (nowBox) {
-            nowBox.innerHTML = esc(t('now')) + (isZH() ? '：' : ': ') +
+            var lệnhLine = esc(t('now')) + (isZH() ? '：' : ': ') +
                 '<b id="lenhNowVal">' + esc(active ? canName(active.part.can) : '—') + '</b>';
+            var vanLine = vanText
+                ? '<div id="lenhDaiVan">' + esc(t('daiVan')) + (isZH() ? '：' : ': ') +
+                  '<b id="lenhDaiVanVal">' + esc(vanText) + '</b></div>'
+                : '';
+            nowBox.innerHTML = lệnhLine + vanLine;
         }
 
         var tzId = inp.info.tzId;
@@ -600,10 +730,36 @@
         openOptionPicker(t('pickRule'), opts, rule.key, setRule);
     };
 
+    function showGender() {
+        var el = document.getElementById('lenhGenderText');
+        if (el) el.textContent = genderLabel(gender);
+    }
+
+    function setGender(key) {
+        if (key === gender.key) return;
+        gender = genderByKey(key);
+        if (typeof safeStorage !== 'undefined') safeStorage.setItem(K_GENDER, gender.key);
+        showGender();
+        // Chưa đổi số nào (xem khối ghi chú ở GENDERS) — vẫn gọi render() để
+        // hôm nào giới tính bắt đầu quyết chiều đại vận thì chỗ móc nối đã
+        // sẵn, khỏi phải rà lại từng chỗ gọi setGender.
+        render();
+    }
+
+    window.openLenhGenderPicker = function () {
+        if (typeof openOptionPicker !== 'function') return;
+        var opts = [];
+        for (var i = 0; i < GENDERS.length; i++) {
+            opts.push({ value: GENDERS[i].key, label: genderLabel(GENDERS[i]) });
+        }
+        openOptionPicker(t('pickGender'), opts, gender.key, setGender);
+    };
+
     function refreshLabels() {
         var tab = document.getElementById('tabLenh');
         if (tab) tab.querySelector('.tab-lbl').textContent = t('tabLenh');
         showRule();
+        showGender();
         if (document.body.classList.contains('view-lenh')) render();
     }
 
@@ -617,11 +773,14 @@
     window.__lenhData = function (Y) { return buildYear(Y); };
     window.__lenhActive = function () { return lastActive; };
     window.__lenhRule = function (k) { if (k) setRule(k); return rule.key; };
+    window.__lenhGender = function (k) { if (k) setGender(k); return gender.key; };
 
     document.addEventListener('DOMContentLoaded', function () {
         if (typeof safeStorage !== 'undefined') {
             var saved = safeStorage.getItem(K_RULE);
             if (saved) rule = ruleByKey(saved);
+            var savedG = safeStorage.getItem(K_GENDER);
+            if (savedG) gender = genderByKey(savedG);
         }
         refreshLabels();
 

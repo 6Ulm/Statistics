@@ -26,20 +26,31 @@ body.view-lenh #lenhView { display: flex; flex-direction: column; gap: 0; }
 body.view-lenh #methodDisplayBtn,
 body.view-lenh #cobanToggleWrap { display: none !important; }
 
-/* Ô chọn bộ số chỉ có nghĩa ở tab Lệnh — ẩn hẳn ở tab Kỳ Môn, bằng không nó
-   chen vào hàng vốn đã khít của tab ấy (ngày giờ · phái · Đầy đủ). */
-#lenhRuleBtn { display: none; }
-body.view-lenh #lenhRuleBtn { display: flex; }
+/* Ô Giới tính và ô chọn bộ số chỉ có nghĩa ở tab Lệnh — ẩn hẳn ở tab Kỳ Môn,
+   bằng không chúng chen vào hàng vốn đã khít của tab ấy (ngày giờ · phái ·
+   Đầy đủ). */
+#lenhGenderBtn, #lenhRuleBtn { display: none; }
+body.view-lenh #lenhGenderBtn, body.view-lenh #lenhRuleBtn { display: flex; }
 
-/* Chia đôi hàng: ngày giờ một nửa, bộ số một nửa. Ô ngày giờ giữ nguyên trần
-   50% của tab Kỳ Môn (nó đã có sẵn) nên chỉ cần cho ô kia nhận phần còn lại.
-   Tên sách dài nhất ("Tam Mệnh Thông Hội") cần chừng 108px ở 12px chữ, còn
-   nửa hàng trên máy 360px là 164px — dư. */
+/* Chia BA hàng: ngày giờ 50% (Năm+Tháng), Giới tính 25% (Ngày), Quy tắc 25%
+   (Giờ) — đúng ba vạch 50%|75%|100% của bảng Bát Tự ngay bên dưới. Ô ngày
+   giờ giữ nguyên trần 50% của tab Kỳ Môn (nó đã có sẵn). Ô Giới tính lấy
+   ĐÚNG công thức `#qmRow #methodDisplayBtn` của tab Kỳ Môn (`calc(25% + 3px)`
+   — xem lời giải trong app.css): cùng một cột của cùng một bảng thì cùng một
+   công thức, không suy luận lại từ đầu. Ô Quy tắc thì cứ để `flex: 1 1 0`
+   nhận phần CÒN LẠI — với hai ô kia đã chốt cứng, phần còn lại tự nhiên khớp
+   đúng cột cuối (Giờ), khỏi phải tính bù trừ khe/viền lần hai. */
+body.view-lenh #qmRow #lenhGenderBtn {
+    flex: 0 0 calc(25% + 3px);
+    padding-inline: 4px;
+    overflow: hidden;
+}
 body.view-lenh #qmRow #lenhRuleBtn {
     flex: 1 1 0; min-width: 0;
     padding-inline: 4px;
     overflow: hidden;
 }
+body.view-lenh #qmRow #lenhGenderText,
 body.view-lenh #qmRow #lenhRuleText {
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
@@ -60,6 +71,19 @@ body.view-lenh #qmRow #lenhRuleText {
     font-size: clamp(15px, 4.4vw, 18px);
     font-weight: 700;
     color: var(--text-main, #000);
+}
+
+/* ── Dòng phụ "Nhập vận: 3 tuổi 6 tháng" ──
+   Cùng khối #lenhNow (chung viền, chung khung) nhưng cỡ chữ nhỏ hơn dòng
+   "Lệnh: X" — đây là chi tiết bổ sung, không phải tiêu điểm của khối. Vẫn
+   một màu đen như cả tab, chỉ khác đậm nhạt để phân bậc. */
+#lenhDaiVan {
+    margin-top: 2px;
+    font-size: clamp(11.5px, 3.2vw, 13px);
+    color: var(--text-main, #000);
+}
+#lenhDaiVan b {
+    font-weight: 700;
 }
 
 /* ── Đầu bảng ──
