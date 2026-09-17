@@ -588,6 +588,30 @@ phần CÒN LẠI sau khi trừ đệm, chứ không phải của hàng — ô n
 123,7px thay vì 120px. Cho cả hai `box-sizing: border-box` thì hai vạch trùng
 nhau trong 0,7px.
 
+### Một màu chữ duy nhất: ĐEN
+
+Bảng Lệnh ban đầu mượn màu chàm của mục Lịch âm: tiêu đề "LỆNH NĂM ….." là dải
+đặc màu chàm chữ trắng, hàng tiêu đề bảng nền xanh nhạt chữ chàm, cột tháng chữ
+chàm có vạch chàm, hàng đang cầm lệnh nền xanh chữ chàm. Nay **bỏ hết**: mọi chữ
+trong tab này — dòng "Lệnh: Canh", tiêu đề, tên tiết trong ngoặc, cột số độ —
+đều là `--text-main` (#000). Màu chỉ còn ở **nền và viền**, và chỉ là xám trung
+tính (#f0f0f0 hàng tiêu đề, #f7f7f7 nền xen kẽ, #dcdcdc hàng đang cầm lệnh) —
+#f9f9fb của `--bg-alt` cũng phải thay vì nó ngả xanh.
+
+Hai hệ quả phải xử lý, không phải chuyện thẩm mỹ:
+
+* **Tiêu đề mất dải màu thì mất luôn hình khối.** Chữ đen trên nền trắng không
+  tự tách khỏi nền trang, nên `#lenhHead` phải nhận `border: 1px solid` khớp
+  viền khung bảng, và **bỏ viền dưới** để chỗ nối với khung bảng không dày gấp
+  đôi (khung bảng đã có viền trên của nó).
+* **Miếng vá vệt rò phải đổi màu theo.** `#lenhSec::after` là dải đục dán lên
+  3px đầu khung để che vệt rò một điểm ảnh của hàng tiêu đề dính (xem
+  `.cal-sec::after`). Nó phải trùng **đúng** nền hàng tiêu đề, nên đổi #eef1fd
+  → #f0f0f0 cùng lúc; để sót là hiện một vạch xanh mảnh ngay trên chữ.
+
+Việc này chỉ đụng `css/lenh.css`. Mục Lịch âm ở tab Lịch và widget ghim **vẫn
+giữ màu chàm** — chúng là một bộ khác và phải khớp nhau (xem phần widget).
+
 ## Ngày âm lịch bắt đầu lúc nào
 
 Hai câu hỏi tách rời nhau: **mốc nào** (kinh tuyến nào) và **lúc mấy giờ** (ranh

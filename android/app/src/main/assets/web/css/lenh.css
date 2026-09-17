@@ -54,23 +54,27 @@ body.view-lenh #qmRow #lenhRuleText {
     margin-bottom: 3px;
     text-align: center;
     font-size: clamp(13px, 3.6vw, 15px);
-    color: var(--text-dim, #666);
+    color: var(--text-main, #000);
 }
 #lenhNow b {
     font-size: clamp(15px, 4.4vw, 18px);
     font-weight: 700;
-    color: #283593;
+    color: var(--text-main, #000);
 }
 
 /* ── Đầu bảng ──
    Dính liền khung bảng bên dưới thành một khối (gap của #lenhView đặt 0, và
    khung bảng bỏ bo góc trên) — hai mảnh rời có khe ở giữa thì cái tiêu đề
-   trông như đang trôi. Màu chàm theo mục Lịch âm ở tab Lịch, để tab Lệnh
-   không đội lốt cái lịch đỏ. */
+   trông như đang trôi. Cả tab chỉ một màu: chữ ĐEN trên nền giấy, kể cả cái
+   tiêu đề này — nên nó cần VIỀN mới ra hình một khối, chứ không còn dải màu
+   để tự tách khỏi nền. Viền dưới bỏ đi để liền một mạch với khung bảng (khung
+   bảng đã có viền trên của nó), bằng không chỗ nối dày gấp đôi. */
 #lenhHead {
     display: flex; align-items: center; justify-content: center;
-    background: #3949ab;
-    color: #fff;
+    background: var(--bg-white, #fff);
+    color: var(--text-main, #000);
+    border: 1px solid var(--border-color, #ddd);
+    border-bottom: 0;
     border-radius: 8px 8px 0 0;
     padding: 5px 6px;
     font-size: clamp(13px, 3.7vw, 15px);
@@ -82,7 +86,7 @@ body.view-lenh #qmRow #lenhRuleText {
    Dùng lại .cal-sec/.cal-sec-body của calendar.css: khung cuộn, viền, và
    miếng vá vệt rò của hàng tiêu đề dính (xem khối ghi chú ở .cal-sec::after).
    Chỉ bỏ bo góc TRÊN để nối liền #lenhHead. */
-#lenhSec .cal-sec-body { border-radius: 0 0 6px 6px; border-top-color: #c4cbf0; }
+#lenhSec .cal-sec-body { border-radius: 0 0 6px 6px; border-top-color: var(--border-color, #ddd); }
 /* Miếng vá phải bỏ BO GÓC: ở mục của tab Lịch nó bo 6px trên vì khung bảng
    cũng bo, còn khung này vuông góc trên (đã nối vào #lenhHead). Để nguyên bo
    góc thì hai góc trên hở ra đúng chỗ vệt rò hay lọt.
@@ -93,7 +97,7 @@ body.view-lenh #qmRow #lenhRuleText {
    đều cụt dấu trên. 3px vẫn thừa sức che vệt rò (nó chỉ dày 1 điểm ảnh THIẾT
    BỊ, tức ≤ 1px CSS ở mọi tỉ lệ), và hàng tiêu đề được chừa thêm đệm trên. */
 #lenhSec::after {
-    background: #eef1fd; border-color: #c4cbf0; border-radius: 0; height: 3px;
+    background: #f0f0f0; border-color: var(--border-color, #ddd); border-radius: 0; height: 3px;
 }
 
 /* ── Bảng ──
@@ -117,12 +121,12 @@ table.lenh-tb th, table.lenh-tb td {
 }
 table.lenh-tb thead th {
     position: sticky; top: 0; z-index: 1;
-    background: #eef1fd; color: #283593;
+    background: #f0f0f0; color: var(--text-main, #000);
     font-weight: 700; text-align: left;
     /* Đệm trên 4px: miếng vá vệt rò dán đè 3px đầu của khung (xem
        #lenhSec::after), nên chữ tiêu đề phải bắt đầu dưới mốc ấy. */
     padding-top: 4px;
-    border-bottom: 1.5px solid #c4cbf0;
+    border-bottom: 1.5px solid #bbb;
     font-size: clamp(11px, 3.2vw, 14px);
 }
 table.lenh-tb th.c, table.lenh-tb td.c { text-align: center; }
@@ -136,8 +140,8 @@ table.lenh-tb .lenh-last { padding-right: 7px; }
 table.lenh-tb .lenh-mon {
     vertical-align: middle;
     font-weight: 700;
-    color: #283593;
-    box-shadow: inset 3px 0 0 #3949ab;
+    color: var(--text-main, #000);
+    box-shadow: inset 3px 0 0 var(--text-main, #000);
     line-height: 1.25;
 }
 /* Tên tiết xuống dòng riêng: "Sửu (Tiểu Hàn)" một dòng là cột đầu rộng gần
@@ -147,20 +151,19 @@ table.lenh-tb .lenh-jie {
     display: block;
     font-weight: 400;
     font-size: .84em;
-    color: var(--text-dim, #777);
+    color: var(--text-main, #000);
 }
 table.lenh-tb .lenh-can { font-weight: 600; }
-table.lenh-tb .lenh-lon { color: var(--text-dim, #666); }
 
 /* Nền xen kẽ theo THÁNG (lenh.js lật cờ sau mỗi tháng, không phải sau mỗi
    hàng) nên ba hàng của một tháng cùng một nền — ô gộp mới ra hình một khối. */
-table.lenh-tb tr.dp-row-alt td { background: var(--bg-alt, #f9f9fb); }
+table.lenh-tb tr.dp-row-alt td { background: #f7f7f7; }
 
 /* Hàng đang cầm lệnh. Tô đậm cả chữ chứ không chỉ đổi nền: bảng 33 hàng, nền
    nhạt một mình thì phải dò mới thấy. */
 table.lenh-tb tr.lenh-on td {
-    background: #e8edff;
-    color: #1a237e;
+    background: #dcdcdc;
+    color: var(--text-main, #000);
     font-weight: 700;
 }
 
