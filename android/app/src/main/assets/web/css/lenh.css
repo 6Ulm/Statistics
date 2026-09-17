@@ -135,13 +135,14 @@ table.lenh-tb .lenh-mon { padding-left: 7px; }
 table.lenh-tb th:first-child { padding-left: 7px; }
 table.lenh-tb .lenh-last { padding-right: 7px; }
 
-/* Ô tháng gộp 2–3 hàng: vạch dọc bên trái làm rõ nó là một khối, và viền
-   dưới chỉ vẽ ở hàng cuối của tháng (ô gộp tự lo). */
+/* Ô tháng gộp 2–3 hàng. KHÔNG vạch dọc bên trái: cái gộp ô (rowspan) đã tự
+   nói nó là một khối — viền dưới chỉ cắt ở hàng cuối của tháng, còn nền xen
+   kẽ thì đổi theo THÁNG chứ không theo hàng (xem tr.dp-row-alt). Thêm vạch
+   nữa là vẽ lại thứ đã có. */
 table.lenh-tb .lenh-mon {
     vertical-align: middle;
     font-weight: 700;
     color: var(--text-main, #000);
-    box-shadow: inset 3px 0 0 var(--text-main, #000);
     line-height: 1.25;
 }
 /* Tên tiết xuống dòng riêng: "Sửu (Tiểu Hàn)" một dòng là cột đầu rộng gần

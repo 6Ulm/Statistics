@@ -609,6 +609,10 @@ Hai hệ quả phải xử lý, không phải chuyện thẩm mỹ:
   `.cal-sec::after`). Nó phải trùng **đúng** nền hàng tiêu đề, nên đổi #eef1fd
   → #f0f0f0 cùng lúc; để sót là hiện một vạch xanh mảnh ngay trên chữ.
 
+Và bỏ luôn **vạch dọc bên trái cột chi**: ô tháng gộp 2–3 hàng (`rowspan`) đã
+tự nói nó là một khối — viền dưới chỉ cắt ở hàng cuối của tháng, nền xen kẽ
+đổi theo THÁNG chứ không theo hàng. Vạch ấy là vẽ lại thứ đã có.
+
 Việc này chỉ đụng `css/lenh.css`. Mục Lịch âm ở tab Lịch và widget ghim **vẫn
 giữ màu chàm** — chúng là một bộ khác và phải khớp nhau (xem phần widget).
 
