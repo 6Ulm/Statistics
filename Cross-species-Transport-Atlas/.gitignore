@@ -50,3 +50,7 @@ next-env.d.ts
 __pycache__/
 *.pyc
 *.tsbuildinfo
+
+# Wrangler local secrets; never publish them.
+.dev.vars
+.dev.vars.*
