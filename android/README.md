@@ -463,10 +463,18 @@ tháng tàng 2–3 can, và chúng thay nhau cầm lệnh theo thứ tự dư kh
 ### Ba bộ số, ba cuốn sách
 
 Cổ thư không thống nhất phần chia này, và chênh nhau không phải vài phút mà là
-cả tuần: tháng Dần, bản thông hành chia **7·7·16** còn 《三命通会》 chia
-**5·5·20** — người sinh mùng 6 sau Lập Xuân là **Bính** cầm lệnh ở bảng này mà
-**Giáp** cầm lệnh ở bảng kia. Không có cách nào trung hoà; chỉ có cách nói rõ
-đang dùng bộ nào. Ô chọn nằm **cùng hàng với ô ngày giờ**, chỉ hiện ở tab Lệnh,
+cả tuần. Tháng Dần: bản thông hành chia **7·7·16** (Mậu tới ngày 7, Bính tới
+ngày 14, rồi Giáp), 《三命通会》 chia **5·5·20** (Mậu tới ngày 5, Bính tới ngày
+10, rồi Giáp) — hai mốc đổi can lệch nhau 2 và 4 ngày, nên có những ngày cùng
+một người ra hai can khác nhau. Đo trên chính ứng dụng (Hà Nội, Lập Xuân 2026
+rơi 04/02 03:02):
+
+| Sinh | Uyên Hải Tử Bình | Tam Mệnh Thông Hội |
+|---|---|---|
+| 10/02 (≈6 ngày sau Lập Xuân) | **Mậu** | **Bính** |
+| 16/02 (≈12 ngày sau) | **Bính** | **Giáp** |
+
+Không có cách nào trung hoà; chỉ có cách nói rõ đang dùng bộ nào. Ô chọn nằm **cùng hàng với ô ngày giờ**, chỉ hiện ở tab Lệnh,
 và nhớ lựa chọn qua lần mở sau (`qmdj.lenhRule`).
 
 | Sách | Dần | Mão | Thìn | Thân | Nét riêng |

@@ -36,10 +36,17 @@
    BA BỘ SỐ, BA CUỐN SÁCH — chọn bằng ô bên cạnh ô ngày giờ.
 
    Cổ thư không thống nhất phần chia này, và chênh nhau không phải vài phút
-   mà là cả tuần: tháng Dần, 渊海 chia 7·7·16 còn 三命通会 chia 5·5·20, nên
-   một người sinh mùng 6 sau Lập Xuân có thể là Bính cầm lệnh ở bảng này mà
-   Giáp cầm lệnh ở bảng kia. Không có cách nào "trung hoà" ba bộ số ấy thành
-   một; chỉ có cách nói rõ đang dùng bộ nào.
+   mà là cả tuần. Tháng Dần: 渊海 chia 7·7·16 (Mậu tới ngày 7, Bính tới ngày
+   14, rồi Giáp), 三命通会 chia 5·5·20 (Mậu tới ngày 5, Bính tới ngày 10, rồi
+   Giáp) — hai mốc đổi can lệch nhau 2 và 4 ngày, nên có những ngày CÙNG MỘT
+   người ra hai can khác nhau. Đo trên chính ứng dụng, Hà Nội, Lập Xuân 2026
+   rơi 04/02 03:02:
+
+     sinh 10/02 (≈6 ngày sau):  渊海 → Mậu,  三命通会 → Bính
+     sinh 16/02 (≈12 ngày sau): 渊海 → Bính, 三命通会 → Giáp
+
+   Không có cách nào "trung hoà" ba bộ số ấy thành một; chỉ có cách nói rõ
+   đang dùng bộ nào.
 
    Xuất xứ từng bộ (xem RULES bên dưới, mỗi bộ kèm nguyên văn chữ Hán):
 
