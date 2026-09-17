@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/app.css">
     <link rel="stylesheet" href="css/location.css">
     <link rel="stylesheet" href="css/calendar.css">
+    <link rel="stylesheet" href="css/lenh.css">
 </head>
 <!-- KHÔNG đặt sẵn lớp `lang-zh`: mặc định của ứng dụng nay là tiếng Việt
      (xem initLang trong app.js), mà chữ trong chính tệp này cũng là tiếng
@@ -319,6 +320,18 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
     <button type="button" id="calPinBtn">📌 Ghim lịch ra màn hình chính</button>
 </div>
 
+<!-- ══ TAB LỆNH (nhân nguyên tư lệnh) ══
+     Ô ngày giờ và bảng Bát Tự KHÔNG dựng lại ở đây: tab này dùng lại đúng
+     hai khối của tab Kỳ Môn (.controls và #tuTruPanel), chỉ ẩn bớt ô phái và
+     ô "Đầy đủ" — xem css/lenh.css. Dựng lại thì sớm muộn hai bảng Bát Tự
+     cũng lệch nhau, mà người dùng đòi "exactly the same bazi box".
+     Nội dung dưới đây do lenh.js dựng. -->
+<div id="lenhView">
+    <div id="lenhNow">Lệnh: <b id="lenhNowVal">—</b></div>
+    <div id="lenhHead"><span id="lenhTitle">LỆNH NĂM</span></div>
+    <div class="cal-sec" id="lenhSec"><div class="cal-sec-body" id="lenhBody"></div></div>
+</div>
+
 <!-- ══ THANH DƯỚI MÀN HÌNH: tab + hàng dùng chung ══ -->
 <div id="bottomDock">
     <div id="tabBar">
@@ -327,6 +340,9 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
         </div>
         <div id="tabCal" class="tab-item">
             <span class="tab-ico">▤</span><span class="tab-lbl">Lịch</span>
+        </div>
+        <div id="tabLenh" class="tab-item">
+            <span class="tab-ico">◷</span><span class="tab-lbl">Lệnh</span>
         </div>
     </div>
 
@@ -355,6 +371,10 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
 <script src="js/app.js"></script>
 <script src="js/location.js"></script>
 <script src="js/calendar.js"></script>
+<!-- lenh.js sau calendar.js: cả hai bọc processAll() để tự vẽ lại sau mỗi lần
+     engine tính, và cả hai đều gọi tiếp bản trước nên thứ tự bọc không đổi
+     kết quả — nhưng nhãn tab thì do calendar.js dựng, nên để nó chạy trước. -->
+<script src="js/lenh.js"></script>
 <script src="js/viewport.js"></script>
 </body>
 </html>

@@ -451,6 +451,95 @@ thì trên máy cao các bảng rời rạc hẳn ra, xấu hơn cả khoảng h
 
 Kết quả: S21, S21 FE và S21 Ultra khít đáy (hở ≤ 0,3px), A51 còn 10px.
 
+## Tab Lệnh: nhân nguyên tư lệnh
+
+Tab thứ ba, đứng cạnh tab Lịch. Nó trả lời đúng một câu: **tại thời điểm đang
+xem, can nào đang cầm lệnh** — và bày cả bảng lệnh của năm để xem trước xem sau.
+
+Mỗi tháng khí (từ TIẾT này tới TIẾT sau) không do một can duy nhất nắm: chi của
+tháng tàng 2–3 can, và chúng thay nhau cầm lệnh theo thứ tự dư khí → trung khí
+→ bản khí. Tháng Dần chẳng hạn: Mậu, rồi Bính, rồi Giáp.
+
+### Đo bằng ĐỘ hoàng kinh, không phải số ngày
+
+Sách xưa chép phần chia theo **ngày** ("Mậu 7 ngày, Bính 7 ngày, Giáp 16 ngày"),
+vì một ngày Mặt Trời đi xấp xỉ một độ. Nhưng "xấp xỉ" ấy lệch tới **3,4%**:
+quanh cận nhật (tháng Giêng) Mặt Trời đi 1,019°/ngày, quanh viễn nhật (tháng
+Bảy) chỉ 0,953°/ngày. Đếm ngày thì tổng 30 ngày của một tháng khí không khớp
+khoảng cách thật giữa hai tiết — **29,44 ngày** mùa đông, **31,44 ngày** mùa hè
+— nên cộng dồn ba đoạn là lệch cả ngày rưỡi, và đoạn cuối không rơi đúng vào
+tiết sau.
+
+Đo bằng độ thì hết hẳn: 7° + 7° + 16° = 30° = đúng khoảng cách hai tiết, **theo
+định nghĩa**. Ảnh mẫu người dùng gửi cũng ghi cột "Hoàng kinh" chứ không ghi số
+ngày. `test_lenh.mjs` canh tổng ấy cho cả 12 tháng, và canh các đoạn nối liền
+nhau không hở không chồng.
+
+### Một nguồn duy nhất với bảng tiết khí
+
+Mốc **mở tháng** (bội số của 15°) lấy thẳng từ `ShouXingUtil.qiAccurate` — đúng
+hàm mà bảng tiết khí ở tab Lịch và bảng Sách Bổ ở tab Kỳ Môn đang dùng, nên nó
+tra bảng DE423 y hệt. Không thể có chuyện "Lập Xuân" ở tab Lịch một giờ mà "vào
+lệnh Mậu" ở tab Lệnh một giờ khác; phép kiểm so hai bảng từng mốc một.
+
+Mốc **giữa tháng** (7°, 22°… không phải bội số của 15°) thì bảng DE423 không có
+— nó chỉ lưu 24 tiết khí. Chỗ ấy giải bằng chuỗi giải tích `saLonT` của chính
+lunar.js. Hai nguồn lệch nhau **≤ 2 giây** tại các mốc dùng chung (đo trên cả
+năm 2026: 19:42:43 so với 19:42:45), tức không bao giờ đủ để đổi con số phút
+hiện ra.
+
+Đối chiếu bảng mẫu người dùng gửi (năm 2026, mốc UTC+8): **33/33 mốc khớp**.
+22 mốc trùng đến từng phút, 11 mốc lệch đúng một phút — và cả 11 đều có phần
+giây ≥ 30 (49, 44, 57, 43, 34…), tức nguồn kia **làm tròn** tới phút gần nhất
+trong khi cả ứng dụng này thì **cắt**. Giữ phép cắt, vì đó là phép mà bảng tiết
+khí và bảng Sóc/Vọng đang dùng — đổi riêng một bảng là mời hai con số khác nhau
+cho cùng một thời điểm.
+
+### Dùng lại ĐÚNG hai khối của tab Kỳ Môn
+
+Ô ngày giờ và bảng Bát Tự ở tab Lệnh **không phải bản dựng lại**: chúng là
+chính `.controls` và `#tuTruPanel` của tab Kỳ Môn, chỉ ẩn bớt ô chọn phái và ô
+"Đầy đủ" (hai thứ chỉ có nghĩa khi có bàn để bày). Dựng lại thì sớm muộn hai
+bảng cũng trôi khỏi nhau. Phép kiểm đánh dấu `data-moc` lên bảng ở tab Kỳ Môn
+rồi sang tab Lệnh xem dấu ấy có còn không — chỉ cách đó mới phân biệt "dùng lại
+đúng phần tử" với "dựng một bản trông giống".
+
+Hệ quả: địa điểm và ngôn ngữ **tự động** dùng chung cho cả ba tab, vì cả ba đọc
+cùng `#country` và cùng `currentLang`; `lenh.js` bọc `processAll()` đúng cách
+`calendar.js` bọc, nên đổi ngày, đổi nơi hay đổi tiếng đều vẽ lại cả ba.
+
+### Bảng của năm
+
+Cấu trúc theo đúng ảnh mẫu: **Tháng · Can · Hoàng kinh · Vào lệnh · Hết lệnh**,
+12 tháng từ Sửu (Tiểu Hàn, tháng 1) tới Tý (Đại Tuyết, tháng 12) — tức 12 TIẾT
+rơi vào năm dương lịch đang chọn — thành 33 đoạn. Ô tháng gộp 2–3 hàng.
+
+Giờ viết "05/01 16:23", chỉ thêm năm khi mốc rơi ra ngoài năm của bảng
+("05/01/2027 14:09" ở hàng cuối). Bỏ năm ở 32/33 hàng thì cột hẹp đi chừng
+30px — đủ để cả năm cột vừa màn hình 360px mà không phải kéo ngang.
+
+Hàng đang cầm lệnh được tô đậm và **tự cuộn vào giữa khung**; bảng 33 hàng mà
+mở ra phải tự đi tìm hàng của hôm nay thì bảng vô dụng một nửa. Mép trên khung
+chốt về **đầu THÁNG**, không phải đầu hàng: ô tháng gộp 2–3 hàng nên dừng giữa
+một tháng là hàng đầu hiện "(Kinh Trập)" mà mất chữ "Mão" nằm trên nó — một cái
+tên tiết mồ côi. Mép dưới thì dùng chung phép canh của tab Lịch
+(`window.__snapCutRows`, xem "Hàng cuối bị cắt mất DẤU"), vì bảng này cũng đầy
+"Mậu", "Tuất", "Bạch Lộ".
+
+### Hàng tab chia ba
+
+Thêm tab thứ ba thì hàng tab chia **ba**, nên vạch ngăn của hàng dùng chung bên
+dưới (ngôn ngữ | địa điểm) chia đôi 50/50 như cũ sẽ rơi vào **giữa tab Lịch** —
+hai vạch lệch nhau ngay cạnh nhau, nhìn là thấy. Nay ngôn ngữ lấy một phần ba
+("Tiếng Việt" / "中文" chỉ cần chừng 60px) và địa điểm lấy hai phần ba, nơi tên
+thành phố dài mới thật sự cần chỗ — vạch ngăn về đúng vạch Kỳ Môn|Lịch.
+
+Kèm một lỗi cũ lộ ra khi sửa: cả `.tab-item` lẫn `#sharedBar .picker-btn` đều
+là `content-box` (mặc định của `<div>`), nên "một phần ba" là một phần ba của
+phần CÒN LẠI sau khi trừ đệm, chứ không phải của hàng — ô ngôn ngữ phình ra
+123,7px thay vì 120px. Cho cả hai `box-sizing: border-box` thì hai vạch trùng
+nhau trong 0,7px.
+
 ## Ngày âm lịch bắt đầu lúc nào
 
 Hai câu hỏi tách rời nhau: **mốc nào** (kinh tuyến nào) và **lúc mấy giờ** (ranh
@@ -1562,6 +1651,26 @@ giả lập để đếm số lần gọi).
 `test_jieqi_parity.mjs` canh thêm cột can chi: dòng đang hiệu lực phải khớp đúng
 trụ tháng mà tab Kỳ Môn đang hiện, ở cả năm múi giờ.
 
+### Tab Lệnh
+
+```bash
+node test_lenh.mjs
+```
+
+Bốn nhóm. **Số học**: bảng phân dã cộng đủ 30° mỗi tháng, các đoạn nối liền
+nhau không hở không chồng qua sáu năm mẫu, và mốc mở tháng trùng khít tới
+`1e-9` ngày với bảng tiết khí dùng chung — kèm một phép so bảng trong
+`test_lenh.mjs` với chính bảng trong `lenh.js`, để sửa một bên mà quên bên kia
+là đỏ. **Đối chiếu** với ảnh mẫu người dùng gửi (2026, UTC+8): cả 33 mốc, cho
+lệch tối đa một phút vì nguồn kia làm tròn còn ứng dụng thì cắt. **Nhất quán**:
+quét 244 thời điểm của năm ở bốn múi giờ (UTC+7/+8/+2/−5), chi của tháng lệnh
+phải trùng chi của trụ tháng trong bảng Bát Tự, và can cầm lệnh phải là một
+trong những can tàng trong chi ấy. **Giao diện**: bảng Bát Tự ở tab Lệnh phải
+là CHÍNH phần tử của tab Kỳ Môn (đánh dấu `data-moc` rồi chuyển tab xem dấu còn
+không), đổi địa điểm ngay tại tab Lệnh thì giờ vào lệnh đổi theo, giờ mở tháng
+trùng bảng tiết khí ở tab Lịch, và sáu cấu hình máy × tiếng đều không cắt chữ,
+không kéo ngang, không tràn xuống dưới thanh tab.
+
 ### Mùng 1 và điểm Sóc
 
 ```bash
@@ -1629,6 +1738,7 @@ android/
 │       ├── css/location.css         phần giao diện mới
 │       ├── css/calendar.css         MỚI — thanh dưới (tab + hàng dùng chung)
 │       │                            + lịch âm dương
+│       ├── css/lenh.css             MỚI — tab Lệnh (nhân nguyên tư lệnh)
 │       ├── js/astro_table.js        MỚI — mốc tiết khí/Sóc/Vọng từ JPL DE423
 │       ├── js/lunar.js              thư viện lịch âm của 6tail — ĐÃ SỬA: ba chỗ
 │       │                            nối tra astro_table.js (xem NOTICE.md)
@@ -1638,6 +1748,7 @@ android/
 │       ├── js/location.js           MỚI — GPS, tra thành phố, toạ độ tay
 │       ├── js/viewport.js           MỚI — vừa khít mọi kích thước màn hình
 │       ├── js/calendar.js           MỚI — tab Lịch: lưới, tiết khí, ghim widget
+│       ├── js/lenh.js               MỚI — tab Lệnh: bảng phân dã theo hoàng kinh
 │       └── data/cities.txt          34.006 thành phố + múi giờ IANA
 └── tools/                           bộ sinh dữ liệu và kiểm thử
     └── almanac/                     MỚI — oracle Python sinh astro_table.js

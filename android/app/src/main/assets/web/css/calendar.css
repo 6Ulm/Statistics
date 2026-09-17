@@ -42,10 +42,22 @@
 /* Cao ĐÚNG BẰNG một tab. Con số này phải bám .tab-item (đệm 5px + một dòng
    chữ 11,5px); test_shared_bar.mjs canh hai bên bằng nhau nên lệch là đỏ. */
 #sharedBar .picker-btn {
+    /* border-box, không phải content-box mặc định của <div>: chỉ ở hộp viền
+       thì "một phần ba" mới là một phần ba của HÀNG. Ở content-box, đệm 6px
+       hai bên nằm NGOÀI phần chia, nên ô thứ nhất phình ra 123,7px thay vì
+       120px — đủ để vạch ngăn lệch hẳn khỏi vạch của hàng tab bên trên. */
+    box-sizing: border-box;
     flex: 1 1 0; min-width: 0;
     border: none; border-radius: 0;
     min-height: var(--dock-row-h, 24px); padding: 2px 6px;
 }
+/* Vạch ngăn của hàng dùng chung rơi đúng vạch Kỳ Môn|Lịch ở hàng tab trên nó.
+   Từ khi có tab thứ ba (Lệnh) hàng tab chia BA, nên chia đôi 50/50 như cũ là
+   vạch dưới rơi vào giữa tab Lịch — hai vạch lệch nhau ngay cạnh nhau, nhìn
+   là thấy. Một phần ba cho ngôn ngữ ("Tiếng Việt" / "中文" chỉ cần chừng 60px)
+   và hai phần ba cho địa điểm, nơi tên thành phố dài mới thật sự cần chỗ. */
+#sharedBar #langDisplayBtn { flex: 0 0 33.3333%; }
+#sharedBar #countryDisplayBtn { flex: 1 1 auto; }
 #sharedBar #countryDisplayBtn { border-left: 1px solid var(--border-color, #ddd); }
 /* Thanh tab thấp thôi — nó ăn vào chiều cao vốn đã chật của màn Kỳ Môn.
    Chiều cao CHỐT bằng --dock-row-h chứ không thả theo chữ: chữ Hán cao hơn chữ
@@ -53,8 +65,11 @@
    hàng dùng chung bên dưới không tài nào cao bằng ở cả hai thứ tiếng. Chốt số
    rồi dùng chung cho cả hai hàng thì bằng nhau theo cấu trúc. */
 .tab-item {
+    /* Cùng lý do với #sharedBar .picker-btn: chia ba ĐÚNG một phần ba chỉ
+       đúng khi đệm và viền nằm TRONG phần chia. */
+    box-sizing: border-box;
     min-height: var(--dock-row-h, 24px);
-    flex: 1;
+    flex: 1 1 0;
     display: flex; flex-direction: row;
     align-items: center; justify-content: center;
     gap: 5px;

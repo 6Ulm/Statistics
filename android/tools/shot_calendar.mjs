@@ -69,6 +69,11 @@ for (const d of DEVICES) {
     await page.waitForTimeout(500);
     await page.screenshot({ path: path.join(OUT, `cal-${d.name}-thangsau.png`) });
 
+    // 3. tab Lệnh (bảng nhân nguyên tư lệnh của năm)
+    await page.evaluate(() => window.showTab('lenh'));
+    await page.waitForTimeout(900);
+    await page.screenshot({ path: path.join(OUT, `lenh-${d.name}.png`) });
+
     // 4. tab Kỳ Môn để đối chiếu
     await page.evaluate(() => window.showTab('qmdj'));
     await page.waitForTimeout(700);

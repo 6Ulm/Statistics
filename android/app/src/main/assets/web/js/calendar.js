@@ -432,8 +432,8 @@
      * Trả null khi bảng chưa dựng — người gọi hiểu là "chưa biết".
      */
     var inkCache = {};
-    function rowMetrics(id) {
-        var row = document.querySelector('#' + id + ' tbody tr');
+    function rowMetrics(box) {
+        var row = box && box.querySelector('tbody tr');
         if (!row || !row.cells.length) return null;
         var cell = row.cells[0];
         // Hộp DÒNG CHỮ, không phải hộp ô: ô còn có đệm trên/dưới. Range là
@@ -483,7 +483,7 @@
         return { h: r.height / zoom, trên: trên, dưới: dưới };
     }
     function amRowHeight() {
-        var m = rowMetrics('calAmBan');
+        var m = rowMetrics(document.getElementById('calAmBan'));
         return m ? m.h : 0;
     }
 
@@ -524,7 +524,9 @@
      *
      * @returns {number} chiều cao cuối cùng của khung, px chưa nhân zoom.
      */
-    function snapCut(el, m) {
+    function snapCut(el) {
+        if (!el) return 0;
+        var m = rowMetrics(el);
         var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
         var box = el.getBoundingClientRect();
         var cao = box.height / zoom;
@@ -981,7 +983,7 @@
                 jqEl.style.maxHeight = jqUsed + 'px';
                 // Hạ TRƯỚC khi chia phần cho Lịch âm: vài pixel Tiết khí nhả
                 // ra phải chảy sang Lịch âm, chứ không thành khe trống.
-                jqUsed = snapCut(jqEl, rowMetrics('calJieQi'));
+                jqUsed = snapCut(jqEl);
             }
         } else {
             jqUsed = jqMin;
@@ -1000,7 +1002,7 @@
             amCap = Math.min(natOf('calAmBan'), amCap);
             if (amEl) {
                 amEl.style.maxHeight = amCap + 'px';
-                snapCut(amEl, rowMetrics('calAmBan'));
+                snapCut(amEl);
             }
         }
     }
@@ -1057,14 +1059,32 @@
 
     /* ─────────────── Chuyển tab ─────────────── */
 
+    /**
+     * Ba tab dùng CHUNG một danh sách, không rẽ nhánh if/else theo từng cái.
+     * Thêm tab thứ ba bằng cách sửa hai chỗ (danh sách này và index.html) chứ
+     * không phải rà lại mọi phép so `=== 'cal'` rải khắp tệp.
+     *
+     * Tên lớp của <body> là 'view-' + khoá, trừ tab Kỳ Môn: nó là tab MẶC
+     * ĐỊNH, tức trạng thái "không lớp nào" — mọi luật ẩn hiện của hai tab kia
+     * đều viết dưới dạng "ẩn tất cả trừ…", nên Kỳ Môn không cần lớp riêng.
+     */
+    var TABS = [
+        { key: 'qmdj', tab: 'tabQmdj', cls: null },
+        { key: 'cal',  tab: 'tabCal',  cls: 'view-cal' },
+        { key: 'lenh', tab: 'tabLenh', cls: 'view-lenh' },
+    ];
+
     function showTab(which) {
-        var cal = which === 'cal';
-        document.body.classList.toggle('view-cal', cal);
-        var tq = document.getElementById('tabQmdj');
-        var tc = document.getElementById('tabCal');
-        if (tq) tq.classList.toggle('tab-active', !cal);
-        if (tc) tc.classList.toggle('tab-active', cal);
-        if (cal) render();
+        for (var i = 0; i < TABS.length; i++) {
+            var it = TABS[i], on = it.key === which;
+            if (it.cls) document.body.classList.toggle(it.cls, on);
+            var el = document.getElementById(it.tab);
+            if (el) el.classList.toggle('tab-active', on);
+        }
+        if (which === 'cal') render();
+        if (which === 'lenh' && typeof window.__lenhRender === 'function') {
+            try { window.__lenhRender(); } catch (e) {}
+        }
         if (typeof window.__fitScreen === 'function') setTimeout(window.__fitScreen, 50);
         // Chỉ cuộn khi đang không ở đầu trang — gọi thừa vừa vô ích vừa làm
         // jsdom kêu "not implemented" trong bộ kiểm thử.
@@ -1104,6 +1124,14 @@
         }
     };
 
+    /**
+     * Cho tab Lệnh dùng chung phép canh mép cắt (xem snapCut). Bảng của nó
+     * cũng đầy chữ có dấu dưới — "Mậu", "Tuất", "Bạch Lộ" — nên cũng gặp đúng
+     * cái bẫy "cắt mất dấu thành chữ khác". Chép lại phép canh ấy sang tệp kia
+     * là mời một bản thứ hai trôi khỏi bản này.
+     */
+    window.__snapCutRows = snapCut;
+
     window.__calFit = function () {
         if (!document.body.classList.contains('view-cal')) return;
         try { fitGrid(lastWeeks); } catch (e) {}
@@ -1135,6 +1163,12 @@
         if (pin) pin.textContent = t('pin');
         publishLang();
         if (document.body.classList.contains('view-cal')) render();
+        // Nhãn tab Lệnh và cả bảng của nó do lenh.js lo — nhưng nút đổi ngôn
+        // ngữ nằm ở hàng dùng chung, bấm được từ BẤT CỨ tab nào, nên phải gọi
+        // sang chứ không đợi tới lúc mở tab ấy.
+        if (typeof window.__lenhRefreshLabels === 'function') {
+            try { window.__lenhRefreshLabels(); } catch (e) {}
+        }
     }
     window.__calRefreshLabels = refreshLabels;
 
@@ -1276,8 +1310,12 @@
             if (sec) toggleSection(sec.id === 'calSecJq' ? 'jq' : 'am');
         });
 
-        document.getElementById('tabQmdj').addEventListener('click', function () { showTab('qmdj'); });
-        document.getElementById('tabCal').addEventListener('click', function () { showTab('cal'); });
+        for (var ti = 0; ti < TABS.length; ti++) {
+            (function (key) {
+                var el = document.getElementById(TABS[ti].tab);
+                if (el) el.addEventListener('click', function () { showTab(key); });
+            })(TABS[ti].key);
+        }
         document.getElementById('calPrev').addEventListener('click', function () { shiftMonth(-1); });
         document.getElementById('calNext').addEventListener('click', function () { shiftMonth(1); });
         document.getElementById('calTitle').addEventListener('click', function () {

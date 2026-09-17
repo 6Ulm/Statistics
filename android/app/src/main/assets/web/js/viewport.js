@@ -104,8 +104,13 @@
         // Ở tab ấy chỉ lấy tỉ lệ theo BỀ NGANG — thứ không co giãn — rồi để
         // vòng hạ dần bên dưới lo nốt máy quá thấp (fitGrid có sàn SEC_MIN nên
         // không bóp mãi được).
-        var elastic = body.classList.contains('view-cal') &&
-                      typeof window.__calFit === 'function';
+        // Tab Lệnh cũng vậy: bảng 33 hàng của nó được lenh.js kẹp chiều cao
+        // theo innerHeight, nên chiều cao "tự nhiên" của trang cũng là hàm của
+        // chính tỉ lệ đang đặt.
+        var fitTab = body.classList.contains('view-cal') ? window.__calFit
+                   : body.classList.contains('view-lenh') ? window.__lenhFit
+                   : null;
+        var elastic = typeof fitTab === 'function';
         var scale = elastic ? (availW / natW)
                             : Math.min(availW / natW, (availH - 2) / natH);
         scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
@@ -118,7 +123,7 @@
         for (var pass = 0; pass < 4 && scale > MIN_SCALE; pass++) {
             // Tab Lịch phải được chia lại theo tỉ lệ vừa đặt TRƯỚC KHI đo,
             // bằng không ta đo một bố cục dựng cho tỉ lệ cũ.
-            if (elastic) window.__calFit();
+            if (elastic) fitTab();
             var realH = body.getBoundingClientRect().height;
             if (realH <= availH) break;
             scale = Math.max(MIN_SCALE, scale * (availH / realH) - 0.002);
@@ -129,7 +134,7 @@
         // Chỉ chia lại trong đúng trường hợp ấy: thoát vì ĐÃ VỪA thì bố cục
         // đang đúng rồi, chia thêm chỉ nới nội dung ra sát mép và làm trang
         // dôi ra vài pixel (đo trên tablet: 9px, đủ để hiện thanh cuộn).
-        if (elastic && scale <= MIN_SCALE) window.__calFit();
+        if (elastic && scale <= MIN_SCALE) fitTab();
 
         // ── Rót phần thừa chiều cao vào các khe ──
         // Phóng to bị CHẶN BỞI BỀ NGANG: trên S21 FE tỉ lệ đã kịch 1,0 vì rộng,

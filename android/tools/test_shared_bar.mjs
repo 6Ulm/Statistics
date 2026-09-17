@@ -400,7 +400,11 @@ for (const d of DEVICES) {
                     lang: [box('langDisplayBtn').left, box('langDisplayBtn').right],
                     ctry: [box('countryDisplayBtn').left, box('countryDisplayBtn').right],
                     tab0: [tabs[0].left, tabs[0].right],
-                    tab1: [tabs[1].left, tabs[1].right],
+                    // Từ khi có tab thứ ba (Lệnh), hàng tab chia BA còn hàng
+                    // dùng chung vẫn hai ô — nên ô địa điểm phủ hai tab cuối:
+                    // mép trái trùng tab Lịch, mép phải trùng tab Lệnh.
+                    tab1: [tabs[1].left, tabs[tabs.length - 1].right],
+                    sốTab: tabs.length,
                     tabH: tabs[0].height,
                     boxH: box('langDisplayBtn').height,
                     // Khe giữa hàng tab và hàng dùng chung.
@@ -437,8 +441,9 @@ for (const d of DEVICES) {
             const near = (a, b) => Math.abs(a[0] - b[0]) <= 1 && Math.abs(a[1] - b[1]) <= 1;
             ok(`${tag}: ô ngôn ngữ trùng khít tab Kỳ Môn`, near(r.lang, r.tab0),
                 `[${r.lang.map(v => v.toFixed(1))}] vs [${r.tab0.map(v => v.toFixed(1))}]`);
-            ok(`${tag}: ô địa điểm trùng khít tab Lịch`, near(r.ctry, r.tab1),
+            ok(`${tag}: ô địa điểm phủ đúng hai tab Lịch + Lệnh`, near(r.ctry, r.tab1),
                 `[${r.ctry.map(v => v.toFixed(1))}] vs [${r.tab1.map(v => v.toFixed(1))}]`);
+            check(`${tag}: thanh tab có ba mục`, r.sốTab, 3);
             ok(`${tag}: ô cao đúng bằng tab`, Math.abs(r.boxH - r.tabH) <= 1,
                 `ô ${r.boxH.toFixed(1)}px vs tab ${r.tabH.toFixed(1)}px`);
             ok(`${tag}: có khe giữa hai hàng`, r.rowGap >= 3 && r.rowGap <= 10,

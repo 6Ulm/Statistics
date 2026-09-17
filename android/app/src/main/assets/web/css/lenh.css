@@ -1,0 +1,156 @@
+/* ════════════════════════════════════════════════════════════════
+   lenh.css — tab "Lệnh" (nhân nguyên tư lệnh)
+
+   Tab này KHÔNG có ô ngày giờ và bảng Bát Tự của riêng nó: nó hiện lại
+   đúng hai khối của tab Kỳ Môn. Nên phần lớn tệp này là luật ẨN — nói
+   xem ở tab Lệnh thì bỏ bớt những gì.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Chuyển tab ──
+   Giữ lại: hàng điều khiển (ô ngày giờ), bảng Bát Tự, và chính #lenhView.
+   Ẩn phần còn lại của màn Kỳ Môn — bàn cờ, chú giải, ba bảng chi tiết.
+   Ba lớp phủ phải được chừa y như ở body.view-cal: ô ngôn ngữ và ô địa điểm
+   ở hàng dùng chung mở được ngay tại tab này, mà bảng chọn của chúng lại là
+   con trực tiếp của <body>. */
+#lenhView { display: none; width: 100%; max-width: var(--max-w, 400px); }
+body.view-lenh > *:not(.controls):not(#tuTruPanel):not(#lenhView):not(#bottomDock):not(#locOverlay):not(#drumOverlay):not(#optOverlay) {
+    display: none !important;
+}
+body.view-lenh #lenhView { display: flex; flex-direction: column; gap: 0; }
+
+/* Ô phái và ô "Đầy đủ" là chuyện của riêng Kỳ Môn (chọn pháp bày bàn, bật
+   tắt chữ phụ trên bàn) — ở tab Lệnh không có bàn nào để bày. Ẩn đi rồi trả
+   trần bề rộng cho ô ngày giờ: trần 50% tồn tại để KHE giữa nó và ô phái rơi
+   đúng vạch Tháng|Ngày của bảng Bát Tự (xem #qmRow trong app.css); không còn
+   ô phái thì trần ấy chỉ để lại nửa hàng trống. */
+body.view-lenh #methodDisplayBtn,
+body.view-lenh #cobanToggleWrap { display: none !important; }
+body.view-lenh #qmRow #dateDisplayBtn { max-width: none; }
+
+/* ── Dòng "Lệnh: Mậu" ── */
+#lenhNow {
+    box-sizing: border-box;
+    border: var(--border-panel, 1px solid #ddd);
+    border-radius: var(--panel-radius, 8px);
+    background: var(--bg-white, #fff);
+    padding: 3px 10px;
+    margin-bottom: 3px;
+    text-align: center;
+    font-size: clamp(13px, 3.6vw, 15px);
+    color: var(--text-dim, #666);
+}
+#lenhNow b {
+    font-size: clamp(15px, 4.4vw, 18px);
+    font-weight: 700;
+    color: #283593;
+}
+
+/* ── Đầu bảng ──
+   Dính liền khung bảng bên dưới thành một khối (gap của #lenhView đặt 0, và
+   khung bảng bỏ bo góc trên) — hai mảnh rời có khe ở giữa thì cái tiêu đề
+   trông như đang trôi. Màu chàm theo mục Lịch âm ở tab Lịch, để tab Lệnh
+   không đội lốt cái lịch đỏ. */
+#lenhHead {
+    display: flex; align-items: center; justify-content: center;
+    background: #3949ab;
+    color: #fff;
+    border-radius: 8px 8px 0 0;
+    padding: 5px 6px;
+    font-size: clamp(13px, 3.7vw, 15px);
+    font-weight: 700;
+    letter-spacing: .3px;
+}
+
+/* ── Khung bảng ──
+   Dùng lại .cal-sec/.cal-sec-body của calendar.css: khung cuộn, viền, và
+   miếng vá vệt rò của hàng tiêu đề dính (xem khối ghi chú ở .cal-sec::after).
+   Chỉ bỏ bo góc TRÊN để nối liền #lenhHead. */
+#lenhSec .cal-sec-body { border-radius: 0 0 6px 6px; border-top-color: #c4cbf0; }
+/* Miếng vá phải bỏ BO GÓC: ở mục của tab Lịch nó bo 6px trên vì khung bảng
+   cũng bo, còn khung này vuông góc trên (đã nối vào #lenhHead). Để nguyên bo
+   góc thì hai góc trên hở ra đúng chỗ vệt rò hay lọt.
+
+   Và phải MỎNG hơn: 6px của bản gốc là dán lên phần đệm trên của hàng tiêu đề
+   mục lịch, nơi chữ to 16px và đệm 4px. Ở đây chữ bé hơn (11px trên máy 360px)
+   nên 6px ăn thẳng vào dấu — chụp S21 thấy "Tháng", "Hoàng kinh", "Hết lệnh"
+   đều cụt dấu trên. 3px vẫn thừa sức che vệt rò (nó chỉ dày 1 điểm ảnh THIẾT
+   BỊ, tức ≤ 1px CSS ở mọi tỉ lệ), và hàng tiêu đề được chừa thêm đệm trên. */
+#lenhSec::after {
+    background: #eef1fd; border-color: #c4cbf0; border-radius: 0; height: 3px;
+}
+
+/* ── Bảng ──
+   border-collapse: separate là BẮT BUỘC, không phải lựa chọn thẩm mỹ:
+   position:sticky không chạy trên <th> của bảng đang collapse — hàng tiêu đề
+   trôi mất khi cuộn (đúng lỗi calendar.css đã gặp). Đổi lại phải tự vẽ viền
+   lên từng ô. */
+table.lenh-tb {
+    width: 100%;
+    border-collapse: separate; border-spacing: 0;
+    font-size: clamp(11px, 3.1vw, 13.5px);
+    white-space: nowrap;
+}
+table.lenh-tb .dp-num {
+    font-size: clamp(10.5px, 3vw, 13px);
+    font-variant-numeric: tabular-nums;
+}
+table.lenh-tb th, table.lenh-tb td {
+    padding: 2px 3px;
+    border-bottom: 1px solid var(--border-color, #e8e8e8);
+}
+table.lenh-tb thead th {
+    position: sticky; top: 0; z-index: 1;
+    background: #eef1fd; color: #283593;
+    font-weight: 700; text-align: left;
+    /* Đệm trên 4px: miếng vá vệt rò dán đè 3px đầu của khung (xem
+       #lenhSec::after), nên chữ tiêu đề phải bắt đầu dưới mốc ấy. */
+    padding-top: 4px;
+    border-bottom: 1.5px solid #c4cbf0;
+    font-size: clamp(11px, 3.2vw, 14px);
+}
+table.lenh-tb th.c, table.lenh-tb td.c { text-align: center; }
+/* Cột đầu và cột cuối phải có lề thật, không dính mép khung. */
+table.lenh-tb .lenh-mon { padding-left: 7px; }
+table.lenh-tb th:first-child { padding-left: 7px; }
+table.lenh-tb .lenh-last { padding-right: 7px; }
+
+/* Ô tháng gộp 2–3 hàng: vạch dọc bên trái làm rõ nó là một khối, và viền
+   dưới chỉ vẽ ở hàng cuối của tháng (ô gộp tự lo). */
+table.lenh-tb .lenh-mon {
+    vertical-align: middle;
+    font-weight: 700;
+    color: #283593;
+    box-shadow: inset 3px 0 0 #3949ab;
+    line-height: 1.25;
+}
+/* Tên tiết xuống dòng riêng: "Sửu (Tiểu Hàn)" một dòng là cột đầu rộng gần
+   gấp đôi, và trên máy 360px thì cả bảng phải kéo ngang. Ô gộp 2–3 hàng nên
+   thừa chiều cao — chỗ để xuống dòng là có sẵn, không phải xin thêm. */
+table.lenh-tb .lenh-jie {
+    display: block;
+    font-weight: 400;
+    font-size: .84em;
+    color: var(--text-dim, #777);
+}
+table.lenh-tb .lenh-can { font-weight: 600; }
+table.lenh-tb .lenh-lon { color: var(--text-dim, #666); }
+
+/* Nền xen kẽ theo THÁNG (lenh.js lật cờ sau mỗi tháng, không phải sau mỗi
+   hàng) nên ba hàng của một tháng cùng một nền — ô gộp mới ra hình một khối. */
+table.lenh-tb tr.dp-row-alt td { background: var(--bg-alt, #f9f9fb); }
+
+/* Hàng đang cầm lệnh. Tô đậm cả chữ chứ không chỉ đổi nền: bảng 33 hàng, nền
+   nhạt một mình thì phải dò mới thấy. */
+table.lenh-tb tr.lenh-on td {
+    background: #e8edff;
+    color: #1a237e;
+    font-weight: 700;
+}
+
+/* Máy rất hẹp: bóp đệm ngang trước, vì đó là thứ rẻ nhất — cắt chữ hay bắt
+   kéo ngang đều tệ hơn. */
+@media (max-width: 360px) {
+    table.lenh-tb th, table.lenh-tb td { padding-left: 2px; padding-right: 2px; }
+    table.lenh-tb .lenh-mon, table.lenh-tb th:first-child { padding-left: 5px; }
+    table.lenh-tb .lenh-last { padding-right: 5px; }
+}

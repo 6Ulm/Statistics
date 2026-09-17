@@ -581,7 +581,8 @@
         // ứng dụng mở lên đầu tiên. Đó là nếp Android quen thuộc (Back về đích
         // khởi đầu rồi mới thoát); không có bước này thì đang xem lịch mà bấm
         // Back là ra thẳng màn hình chính, mất cả phiên xem.
-        if (document.body.classList.contains('view-cal') &&
+        if ((document.body.classList.contains('view-cal') ||
+             document.body.classList.contains('view-lenh')) &&
             typeof window.showTab === 'function') {
             window.showTab('qmdj');
             return true;
