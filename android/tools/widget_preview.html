@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8"><title>Xem trước widget Lịch</title><style>
+body{margin:0;background:#79889a;font:14px/1.4 system-ui,sans-serif;padding:16px;
+     display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+figure{margin:0}
+figcaption{color:#fff;font:600 12px system-ui,sans-serif;padding-bottom:5px}
+.widget{border-radius:16px;overflow:hidden;background:#FDECEF;
+        box-shadow:0 3px 10px rgba(0,0,0,.28)}
+.whead{height:32px;display:flex;align-items:center;background:#D32F2F;color:#fff}
+.wnav{width:42px;text-align:center;font-size:19px;line-height:1}
+.wtitle{flex:1;text-align:center;font:700 12px system-ui,sans-serif;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+canvas{display:block}
+.row{display:flex;align-items:center;overflow:hidden}
+.cell{font:10px/1.2 system-ui,sans-serif;white-space:nowrap;overflow:hidden;
+      text-overflow:clip}
+.list{scrollbar-width:none}
+.list::-webkit-scrollbar{display:none}
+</style></head><body>
+<script type="module">
+/* ════════════════════════════════════════════════════════════════════
+   Bản mô phỏng CalendarWidgetProvider.kt để xem widget mà không cần build.
+
+   Canvas của trình duyệt và Canvas của Android dùng cùng một mô hình vẽ
+   (drawText / fillRect / textAlign / textSize) nên hình ra rất sát widget
+   thật. Thanh tiêu đề ở đây là HTML vì trong widget nó cũng là View thật
+   (widget_calendar.xml), không nằm trong bitmap.
+
+   Dữ liệu âm lịch và tiết khí đọc thẳng từ chính hai tệp assets mà widget
+   dùng — sai lệch giữa bản xem trước và widget thật là không thể xảy ra.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Ngôn ngữ: ?lang=zh xem trước bản tiếng Trung, y như LunarTable.langOf đọc
+   khoá qmdj.lang mà ứng dụng ghi ra. */
+const ZH = new URLSearchParams(location.search).get('lang') === 'zh';
+
+const CAN = ZH ? ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸']
+               : ['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'];
+const CHI = ZH ? ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥']
+               : ['Tý','Sửu','Dần','Mão','Thìn','Tỵ','Ngọ','Mùi','Thân','Dậu','Tuất','Hợi'];
+const TIET_KHI = ZH
+  ? ['冬至','小寒','大寒','立春','雨水','惊蛰','春分','清明','谷雨','立夏','小满','芒种',
+     '夏至','小暑','大暑','立秋','处暑','白露','秋分','寒露','霜降','立冬','小雪','大雪']
+  : ['Đông Chí','Tiểu Hàn','Đại Hàn','Lập Xuân','Vũ Thủy','Kinh Trập',
+    'Xuân Phân','Thanh Minh','Cốc Vũ','Lập Hạ','Tiểu Mãn','Mang Chủng','Hạ Chí',
+    'Tiểu Thử','Đại Thử','Lập Thu','Xử Thử','Bạch Lộ','Thu Phân','Hàn Lộ',
+    'Sương Giáng','Lập Đông','Tiểu Tuyết','Đại Tuyết'];
+
+function jdn(y,m,d){const a=Math.floor((14-m)/12),yy=y+4800-a,mm=m+12*a-3;
+  return d+Math.floor((153*mm+2)/5)+365*yy+Math.floor(yy/4)-Math.floor(yy/100)+Math.floor(yy/400)-32045;}
+function civilOf(j){const a=j+32044,b=Math.floor((4*a+3)/146097),c=a-Math.floor(146097*b/4),
+  d=Math.floor((4*c+3)/1461),e=c-Math.floor(1461*d/4),m=Math.floor((5*e+2)/153);
+  return [100*b+d-4800+Math.floor(m/10), m+3-12*Math.floor(m/10), e-Math.floor((153*m+2)/5)+1];}
+
+/* ── Đọc đúng hai bảng mà LunarTable.kt đọc ── */
+const base = new URL('assets/', location.href);
+const [lunTxt, jqTxt] = await Promise.all([
+    fetch(new URL('lunar_months.txt', base)).then(r => r.text()),
+    fetch(new URL('jieqi.txt', base)).then(r => r.text()),
+]);
+const lunLines = lunTxt.trim().split('\n');
+const GZ_EPOCH = parseInt(lunLines[0], 10);
+// [jdn điểm Sóc ở UTC+7, GIÂY trong ngày, năm âm, tháng âm, nhuận,
+//  lệch ngày Sóc HIỆN, phút, lệch ngày Vọng, phút]
+const MONTHS = lunLines.slice(1).map(l => l.split(' ').map(Number));
+// [jdn, phút, chỉ số tên, chỉ số 0–59 của can chi THÁNG]
+const JQ = jqTxt.trim().split('\n').map(l => l.split(' ').map(Number));
+
+function ganzhi(j){const i=((j-GZ_EPOCH)%60+60)%60;return [CAN[i%10],CHI[i%12]];}
+/** LunarTable.ganZhi60 — tiếng Việt cách nhau một dấu cách, tiếng Trung viết liền. */
+function ganZhi60(i){
+    if(i<0) return '';
+    const k=((i%60)+60)%60;
+    return ZH ? CAN[k%10]+CHI[k%12] : CAN[k%10]+' '+CHI[k%12];
+}
+/**
+ * Mùng 1 của tháng thứ i, xét ở múi giờ đang xem — y như LunarTable.monthStart.
+ * Cột 2 của lunar_months.txt là GIÂY (jieqi.txt mới là phút), nên nhân 1000.
+ */
+function monthStart(i){
+    const utcMs=(MONTHS[i][0]-2440588)*86400000+MONTHS[i][1]*1000-7*3600000;
+    return Math.floor((utcMs+tzOffsetMs(utcMs))/86400000)+2440588;
+}
+/** Tra tháng âm chứa ngày j — tìm nhị phân, y như LunarTable.lunarOf. */
+function lunarOf(j){
+    let lo=0, hi=MONTHS.length-1, at=-1;
+    while(lo<=hi){const mid=(lo+hi)>>1; if(monthStart(mid)<=j){at=mid;lo=mid+1;} else hi=mid-1;}
+    if(at<0) return null;
+    return {day: j-monthStart(at)+1, month: MONTHS[at][3], leap: MONTHS[at][4]===1};
+}
+/** 24 tiết khí của năm chứa ngày ref — bắt đầu từ Đông Chí, y như LunarTable. */
+function jieQiYearOf(ref){
+    let lo=0, hi=JQ.length-1, at=-1;
+    while(lo<=hi){const mid=(lo+hi)>>1; if(JQ[mid][0]<=ref){at=mid;lo=mid+1;} else hi=mid-1;}
+    if(at<0) return [];
+    let start=at; while(start>=0 && JQ[start][2]!==0) start--;
+    if(start<0 || start+23>=JQ.length) return [];
+    return JQ.slice(start,start+24)
+        .map(r=>localize({name:TIET_KHI[r[2]], jdn:r[0], minutes:r[1], gz:r[3]}));
+}
+/** Năm âm chứa ngày j — LunarTable.lunarYearOf. */
+function lunarYearOf(j){
+    let lo=0, hi=MONTHS.length-1, at=-1;
+    while(lo<=hi){const mid=(lo+hi)>>1; if(monthStart(mid)<=j){at=mid;lo=mid+1;} else hi=mid-1;}
+    return at<0 ? null : MONTHS[at][2];
+}
+/** Các tháng của một năm âm, kèm mốc Sóc/Vọng — LunarTable.monthsOfYear. */
+function monthsOfYear(y){
+    const out=[];
+    for(const r of MONTHS){
+        if(r[2]!==y || r.length<9) continue;
+        out.push({month:r[3], leap:r[4]===1,
+                  socJdn:r[0]+r[5], socMin:r[6],
+                  vongJdn:r[0]+r[5]+r[7], vongMin:r[8]});
+    }
+    return out;
+}
+const p2=n=>(n<10?'0':'')+n;
+/** LunarTable.stamp — mốc ghi ở UTC+7, in theo múi giờ đang xem. */
+function stamp(j, minute){
+    const it=localize({name:'', jdn:j, minutes:minute});
+    const [y,m,d]=civilOf(it.jdn);
+    return p2(d)+'-'+p2(m)+'-'+y+' '+p2(Math.floor(it.minutes/60))+':'+p2(it.minutes%60);
+}
+/** LunarTable.localize — bảng lưu giờ UTC+7, đổi sang múi giờ đang xem. */
+const TZ = new URLSearchParams(location.search).get('tz') || 'Asia/Ho_Chi_Minh';
+function tzOffsetMs(utcMs){
+    const f=new Intl.DateTimeFormat('en-US',{timeZone:TZ,hour12:false,year:'numeric',
+        month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const p=Object.fromEntries(f.formatToParts(new Date(utcMs)).map(x=>[x.type,x.value]));
+    return Date.UTC(+p.year,+p.month-1,+p.day,(+p.hour)%24,+p.minute,+p.second)-utcMs;
+}
+function localize(it){
+    const utcMs=(it.jdn-2440588)*86400000+it.minutes*60000-7*3600000;
+    const local=utcMs+tzOffsetMs(utcMs);
+    const days=Math.floor(local/86400000);
+    return {name:it.name, gz:it.gz,
+            jdn:days+2440588, minutes:Math.floor((local-days*86400000)/60000)};
+}
+
+/** Nhãn một tháng âm — monthLabel() bên Kotlin. */
+function monthLabel(m, isLeap, leap){
+    return (ZH ? m+'月' : 'Tháng '+m) + (isLeap ? ' ('+leap+')' : '');
+}
+/**
+ * buildSections() của CalendarWidgetProvider.kt — hai mục đúng như tab Lịch.
+ * Trạng thái gập/mở lấy từ tham số ?jq=/?am= thay cho kho tuỳ chọn của máy.
+ */
+function buildSections(year, month, todayJdn){
+    const sp = new URLSearchParams(location.search);
+    const ref = jdn(year, month, 15);
+    const out = [];
+
+    const jieQi = jieQiYearOf(ref);
+    if (jieQi.length === 24) {
+        let active=-1;
+        for (let i=0;i<jieQi.length;i++) if (jieQi[i].jdn <= todayJdn) active=i;
+        out.push({
+            key: 'jq',
+            heads: ZH ? ['节气','公历','月柱'] : ['Tiết Khí','Dương lịch','Can chi'],
+            rows: jieQi.map(it=>{
+                const [jy,jm,jd]=civilOf(it.jdn);
+                return [it.name,
+                        p2(jd)+'-'+p2(jm)+'-'+jy+' '+p2(Math.floor(it.minutes/60))+':'+p2(it.minutes%60),
+                        ganZhi60(it.gz)];
+            }),
+            active,
+            open: sp.get('jq') !== '0',
+            headBg:'#FDEEEE', headFg:'#B71C1C', bar:'#D32F2F',
+        });
+    }
+
+    const ly = lunarYearOf(ref);
+    const months = ly===null ? [] : monthsOfYear(ly);
+    if (months.length) {
+        const today = lunarOf(todayJdn);
+        const sameYear = lunarYearOf(todayJdn) === ly;
+        let active=-1;
+        if (today && sameYear) {
+            for (let i=0;i<months.length;i++) {
+                if (months[i].month===today.month && months[i].leap===today.leap){active=i;break;}
+            }
+        }
+        const leap = ZH ? '闰' : 'Nhuận';
+        out.push({
+            key: 'am',
+            heads: ZH ? ['农历月','朔','望'] : ['Tháng âm','Sóc','Vọng'],
+            rows: months.map(m=>[
+                monthLabel(m.month, m.leap, leap),
+                stamp(m.socJdn, m.socMin),
+                stamp(m.vongJdn, m.vongMin),
+            ]),
+            active,
+            open: sp.get('am') === '1',
+            headBg:'#EEF1FD', headFg:'#283593', bar:'#3949AB',
+        });
+    }
+    return out;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Từ đây là phần DỰNG — mô phỏng widget_calendar.xml + drawGrid().
+
+   Widget nay KHÔNG còn là một tấm ảnh: chỉ lưới lịch là bitmap, còn hàng thứ,
+   hai hàng tiêu đề và hai ListView đều là View thật. Bản xem trước vì thế cũng
+   dựng phần ấy bằng DOM, đúng những con số dp và layout_weight của XML — sai
+   một con số là bản xem trước nói dối.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Phải khớp values/dimens.xml và WidgetLayout.kt. */
+const HEADER_DP = 32, DOW_DP = 16, SEC_HEAD_DP = 22, ROW_DP = 20, CORNER_PAD_DP = 6;
+const W_GRID = 58, W_JQ = 26, W_AM = 16;
+const COL = [27, 35, 38];
+const BAR_DP = 3;
+const GRID_WEEKS = 6;
+const TEXT_SP = 11.5, TEXT_SP_MIN = 8.5, TEXT_FULL_DP = 340;
+/** WidgetLayout.rowTextSp — cột chia bằng weight nên chữ phải co theo bề ngang. */
+function rowTextSp(wDp) {
+    return Math.min(TEXT_SP, Math.max(TEXT_SP_MIN, TEXT_SP * wDp / TEXT_FULL_DP));
+}
+
+/** WidgetLayout.gridHeightDp — mục đóng thì ListView là GONE, weight chia lại. */
+function gridHeightDp(totalDp, jqOpen, amOpen) {
+    const fixed = HEADER_DP + DOW_DP + 2 * SEC_HEAD_DP + CORNER_PAD_DP;
+    const avail = Math.max(60, totalDp - fixed);
+    let sum = W_GRID;
+    if (jqOpen) sum += W_JQ;
+    if (amOpen) sum += W_AM;
+    return avail * W_GRID / sum;
+}
+
+/** Ngày Julius của ô đầu tiên trong lưới — firstCellJdn() bên Kotlin. */
+function firstCellJdn(year, month) {
+    const lead = (new Date(year, month - 1, 1).getDay() + 6) % 7;
+    return jdn(year, month, 1) - lead;
+}
+
+/* ── drawGrid() của CalendarWidgetProvider.kt ── */
+function drawGrid(canvas, wDp, hDp, density, year, month, todayJdn, selJdn) {
+    const w = Math.round(wDp * density), h = Math.round(hDp * density);
+    canvas.width = w; canvas.height = h;
+    canvas.style.width = wDp + 'px'; canvas.style.height = hDp + 'px';
+    const c = canvas.getContext('2d');
+    const dp = v => v * density;
+
+    const cellW = w / 7, cellH = h / GRID_WEEKS;
+    c.fillStyle = '#FDECEF'; c.fillRect(0, 0, w, h);
+
+    const dayPx = Math.min(cellH * 0.36, dp(17));
+    const lunPx = Math.min(cellH * 0.27, dp(11.5));
+    const gzPx = Math.min(cellH * 0.25, dp(11));
+    const showGanZhi = cellH >= dayPx + gzPx * 2 + dp(6);
+
+    const startJdn = firstCellJdn(year, month);
+    for (let idx = 0; idx < GRID_WEEKS * 7; idx++) {
+        const j = startJdn + idx, [cy, cm, cd] = civilOf(j);
+        const outside = cm !== month || cy !== year;
+        const x = cellW * (idx % 7), y = cellH * Math.floor(idx / 7);
+        const isToday = j === todayJdn;
+        const isSel = selJdn > 0 && j === selJdn;
+
+        if (isToday) {
+            c.fillStyle = '#FFFBEA'; c.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
+            c.strokeStyle = '#D32F2F'; c.lineWidth = dp(1.6);
+            c.strokeRect(x + 2, y + 2, cellW - 4, cellH - 4);
+        } else if (isSel) {
+            c.fillStyle = '#FFFFFF'; c.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
+            c.strokeStyle = '#007BFF'; c.lineWidth = dp(1.8);
+            c.strokeRect(x + 2, y + 2, cellW - 4, cellH - 4);
+        } else if (outside) {
+            c.fillStyle = '#FDF5F6'; c.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
+        }
+
+        const fg = isToday ? '#C62828' : outside ? '#B9A3A7' : '#222222';
+        const dim = isToday ? '#A06B30' : outside ? '#C2AEB2' : '#6B6B6B';
+
+        c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+        c.font = 'bold ' + dayPx + 'px sans-serif';
+        c.fillStyle = fg;
+        const dayBase = y + dayPx + dp(3);
+        c.fillText(String(cd), x + cellW * 0.09, dayBase);
+
+        c.textAlign = 'right';
+        c.font = lunPx + 'px sans-serif';
+        c.fillStyle = dim;
+        const L = lunarOf(j);
+        c.fillText(L ? (L.day === 1 ? L.day + '/' + L.month : String(L.day)) : '',
+            x + cellW * 0.93, dayBase);
+
+        if (showGanZhi) {
+            const [can, chi] = ganzhi(j);
+            c.textAlign = 'center';
+            c.font = (isToday ? 'bold ' : '') + gzPx + 'px sans-serif';
+            c.fillStyle = isToday ? '#7A4A1C' : dim;
+            const rest = cellH - (dayBase - y);
+            const lineGap = gzPx * 1.28;
+            const top = dayBase + (rest - (lineGap + gzPx)) / 2;
+            c.fillText(can, x + cellW / 2, top + gzPx * 0.75);
+            c.fillText(chi, x + cellW / 2, top + gzPx * 0.75 + lineGap);
+        }
+    }
+
+    c.strokeStyle = '#F3C6CD'; c.lineWidth = 1;
+    for (let i = 1; i < 7; i++) { c.beginPath(); c.moveTo(cellW * i, 0); c.lineTo(cellW * i, h); c.stroke(); }
+    for (let r = 0; r <= GRID_WEEKS; r++) {
+        const y = cellH * r;
+        c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke();
+    }
+    return { cellW, cellH, dayPx, lunPx, gzPx, showGanZhi };
+}
+
+/** Một hàng của ListView — widget_sec_row.xml. */
+function rowEl(cells, on, alt, sp) {
+    const el = document.createElement('div');
+    el.className = 'row';
+    el.style.height = ROW_DP + 'px';
+    el.style.background = on ? '#E8EDFF' : (alt ? '#FAFAFA' : '#FFFFFF');
+    const bar = document.createElement('div');
+    bar.style.cssText = `width:${BAR_DP}px;flex:none`;
+    el.append(bar);
+    const grav = ['left', 'center', 'center'];
+    const colour = [ '#222222', on ? '#222222' : '#666666', on ? '#222222' : '#333333' ];
+    cells.forEach((txt, i) => {
+        const t = document.createElement('div');
+        t.className = 'cell';
+        t.style.cssText = `flex:${COL[i]} 1 0;text-align:${grav[i]};color:${colour[i]};font-size:${sp}px`;
+        if (i === 0) t.style.paddingLeft = '5dp'.replace('dp', 'px');
+        t.textContent = txt;
+        el.append(t);
+    });
+    return el;
+}
+
+/** Hàng tiêu đề một mục — widget_calendar.xml. */
+function headEl(sec, sp) {
+    const el = document.createElement('div');
+    el.className = 'row head';
+    el.style.height = SEC_HEAD_DP + 'px';
+    el.style.background = sec.headBg;
+    const bar = document.createElement('div');
+    bar.style.cssText = `width:${BAR_DP}px;flex:none;background:${sec.bar}`;
+    el.append(bar);
+    const grav = ['left', 'center', 'center'];
+    sec.heads.forEach((txt, i) => {
+        const t = document.createElement('div');
+        t.className = 'cell';
+        t.style.cssText = `flex:${COL[i]} 1 0;text-align:${grav[i]};` +
+            `color:${sec.headFg};font-weight:700;font-size:${sp}px`;
+        if (i === 0) t.style.paddingLeft = '5px';
+        // Dấu ▾/▸ ở cột đầu — giống hệt CalendarWidgetProvider.render(): hàng
+        // tiêu đề bấm được thì phải có dấu cho biết.
+        t.textContent = i === 0 ? txt + (sec.open ? '  ▾' : '  ▸') : txt;
+        el.append(t);
+    });
+    return el;
+}
+
+/**
+ * Dựng cả widget vào một phần tử, rồi trả số đo cho
+ * tools/test_widget_layout.mjs — phép thử cần biết ô lịch cao bao nhiêu, chữ to
+ * bao nhiêu, mỗi mục hiện được mấy hàng, và có ô nào bị cắt chữ không.
+ */
+function buildWidget(host, wDp, hDp, density, year, month, todayJdn, selJdn) {
+    const secs = buildSections(year, month, selJdn > 0 ? selJdn : todayJdn);
+    const jq = secs.find(s => s.key === 'jq') || null;
+    const am = secs.find(s => s.key === 'am') || null;
+    const jqOpen = !!(jq && jq.open), amOpen = !!(am && am.open);
+
+    host.innerHTML = '';
+    host.style.cssText = `width:${wDp}px;height:${hDp}px;box-sizing:border-box;display:flex;` +
+        `flex-direction:column;padding-bottom:${CORNER_PAD_DP}px;` +
+        'background:#FDECEF;border-radius:16px;overflow:hidden';
+
+    const head = document.createElement('div');
+    head.className = 'whead';
+    head.style.height = HEADER_DP + 'px';
+    head.innerHTML = `<div class="wnav">‹</div><div class="wtitle">${
+        ZH ? `农历 ${year}年${month}月` : `LỊCH ÂM THÁNG ${month}/${year}`
+    }</div><div class="wnav">›</div>`;
+    host.append(head);
+
+    const dows = ZH ? ['一', '二', '三', '四', '五', '六', '日']
+                    : ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    const dowRow = document.createElement('div');
+    dowRow.className = 'row';
+    dowRow.style.height = DOW_DP + 'px';
+    dows.forEach((d, i) => {
+        const t = document.createElement('div');
+        t.className = 'cell';
+        t.style.cssText = `flex:1 1 0;text-align:center;font-weight:700;font-size:9px;` +
+            `color:${i === 6 ? '#C62828' : '#7A2B33'}`;
+        t.textContent = d;
+        dowRow.append(t);
+    });
+    host.append(dowRow);
+
+    const gridDp = gridHeightDp(hDp, jqOpen, amOpen);
+    const holder = document.createElement('div');
+    holder.style.cssText = `height:${gridDp}px;flex:none`;
+    const cv = document.createElement('canvas');
+    holder.append(cv);
+    host.append(holder);
+    const g = drawGrid(cv, wDp, gridDp, density, year, month, todayJdn, selJdn);
+
+    const sp = rowTextSp(wDp);
+    const lists = {};
+    for (const sec of [jq, am]) {
+        if (!sec) continue;
+        host.append(headEl(sec, sp));
+        const list = document.createElement('div');
+        list.className = 'list';
+        list.style.cssText = `flex:${sec.key === 'jq' ? W_JQ : W_AM} 1 0;overflow:auto;` +
+            'background:#fff';
+        if (!sec.open) list.style.display = 'none';
+        sec.rows.forEach((r, i) => list.append(rowEl(r, i === sec.active, i % 2 === 0, sp)));
+        host.append(list);
+        // RemoteViews.setScrollPosition đưa hàng ấy lên ĐẦU khung nhìn.
+        if (sec.open && sec.active > 0) list.scrollTop = sec.active * ROW_DP;
+        // RemoteViews.setScrollPosition đưa hàng ấy lên ĐẦU khung nhìn.
+        if (sec.open && sec.active > 0) list.scrollTop = sec.active * ROW_DP;
+        lists[sec.key] = { el: list, sec };
+    }
+
+    // Ô nào bị cắt chữ (chữ rộng hơn cột)?
+    let spill = 0, spillText = '';
+    for (const el of host.querySelectorAll('.cell')) {
+        const over = el.scrollWidth - el.clientWidth;
+        if (over > spill) { spill = over; spillText = el.textContent; }
+    }
+    const seen = k => {
+        const l = lists[k];
+        if (!l || !l.sec.open) return 0;
+        return Math.round(l.el.clientHeight / ROW_DP);
+    };
+    return {
+        wDp, hDp, density, gridDp,
+        cellH: g.cellH / density, dayPx: g.dayPx / density, gzPx: g.gzPx / density,
+        showGanZhi: g.showGanZhi,
+        jqOpen, amOpen,
+        jqRows: jq ? jq.rows.length : 0, amRows: am ? am.rows.length : 0,
+        jqSeen: seen('jq'), amSeen: seen('am'),
+        spill, spillText,
+        over: host.scrollHeight > hDp + 1,
+    };
+}
+
+const params = new URLSearchParams(location.search);
+const today = params.get('today') || new Date().toISOString().slice(0, 10);
+const [ty, tm, td] = today.split('-').map(Number);
+const todayJdn = jdn(ty, tm, td);
+const view = (params.get('month') || `${ty}-${tm}`).split('-').map(Number);
+const selParam = params.get('sel');
+const selJdn = selParam ? jdn(...selParam.split('-').map(Number)) : 0;
+
+const SIZES = params.get('sizes')
+    ? params.get('sizes').split(/[;,]/).map(s => {
+        const [w, h] = s.split('x').map(Number);
+        return [w, h, `${w}×${h}dp`];
+    })
+    : [
+        [330, 440, 'S21 · 4×5 ô (sàn)'],
+        [330, 530, 'S21 · 4×6 ô (mặc định)'],
+        [360, 450, 'S21 FE · 4×5 ô (sàn)'],
+        [360, 545, 'S21 FE · 4×6 ô (mặc định)'],
+        [380, 460, 'A51 · 4×5 ô (sàn)'],
+        [380, 560, 'A51 · 4×6 ô (mặc định)'],
+    ];
+const DENSITY = Number(params.get('density')) || 3;
+
+window.__wlayout = [];
+for (const [wd, hd, label] of SIZES) {
+    const fig = document.createElement('figure');
+    const cap = document.createElement('figcaption');
+    cap.textContent = `${label} — ${wd}×${hd}dp`;
+    const box = document.createElement('div');
+    box.className = 'widget';
+    fig.append(cap, box);
+    document.body.append(fig);
+    window.__wlayout.push(
+        buildWidget(box, wd, hd, DENSITY, view[0], view[1], todayJdn, selJdn)
+    );
+}
+document.body.dataset.ready = '1';
+
+</script>
+</body></html>

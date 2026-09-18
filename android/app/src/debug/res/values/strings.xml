@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Bản debug cài dưới applicationId RIÊNG (com.bazi.qimen.debug, xem
+  applicationIdSuffix trong app/build.gradle.kts), tức là một ứng dụng KHÁC hẳn
+  bản release trên cùng một máy. Cùng tên cùng icon thì trên màn hình chính hiện
+  ra hai biểu tượng y hệt nhau: gỡ cái này, cài cái kia, rồi mở nhầm cái cũ mà
+  cứ tưởng bản mới không ăn.
+
+  Tài nguyên trong source set `debug` đè lên `main`, nên chỉ cần đặt lại tên ở
+  đây là hai bản tự phân biệt được — không đụng gì tới bản release.
+-->
+<resources>
+    <string name="app_name">Bát Tự &amp; Kỳ Môn (debug)</string>
+    <string name="widget_name">Lịch âm (debug)</string>
+</resources>

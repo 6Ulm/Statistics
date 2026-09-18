@@ -1,0 +1,360 @@
+/* ════════════════════════════════════════════════════════════════
+   lenh.css — tab "Lệnh" (nhân nguyên tư lệnh)
+
+   Tab này KHÔNG có ô ngày giờ và bảng Bát Tự của riêng nó: nó hiện lại
+   đúng hai khối của tab Kỳ Môn. Nên phần lớn tệp này là luật ẨN — nói
+   xem ở tab Lệnh thì bỏ bớt những gì.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Chuyển tab ──
+   Giữ lại: hàng điều khiển (ô ngày giờ), bảng Bát Tự, và chính #lenhView.
+   Ẩn phần còn lại của màn Kỳ Môn — bàn cờ, chú giải, ba bảng chi tiết.
+   Ba lớp phủ phải được chừa y như ở body.view-cal: ô ngôn ngữ và ô địa điểm
+   ở hàng dùng chung mở được ngay tại tab này, mà bảng chọn của chúng lại là
+   con trực tiếp của <body>. */
+#lenhView { display: none; width: 100%; max-width: var(--max-w, 400px); }
+body.view-lenh > *:not(.controls):not(#tuTruPanel):not(#lenhView):not(#bottomDock):not(#locOverlay):not(#drumOverlay):not(#optOverlay) {
+    display: none !important;
+}
+body.view-lenh #lenhView { display: flex; flex-direction: column; gap: 0; }
+
+/* Ô phái và ô "Đầy đủ" là chuyện của riêng Kỳ Môn (chọn pháp bày bàn, bật
+   tắt chữ phụ trên bàn) — ở tab Lệnh không có bàn nào để bày. Ẩn đi rồi trả
+   trần bề rộng cho ô ngày giờ: trần 50% tồn tại để KHE giữa nó và ô phái rơi
+   đúng vạch Tháng|Ngày của bảng Bát Tự (xem #qmRow trong app.css); không còn
+   ô phái thì trần ấy chỉ để lại nửa hàng trống. */
+body.view-lenh #methodDisplayBtn,
+body.view-lenh #cobanToggleWrap { display: none !important; }
+
+/* Ô Giới tính và ô chọn bộ số chỉ có nghĩa ở tab Lệnh — ẩn hẳn ở tab Kỳ Môn,
+   bằng không chúng chen vào hàng vốn đã khít của tab ấy (ngày giờ · phái ·
+   Đầy đủ). */
+#lenhGenderBtn, #lenhRuleBtn { display: none; }
+body.view-lenh #lenhGenderBtn, body.view-lenh #lenhRuleBtn { display: flex; }
+
+/* Chia BA hàng: ngày giờ 50% (Năm+Tháng), Giới tính 25% (Ngày), Quy tắc 25%
+   (Giờ) — đúng ba vạch 50%|75%|100% của bảng Bát Tự ngay bên dưới. Ô ngày
+   giờ giữ nguyên trần 50% của tab Kỳ Môn (nó đã có sẵn). Ô Giới tính lấy
+   ĐÚNG công thức `#qmRow #methodDisplayBtn` của tab Kỳ Môn (`calc(25% + 3px)`
+   — xem lời giải trong app.css): cùng một cột của cùng một bảng thì cùng một
+   công thức, không suy luận lại từ đầu. Ô Quy tắc thì cứ để `flex: 1 1 0`
+   nhận phần CÒN LẠI — với hai ô kia đã chốt cứng, phần còn lại tự nhiên khớp
+   đúng cột cuối (Giờ), khỏi phải tính bù trừ khe/viền lần hai. */
+body.view-lenh #qmRow #lenhGenderBtn {
+    flex: 0 0 calc(25% + 3px);
+    padding-inline: 4px;
+    overflow: hidden;
+}
+body.view-lenh #qmRow #lenhRuleBtn {
+    flex: 1 1 0; min-width: 0;
+    padding-inline: 4px;
+    overflow: hidden;
+}
+body.view-lenh #qmRow #lenhGenderText,
+body.view-lenh #qmRow #lenhRuleText {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ── Khối "Lệnh: Mậu · Nhập vận: …" — MỘT dòng duy nhất ──
+   Dòng "Đại Vận: …" trước đây bỏ hẳn (bảng ĐẠI VẬN đầy đủ ngay dưới đã nói
+   việc này), và "Nhập vận" không còn nằm dòng riêng mà chung dòng với
+   "Lệnh" — xem lenh.js render(). Một cỡ chữ DUY NHẤT cho cả khối, không chữ
+   nào đậm hơn chữ nào — người dùng yêu cầu rõ: đây là các mẩu thông tin
+   ngang hàng nhau, không phải một tiêu điểm với chi tiết phụ đi kèm (bản
+   trước cho dòng "Lệnh: X" đậm và to hẳn lên, nay bỏ). `b`/`strong` bên
+   trong (còn lại trong HTML do lenh.js dựng) vì thế phải NGẢ VỀ chữ thường —
+   đặt `font-weight`/`font-size` bằng `inherit` chứ không xoá thẻ trong
+   lenh.js, đỡ phải sửa hai chỗ. */
+#lenhNow {
+    box-sizing: border-box;
+    text-align: center;
+    font-size: clamp(12.5px, 3.4vw, 14px);
+    font-weight: 400;
+    color: var(--text-main, #000);
+    border: var(--border-panel, 1px solid #ddd);
+    border-radius: var(--panel-radius, 8px);
+    background: var(--bg-white, #fff);
+    padding: 3px 10px;
+    margin-bottom: 3px;
+}
+#lenhNow b {
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
+}
+
+/* ── Đầu bảng — gập/mở được, như ba bảng chi tiết ở tab Kỳ Môn ──
+   Đóng SẴN lúc mở tab (giống Trí Nhuận/Sách Bổ/Âm Bàn): bảng 33 hàng không
+   phải thứ ai cũng cần thấy ngay, còn "Lệnh · Nhập vận" ở #lenhNow phía
+   trên đã là phần tóm tắt. Dùng lại ĐÚNG toggleDetailPanel() của app.js (khai
+   ở _panelIds trong app.js), không viết hàm mở/đóng riêng.
+
+   Hai hình dạng khác nhau tuỳ trạng thái — lenh.js gắn/gỡ lớp .lenh-open sau
+   mỗi lần bấm (xem lenh.js, bọc toggleDetailPanel):
+     ĐÓNG: đứng một mình, bo tròn CẢ BỐN góc, có viền dưới — một cái hộp đầy
+           đủ, không phải nửa hộp cụt đáy.
+     MỞ:   dính liền khung bảng bên dưới thành MỘT khối (gap của #lenhView
+           đặt 0) — bỏ bo góc dưới và bỏ viền dưới, khung bảng đã có viền
+           trên của nó, không chỗ nối dày gấp đôi.
+   Cả tab chỉ một màu: chữ ĐEN trên nền giấy, kể cả cái tiêu đề này — nên nó
+   cần VIỀN mới ra hình một khối, chứ không còn dải màu để tự tách khỏi nền. */
+#lenhHead {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 6px;
+    background: var(--bg-white, #fff);
+    color: var(--text-main, #000);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 8px;
+    /* Đứng ngay sau #daiVanSec (không còn ngay sau #lenhNow như bản trước) —
+       #lenhView dùng flex column với gap:0 nên hai khối liền kề dính sát
+       nhau (đo thật: 0px) nếu không tự mang lề riêng. Cùng 6px với
+       #daiVanHead ở trên cho nhất quán — mọi "đầu khối mới" trong tab đều
+       cách khối trước đúng ngần ấy. */
+    margin-top: 6px;
+    padding: 5px 6px;
+    font-size: clamp(13px, 3.7vw, 15px);
+    font-weight: 700;
+    letter-spacing: .3px;
+    cursor: pointer; user-select: none;
+}
+#lenhHead:active { filter: brightness(.96); }
+#lenhHead.lenh-open {
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+}
+/* Tiêu đề lệch trái + mũi tên lệch phải — đúng cách ba bảng chi tiết kia
+   trình bày (.dp-header/.dp-title), không còn canh giữa như bản đứng một
+   mình lúc trước (thêm mũi tên thì canh giữa "đẹp" nhưng LỆCH TÂM thật, vì
+   không có gì đối xứng ở bên trái). */
+#lenhHeadChevron { flex: 0 0 auto; font-size: 15px; }
+
+/* Đóng SẴN — inline style của toggleDetailPanel() ghi đè khi mở ('block'). */
+#lenhSec { display: none; }
+
+/* ── Khung bảng ──
+   Dùng lại .cal-sec/.cal-sec-body của calendar.css: khung cuộn, viền, và
+   miếng vá vệt rò của hàng tiêu đề dính (xem khối ghi chú ở .cal-sec::after).
+   Chỉ bỏ bo góc TRÊN để nối liền #lenhHead. */
+#lenhSec .cal-sec-body { border-radius: 0 0 6px 6px; border-top-color: var(--border-color, #ddd); }
+
+/* PHẢI trả lại quyền cuộn dọc.
+   calendar.css có luật `.cal-sec:not(.cal-sec-open) .cal-sec-body
+   { overflow-y: hidden }` — ở tab Lịch nó đúng: mục nào người dùng chưa bấm mở
+   thì đừng cuộn. Nhưng tab Lệnh KHÔNG có nút đóng/mở, nên #lenhSec không bao
+   giờ nhận lớp `cal-sec-open`, và dính luôn luật của mục ĐANG ĐÓNG.
+   Hậu quả không thấy ngay, vì `overflow-y: hidden` vẫn cho JS đặt scrollTop:
+   bảng vẫn tự cuộn tới tháng đang cầm lệnh lúc mở tab, trông y như bình
+   thường — chỉ là NGÓN TAY không kéo được, nên 12 tháng chỉ với tới được
+   chừng một nửa. Phải ghi đè thẳng, không mượn lớp `cal-sec-open`: lớp ấy có
+   nghĩa "người dùng vừa bấm mở mục này", còn ở đây mục không bao giờ đóng. */
+#lenhSec .cal-sec-body { overflow-y: auto; }
+/* Miếng vá phải bỏ BO GÓC: ở mục của tab Lịch nó bo 6px trên vì khung bảng
+   cũng bo, còn khung này vuông góc trên (đã nối vào #lenhHead). Để nguyên bo
+   góc thì hai góc trên hở ra đúng chỗ vệt rò hay lọt.
+
+   Và phải MỎNG hơn: 6px của bản gốc là dán lên phần đệm trên của hàng tiêu đề
+   mục lịch, nơi chữ to 16px và đệm 4px. Ở đây chữ bé hơn (11px trên máy 360px)
+   nên 6px ăn thẳng vào dấu — chụp S21 thấy "Tháng", "Hoàng kinh", "Hết lệnh"
+   đều cụt dấu trên. 3px vẫn thừa sức che vệt rò (nó chỉ dày 1 điểm ảnh THIẾT
+   BỊ, tức ≤ 1px CSS ở mọi tỉ lệ), và hàng tiêu đề được chừa thêm đệm trên. */
+#lenhSec::after {
+    background: #f0f0f0; border-color: var(--border-color, #ddd); border-radius: 0; height: 3px;
+}
+
+/* ── Bảng ──
+   border-collapse: separate là BẮT BUỘC, không phải lựa chọn thẩm mỹ:
+   position:sticky không chạy trên <th> của bảng đang collapse — hàng tiêu đề
+   trôi mất khi cuộn (đúng lỗi calendar.css đã gặp). Đổi lại phải tự vẽ viền
+   lên từng ô. */
+table.lenh-tb {
+    width: 100%;
+    border-collapse: separate; border-spacing: 0;
+    font-size: clamp(11px, 3.1vw, 13.5px);
+    white-space: nowrap;
+}
+table.lenh-tb .dp-num {
+    font-size: clamp(10.5px, 3vw, 13px);
+    font-variant-numeric: tabular-nums;
+}
+table.lenh-tb th, table.lenh-tb td {
+    padding: 2px 3px;
+    border-bottom: 1px solid var(--border-color, #e8e8e8);
+}
+table.lenh-tb thead th {
+    position: sticky; top: 0; z-index: 1;
+    background: #f0f0f0; color: var(--text-main, #000);
+    font-weight: 700; text-align: left;
+    /* Đệm trên 4px: miếng vá vệt rò dán đè 3px đầu của khung (xem
+       #lenhSec::after), nên chữ tiêu đề phải bắt đầu dưới mốc ấy. */
+    padding-top: 4px;
+    border-bottom: 1.5px solid #bbb;
+    font-size: clamp(11px, 3.2vw, 14px);
+}
+table.lenh-tb th.c, table.lenh-tb td.c { text-align: center; }
+/* Cột đầu và cột cuối phải có lề thật, không dính mép khung. */
+table.lenh-tb .lenh-mon { padding-left: 7px; }
+table.lenh-tb th:first-child { padding-left: 7px; }
+table.lenh-tb .lenh-last { padding-right: 7px; }
+
+/* Ô tháng gộp 2–3 hàng. KHÔNG vạch dọc bên trái: cái gộp ô (rowspan) đã tự
+   nói nó là một khối — viền dưới chỉ cắt ở hàng cuối của tháng, còn nền xen
+   kẽ thì đổi theo THÁNG chứ không theo hàng (xem tr.dp-row-alt). Thêm vạch
+   nữa là vẽ lại thứ đã có. */
+table.lenh-tb .lenh-mon {
+    vertical-align: middle;
+    font-weight: 700;
+    color: var(--text-main, #000);
+    line-height: 1.25;
+}
+/* Tên tiết xuống dòng riêng: "Sửu (Tiểu Hàn)" một dòng là cột đầu rộng gần
+   gấp đôi, và trên máy 360px thì cả bảng phải kéo ngang. Ô gộp 2–3 hàng nên
+   thừa chiều cao — chỗ để xuống dòng là có sẵn, không phải xin thêm. */
+table.lenh-tb .lenh-jie {
+    display: block;
+    font-weight: 400;
+    font-size: .84em;
+    color: var(--text-main, #000);
+}
+table.lenh-tb .lenh-can { font-weight: 600; }
+
+/* Nền xen kẽ theo THÁNG (lenh.js lật cờ sau mỗi tháng, không phải sau mỗi
+   hàng) nên ba hàng của một tháng cùng một nền — ô gộp mới ra hình một khối. */
+table.lenh-tb tr.dp-row-alt td { background: #f7f7f7; }
+
+/* Hàng đang cầm lệnh. Tô đậm cả chữ chứ không chỉ đổi nền: bảng 33 hàng, nền
+   nhạt một mình thì phải dò mới thấy. */
+table.lenh-tb tr.lenh-on td {
+    background: #dcdcdc;
+    color: var(--text-main, #000);
+    font-weight: 700;
+}
+
+/* Máy rất hẹp: bóp đệm ngang trước, vì đó là thứ rẻ nhất — cắt chữ hay bắt
+   kéo ngang đều tệ hơn. */
+@media (max-width: 360px) {
+    table.lenh-tb th, table.lenh-tb td { padding-left: 2px; padding-right: 2px; }
+    table.lenh-tb .lenh-mon, table.lenh-tb th:first-child { padding-left: 5px; }
+    table.lenh-tb .lenh-last { padding-right: 5px; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ĐẠI VẬN — 10 đại vận × 10 năm = 100 năm. Nội dung CHÍNH của tab, đứng NGAY
+   sau ô tóm tắt — như bàn Kỳ Môn ở tab Kỳ Môn, LUÔN hiện TRỌN VẸN, không co
+   lại theo chỗ còn trống (bản trước: lấp đúng chỗ trống dưới #lenhSec lúc
+   bảng ấy đang đóng — nay đổi chỗ, LỆNH NĂM xuống dưới cùng, xem index.html).
+   KHÔNG maxHeight, KHÔNG tự cuộn dọc riêng — trang có thể dài hơn một màn
+   hình, cả trang cuộn dọc bình thường; #bottomDock cố định đáy MÀN HÌNH nên
+   vẫn luôn thấy được. Xem lenh.js: fit()/fitLenhSec().
+
+   Bố cục 2 HÀNG × 5 CỘT đúng ảnh mẫu, ÉP VỪA đúng bề rộng màn hình —
+   không cuộn ngang (đã thử bản cuộn ngang cột cố định 116px, đọc rất rõ,
+   nhưng người dùng muốn thấy trọn 5 cột ngay, không cần vuốt). Đánh đổi
+   ngược lại: 5 cột ép vào 320–412px chỉ còn ~58–77px/cột, không đủ chỗ
+   cho cỡ chữ 11.5–13px như bản cuộn ngang — hạ xuống một mức VỪA ĐỌC
+   ĐƯỢC (9–10.5px, xem clamp() dưới), thấp hơn bản cuộn ngang nhưng KHÔNG
+   xuống tới 7.5px như bản đầu tiên (co thẳng theo vw không sàn hợp lý).
+   ════════════════════════════════════════════════════════════════ */
+#daiVanHead {
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-white, #fff);
+    color: var(--text-main, #000);
+    border: 1px solid var(--border-color, #ddd);
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    margin-top: 6px;
+    padding: 5px 6px;
+    font-size: clamp(13px, 3.7vw, 15px);
+    font-weight: 700;
+    letter-spacing: .3px;
+}
+#daiVanSec .cal-sec-body { border-radius: 0 0 6px 6px; border-top-color: var(--border-color, #ddd); }
+/* #daiVanSec mượn khung .cal-sec (viền/bo góc) nhưng KHÔNG mượn cơ chế cuộn
+   của nó — mượn .cal-sec thì mượn luôn luật "mục đang đóng thì khoá cuộn"
+   của tab Lịch (.cal-sec:not(.cal-sec-open) .cal-sec-body{overflow-y:hidden}),
+   mà #daiVanSec không bao giờ nhận lớp cal-sec-open (không có nút đóng/mở).
+   Không maxHeight nên hộp luôn tự cao đúng bằng nội dung — overflow-y:hidden
+   mặc định vì thế vô hại (không có gì để cắt), nhưng ghi rõ `visible` cho
+   đúng Ý: hộp này KHÔNG BAO GIỜ cuộn riêng, dù ai đó sau này có lỡ đặt lại
+   một chiều cao cố định ở đâu đó. */
+#daiVanSec .cal-sec-body { overflow-y: visible; }
+#daiVanSec::after {
+    background: #f0f0f0; border-color: var(--border-color, #ddd); border-radius: 0; height: 3px;
+}
+#daiVanBody { padding: 6px; }
+
+/* overflow-x:auto là LƯỚI AN TOÀN, không phải cơ chế chính: bình thường 5
+   cột vừa khít, không cuộn gì cả — chỉ đỡ đòn nếu một tổ hợp chữ bất
+   thường nào đó vẫn tràn, khỏi vỡ layout cả trang. */
+.dv-grid { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.dv-grid-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 3px;
+}
+.dv-grid-row + .dv-grid-row { margin-top: 8px; }
+
+.dv-card {
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 5px;
+    overflow: hidden;   /* bo góc ăn xuống cả đầu thẻ lẫn hàng */
+    min-width: 0;       /* item lưới co được dưới kích thước tự nhiên của chữ —
+                            không co thì một hàng dài đẩy tràn cột, phá 5 cột đều nhau */
+}
+
+.dv-card-head {
+    background: #f0f0f0;
+    color: var(--text-main, #000);
+    text-align: center;
+    padding: 3px 1px;
+    line-height: 1.25;
+}
+.dv-card-head .dv-line1 {
+    display: block;
+    font-size: clamp(8.5px, 2.3vw, 10px);
+    color: var(--text-dim, #666);
+    white-space: nowrap;
+}
+.dv-card-head .dv-line2 {
+    display: block;
+    font-size: clamp(9.5px, 2.6vw, 11px);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+/* Đại vận ĐANG SỐNG (chứa năm nay): nền đậm hơn — chỉ đen/trắng/ghi, không
+   màu, nhưng vẫn phải nổi rõ giữa 10 ô giống hệt nhau về hình dạng. */
+.dv-card.dv-current { border-color: #888; border-width: 1.5px; }
+.dv-card.dv-current .dv-card-head { background: #999; color: #fff; }
+.dv-card.dv-current .dv-card-head .dv-line1 { color: #eee; }
+
+/* Năm và can chi CẠNH NHAU một dòng — đúng ảnh mẫu ("1952  Nhâm Thìn").
+   tabular-nums để cột năm thẳng hàng theo chiều dọc, dễ dò. */
+.dv-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 3px;
+    padding: 2px 1px;
+    font-size: clamp(9px, 2.4vw, 10.5px);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    border-top: 1px solid var(--border-color, #eee);
+    line-height: 1.25;
+}
+.dv-row .dv-year { color: var(--text-main, #000); }
+.dv-row .dv-cc   { font-weight: 600; }
+
+/* Lưu niên NĂM NAY: cùng cách bảng Lệnh tô hàng đang cầm lệnh — đậm chữ và
+   đổi nền, không đổi màu chữ. */
+.dv-row.dv-row-on {
+    background: #dcdcdc !important;
+    font-weight: 700;
+}
+
+/* Máy rất hẹp (≤360px): 5 cột chỉ còn ~64px — bóp đệm/khe trước, đừng bóp
+   chữ xuống dưới sàn clamp() (cùng luật máy hẹp mà bảng Lệnh năm áp dụng). */
+@media (max-width: 360px) {
+    .dv-grid-row { gap: 2px; }
+    .dv-card-head { padding: 2px 0; }
+    .dv-row { padding: 1px 0; gap: 2px; }
+}

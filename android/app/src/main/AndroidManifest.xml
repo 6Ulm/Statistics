@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      KHÔNG khai báo android.permission.INTERNET.
+      Ứng dụng chạy hoàn toàn offline: mọi thư viện, dữ liệu thành phố và
+      phép tính thiên văn đều nằm trong APK. Thiếu quyền INTERNET là bằng
+      chứng kỹ thuật rằng không có dữ liệu nào rời khỏi máy.
+
+      No INTERNET permission — everything runs offline, by construction.
+    -->
+
+    <!-- Chỉ dùng khi người dùng bấm "Dùng vị trí hiện tại". GPS hoạt động
+         không cần mạng. / Optional, only for the "use my location" button. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!-- Chỉ để dựng lại báo thức nửa đêm của widget sau khi khởi động lại máy.
+         Báo thức của AlarmManager không sống qua lần reboot, mà widget thì
+         không có đường nào khác để biết đã sang ngày mới
+         (updatePeriodMillis = 0) — thiếu quyền này là lịch đã ghim đứng im ở
+         ngày cũ cho tới khi người dùng tình cờ mở ứng dụng. Đây là quyền
+         thường (normal), không hỏi người dùng, và không mở đường ra mạng.
+         / Normal permission, only re-arms the widget's midnight alarm. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <uses-feature
+        android:name="android.hardware.location"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.location.gps"
+        android:required="false" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="false"
+        android:hardwareAccelerated="true"
+        android:theme="@style/Theme.BaTuKyMon">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode|density|fontScale">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- Widget lịch âm: xem lịch mà không cần mở ứng dụng. -->
+        <receiver
+            android:name=".CalendarWidgetProvider"
+            android:label="@string/widget_name"
+            android:exported="false">
+            <!--
+              Chỉ những action của CHÍNH ứng dụng. Broadcast của hệ thống thì
+              receiver này không nhận được, vì nó exported="false" — nên việc
+              dựng lại báo thức sau reboot giao cho .BootReceiver bên dưới,
+              vốn exported đúng cho mục đích ấy.
+            -->
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.bazi.qimen.WIDGET_REFRESH" />
+                <action android:name="com.bazi.qimen.WIDGET_PREV" />
+                <action android:name="com.bazi.qimen.WIDGET_NEXT" />
+                <action android:name="com.bazi.qimen.WIDGET_TODAY" />
+                <action android:name="com.bazi.qimen.WIDGET_PICK" />
+                <action android:name="com.bazi.qimen.WIDGET_SEC" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/calendar_widget_info" />
+        </receiver>
+
+        <!--
+          Nguồn hàng cho hai ListView của widget. Widget chỉ cuộn được bên trong
+          một collection view, mà collection view thì chỉ nhận dữ liệu qua một
+          RemoteViewsService như thế này.
+
+          BIND_REMOTEVIEWS là quyền chữ ký của hệ thống: khai ở đây nghĩa là CHỈ
+          launcher (tiến trình đã có quyền ấy) được nối vào service, không ứng
+          dụng nào khác gọi tới được. Thiếu dòng này thì hệ thống từ chối nối và
+          hai mục hiện ra trống trơn.
+        -->
+        <service
+            android:name=".WidgetSectionService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+        <!--
+          Dựng lại báo thức nửa đêm của widget sau khi khởi động lại máy, sau
+          khi cập nhật ứng dụng, và khi đổi múi giờ. Phải exported="true" thì
+          mới nhận được broadcast của hệ thống; ba action này đều nằm trong
+          danh sách ngoại lệ của luật chặn broadcast ngầm từ Android 8.
+        -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true"
+            android:directBootAware="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

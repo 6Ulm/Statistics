@@ -1,0 +1,435 @@
+/* ════════════════════════════════════════════════════════════════
+   calendar.css — Thanh tab dưới màn hình + lịch âm dương
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Thanh dưới cố định đáy màn hình: hàng tab, rồi hàng dùng chung ── */
+/* Chiều cao một hàng của thanh dưới — hàng tab và hàng dùng chung dùng chung
+   con số này để cao bằng nhau ở cả hai ngôn ngữ.
+   24 chứ không phải 28: thanh dưới ăn THẲNG vào chiều cao của hai mục trong
+   tab Lịch, mà nội dung một hàng (biểu tượng 13px + nhãn 11,5px + đệm 3px)
+   chỉ cần 22px — 28 là chừa thừa 6px mỗi hàng, 12px cho cả thanh. */
+:root { --dock-row-h: 29px; }
+
+#bottomDock {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 1500;
+    /* Nền của thanh lấy màu nền TRANG, không phải trắng: nhờ vậy cái khe giữa
+       hàng tab và hàng dùng chung hiện ra thành một vạch nền, hai hàng tách bạch
+       chứ không dính liền một khối. */
+    background: var(--bg-body, #eef2f7);
+    border-top: 1px solid var(--border-color, #ddd);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, .07);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+}
+#tabBar {
+    display: flex;
+    background: var(--bg-white, #fff);
+}
+
+/* Ngôn ngữ + địa điểm: một hàng, nằm dưới hai tab, hiện ở CẢ hai tab. */
+/* Rộng hết bề ngang và chia đôi ĐÚNG như hàng tab ngay trên: mép trái, vạch
+   giữa và mép phải của hai ô trùng khít mép hai tab Kỳ Môn / Lịch. Muốn trùng
+   thì không được có đệm ngoài hay khe giữa — vạch ngăn ở giữa chính là viền
+   trái của ô thứ hai, y như .tab-item + .tab-item. */
+#sharedBar {
+    display: flex; align-items: stretch;
+    gap: 0;
+    padding: 0;
+    margin-top: 3px;                 /* khe giữa hai hàng */
+    background: var(--bg-white, #fff);
+}
+/* Cao ĐÚNG BẰNG một tab. Con số này phải bám .tab-item (đệm 5px + một dòng
+   chữ 11,5px); test_shared_bar.mjs canh hai bên bằng nhau nên lệch là đỏ. */
+#sharedBar .picker-btn {
+    /* border-box, không phải content-box mặc định của <div>: chỉ ở hộp viền
+       thì "một phần ba" mới là một phần ba của HÀNG. Ở content-box, đệm 6px
+       hai bên nằm NGOÀI phần chia, nên ô thứ nhất phình ra 123,7px thay vì
+       120px — đủ để vạch ngăn lệch hẳn khỏi vạch của hàng tab bên trên. */
+    box-sizing: border-box;
+    flex: 1 1 0; min-width: 0;
+    border: none; border-radius: 0;
+    min-height: var(--dock-row-h, 24px); padding: 2px 6px;
+}
+/* Vạch ngăn của hàng dùng chung rơi đúng vạch Kỳ Môn|Lịch ở hàng tab trên nó.
+   Từ khi có tab thứ ba (Lệnh) hàng tab chia BA, nên chia đôi 50/50 như cũ là
+   vạch dưới rơi vào giữa tab Lịch — hai vạch lệch nhau ngay cạnh nhau, nhìn
+   là thấy. Một phần ba cho ngôn ngữ ("Tiếng Việt" / "中文" chỉ cần chừng 60px)
+   và hai phần ba cho địa điểm, nơi tên thành phố dài mới thật sự cần chỗ. */
+#sharedBar #langDisplayBtn { flex: 0 0 33.3333%; }
+#sharedBar #countryDisplayBtn { flex: 1 1 auto; }
+#sharedBar #countryDisplayBtn { border-left: 1px solid var(--border-color, #ddd); }
+/* Thanh tab thấp thôi — nó ăn vào chiều cao vốn đã chật của màn Kỳ Môn.
+   Chiều cao CHỐT bằng --dock-row-h chứ không thả theo chữ: chữ Hán cao hơn chữ
+   Latin nên một tab tự nhiên cao 27px ở tiếng Trung mà chỉ 25px ở tiếng Việt —
+   hàng dùng chung bên dưới không tài nào cao bằng ở cả hai thứ tiếng. Chốt số
+   rồi dùng chung cho cả hai hàng thì bằng nhau theo cấu trúc. */
+.tab-item {
+    /* Cùng lý do với #sharedBar .picker-btn: chia ba ĐÚNG một phần ba chỉ
+       đúng khi đệm và viền nằm TRONG phần chia. */
+    box-sizing: border-box;
+    min-height: var(--dock-row-h, 24px);
+    flex: 1 1 0;
+    display: flex; flex-direction: row;
+    align-items: center; justify-content: center;
+    padding: 3px 4px;
+    cursor: pointer; user-select: none;
+    color: var(--text-dim, #777);
+    border-top: 2px solid transparent;
+}
+/* Vạch ngăn giữa hai tab. */
+.tab-item + .tab-item { border-left: 1px solid var(--border-color, #ddd); }
+.tab-item:active { background: var(--bg-alt, #e4e4ea); }
+/* Nhãn tab IN HOA, ĐẬM, và to hẳn lên: ba tab là thứ người dùng chạm nhiều
+   nhất, mà 11,5px thường thì bé hơn mọi chữ khác trên màn.
+   text-transform chứ không viết hoa sẵn trong HTML: calendar.js ghi lại nhãn
+   mỗi lần đổi ngôn ngữ (refreshLabels), và các phép kiểm đọc textContent để
+   so "Lịch" / "日历" — viết hoa trong HTML là hỏng cả hai. Chữ Hán không có
+   hoa/thường nên luật này không đụng tới tiếng Trung.
+   Chữ hoa tiếng Việt ĐỘI DẤU (Ỳ, Ô, Ệ) nên dòng chữ cao hơn hẳn chữ thường —
+   --dock-row-h ở đầu tệp đã nâng theo, đừng hạ lại mà không đo. */
+.tab-lbl {
+    font-size: 14.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .02em;
+    line-height: 1.25;
+}
+/* Tab đang mở: nền khác hẳn tab kia, không chỉ đổi màu chữ. */
+.tab-item.tab-active {
+    color: var(--accent, #007bff);
+    border-top-color: var(--accent, #007bff);
+    background: var(--accent-light, #e8edff);
+}
+
+/* Chừa đúng chiều cao thật của thanh dưới (tab + hàng dùng chung) — không hơn.
+   viewport.js đo thanh rồi ghi vào biến này; 0px chỉ là giá trị tạm trước khi
+   kịp đo. */
+body { padding-bottom: var(--tabbar-h, 0px); }
+
+/* ── Chuyển tab: ẩn toàn bộ màn hình Kỳ Môn ── */
+#calView { display: none; width: 100%; max-width: var(--max-w, 400px); }
+/* #optOverlay phải nằm trong danh sách chừa: ô ngôn ngữ ở hàng dùng chung mở
+   được ngay tại tab Lịch, mà bảng chọn của nó lại là con của <body>. */
+body.view-cal > *:not(#calView):not(#bottomDock):not(#locOverlay):not(#drumOverlay):not(#optOverlay) {
+    display: none !important;
+}
+body.view-cal #calView { display: block; }
+
+/* ── Đầu lịch ── */
+#calHead {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #d32f2f;
+    color: #fff;
+    border-radius: 8px 8px 0 0;
+    padding: 6px 6px;
+}
+#calTitle {
+    flex: 1; text-align: center;
+    font-size: 13.5px; font-weight: 700; letter-spacing: .01em;
+    white-space: nowrap;               /* tiêu đề phải nằm gọn một dòng */
+    overflow: hidden; text-overflow: ellipsis;
+    cursor: pointer; user-select: none;   /* chạm vào là về tháng hiện tại */
+}
+#calTitle:active { opacity: .65; }
+/* Nới VÙNG CHẠM của hai mũi tên đổi tháng mà KHÔNG đụng tới bố cục.
+   Chữ ‹ › chỉ cao 20px nên ô chạm trước đây cũng chỉ 26×20 — chưa tới nửa mức
+   Android khuyên (48dp), mà đây lại là chỗ bấm nhiều nhất tab Lịch. Nay đệm ra
+   đúng bằng phần đệm sẵn có của #calHead (8px trên dưới, 6px hai bên) rồi kéo
+   lại bằng lề âm đúng chừng ấy: hộp lề vẫn là 26×20 nên thanh tiêu đề không
+   cao hay rộng thêm pixel nào, còn ô chạm thành 38×36.
+   Đệm chứ KHÔNG dùng lớp giả trải rộng: lớp giả nằm ngoài hộp sẽ làm
+   scrollWidth lớn hơn clientWidth, và mọi phép soi "chữ có bị cắt không" —
+   kể cả test_responsive.mjs — sẽ báo nhầm là mũi tên bị cắt. */
+.cal-nav {
+    width: 38px; padding: 6px 6px; margin: -6px -6px;
+    flex-shrink: 0; text-align: center;
+    font-size: 20px; line-height: 1;
+    cursor: pointer; user-select: none;
+    opacity: .95;
+}
+.cal-nav:active { opacity: .6; }
+
+/* ── Lưới ── */
+#calGrid {
+    background: #fdecef;
+    border: 1px solid #f3c6cd;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+}
+.cal-row { display: flex; }
+.cal-cell {
+    flex: 1 1 0; min-width: 0;
+    border-right: 1px solid #f3c6cd;
+    border-bottom: 1px solid #f3c6cd;
+}
+.cal-row .cal-cell:last-child { border-right: none; }
+.cal-row:last-child .cal-cell { border-bottom: none; }
+
+.cal-dow-cell {
+    background: #fbdde2;
+    text-align: center;
+    font-size: 11px; font-weight: 700;
+    color: #7a2b33;
+    padding: 5px 2px;
+}
+.cal-dow-cell.cal-sun { color: #c62828; }
+
+/* Chiều cao đặt trên MỌI ô, không riêng ô có ngày — nếu không, ô trống đầu
+   tháng co lại và hàng đầu thấp hơn hẳn các hàng sau. */
+.cal-cell { min-height: var(--cal-row-h, 52px); }
+.cal-day {
+    padding: 4px 4px 5px;
+    cursor: pointer;
+    display: flex; flex-direction: column;
+}
+.cal-day:active { background: #fbdde2; }
+.cal-empty { background: #fdf5f6; }
+
+/* Ngày của tháng trước / tháng sau: vẫn đủ thông tin nhưng mờ đi để không
+   lẫn với tháng đang xem. */
+.cal-day.cal-out { background: #fdf5f6; }
+.cal-day.cal-out .cal-solar { color: #b9a3a7; font-weight: 600; }
+.cal-day.cal-out .cal-lunar,
+.cal-day.cal-out .cal-gz { color: #c2aeb2; }
+.cal-dow-cell { min-height: 0; }        /* hàng "Thứ 2…" giữ nguyên chiều cao */
+
+.cal-top {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 2px;
+}
+.cal-solar { font-size: 15px; font-weight: 700; color: #222; line-height: 1.1; }
+
+.cal-lunar {
+    font-size: 10.5px; color: #6b6b6b;
+    line-height: 1.2; white-space: nowrap;
+}
+/* Can một dòng, chi một dòng — cố định cho MỌI ngày, không phụ thuộc độ dài.
+   Căn giữa phần còn lại của ô: hàng cao lên thì can chi vẫn nằm cân, không bị
+   dồn xuống đáy để hở một mảng trống ở giữa. */
+.cal-gz {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-size: 12.5px; color: #555;
+    line-height: 1.22;
+}
+.cal-gz span { white-space: nowrap; }
+
+/* Hôm nay: viền đỏ đậm + nền sáng khác hẳn các ngày còn lại. Tô đặc màu đỏ
+   như trước thì nổi thật, nhưng chữ phải đảo sang trắng và ô trông như một
+   mảng đặc, đọc số âm lịch với can chi khó hơn. */
+.cal-day.cal-today {
+    background: #FFFBEA;
+    box-shadow: inset 0 0 0 2.5px #d32f2f;
+}
+.cal-day.cal-today .cal-solar { color: #c62828; }
+.cal-day.cal-today .cal-lunar { color: #a06b30; }
+.cal-day.cal-today .cal-gz    { color: #7a4a1c; font-weight: 600; }
+
+/* Ngày đang chọn: viền mảnh màu nhấn, không đụng với kiểu của hôm nay. */
+.cal-day.cal-sel:not(.cal-today) {
+    background: #fff;
+    box-shadow: inset 0 0 0 2px var(--accent, #007bff);
+}
+
+
+/* ── Tiết khí trong năm ──
+   Không còn hộp tiêu đề gập/mở: xếp hai cột thì 24 mục vừa một màn hình, nên
+   bảng hiện thẳng. Chiều cao do fitGrid() chia — nó biết lưới lịch chiếm bao
+   nhiêu, phần còn lại của màn hình đổ hết vào đây; màn hình thấp thì bảng tự
+   cuộn và hàng tiêu đề dính lại. */
+/* ── Hai mục gập được: Tiết khí, rồi Lịch âm ──
+   Mở/đóng ĐỘC LẬP nên có thể mở cả hai cùng lúc; chiều cao do fitGrid chia,
+   mục nào không đủ chỗ thì tự cuộn dọc trong khung của nó. */
+#calSections { margin-top: 6px; }
+.cal-sec + .cal-sec { margin-top: 5px; }
+/* Hàng <thead> đóng luôn vai tiêu đề mục: bấm vào là gập/mở, và vì nó nằm
+   trong chính bảng nên tên cột luôn thẳng hàng với giá trị bên dưới. */
+.cal-sec-head { cursor: pointer; user-select: none; }
+.cal-sec-head:active th { filter: brightness(.96); }
+/* Co theo bề ngang, không chốt cứng rồi rẽ nhánh ở một mốc @media: ba cột chia
+   bằng bề rộng ĐO ĐƯỢC của chữ, nên "cỡ lớn nhất còn vừa" tăng dần theo bề
+   ngang máy — đo được (tiếng Việt, chữ dài hơn tiếng Trung nên nó mới là bên
+   chặn): 15px ở 360, 16px ở 384, 16,5px ở 393, 17,5px ở 412. Một mốc @media
+   cứng thì hoặc cụt chữ ở máy hẹp hoặc chữ bé vô cớ ở máy rộng; hệ số vw dưới
+   đây bám sát đường ấy mà vẫn chừa ~3% phòng khi phông máy thật (Samsung) rộng
+   hơn phông ở máy đo. 4,18 = 4,05 × 16,5/16, để hai cỡ giữ đúng tỉ lệ. */
+table.cal-jq thead tr.cal-sec-head th {
+    font-size: clamp(13.5px, 4.18vw, 16.5px); font-weight: 700;
+}
+/* Dấu mũi nằm nép bên phải ô cuối, không đẩy chữ lệch khỏi tâm cột. */
+/* KHÔNG đặt position ở đây. `position: sticky` (khai ở .cal-jq thead th) đã là
+   một giá trị "positioned", tự làm gốc cho con absolute rồi — đè thành relative
+   là GỠ MẤT sticky của riêng ô cuối: hai cột đầu vẫn dính, cột thứ ba trôi theo
+   nội dung, thành ra khi cuộn thì giá trị cột cuối đè lên chỗ hàng tiêu đề. */
+/* KHÔNG tự riêng thêm padding-right cho ô tiêu đề cuối để chừa chỗ dấu mũi —
+   từng làm vậy (18px so với 10px của ô giá trị) khiến tiêu đề "Can chi"/"Vọng"
+   CĂN GIỮA lệch hẳn khỏi tâm của giá trị bên dưới, vì hai ô không còn cùng một
+   hộp nội dung. Dấu mũi bé và nép sát mép nên vừa gọn trong đúng phần đệm
+   .cal-jq-last đã có (10px thường, 7px màn hẹp) — chừa dư thì khỏi cần lớp
+   này nữa, ô tiêu đề và ô giá trị dùng chung một con số ở mọi bề rộng màn hình.
+*/
+.cal-sec-chev {
+    position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
+    font-size: 9px; font-weight: 400;
+}
+/* Gập lại thì chỉ còn hàng tiêu đề — nhưng KHÔNG được ẩn tbody.
+   `display: none` gỡ hẳn 24 hàng khỏi phép chia bề rộng cột của bảng: lúc ấy
+   chỉ còn ba ô tiêu đề tự chia nhau 100% bề ngang, nên bấm gập/mở là ba cột
+   tiêu đề co giãn và TRƯỢT NGANG (đo trên máy 393px: cột giữa của mục Lịch âm
+   nhảy hơn 100px). Giữ nguyên cả bảng rồi KẸP khung xuống đúng chiều cao hàng
+   tiêu đề: bề rộng cột vẫn do 24 hàng quyết định nên đứng yên tuyệt đối, còn
+   các hàng thừa thì bị cắt khuất — <thead> vốn sticky nên vẫn nằm đúng mép
+   trên. Chiều cao kẹp do applySections() trong calendar.js đo và đặt.
+   Chỉ khoá trục DỌC: khoá cả hai thì trên máy rất hẹp, phần tràn ngang (xem
+   chú thích @media 375px bên dưới) sẽ bị cắt mất mà không cuộn tới được. */
+.cal-sec:not(.cal-sec-open) .cal-sec-body { overflow-x: auto; overflow-y: hidden; }
+
+/* Hai mục khác màu hẳn nhau để liếc một cái là biết đang mở mục nào: Tiết khí
+   theo đỏ của đầu lịch (#d32f2f), Lịch âm theo chàm. Mỗi mục tô cả chữ, dấu
+   mũi, nền nhạt và một vạch dọc bên trái, chứ không chỉ đổi màu chữ — nền và
+   vạch còn nhận ra được khi mục đã gập lại. */
+#calSecJq .cal-sec-head th {
+    background: #fdeeee; color: #b71c1c;
+    border-bottom-color: #f0c4c4;
+}
+#calSecJq .cal-sec-head th:first-child { box-shadow: inset 3px 0 0 #d32f2f; }
+#calSecJq .cal-sec-chev { color: #d32f2f; }
+#calSecJq .cal-sec-body { border-color: #f0c4c4; }
+
+#calSecAm .cal-sec-head th {
+    background: #eef1fd; color: #283593;
+    border-bottom-color: #c4cbf0;
+}
+#calSecAm .cal-sec-head th:first-child { box-shadow: inset 3px 0 0 #3949ab; }
+#calSecAm .cal-sec-chev { color: #3949ab; }
+#calSecAm .cal-sec-body { border-color: #c4cbf0; }
+/* Vá vệt rò trên đỉnh mục khi bảng đang cuộn.
+   Hàng tiêu đề là <th> `position: sticky` NẰM TRONG khung cuộn. Trên máy có
+   tỉ lệ điểm ảnh LẺ — đúng hai máy đang ngắm: A51 (2.625) và S21 FE (2.75) —
+   Chromium chốt vị trí đã "dính" của nó và mép cắt của khung cuộn về hai số
+   nguyên điểm ảnh khác nhau, nên chừng 1-2px đầu của hàng đang trượt bên dưới
+   ló lên phía trên hàng tiêu đề: nhìn ra một vệt chữ cụt mờ mờ ngay dưới viền
+   trên của mục. Không phải lỗi bố cục — mọi phép đo đều nói <th> nằm đúng mép
+   khung — nên không sửa được bằng cách đẩy `top` hay dày viền lên.
+   Dán một dải đục đúng màu tiêu đề lên trên cùng. Dải nằm trên .cal-sec (KHÔNG
+   phải khung cuộn) nên không bị chính khung ấy cắt mất, và không bắt chạm để
+   bấm vào vẫn gập/mở được.
+
+   Dải phủ CẢ VIỀN (top/left/right = 0) rồi tự vẽ lại viền ấy bằng border của
+   chính nó, chứ không thụt vào 1px như bản trước. Thụt vào thì mép trên của
+   dải chốt theo hộp ĐÃ CỘNG 1px, mà 1px ấy ở tỉ lệ điểm ảnh lẻ không rơi đúng
+   số nguyên: đo trên A51 (2,625) dải bắt đầu ở điểm ảnh 1095 trong khi vệt rò
+   nằm ở 1094 — hụt đúng MỘT điểm ảnh thiết bị, vẫn thấy rõ khi cỡ chữ lớn.
+   .cal-sec và .cal-sec-body trùng khít nhau từng phần nghìn pixel (đo: cùng
+   top 415,563 / left 6 / right 406), nên dán từ 0 là trùng đúng hộp mà vệt rò
+   chốt theo — không còn chỗ cho phép làm tròn chen vào.
+   `background-clip: padding-box` để nền màu tiêu đề không loang ra dưới viền. */
+.cal-sec { position: relative; }
+.cal-sec::after {
+    content: ''; position: absolute; z-index: 3; pointer-events: none;
+    top: 0; left: 0; right: 0; height: 6px;
+    box-sizing: border-box;
+    border: 1px solid transparent; border-bottom: 0;
+    border-radius: 6px 6px 0 0;
+    background-clip: padding-box;
+}
+#calSecJq::after { background: #fdeeee; border-color: #f0c4c4; }
+#calSecAm::after { background: #eef1fd; border-color: #c4cbf0; }
+
+/* Mục đang mở: nối liền thanh tiêu đề với thân, thành một khối. */
+.cal-sec-open .cal-sec-head { border-radius: 6px 6px 0 0; border-bottom: none; }
+.cal-sec-body {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    background: var(--bg-white, #fff);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 6px;
+}
+
+/* Bảng dùng lại .dp-table của bảng Sách Bổ pháp — chỉ chỉnh đệm cho hợp khung
+   lịch. Hàng tiêu đề dính lại khi cuộn, vì bảng dài hơn khung nhìn. */
+/* border-collapse: collapse (kiểu của .dp-table) làm hỏng position:sticky —
+   hàng tiêu đề trôi mất khi cuộn. Tách viền ra rồi vẽ lại lên từng ô. */
+/* Cỡ chữ RIÊNG cho hai mục, không dùng chung 12px của .dp-table và 11px của
+   .dp-num nữa: hai bảng này là chỗ người dùng ĐỌC SỐ (ngày giờ giao tiết, giờ
+   Sóc/Vọng), không phải chỗ liếc qua như bảng phụ của tab Kỳ Môn. Ở 11px thì
+   "22-07-2026 19:13" bé tới mức phải nhíu mắt. Đổi lại mỗi mục hiện được ít
+   hơn một hàng — fitGrid vẫn chia đúng vì nó ĐO chiều cao thật, không đoán. */
+table.cal-jq { width: 100%; border-collapse: separate; border-spacing: 0;
+    font-size: clamp(13px, 4.05vw, 16px); }
+table.cal-jq .dp-num { font-size: clamp(13px, 4.05vw, 16px); }
+/* Đệm 2px chứ không phải 3: đúng 12 hàng nên vừa trọn màn hình S21 (740px)
+   thay vì cụt mất hàng cuối — rẻ hơn nhiều so với bóp thấp hàng lịch. */
+table.cal-jq td {
+    padding: 2px 6px;
+    border-bottom: 1px solid var(--border-color, #e8e8e8);
+}
+table.cal-jq thead th {
+    position: sticky; top: 0; z-index: 1;
+    padding: 4px 6px;
+    background: var(--bg-white, #fff);
+    border-bottom: 1.5px solid var(--border-color, #ddd);
+}
+/* Cột can chi tháng: hẹp đúng bằng chữ, CĂN GIỮA. */
+table.cal-jq .cal-jq-gz {
+    width: 1%; white-space: nowrap; text-align: center;
+    color: var(--text-main, #333);
+}
+/* .dp-table cho mọi <th>/<td> căn trái theo mặc định; lớp "c" là ngoại lệ căn
+   giữa — dùng cho tiêu đề (Can chi, Sóc, Vọng) VÀ cho giá trị Sóc/Vọng (mục
+   Lịch âm), để hai bên căn theo đúng cùng một tâm. */
+table.cal-jq th.c, table.cal-jq td.c { text-align: center; }
+/* Cột tên co đúng bằng chữ (width:1% là mẹo bảo trình duyệt thu về bề rộng nội
+   dung tối thiểu), cột giữa ăn hết phần còn lại. */
+table.cal-jq .cal-jq-name { width: 1%; white-space: nowrap; }
+/* Cột giữa CĂN GIỮA — cả tiêu đề lẫn giá trị, nên hai bên vẫn chung một tâm.
+   Căn TRÁI (như trước) dán cột ngày vào sát cột tên trong khi phía Can chi hở
+   ra một mảng trống rộng: ba cột trông lệch hẳn về bên trái dù bảng thì cân.
+   Cột giữa rộng gấp ba hai cột bên, nên chỉ cần đổi chỗ đứng của CHỮ trong nó
+   là ba nhóm chữ chia đều bề ngang bảng, không phải nắn lại bề rộng cột. */
+/* KHÔNG có đệm trái riêng. Cột này CĂN GIỮA, mà `text-align: center` căn theo
+   hộp NỘI DUNG chứ không theo hộp ô: đệm trái của <td> lệch 2px so với <th>
+   (lớp này chỉ gắn cho <td>) là tâm chữ hai bên lệch nhau — đúng thứ
+   test_cal_sections.mjs canh, và cỡ chữ càng lớn thì càng lộ. Đệm trái 8px là
+   di sản của thời cột này còn căn TRÁI. */
+table.cal-jq .cal-jq-date {
+    text-align: center;
+    color: var(--text-dim, #666);
+}
+/* Cùng lý do: mọi ô tiêu đề dùng ĐÚNG phần đệm của ô giá trị dưới nó. */
+table.cal-jq thead th + th { padding-left: 6px; }
+/* Cột cuối phải có lề thật, không dính vào mép máy. Rộng hơn hẳn phần đệm
+   thường: cột cuối co đúng bằng chữ (width:1%) nên phần đệm này CHÍNH LÀ
+   khoảng cách từ chữ tới mép bảng — 10px cũ để "Can chi" gần như dán vào mép
+   phải, lệch hẳn so với khoảng hở bên trái của cột tên. Trên S21 (360px) bảng
+   gần như hết chỗ, nên khoảng này giành lại bằng cách bóp đệm ngang các cột
+   khác chứ không xin thêm được. */
+table.cal-jq .cal-jq-last { padding-right: 20px; }
+/* Máy rất hẹp (320px): hai cột kép không đủ chỗ cho "Sương Giáng 23-10-2026
+   11:37" nên bảng phải cuộn ngang. Hạ cỡ chữ một nấc là vừa, đỡ hơn hẳn so với
+   bắt người dùng kéo ngang. */
+@media (max-width: 375px) {
+    table.cal-jq td, table.cal-jq thead th { padding-left: 4px; padding-right: 4px; }
+    table.cal-jq .cal-jq-last { padding-right: 14px; }
+}
+/* Tiết khí đang hiệu lực: tô đúng như dòng được tô ở bảng Sách Bổ pháp. */
+table.cal-jq .cal-jq-on {
+    background: var(--accent-light, #e8edff);
+    font-weight: 700;
+    color: var(--text-main, #222);
+}
+
+/* ── Ghim widget lịch ra màn hình chính ── */
+#calPinBtn {
+    display: none;                 /* chỉ hiện khi chạy trong app Android */
+    width: 100%; margin-top: 4px;
+    padding: 5px;
+    border: var(--border-accent, 1.5px solid #007bff);
+    border-radius: 6px;
+    background: var(--accent-light, #e8edff);
+    color: var(--text-main, #222);
+    font-size: 12.5px; font-weight: 600;
+    cursor: pointer;
+}
+#calPinBtn:active { opacity: .7; }
