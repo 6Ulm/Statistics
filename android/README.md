@@ -468,6 +468,12 @@ Kết quả: S21, S21 FE và S21 Ultra khít đáy (hở ≤ 0,3px), A51 còn 10
 
 ## Tab Lệnh: nhân nguyên tư lệnh
 
+*(Đổi tên nhãn tab sau đó: "Lệnh" → **"Bát Tự"** — `T.tabLenh.vi` trong
+lenh.js, đúng hơn với những gì tab này thật sự bày ra nay đã có thêm cả Bát Tự
+đầy đủ và bảng Đại Vận, không chỉ mỗi bảng lệnh. ID/class nội bộ (`tabLenh`,
+`view-lenh`, `lenhSec`, …) và nhãn tiếng Trung (`令`) giữ nguyên — chỉ đổi
+CHỮ hiện tiếng Việt trên tab. Mục này giữ nguyên tên gốc vì mô tả lúc xây tab.)*
+
 Tab thứ ba, đứng cạnh tab Lịch. Nó trả lời đúng một câu: **tại thời điểm đang
 xem, can nào đang cầm lệnh** — và bày cả bảng lệnh của năm để xem trước xem sau.
 
@@ -766,6 +772,20 @@ hàng nhau, không phải một tiêu điểm với chi tiết phụ đi kèm. C
 lenh.js vẫn dựng trong HTML (không xoá, đỡ sửa hai chỗ) nhận `font-weight` và
 `font-size` là `inherit`, ngả hẳn về chữ thường của dòng chứa nó.
 
+**Cập nhật sau đó: bỏ dòng "Đại Vận: …", gộp "Lệnh"/"Nhập vận" còn lại thành
+MỘT dòng.** Ba dòng ban đầu nay chỉ còn MỘT — dòng "Đại Vận: …" (can chi đại
+vận đầu tiên) bỏ hẳn, vì bảng ĐẠI VẬN đầy đủ ngay dưới đã nói đúng việc này,
+nhắc lại ở khối tóm tắt là thừa. "Lệnh: X" và "Nhập vận: …" không còn mỗi thứ
+một `<div>` riêng — nối thẳng trên cùng một dòng, ngăn cách bằng " · ". Không
+còn phần tử `#lenhDaiVan`/`#lenhDaiVanPillar` (div bọc) trong DOM nữa —
+`#lenhNow` giờ chỉ chứa hai thẻ `<b>` (`lenhNowVal`, `lenhDaiVanVal`) nằm
+CHUNG một dòng văn bản, không phải hai `<div>` xếp chồng. Bộ kiểm thử đọc
+nhãn "Nhập vận:" qua `previousSibling` của `#lenhDaiVanVal` (text node ngay
+trước nó) thay vì `.firstChild` của một `<div>` không còn tồn tại; can chi
+đại vận đầu tiên (trước đọc qua `#lenhDaiVanPillarVal`) nay đọc thẳng qua
+`window.__lenhDaiVan().pillar` — dữ liệu vẫn tính y hệt, chỉ không còn dòng
+hiển thị riêng cho nó nữa.
+
 ### Bảng "LỆNH NĂM" gập/mở được, như Trí Nhuận/Sách Bổ/Âm Bàn
 
 Đóng SẴN lúc mở tab — bảng 33 hàng không phải thứ ai cũng cần thấy ngay, còn
@@ -897,6 +917,15 @@ chỗ sau khi Lệnh năm định hình) để cấp NỐT phần còn lại. Th
 `window.__monthGanIdx` (app.js) và `window.__lenhDaiVanBang()` (dữ liệu 10
 đại vận của lần vẽ gần nhất, chỉ dùng cho bộ kiểm thử) là hai chỗ lộ ra mới
 cho bảng này.
+
+**Cập nhật sau đó: bỏ chữ năm mờ và nền xen kẽ trong mỗi hàng lưu niên.**
+`.dv-row .dv-year` trước tô màu mờ (`var(--text-dim)`, #666) để phân biệt với
+can chi đậm bên cạnh — nay về màu chữ THƯỜNG (`var(--text-main)`, #000, y hệt
+mọi chữ khác) theo đúng yêu cầu, chữ năm không cần mờ đi mới đọc được. Nền
+xen kẽ trắng/xám nhạt giữa các hàng (`.dv-row:nth-child(odd)`, cả bản thường
+lẫn bản trong thẻ đang sống) cũng bỏ hẳn — không còn phân biệt hàng chẵn/lẻ
+bằng màu nền nữa, mỗi thẻ giờ chỉ còn MỘT nền đồng nhất (viền ngăn cách giữa
+các hàng vẫn còn, `border-top`), đỡ rối mắt hơn khi nhìn cả bảng 100 dòng.
 
 ### "Chọn quy tắc" → "Quy tắc", và ba tên viết tắt
 

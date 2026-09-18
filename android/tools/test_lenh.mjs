@@ -901,7 +901,12 @@ console.log('\nTuổi nhập đại vận: chiều thuận/nghịch chéo Giới
         return {
             hiện: document.getElementById('lenhDaiVanVal').textContent,
             dv, ngàyBắtĐầu,
-            nhãn: document.getElementById('lenhDaiVan').firstChild.textContent.trim(),
+            // Không còn <div id="lenhDaiVan"> riêng — "Nhập vận: " giờ là một
+            // text node NẰM CHUNG dòng với "Lệnh: " trong #lenhNow, ngay
+            // trước <b id="lenhDaiVanVal">; tách dấu phân cách " · " ra để
+            // còn lại đúng nhãn.
+            nhãn: document.getElementById('lenhDaiVanVal').previousSibling.textContent
+                .replace(/^\s*·\s*/, '').trim(),
         };
     });
     const wantAge = [
@@ -917,7 +922,8 @@ console.log('\nTuổi nhập đại vận: chiều thuận/nghịch chéo Giới
     await page.evaluate(() => window.setLang('zh'));
     await page.waitForTimeout(700);
     const zh = await page.evaluate(() => ({
-        nhãn: document.getElementById('lenhDaiVan').firstChild.textContent.trim(),
+        nhãn: document.getElementById('lenhDaiVanVal').previousSibling.textContent
+            .replace(/^\s*·\s*/, '').trim(),
         hiện: document.getElementById('lenhDaiVanVal').textContent,
     }));
     check('nhãn tiếng Trung là "起运："', zh.nhãn, '起运：');
@@ -944,17 +950,17 @@ console.log('\nTuổi nhập đại vận: chiều thuận/nghịch chéo Giới
     await page.evaluate(() => window.__lenhGender('nam'));
     await page.waitForTimeout(300);
 
-    // ── Hình học: dòng phụ không tràn, không cắt chữ.
+    // ── Hình học: "Lệnh" + "Nhập vận" chung một dòng, không tràn, không cắt chữ.
     for (const d of [{ n: 'S21', w: 360 }, { n: 'S21 FE', w: 393 }, { n: 'A51', w: 412 }]) {
         const c2 = await browser.newContext({ viewport: { width: d.w, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
         const { page: p2 } = await open(c2);
         await p2.click('#tabLenh');
         await p2.waitForTimeout(700);
         const g = await p2.evaluate(() => {
-            const e = document.getElementById('lenhDaiVan');
+            const e = document.getElementById('lenhNow');
             return e ? { cắt: e.scrollWidth > e.clientWidth + 1, cao: e.getBoundingClientRect().height } : null;
         });
-        ok(`${d.n}: dòng "Nhập vận" không cắt chữ`, g && !g.cắt, JSON.stringify(g));
+        ok(`${d.n}: dòng "Lệnh · Nhập vận" không cắt chữ`, g && !g.cắt, JSON.stringify(g));
         await c2.close();
     }
 
@@ -1074,25 +1080,30 @@ console.log('\nĐại Vận (can chi Đại Vận đầu tiên) — bước mộ
         document.getElementById('ttCanThang').textContent + document.getElementById('ttChiThang').textContent);
     check('trụ tháng đúng là Đinh Dậu (tiền đề của ví dụ)', thángHiện, 'ĐinhDậu');
 
+    // Không còn dòng "Đại Vận: …" riêng trong ô Lệnh (bỏ theo yêu cầu — bảng
+    // ĐẠI VẬN đầy đủ ngay dưới đã nói việc này rồi, nhắc lại là thừa) — đọc
+    // thẳng dữ liệu qua window.__lenhDaiVan().pillar, không scrape một dòng
+    // DOM không còn tồn tại.
     await page.evaluate(() => window.__lenhGender('nam'));
     await page.waitForTimeout(400);
-    check('Nam (thuận): Đại Vận đầu = Mậu Tuất', await page.textContent('#lenhDaiVanPillarVal'), 'Mậu Tuất');
+    let p = await page.evaluate(() => window.__lenhDaiVan().pillar);
+    check('Nam (thuận): Đại Vận đầu = Mậu Tuất', CAN[p.can] + ' ' + CHI[p.chi], 'Mậu Tuất');
 
     await page.evaluate(() => window.__lenhGender('nu'));
     await page.waitForTimeout(400);
-    check('Nữ (nghịch): Đại Vận đầu = Bính Thân', await page.textContent('#lenhDaiVanPillarVal'), 'Bính Thân');
+    p = await page.evaluate(() => window.__lenhDaiVan().pillar);
+    check('Nữ (nghịch): Đại Vận đầu = Bính Thân', CAN[p.can] + ' ' + CHI[p.chi], 'Bính Thân');
 
-    // Nhãn và đơn vị tiếng Trung: ghép LIỀN không khoảng trắng (quy ước can
-    // chi tiếng Trung trong cả ứng dụng, xem "Tuần thủ" ở tab Kỳ Môn).
+    // Ghép LIỀN không khoảng trắng trong tiếng Trung (quy ước can chi tiếng
+    // Trung trong cả ứng dụng, xem "Tuần thủ" ở tab Kỳ Môn) — kiểm trên thẻ
+    // đầu tiên của bảng ĐẠI VẬN (.dv-line2, cùng đúng phép ghép chuỗi với
+    // dòng đã bỏ), vì đó là chỗ DUY NHẤT còn hiện can chi đại vận đầu tiên.
     await page.evaluate(() => window.setLang('zh'));
     await page.waitForTimeout(600);
-    const zh = await page.evaluate(() => ({
-        nhãn: document.getElementById('lenhDaiVanPillar').firstChild.textContent.trim(),
-        giá: document.getElementById('lenhDaiVanPillarVal').textContent,
-    }));
-    check('nhãn tiếng Trung là "大运："', zh.nhãn, '大运：');
-    ok('can chi tiếng Trung KHÔNG có khoảng trắng ở giữa', !zh.giá.includes(' '), zh.giá);
-    ok('…và đúng hai chữ Hán', /^[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]$/.test(zh.giá), zh.giá);
+    const zhGiá = await page.evaluate(() =>
+        document.querySelector('#daiVanBody .dv-card .dv-line2').textContent.trim());
+    ok('can chi tiếng Trung KHÔNG có khoảng trắng ở giữa', !zhGiá.includes(' '), zhGiá);
+    ok('…và đúng hai chữ Hán', /^[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]$/.test(zhGiá), zhGiá);
     await page.evaluate(() => window.setLang('vi'));
     await page.waitForTimeout(500);
 
@@ -1100,7 +1111,7 @@ console.log('\nĐại Vận (can chi Đại Vận đầu tiên) — bước mộ
     await ctx.close();
 }
 
-console.log('\nMột cỡ chữ duy nhất trong khối "Lệnh/Nhập vận/Đại Vận", không đậm');
+console.log('\nMột cỡ chữ duy nhất trong khối "Lệnh · Nhập vận", không đậm');
 {
     const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     const { page, errs } = await open(ctx);
@@ -1108,7 +1119,7 @@ console.log('\nMột cỡ chữ duy nhất trong khối "Lệnh/Nhập vận/Đ�
     await page.waitForTimeout(700);
 
     const kiểu = await page.evaluate(() => {
-        const ids = ['lenhNowVal', 'lenhDaiVanVal', 'lenhDaiVanPillarVal'];
+        const ids = ['lenhNowVal', 'lenhDaiVanVal'];
         return ids.map(id => {
             const e = document.getElementById(id);
             const cs = getComputedStyle(e);
@@ -1116,7 +1127,7 @@ console.log('\nMột cỡ chữ duy nhất trong khối "Lệnh/Nhập vận/Đ�
         });
     });
     const cỡs = new Set(kiểu.map(k => k.cỡ));
-    ok('cả ba dòng cùng MỘT cỡ chữ', cỡs.size === 1, JSON.stringify(kiểu));
+    ok('cả hai đoạn cùng MỘT cỡ chữ', cỡs.size === 1, JSON.stringify(kiểu));
     for (const k of kiểu) {
         ok(`${k.id}: không đậm (weight ${k.đậm}, cần < 700)`, parseInt(k.đậm, 10) < 700, k.đậm);
     }

@@ -55,30 +55,29 @@ body.view-lenh #qmRow #lenhRuleText {
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-/* ── Khối "Lệnh: Mậu" / "Nhập vận: …" / "Đại Vận: …" ──
-   Một cỡ chữ DUY NHẤT cho cả khối, không chữ nào đậm hơn chữ nào — người
-   dùng yêu cầu rõ: đây là ba dòng thông tin ngang hàng nhau, không phải một
-   tiêu điểm với chi tiết phụ đi kèm (bản trước cho dòng "Lệnh: X" đậm và to
-   hẳn lên, nay bỏ). `b`/`strong` bên trong (còn lại trong HTML do lenh.js
-   dựng) vì thế phải NGẢ VỀ chữ thường — đặt `font-weight`/`font-size` bằng
-   `inherit` chứ không xoá thẻ trong lenh.js, đỡ phải sửa hai chỗ. */
-#lenhNow, #lenhDaiVan, #lenhDaiVanPillar {
+/* ── Khối "Lệnh: Mậu · Nhập vận: …" — MỘT dòng duy nhất ──
+   Dòng "Đại Vận: …" trước đây bỏ hẳn (bảng ĐẠI VẬN đầy đủ ngay dưới đã nói
+   việc này), và "Nhập vận" không còn nằm dòng riêng mà chung dòng với
+   "Lệnh" — xem lenh.js render(). Một cỡ chữ DUY NHẤT cho cả khối, không chữ
+   nào đậm hơn chữ nào — người dùng yêu cầu rõ: đây là các mẩu thông tin
+   ngang hàng nhau, không phải một tiêu điểm với chi tiết phụ đi kèm (bản
+   trước cho dòng "Lệnh: X" đậm và to hẳn lên, nay bỏ). `b`/`strong` bên
+   trong (còn lại trong HTML do lenh.js dựng) vì thế phải NGẢ VỀ chữ thường —
+   đặt `font-weight`/`font-size` bằng `inherit` chứ không xoá thẻ trong
+   lenh.js, đỡ phải sửa hai chỗ. */
+#lenhNow {
     box-sizing: border-box;
     text-align: center;
     font-size: clamp(12.5px, 3.4vw, 14px);
     font-weight: 400;
     color: var(--text-main, #000);
-}
-#lenhNow {
     border: var(--border-panel, 1px solid #ddd);
     border-radius: var(--panel-radius, 8px);
     background: var(--bg-white, #fff);
     padding: 3px 10px;
     margin-bottom: 3px;
 }
-#lenhDaiVan { margin-top: 2px; }
-#lenhDaiVanPillar { margin-top: 2px; }
-#lenhNow b, #lenhDaiVan b, #lenhDaiVanPillar b {
+#lenhNow b {
     font-size: inherit;
     font-weight: inherit;
     color: inherit;
@@ -86,7 +85,7 @@ body.view-lenh #qmRow #lenhRuleText {
 
 /* ── Đầu bảng — gập/mở được, như ba bảng chi tiết ở tab Kỳ Môn ──
    Đóng SẴN lúc mở tab (giống Trí Nhuận/Sách Bổ/Âm Bàn): bảng 33 hàng không
-   phải thứ ai cũng cần thấy ngay, còn "Lệnh/Nhập vận/Đại Vận" ở #lenhNow phía
+   phải thứ ai cũng cần thấy ngay, còn "Lệnh · Nhập vận" ở #lenhNow phía
    trên đã là phần tóm tắt. Dùng lại ĐÚNG toggleDetailPanel() của app.js (khai
    ở _panelIds trong app.js), không viết hàm mở/đóng riêng.
 
@@ -326,9 +325,7 @@ table.lenh-tb tr.lenh-on td {
     border-top: 1px solid var(--border-color, #eee);
     line-height: 1.25;
 }
-.dv-row:nth-child(odd) { background: #f9f9f9; }
-.dv-card.dv-current .dv-row:nth-child(odd) { background: #f2f2f2; }
-.dv-row .dv-year { color: var(--text-dim, #666); }
+.dv-row .dv-year { color: var(--text-main, #000); }
 .dv-row .dv-cc   { font-weight: 600; }
 
 /* Lưu niên NĂM NAY: cùng cách bảng Lệnh tô hàng đang cầm lệnh — đậm chữ và

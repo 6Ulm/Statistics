@@ -67,7 +67,7 @@
     var CHI_ZH = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 
     var T = {
-        tabLenh:  { vi: 'Lệnh',        zh: '令' },
+        tabLenh:  { vi: 'Bát Tự',      zh: '令' },
         title:    { vi: 'LỆNH NĂM',    zh: '司令' },
         now:      { vi: 'Lệnh',        zh: '司令' },
         colMonth: { vi: 'Tháng',       zh: '月' },
@@ -78,7 +78,6 @@
         pickRule: { vi: 'Quy tắc', zh: '选择流派' },
         daiVan:   { vi: 'Nhập vận',    zh: '起运' },
         pickGender: { vi: 'Giới tính', zh: '性别' },
-        daiVanPillar: { vi: 'Đại Vận', zh: '大运' },
         daiVanTitle: { vi: 'ĐẠI VẬN', zh: '大运' },
     };
     function isZH() { return typeof currentLang !== 'undefined' && currentLang === 'zh'; }
@@ -618,7 +617,6 @@
         // nặng hơn cả sai vài phút.
         var active = null;
         var vanText = null;
-        var pillarText = null;
         lastDaiVan = null;
         if (typeof _readInputBJ === 'function') {
             try {
@@ -653,12 +651,6 @@
                     // thuận hành: "tuổi nhập vận" luôn là một tuổi DƯƠNG, và
                     // ngày bắt đầu đại vận luôn ở SAU ngày sinh.
                     vanText = fmtTuoi(dv) + ' · ' + fmtYMD(addYMD(inp.y, inp.m, inp.d, dv));
-                    // Tiếng Việt cần khoảng trắng ("Mậu Tuất" là hai tiếng);
-                    // tiếng Trung thì không (ghép can chi liền nhau — "戊戌",
-                    // không phải "戊 戌" — đúng cách mọi cặp can chi khác
-                    // trong ứng dụng đã hiện, ví dụ cột "Tuần thủ" ở tab Kỳ
-                    // Môn).
-                    if (pillar) pillarText = canName(pillar.can) + (isZH() ? '' : ' ') + chiName(pillar.chi);
                 }
             } catch (e2) { active = null; vanText = null; }
         }
@@ -670,17 +662,19 @@
                 : (t('title') + ' ' + inp.y);
         }
         if (nowBox) {
+            // Một dòng duy nhất — "Lệnh" và "Nhập vận" là hai mẩu thông tin
+            // ngắn, không cần mỗi mẩu một dòng riêng như trước. Dòng "Đại
+            // Vận: …" (can chi đại vận đầu tiên) bỏ hẳn khỏi đây — đã có
+            // NGUYÊN một bảng ĐẠI VẬN đầy đủ ngay dưới, nhắc lại ở đây là
+            // thừa. pillarText/pillar vẫn tính (đại vận grid dùng riêng của
+            // nó, độc lập — xem buildDaiVanBang()), chỉ không hiện dòng này.
             var lệnhLine = esc(t('now')) + (isZH() ? '：' : ': ') +
                 '<b id="lenhNowVal">' + esc(active ? canName(active.part.can) : '—') + '</b>';
             var vanLine = vanText
-                ? '<div id="lenhDaiVan">' + esc(t('daiVan')) + (isZH() ? '：' : ': ') +
-                  '<b id="lenhDaiVanVal">' + esc(vanText) + '</b></div>'
+                ? ' · ' + esc(t('daiVan')) + (isZH() ? '：' : ': ') +
+                  '<b id="lenhDaiVanVal">' + esc(vanText) + '</b>'
                 : '';
-            var pillarLine = pillarText
-                ? '<div id="lenhDaiVanPillar">' + esc(t('daiVanPillar')) + (isZH() ? '：' : ': ') +
-                  '<b id="lenhDaiVanPillarVal">' + esc(pillarText) + '</b></div>'
-                : '';
-            nowBox.innerHTML = lệnhLine + vanLine + pillarLine;
+            nowBox.innerHTML = lệnhLine + vanLine;
         }
 
         var tzId = inp.info.tzId;
