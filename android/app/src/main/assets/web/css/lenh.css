@@ -109,9 +109,25 @@ body.view-lenh #qmRow #lenhRuleText {
        #lenhView dùng flex column với gap:0 nên hai khối liền kề dính sát
        nhau (đo thật: 0px) nếu không tự mang lề riêng. Cùng 6px với
        #daiVanHead ở trên cho nhất quán — mọi "đầu khối mới" trong tab đều
-       cách khối trước đúng ngần ấy. */
-    margin-top: 6px;
-    padding: 5px 6px;
+       cách khối trước đúng ngần ấy.
+
+       4px chứ không 6px như #daiVanHead: hai pixel ấy là để NUÔI phần đệm
+       ngay dưới đây, xem chú thích đó. */
+    margin-top: 4px;
+    /* Đệm 5px cho hàng cao 31px — dưới mức 32px đã chốt (xem TAP_MIN trong
+       tools/test_a51_s21fe.mjs), trên chỗ GẬP/MỞ Lệnh năm, một trong hai chỗ
+       bấm của cả tab.
+
+       Nới lên 6px và LẤY hai pixel ấy từ margin-top ở trên, chứ không xin
+       thêm chiều cao: tab Bát Tự là tab CHẬT NHẤT — bảng Lệnh năm có sàn cứng
+       BOX_MIN=120px (lenh.js) nên khi hết chỗ nó không co thêm được nữa, và
+       mọi pixel cộng vào đều đẩy thẳng trang dài ra. Thử cộng thật (5→7px):
+       ở 393×790 · tiếng Trung viewport.js phải thu cả trang còn 0,994, và tỉ
+       lệ lẻ ấy làm alignUnderHead() chốt mép hàng trượt nửa pixel — hàng đầu
+       bảng lúc nằm gọn lúc cụt dưới hàng tiêu đề, tuỳ lần chạy. Bù qua lại
+       thế này thì chiều cao khối KHÔNG đổi một pixel nào (4+6+6+21 = 6+5+5+21
+       = 37px), nên không có gì để đẩy và không có tỉ lệ lẻ nào sinh ra. */
+    padding: 6px;
     font-size: clamp(13px, 3.7vw, 15px);
     font-weight: 700;
     letter-spacing: .3px;
@@ -262,7 +278,7 @@ table.lenh-tb tr.lenh-on td {
     border-bottom: 0;
     border-radius: 8px 8px 0 0;
     margin-top: 6px;
-    padding: 5px 6px;
+    padding: 7px 6px;
     font-size: clamp(13px, 3.7vw, 15px);
     font-weight: 700;
     letter-spacing: .3px;

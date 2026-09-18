@@ -466,6 +466,126 @@ thì trên máy cao các bảng rời rạc hẳn ra, xấu hơn cả khoảng h
 
 Kết quả: S21, S21 FE và S21 Ultra khít đáy (hở ≤ 0,3px), A51 còn 10px.
 
+Từ khi thanh dưới nới theo chiều cao màn hình (mục kế tiếp), phần dôi ấy trên
+A51 và S21 FE đi thẳng vào **vùng chạm** thay vì vào khe: đo lại trên A51 thì
+khe tụt từ 21px kịch trần về 3px cơ bản, các bảng xít lại thành một khối thay
+vì rời rạc — thanh dưới dày lên mà màn hình lại gọn hơn trước.
+
+## Ngón tay, không chỉ con chữ (A51 · S21 FE)
+
+Bố cục vừa khít một màn hình mà ô bấm cao 16px thì vẫn là giao diện hỏng trên
+điện thoại. Android Material khuyên **48dp**, WCAG 2.5.8 đặt sàn ở **24px**;
+bảng tra dày đặc này không trả nổi 48dp ở mọi chỗ, nên mức đã chốt là **32px**
+cho mọi chỗ bấm và **34px** cho thanh dưới trên máy dọc đủ cao.
+
+| Chỗ bấm | Trước | Sau | Cách làm |
+|---|---|---|---|
+| Thanh dưới (3 tab + 2 ô dùng chung) | 29px | **34–38px** | `--dock-row-h` theo chiều cao màn |
+| `#calTitle` — về tháng hiện tại | 16px | **36px** | đệm + lề âm |
+| `#cobanToggleWrap` — ô "Đầy đủ" | 17px | **32px** | `align-self: stretch` |
+| `.cal-sec-head` — gập/mở hai mục | 26–29px | **32–35px** | đệm dọc ô `<th>` |
+| `.drum-cancel` / `.drum-ok` | 26×22px | **46×40px** | đệm + lề âm |
+| `#calPinBtn` — ghim widget | 28px | **36px** | đệm dọc |
+| `#lenhHead` — gập/mở Lệnh năm | 31px | **33px** | đệm + bớt lề trên |
+| `#locManualToggle` — nhập toạ độ | 29px | **33px** | đệm dọc |
+
+Trừ thanh dưới, mọi mục còn lại nới bằng **đệm rồi kéo lề âm lại đúng chừng
+ấy** (mẹo vốn đã dùng cho `.cal-nav`): hộp lề không đổi nên **không bố cục nào
+dịch một pixel nào** — `test_responsive.mjs` đo lại ra đúng từng con số cũ.
+
+### Thanh dưới: nới bao nhiêu thì không phải trả bằng cỡ chữ
+
+Thanh dưới ăn thẳng vào chiều cao vốn đã chật, nên không chốt được một con số.
+Cách làm: quét **12 cấu hình** hợp lý của hai máy — ba nấc *Screen zoom* của
+Samsung (đổi `densityDpi`, nên một máy cho ra ba bề rộng CSS) nhân hai kiểu
+điều hướng (nút ảo ba phím 48dp / cử chỉ 24dp) — rồi lấy mốc cao nhất mà
+**không cấu hình nào phải đổi tỉ lệ phóng** so với bản cũ.
+
+| | Trước | Sau | Tỉ lệ phóng |
+|---|---|---|---|
+| A51 mặc định 412×866 | 29px | **38px** | 1,000 → 1,000 |
+| A51 zoom nhỏ 432×912 | 29px | **38px** | 1,049 → 1,049 |
+| S21 FE zoom nhỏ 411×843 | 29px | **38px** | 1,000 → 1,000 |
+| S21 FE mặc định 384×784 | 29px | **34px** | 1,000 → 1,000 |
+| bốn cấu hình nấc zoom lớn nhất | 29px | 29px | không đổi |
+
+8/12 cấu hình được ô to hơn, 4/12 giữ nguyên — **không máy nào trả bằng cỡ
+chữ**. Giá phải trả nằm ở hai mục gập của tab Lịch: A51 mất ~10px mỗi mục
+(Tiết khí 201→191px), tức chừng hai phần ba một hàng bảng.
+
+Hai điều đáng lưu ý, cả hai đều là **kết quả đo chứ không phải chọn cho tròn**:
+
+* **Phải hỏi TỈ LỆ, không chỉ chiều cao.** Bàn Kỳ Môn là hình vuông rộng bằng
+  màn hình (tối đa 400px), nên màn càng *rộng* thì bàn càng *cao*: cùng một
+  790px mà 393px còn dư chỗ (bàn 381) trong khi 412px đã hết (bàn 400). Chốt
+  theo mỗi chiều cao thì màn rộng-mà-thấp được nới rồi tràn, và `viewport.js`
+  thu nhỏ cả trang còn 0,984 để bù. Thêm `max-aspect-ratio: 1/1.95` là xong:
+  mọi kích thước thật của hai máy nằm dưới mốc (0,45–0,50), màn rộng-mà-thấp
+  nằm trên và rơi về sàn 29px — đúng bằng bản cũ, nên không mất gì.
+* **Nấc rời, không phải `clamp()`/`vh` liên tục.** Thử `clamp(29px, 4.6vh,
+  38px)`: khe giữa hai hàng đo ra 2,9995px thay vì 3, ô phái rộng 98,7px ở
+  tiếng Việt so với 100px ở tiếng Trung — ba phép canh của
+  `test_shared_bar.mjs` đỏ, không phải vì bố cục sai mà vì phép làm tròn. Cả
+  thanh dưới là một chồng hộp canh từng phần mười pixel với bảng Tứ Trụ; số
+  nguyên thì không có chỗ cho chuyện đó.
+
+Sàn 29px đúng bằng con số cũ, và nấc thấp nhất tự lo luôn **màn ngang** — chỗ
+chiều cao quý nhất thì thanh dưới mỏng lại mà không phải viết thêm luật nào.
+
+### Ba luật cử chỉ không nhìn thấy được
+
+Thiếu chúng thì thao tác hỏng theo kiểu rất khó lần ra, vì ảnh chụp màn hình
+nào cũng đẹp:
+
+* **`touch-action: none` trên `.drum-col`.** Bánh xe ngày giờ do JS kéo
+  (`touchmove` + `preventDefault`). Thiếu dòng này thì Android vẫn phải *đoán*
+  cú vuốt là kéo bánh xe hay cuộn trang, và nó đoán ngay từ frame đầu — trước
+  khi `touchmove` đầu tiên kịp gọi `preventDefault`. Vuốt nhanh một cái là mất
+  hẳn cử chỉ vào tay trình duyệt, bánh xe đứng im.
+* **`overscroll-behavior: contain` trên bốn khung cuộn** (hai mục tab Lịch,
+  danh sách 34.006 thành phố, bảng chọn, bảng chi tiết). Không có nó, cuộn hết
+  danh sách rồi mà còn đà thì Android đẩy tiếp cú vuốt sang trang phía sau:
+  bảng chọn đứng yên mà nội dung sau lưng nó trôi đi.
+* **Tắt mảng sáng mặc định của WebView** (`-webkit-tap-highlight-color`). Mảng
+  ấy là hình *chữ nhật bao*, nên trên ô lịch bo góc và trên tab nó thò ra ngoài
+  viền, lại còn nháy chồng lên `:active`. Tắt rồi thì phải tự lo phản hồi:
+  `.picker-btn`, `.dp-header`, `.drum-cancel`/`.drum-ok`, `#locManualToggle`
+  trước đây **không có `:active` nào cả** — chạm vào ô ngày giờ không thấy gì
+  phản hồi cho tới khi bảng chọn trượt lên.
+
+### Màn ngang: biết mà chưa làm
+
+Xoay ngang thì nội dung vẫn bị kẹp trong `max-width: 400px` giữa màn hình, nên
+A51 ngang (866×412) bỏ phí ~460px hai bên mà vẫn phải cuộn dọc 336px — chỉ thấy
+được một phần ba bàn Kỳ Môn.
+
+Đã thử bố cục **hai cột** (lưới CSS, bảng bên trái, bàn bên phải, chỉ bật ở màn
+ngang). Đo ra: chiều cao tụt 748→631px nhưng **vẫn** không vừa một màn hình, và
+bàn co xuống 251px thì **quẻ hào bị cắt** (`☳`) trên S21 FE. Gốc rễ là bàn Kỳ
+Môn hình vuông có cỡ tối thiểu đọc được (~280px), mà màn ngang chỉ chừa được
+306px — lại thêm `viewport.js` chỉnh tỉ lệ theo chiều cao nội dung, nên "bàn co
+theo `vh`" và "trang phóng theo chiều cao" thành hai cơ chế cùng kéo một sợi
+dây, đúng cái vòng lặp đã ghi trong `viewport.js`.
+
+Nên **giữ nguyên**: màn ngang hiện vẫn đúng chức năng (không tràn ngang, không
+cắt chữ, cuộn tới là thấy hết — `test_a51_s21fe.mjs` canh cả hai hướng), chỉ
+là chưa tối ưu. Làm cho ra hồn thì phải đổi hẳn cách `viewport.js` chốt tỉ lệ,
+việc ấy để riêng.
+
+### Đã soi mà không phải lỗi
+
+* `textZoom = 100` trong `MainActivity` **vô hiệu hoá cỡ chữ hệ thống**. Đây là
+  lựa chọn có chủ ý và có ghi chú (lưới Kỳ Môn theo px cố định, thả ra là vỡ),
+  nhưng nó cũng có nghĩa là người dùng đặt cỡ chữ lớn trong Cài đặt sẽ **không**
+  thấy tác dụng gì trong ứng dụng. Muốn đổi thì phải làm lại bàn Kỳ Môn theo
+  đơn vị co giãn trước.
+* `MainActivity.showTab()` chỉ nhận `"cal"`/`"qmdj"`, chưa có `"lenh"` — widget
+  không mở được thẳng tab Bát Tự. Không phải lỗi giao diện, để riêng.
+* 404 `favicon.ico` chỉ có ở máy chủ thử; WebView nạp từ `file:///android_asset`
+  không hỏi tệp ấy.
+* Chế độ tối: giao diện chốt sáng (`Theme.Material.Light`), nên WebView không
+  bật thuật toán làm tối. Nhất quán, không phải lỗi.
+
 ## Tab Lệnh: nhân nguyên tư lệnh
 
 *(Đổi tên nhãn tab sau đó: "Lệnh" → **"Bát Tự"** — `T.tabLenh.vi` trong
@@ -2089,6 +2209,36 @@ ngày trong app vốn đã vừa, khác hẳn bảng vẽ tay của widget.
 Gỡ `viewport.js` ra thì ca "S21 ngang" lập tức đỏ — nên phép thử này có thật,
 không phải lúc nào cũng xanh. Trước đây nó **đọc `body.style.zoom`** (thuộc tính
 inline, luôn rỗng) nên vẫn xanh với cả bản hỏng; giờ đọc computed style.
+
+### Riêng cho A51 và S21 FE
+
+```bash
+node test_a51_s21fe.mjs
+```
+
+Khác `test_responsive.mjs` ở ba chỗ:
+
+1. **Quét cả ma trận cấu hình của mỗi máy, không phải một kích thước.** Samsung
+   cho đổi *Screen zoom* (Cài đặt › Màn hình) — nó đổi `densityDpi`, nên MỘT
+   máy cho ra ba bề rộng CSS khác nhau. Nhân thêm hai kiểu điều hướng (nút ảo
+   ba phím 48dp / cử chỉ 24dp) là 12 cấu hình, cộng hai lượt xoay ngang. Một
+   luật `@media` chỉ đúng ở kích thước mặc định thì sai ở năm cái còn lại —
+   đúng cái đã xảy ra khi thử `min-height` mà quên tỉ lệ khung.
+2. **Đo vùng chạm, không chỉ đo bố cục** — quy về px chưa phóng, tức dp trên
+   máy thật. Sàn 32px cho mọi chỗ bấm, 34px cho thanh dưới trên máy dọc đủ cao.
+   Chính phép canh này bắt được hai chỗ ảnh chụp không cho thấy: `.cal-sec-head`
+   (26px ở tiếng Việt) và `#lenhHead` (31px).
+3. **Đi hết các đường tương tác bằng chạm thật** (`page.tap`, không gọi
+   `showTab` bằng JS): ba tab, bảng ngôn ngữ mở từ *tab Lịch* (luật ẩn của tab
+   ấy xoá mọi con của `<body>` trừ danh sách chừa — quên chừa `#optOverlay` là
+   bấm ra một bảng vô hình), nút Back đóng bảng thay vì thoát app, tên thành
+   phố dài bị "…" cắt gọn, và **bàn phím ảo che nửa màn hình** (`adjustResize`
+   + inset IME làm khung web tụt còn ~52%: ô tìm kiếm phải còn thấy, danh sách
+   phải còn chỗ, bảng không được thò khỏi màn hình).
+
+Cộng thêm ba luật cử chỉ không nhìn thấy được — `touch-action` của bánh xe,
+`overscroll-behavior` của bốn khung cuộn, và mảng sáng mặc định đã tắt — vì
+ảnh chụp màn hình nào cũng đẹp dù thiếu cả ba.
 
 ### Hàng dùng chung và hai ô chọn
 

@@ -449,7 +449,16 @@ table.cal-jq td {
 }
 table.cal-jq thead th {
     position: sticky; top: 0; z-index: 1;
-    padding: 4px 6px;
+    /* Hàng <thead> này VỪA là tên cột VỪA là nút gập/mở của cả mục (xem
+       .cal-sec-head bên trên) — chỗ bấm chính của nửa dưới tab Lịch. Đệm dọc
+       4px cho hàng cao 26–29px ở tiếng Việt, dưới mức 32px đã chốt; 7px đưa
+       nó lên 32–35px ở cả hai ngôn ngữ và mọi nấc Screen zoom.
+       Chỉ nới đệm DỌC: đệm ngang là thứ ba cột đang chia nhau từng pixel một
+       (xem .cal-jq-last và @media 375px bên dưới), đụng vào là bảng cuộn
+       ngang trên máy hẹp.
+       Giá phải trả là 6px mỗi mục, lấy từ chính thân mục — fitGrid() ĐO hàng
+       tiêu đề chứ không đoán, nên nó tự trừ. */
+    padding: 7px 6px 7px;
     background: var(--bg-white, #fff);
     border-bottom: 1.5px solid var(--border-color, #ddd);
 }
