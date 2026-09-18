@@ -163,15 +163,12 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     const { page, errs } = await openCal(ctx);
 
-    console.log('\nMục "Lịch âm" — khớp bảng chi tiết Âm Bàn pháp');
-    // Bảng gốc ở tab Kỳ Môn (phái Âm Bàn mới dựng bảng này).
-    const km = await page.evaluate(() => {
-        window.showTab('qmdj');
-        selectMethod('amban');
-        processAll();
-        return [...document.querySelectorAll('#ab-tbody tr')]
-            .map(tr => [...tr.cells].map(c => c.textContent.trim()).join(' | '));
-    });
+    console.log('\nMục "Lịch âm" — cấu trúc và định dạng');
+    // KHÔNG còn bảng nào để đối chiếu: bảng chi tiết Âm Bàn pháp ở tab Kỳ Môn
+    // đã bỏ hẳn, nên mục này là chỗ DUY NHẤT hiện dãy Sóc/Vọng trong ứng dụng.
+    // Phép đối chiếu chéo chuyển sang test_widget_sections.mjs (widget và tab
+    // Lịch phải nói cùng một bảng) và test_soc_parity.mjs (mùng 1 = ngày chứa
+    // Sóc); ở đây canh cấu trúc và định dạng của chính nó.
     await page.click('#tabCal'); await page.waitForTimeout(700);
     await setOpen(page, 'am', true);
     await page.waitForTimeout(600);
@@ -222,9 +219,20 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         `tiêu đề ${cal.socHeadCx?.toFixed(1)} vs giá trị ${cal.socValCx?.toFixed(1)}`);
     ok('tiêu đề "Vọng" trùng tâm giá trị', Math.abs(cal.vongHeadCx - cal.vongValCx) <= 1.5,
         `tiêu đề ${cal.vongHeadCx?.toFixed(1)} vs giá trị ${cal.vongValCx?.toFixed(1)}`);
-    ok('số tháng khớp bảng gốc', cal.rows.length === km.length, `${cal.rows.length} vs ${km.length}`);
-    ok('từng dòng khớp bảng gốc', cal.rows.join('#') === km.join('#'),
-        'Lịch: ' + (cal.rows[0] || '—') + ' · Kỳ Môn: ' + (km[0] || '—'));
+    // 12 tháng, hoặc 13 khi năm âm có tháng nhuận.
+    ok('đủ 12 (hoặc 13, năm nhuận) tháng âm',
+        cal.rows.length === 12 || cal.rows.length === 13, String(cal.rows.length));
+    // Mỗi dòng: "Tháng N | dd-mm-yyyy hh:mm | dd-mm-yyyy hh:mm".
+    const dạng = /^Tháng \d+(N)? \| \d{2}-\d{2}-\d{4} \d{2}:\d{2} \| \d{2}-\d{2}-\d{4} \d{2}:\d{2}$/;
+    const sai = cal.rows.filter(r => !dạng.test(r));
+    ok('mọi dòng đúng dạng "Tháng N | Sóc | Vọng"', sai.length === 0, sai.slice(0, 2).join(' · '));
+    // Vọng luôn SAU Sóc của cùng tháng — canh thứ tự thời gian, không chỉ dạng.
+    const ngược = cal.rows.filter(r => {
+        const c = r.split('|').map(x => x.trim());
+        const key = t => t.slice(6, 10) + t.slice(3, 5) + t.slice(0, 2) + t.slice(11);
+        return key(c[2]) <= key(c[1]);
+    });
+    ok('Vọng luôn sau Sóc của cùng tháng', ngược.length === 0, ngược.slice(0, 2).join(' · '));
     ok('có tô đậm tháng đang xem', !!cal.active, String(cal.active));
     ok('không lỗi JS', errs.length === 0, errs.join('; '));
     await ctx.close();
@@ -620,39 +628,49 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
    màn hình. Bấm vào: mũi tên lật, và không có gì khác xảy ra. Đo trên A51:
    bảng cao 362px, không một pixel nào lọt vào khung nhìn. */
 {
-    console.log('\nMở bảng gập ở tab Kỳ Môn');
+    console.log('\nMở bảng gập ở tab Tra cứu');
     for (const [nm, w, h] of [['A51', 412, 852], ['S21 FE', 393, 790]]) {
         const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
         const page = await ctx.newPage();
         const errs = []; page.on('pageerror', e => errs.push(e.message));
         await page.goto(base, { waitUntil: 'networkidle' });
         await page.waitForTimeout(1200);
-        await page.evaluate(() => window.showTab('qmdj'));
-        await page.waitForTimeout(700);
-        const truoc = await page.evaluate(() => {
-            const p = document.getElementById('ambanPanel');
-            const d = document.getElementById('bottomDock');
-            return p.getBoundingClientRect().bottom <= d.getBoundingClientRect().top + 1;
-        });
-        ok(`${nm}: lúc đóng, bảng nằm trọn trong màn hình`, truoc);
-        await page.evaluate(() => document.getElementById('ambanHeader').click());
+        // Ba bảng gập/mở nay nằm ở tab Tra cứu (bảng Âm Bàn pháp đã bỏ hẳn).
+        // Lấy bảng CUỐI — Lệnh năm — vì nó đúng là trường hợp xấu nhất: hàng
+        // tiêu đề của nó là khối cuối trang, nên khi nó đóng và trang đang
+        // cuộn hết cỡ thì 100% phần vừa mở nằm dưới mép màn hình.
+        await page.evaluate(() => { window.__tracuuYear(2026); window.showTab('tracuu'); });
+        await page.waitForTimeout(1200);
+
+        // Đóng lại rồi cuộn xuống đáy — dựng đúng cái thế xấu ấy.
+        await page.evaluate(() => document.getElementById('lenhHead').click());
+        await page.waitForTimeout(600);
+        await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+        await page.waitForTimeout(500);
+        const truoc = await page.evaluate(() => ({
+            dong: getComputedStyle(document.getElementById('lenhSec')).display === 'none',
+            y: Math.round(window.scrollY),
+        }));
+        ok(`${nm}: dựng được thế xấu — bảng đóng, trang đã cuộn hết`,
+            truoc.dong, JSON.stringify(truoc));
+
+        await page.evaluate(() => document.getElementById('lenhHead').click());
         await page.waitForTimeout(1400);
         const sau = await page.evaluate(() => {
-            const p = document.getElementById('ambanPanel');
-            const head = document.getElementById('ambanHeader');
-            const d = document.getElementById('bottomDock');
-            const lim = d.getBoundingClientRect().top;
+            const sec = document.getElementById('lenhSec');
+            const head = document.getElementById('lenhHead');
             return {
-                mo: getComputedStyle(document.getElementById('ambanBody')).display === 'block',
-                thayHet: p.getBoundingClientRect().bottom <= lim + 1,
-                conTieuDe: head.getBoundingClientRect().top >= -1,
-                cuonRoi: window.scrollY > 0,
+                mo: getComputedStyle(sec).display === 'block',
+                // Thấy được ÍT NHẤT một phần bảng vừa mở: bấm mà không có gì
+                // lọt vào khung nhìn thì người dùng tưởng nút hỏng.
+                thayItNhatMotPhan: sec.getBoundingClientRect().top < window.innerHeight - 20,
+                conTieuDe: head.getBoundingClientRect().bottom >= -1,
+                y: Math.round(window.scrollY),
             };
         });
         ok(`${nm}: bấm là bảng mở ra`, sau.mo);
-        ok(`${nm}: …và trang cuộn tới cho thấy hết bảng`, sau.cuonRoi && sau.thayHet,
-            JSON.stringify(sau));
-        ok(`${nm}: …mà vẫn còn thấy hàng tiêu đề`, sau.conTieuDe);
+        ok(`${nm}: …và thấy được phần vừa mở`, sau.thayItNhatMotPhan, JSON.stringify(sau));
+        ok(`${nm}: …mà vẫn còn thấy hàng tiêu đề`, sau.conTieuDe, JSON.stringify(sau));
         ok(`${nm}: không lỗi JS`, errs.length === 0, errs.join('; '));
         await ctx.close();
     }

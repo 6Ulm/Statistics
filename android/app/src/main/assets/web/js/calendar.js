@@ -1095,9 +1095,10 @@
      * đều viết dưới dạng "ẩn tất cả trừ…", nên Kỳ Môn không cần lớp riêng.
      */
     var TABS = [
-        { key: 'qmdj', tab: 'tabQmdj', cls: null },
-        { key: 'cal',  tab: 'tabCal',  cls: 'view-cal' },
-        { key: 'lenh', tab: 'tabLenh', cls: 'view-lenh' },
+        { key: 'qmdj',   tab: 'tabQmdj',  cls: null },
+        { key: 'cal',    tab: 'tabCal',   cls: 'view-cal' },
+        { key: 'lenh',   tab: 'tabLenh',  cls: 'view-lenh' },
+        { key: 'tracuu', tab: 'tabTraCuu', cls: 'view-tracuu' },
     ];
 
     function showTab(which) {
@@ -1110,6 +1111,9 @@
         if (which === 'cal') render();
         if (which === 'lenh' && typeof window.__lenhRender === 'function') {
             try { window.__lenhRender(); } catch (e) {}
+        }
+        if (which === 'tracuu' && typeof window.__tracuuRender === 'function') {
+            try { window.__tracuuRender(); } catch (e) {}
         }
         if (typeof window.__fitScreen === 'function') setTimeout(window.__fitScreen, 50);
         // Chỉ cuộn khi đang không ở đầu trang — gọi thừa vừa vô ích vừa làm

@@ -190,7 +190,7 @@
     };
     window.__tabOrderReset = function () {
         try { localStorage.removeItem(KEY); } catch (e) {}
-        applyOrder('tabQmdj,tabCal,tabLenh');
+        applyOrder('tabQmdj,tabCal,tabLenh,tabTraCuu');
         return currentOrder();
     };
 })();

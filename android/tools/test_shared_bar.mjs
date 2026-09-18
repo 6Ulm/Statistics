@@ -105,7 +105,11 @@ function ok(what, cond, detail) {
     ok('mỗi tab chỉ chứa ĐÚNG một nhãn', nh.con);
     ok('nhãn tab in hoa bằng text-transform', nh.hoa);
     ok('nhãn tab in đậm (≥700)', nh.đậm);
-    ok('nhãn tab đủ to (≥14px)', nh.cỡ >= 14, `${nh.cỡ}px`);
+    // Nhãn tab nay CO theo bề ngang: bốn tab thì mỗi tab chỉ còn một phần tư
+    // hàng, và "TRA CỨU" in hoa đậm ở 14,5px không vừa máy hẹp (xem .tab-lbl
+    // trong calendar.css). Sàn 11,5px vẫn đọc rõ; phép canh "không cắt chữ" ở
+    // cuối tệp mới là phép giữ cho nó không bé quá.
+    ok('nhãn tab đủ to (≥11,5px)', nh.cỡ >= 11.5, `${nh.cỡ}px`);
     ok('HTML vẫn giữ chữ thường để refreshLabels và phép kiểm đọc được',
         nh.chữThường);
     await ctx.close();
@@ -303,8 +307,18 @@ for (const d of DEVICES) {
     await pick(page, 'methodDisplayBtn', 'bophap');
     check('chọn Sách Bổ: ô hiện đúng', await page.textContent('#methodDisplayText'), 'Sách Bổ');
     check('chọn Sách Bổ: engine nhận', await page.inputValue('#methodSelect'), 'bophap');
-    check('chọn Sách Bổ: bảng chi tiết đổi theo',
-        await page.evaluate(() => getComputedStyle(document.getElementById('sachboPanel')).display), 'block');
+    // Bảng chi tiết Sách Bổ đã CHUYỂN sang tab Tra cứu (tra theo NĂM tự chọn,
+    // không theo phái đang bày bàn), và bảng Âm Bàn pháp thì bỏ hẳn — nên đổi
+    // phái ở tab Kỳ Môn không còn bật/tắt bảng nào. Canh đúng điều ấy: tab Kỳ
+    // Môn KHÔNG còn chứa bảng chi tiết nào cả.
+    ok('tab Kỳ Môn không còn bảng chi tiết nào',
+        await page.evaluate(() => {
+            const tc = document.getElementById('traCuuView');
+            return ['trinhuanPanel', 'sachboPanel', 'ambanPanel'].every(id => {
+                const el = document.getElementById(id);
+                return !el || (tc && tc.contains(el));   // không có, hoặc đã sang Tra cứu
+            });
+        }));
 
     // Nút Back của Android phải đóng bảng chọn, không thoát ứng dụng.
     await page.click('#langDisplayBtn');
@@ -430,9 +444,9 @@ for (const d of DEVICES) {
                     lang: [box('langDisplayBtn').left, box('langDisplayBtn').right],
                     ctry: [box('countryDisplayBtn').left, box('countryDisplayBtn').right],
                     tab0: [tabs[0].left, tabs[0].right],
-                    // Từ khi có tab thứ ba (Lệnh), hàng tab chia BA còn hàng
-                    // dùng chung vẫn hai ô — nên ô địa điểm phủ hai tab cuối:
-                    // mép trái trùng tab Lịch, mép phải trùng tab Lệnh.
+                    // Hàng tab chia BỐN còn hàng dùng chung vẫn hai ô — nên ô
+                    // địa điểm phủ mọi tab TRỪ tab đầu: mép trái trùng tab thứ
+                    // hai, mép phải trùng tab cuối.
                     tab1: [tabs[1].left, tabs[tabs.length - 1].right],
                     sốTab: tabs.length,
                     tabH: tabs[0].height,
@@ -471,9 +485,9 @@ for (const d of DEVICES) {
             const near = (a, b) => Math.abs(a[0] - b[0]) <= 1 && Math.abs(a[1] - b[1]) <= 1;
             ok(`${tag}: ô ngôn ngữ trùng khít tab Kỳ Môn`, near(r.lang, r.tab0),
                 `[${r.lang.map(v => v.toFixed(1))}] vs [${r.tab0.map(v => v.toFixed(1))}]`);
-            ok(`${tag}: ô địa điểm phủ đúng hai tab Lịch + Lệnh`, near(r.ctry, r.tab1),
+            ok(`${tag}: ô địa điểm phủ đúng ba tab sau`, near(r.ctry, r.tab1),
                 `[${r.ctry.map(v => v.toFixed(1))}] vs [${r.tab1.map(v => v.toFixed(1))}]`);
-            check(`${tag}: thanh tab có ba mục`, r.sốTab, 3);
+            check(`${tag}: thanh tab có bốn mục`, r.sốTab, 4);
             ok(`${tag}: ô cao đúng bằng tab`, Math.abs(r.boxH - r.tabH) <= 1,
                 `ô ${r.boxH.toFixed(1)}px vs tab ${r.tabH.toFixed(1)}px`);
             ok(`${tag}: có khe giữa hai hàng`, r.rowGap >= 3 && r.rowGap <= 10,

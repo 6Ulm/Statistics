@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="css/location.css">
     <link rel="stylesheet" href="css/calendar.css">
     <link rel="stylesheet" href="css/lenh.css">
+    <link rel="stylesheet" href="css/tracuu.css">
 </head>
 <!-- KHÔNG đặt sẵn lớp `lang-zh`: mặc định của ứng dụng nay là tiếng Việt
      (xem initLang trong app.js), mà chữ trong chính tệp này cũng là tiếng
@@ -184,81 +185,6 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
     </div>
 </div>
 
-<!-- ══ TRÍ NHUẬN PHÁP — PTTN INFO PANEL (collapsible) ══ -->
-<div id="trinhuanPanel" class="dp-panel">
-  <div id="trinhuanHeader" class="dp-header" onclick="toggleDetailPanel('trinhuan')">
-    <span class="dp-title">Bảng chi tiết - Trí Nhuận pháp</span>
-    <span id="trinhuanChevron" class="dp-chevron">▾</span>
-  </div>
-  <div id="trinhuanBody" class="dp-body">
-    <div id="trn-pttn-row" style="display:flex;flex-direction:column;gap:2px;margin-bottom:3px;">
-      <span><span style="color:var(--text-dim,#888)">PTTN1:</span> <b id="trn-pttn1"></b> <span style="color:var(--text-dim,#888)">-</span> <span style="color:var(--text-dim,#888)">TK1:</span> <span id="trn-tk1"></span></span>
-      <span><span style="color:var(--text-dim,#888)">PTTN2:</span> <b id="trn-pttn2"></b> <span style="color:var(--text-dim,#888)">-</span> <span style="color:var(--text-dim,#888)">TK2:</span> <span id="trn-tk2"></span></span>
-      <span><span style="color:var(--text-dim,#888)">PTTN3:</span> <b id="trn-pttn3"></b> <span style="color:var(--text-dim,#888)">-</span> <span style="color:var(--text-dim,#888)">TK3:</span> <span id="trn-tk3"></span></span>
-      <span><span id="trn-d-summary"></span></span>
-    </div>
-    <div id="trn-table-wrap" class="dp-table-wrap">
-      <table id="trn-table" class="dp-table">
-        <thead>
-          <tr>
-            <th>PTTN</th>
-            <th>Dương lịch</th>
-            <th>Tiết Khí</th>
-            <th class="c">Độn</th>
-            <th class="c">Số Cục</th>
-          </tr>
-        </thead>
-        <tbody id="trn-tbody"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- ══ SÁCH BỔ PHÁP — INFO PANEL (collapsible, shares header with Trí Nhuận) ══ -->
-<div id="sachboPanel" class="dp-panel">
-  <div id="sachboHeader" class="dp-header" onclick="toggleDetailPanel('sachbo')">
-    <span class="dp-title">Bảng chi tiết - Sách Bổ pháp</span>
-    <span id="sachboChevron" class="dp-chevron">▾</span>
-  </div>
-  <div id="sachboBody" class="dp-body">
-    <div id="sb-table-wrap" class="dp-table-wrap">
-      <table id="sb-table" class="dp-table">
-        <thead>
-          <tr>
-            <th>Tiết Khí</th>
-            <th>Dương lịch</th>
-            <th class="c">Độn</th>
-            <th class="c">Số Cục</th>
-          </tr>
-        </thead>
-        <tbody id="sb-tbody"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- ══ ÂM BÀN — SOC PANEL (collapsible) ══ -->
-<div id="ambanPanel" class="dp-panel">
-  <div id="ambanHeader" class="dp-header" onclick="toggleDetailPanel('amban')">
-    <span class="dp-title">Bảng chi tiết - Âm Bàn pháp</span>
-    <span id="ambanChevron" class="dp-chevron">▾</span>
-  </div>
-  <div id="ambanBody" class="dp-body">
-    <div id="ab-table-wrap" class="dp-table-wrap">
-      <table id="ab-table" class="dp-table">
-        <thead>
-          <tr>
-            <th class="c">Tháng âm</th>
-            <th class="c">Sóc</th>
-            <th class="c">Vọng</th>
-          </tr>
-        </thead>
-        <tbody id="ab-tbody"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
 <!-- ══ BẢNG CHỌN MỘT MỤC (ngôn ngữ / phái) ══
      Cùng kiểu bảng trượt từ đáy như bảng chọn vị trí, để ba ô cạnh nhau mở ra
      cùng một thứ. Danh sách do openOptionPicker() trong app.js dựng. -->
@@ -354,6 +280,91 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
          "LỆNH NĂM" xuống quá sâu. Bàn Kỳ Môn ở tab kia cũng không có tiêu đề
          nào phía trên, cùng một lý lẽ. -->
     <div class="cal-sec" id="daiVanSec"><div class="cal-sec-body" id="daiVanBody"></div></div>
+</div>
+
+<!-- ══ TAB TRA CỨU ══
+     Ba bảng tra theo NĂM, gom về một chỗ. Chúng đã được CHUYỂN HẲN khỏi tab
+     cũ, không phải nhân bản: Trí Nhuận pháp và Sách Bổ pháp vốn nằm ở tab Kỳ
+     Môn (và chỉ hiện khi đang chọn đúng phái ấy), Lệnh năm vốn nằm cuối tab
+     Bát Tự. Nhờ CHUYỂN chứ không CHÉP, mọi id (#trn-tbody, #sb-tbody,
+     #lenhBody…) vẫn là duy nhất trên trang, nên tn_renderPanel()/
+     sb_renderPanel() của app.js chạy y nguyên, không phải sửa một dòng nào.
+
+     Khác biệt so với chỗ cũ: ở đây chúng tra theo MỘT NĂM người dùng tự chọn,
+     không theo ngày giờ đang nhập ở hàng trên. Vì vậy không có hàng nào được
+     tô "đang hiệu lực" — xem js/tracuu.js. -->
+<div id="traCuuView">
+    <div id="tcBar">
+        <div id="tcYearBtn" class="picker-btn" onclick="openTraCuuYearPicker()">
+            <span id="tcYearText" class="picker-text">—</span>
+        </div>
+        <!-- Ô chọn bộ số CHỈ dành cho bảng Lệnh năm ngay dưới. Tách riêng khỏi
+             ô cùng loại ở tab Bát Tự (#lenhRuleBtn): ở đó nó thuộc về lá số
+             của người dùng, còn ở đây là một phép tra độc lập — đang xem lá số
+             theo Uyên Hải mà muốn tra thử bảng Tam Mệnh của một năm khác thì
+             không phải đụng vào lá số. -->
+        <div id="tcRuleBtn" class="picker-btn" onclick="openTraCuuRulePicker()">
+            <span id="tcRuleText" class="picker-text">—</span>
+        </div>
+    </div>
+
+    <!-- ══ TRÍ NHUẬN PHÁP — PTTN INFO PANEL (collapsible) ══ -->
+    <div id="trinhuanPanel" class="dp-panel">
+      <div id="trinhuanHeader" class="dp-header" onclick="toggleDetailPanel('trinhuan')">
+        <span class="dp-title">Bảng chi tiết - Trí Nhuận pháp</span>
+        <span id="trinhuanChevron" class="dp-chevron">▾</span>
+      </div>
+      <div id="trinhuanBody" class="dp-body">
+        <div id="trn-pttn-row" style="display:flex;flex-direction:column;gap:2px;margin-bottom:3px;">
+          <span><span style="color:var(--text-dim,#888)">PTTN1:</span> <b id="trn-pttn1"></b> <span style="color:var(--text-dim,#888)">-</span> <span style="color:var(--text-dim,#888)">TK1:</span> <span id="trn-tk1"></span></span>
+          <span><span style="color:var(--text-dim,#888)">PTTN2:</span> <b id="trn-pttn2"></b> <span style="color:var(--text-dim,#888)">-</span> <span style="color:var(--text-dim,#888)">TK2:</span> <span id="trn-tk2"></span></span>
+          <span><span style="color:var(--text-dim,#888)">PTTN3:</span> <b id="trn-pttn3"></b> <span style="color:var(--text-dim,#888)">-</span> <span style="color:var(--text-dim,#888)">TK3:</span> <span id="trn-tk3"></span></span>
+          <span><span id="trn-d-summary"></span></span>
+        </div>
+        <div id="trn-table-wrap" class="dp-table-wrap">
+          <table id="trn-table" class="dp-table">
+            <thead>
+              <tr>
+                <th>PTTN</th>
+                <th>Dương lịch</th>
+                <th>Tiết Khí</th>
+                <th class="c">Độn</th>
+                <th class="c">Số Cục</th>
+              </tr>
+            </thead>
+            <tbody id="trn-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SÁCH BỔ PHÁP — INFO PANEL (collapsible, shares header with Trí Nhuận) ══ -->
+    <div id="sachboPanel" class="dp-panel">
+      <div id="sachboHeader" class="dp-header" onclick="toggleDetailPanel('sachbo')">
+        <span class="dp-title">Bảng chi tiết - Sách Bổ pháp</span>
+        <span id="sachboChevron" class="dp-chevron">▾</span>
+      </div>
+      <div id="sachboBody" class="dp-body">
+        <div id="sb-table-wrap" class="dp-table-wrap">
+          <table id="sb-table" class="dp-table">
+            <thead>
+              <tr>
+                <th>Tiết Khí</th>
+                <th>Dương lịch</th>
+                <th class="c">Độn</th>
+                <th class="c">Số Cục</th>
+              </tr>
+            </thead>
+            <tbody id="sb-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- LỆNH NĂM — chuyển nguyên khối từ tab Bát Tự sang. Nội dung do
+         js/tracuu.js dựng, nhưng nó KHÔNG tự dựng lấy: nó gọi
+         window.__lenhShared.tableHtml() của lenh.js, tức đúng hàm mà tab Bát
+         Tự dùng. Sửa bảng ở lenh.js là cả hai tab đổi theo. -->
     <!-- LỆNH NĂM — chi tiết PHỤ, đứng CUỐI cùng, gập/mở được như ba bảng chi
          tiết ở tab Kỳ Môn (Trí Nhuận/Sách Bổ/Âm Bàn) — dùng lại ĐÚNG hàm
          toggleDetailPanel() của app.js, khai thêm khoá 'lenh' →
@@ -366,6 +377,7 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
         <span id="lenhHeadChevron" class="dp-chevron">▾</span>
     </div>
     <div class="cal-sec" id="lenhSec"><div class="cal-sec-body" id="lenhBody"></div></div>
+
 </div>
 
 <!-- ══ THANH DƯỚI MÀN HÌNH: tab + hàng dùng chung ══ -->
@@ -379,6 +391,9 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
         </div>
         <div id="tabLenh" class="tab-item">
             <span class="tab-lbl">Bát Tự</span>
+        </div>
+        <div id="tabTraCuu" class="tab-item">
+            <span class="tab-lbl">Tra cứu</span>
         </div>
     </div>
 
@@ -415,6 +430,8 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
      từng tab, còn tệp này chặn đúng cú click sinh ra sau một lần KÉO — chặn ở
      pha bắt nên thứ tự gắn không đổi kết quả, nhưng để sau cho đúng mạch đọc:
      ai dựng thanh tab trước, ai thêm cử chỉ lên nó sau. -->
+<!-- tracuu.js sau lenh.js: nó dùng window.__lenhShared do lenh.js lộ ra. -->
+<script src="js/tracuu.js"></script>
 <script src="js/taborder.js"></script>
 <script src="js/viewport.js"></script>
 </body>

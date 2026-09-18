@@ -352,11 +352,11 @@ table.lenh-tb tr.lenh-on td {
 .dv-row {
     display: flex;
     align-items: baseline;
-    /* Canh PHẢI, không canh giữa. Canh giữa thì khoảng hở bên phải chạy theo
-       ĐỘ DÀI của từng dòng — đo trên A51: chỗ hở 0px ở "2042 Nhâm Tuất" mà tới
-       12,9px ở "2035 Ất Mão", nên mép phải của cột can chi lởm chởm suốt 10
-       hàng. Canh phải thì cả 10 hàng dừng ở cùng một vạch. */
-    justify-content: flex-end;
+    /* Canh TRÁI, không canh giữa. Canh giữa thì vị trí từng dòng chạy theo
+       ĐỘ DÀI của chính nó — đo trên A51: cột NĂM bắt đầu ở 10 chỗ khác nhau
+       trong cùng một thẻ, lệch nhau tới 6,5px, nên mắt không dò dọc theo cột
+       được. Canh trái thì cả 10 năm bắt đầu ở cùng một vạch. */
+    justify-content: flex-start;
     /* Khe theo EM, không theo px: shrinkDaiVanRows() hạ cỡ chữ của đúng những
        hàng bị tràn (lenh.js), và khe tính theo em thì co theo luôn thay vì
        đứng yên chiếm chỗ. Ở cỡ chữ mặc định 0,3em ≈ 3px, đúng bằng con số cũ.
@@ -364,11 +364,12 @@ table.lenh-tb tr.lenh-on td {
        nhích từ 8,22px lên 8,42px, còn trên A51 thì không đổi gì. Giữ vì đúng
        Ý hơn (khe là khoảng cách giữa hai mẩu CHỮ), không phải vì con số. */
     gap: 0.3em;
-    /* Đệm phải 4px là "một chút lề" ấy. Trước là 1px, và ở tổ hợp can chi dài
-       nhất thì chữ còn THÒ QUA mép hàng 0,3px (đo trên A51 và S21) — .dv-card
-       có overflow:hidden nên đó là cắt cụt chữ thật. Đệm trái vẫn 1px: bên ấy
-       là chỗ hở tự do do canh phải, không cần lề riêng. */
-    padding: 2px 4px 2px 1px;
+    /* Lề 4px ở bên CANH — nay là bên trái. Bản gốc để 1px cả hai bên, và ở tổ
+       hợp can chi dài nhất chữ còn THÒ QUA mép hàng 0,3px (đo trên A51 và
+       S21) — .dv-card có overflow:hidden nên đó là cắt cụt chữ thật. Bên phải
+       để 1px: đó là chỗ hở tự do do canh trái, không cần lề riêng — nhưng
+       cũng KHÔNG được là 0, vì hàng dài nhất chạy sát tới đó. */
+    padding: 2px 1px 2px 4px;
     font-size: clamp(9px, 2.4vw, 10.5px);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
@@ -390,15 +391,15 @@ table.lenh-tb tr.lenh-on td {
 @media (max-width: 360px) {
     .dv-grid-row { gap: 2px; }
     .dv-card-head { padding: 2px 0; }
-    /* Lề phải hạ 4→3px chứ không về 0 như bản trước: đây chính là máy mà chữ
+    /* Lề trái hạ 4→3px chứ không về 0 như bản gốc: đây chính là máy mà chữ
        thò qua mép, nên bỏ hẳn lề là bỏ đúng chỗ cần nó nhất. Một pixel tiết
        kiệm được ở đây bù bằng khe hẹp lại. */
-    .dv-row { padding: 1px 3px 1px 0; gap: 0.22em; }
+    .dv-row { padding: 1px 0 1px 3px; gap: 0.22em; }
 }
 /* Máy 320px — hẹp nhất còn gặp. Thẻ chỉ còn ~56px, và 16 hàng đã chạm SÀN cỡ
    chữ của shrinkDaiVanRows() (7,5px) mà vẫn thừa: đo được cắt cụt thật 1,06px
    ở "2052 Nhâm Thân". Ở đây lề phải phải hạ tiếp xuống 2px — vẫn là lề, vẫn
    thấy rõ chữ không dán vào viền, mà đủ để không hàng nào bị cắt. */
 @media (max-width: 340px) {
-    .dv-row { padding: 1px 2px 1px 0; gap: 0.18em; }
+    .dv-row { padding: 1px 0 1px 2px; gap: 0.18em; }
 }

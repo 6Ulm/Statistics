@@ -586,11 +586,11 @@ việc ấy để riêng.
 * Chế độ tối: giao diện chốt sáng (`Theme.Material.Light`), nên WebView không
   bật thuật toán làm tối. Nhất quán, không phải lỗi.
 
-## Thứ tự ba tab do người dùng đặt
+## Thứ tự các tab do người dùng đặt
 
-Ba tab (Kỳ Môn · Lịch · Bát Tự) trước chốt cứng theo thứ tự viết trong
-`index.html`. Ai chủ yếu xem lịch thì vẫn phải với qua tab giữa; ai chỉ dùng
-Bát Tự thì nó nằm tận mép phải — chỗ khó với nhất trên máy 6,5 inch.
+Bốn tab (Kỳ Môn · Lịch · Bát Tự · Tra cứu) trước chốt cứng theo thứ tự viết
+trong `index.html`. Ai chủ yếu xem lịch thì vẫn phải với qua tab giữa; ai chỉ
+dùng Bát Tự thì nó nằm tận mép phải — chỗ khó với nhất trên máy 6,5 inch.
 
 Nay **giữ lâu (420ms) rồi kéo ngang** để sắp xếp lại, đúng cử chỉ Android dùng
 cho biểu tượng màn hình chính nên không phải dạy. Chạm bình thường vẫn là
@@ -630,28 +630,27 @@ nhất** và đẩy "LỆNH NĂM" xuống quá sâu. Bàn Kỳ Môn ở tab kia 
 đề nào phía trên, cùng một lý lẽ. Bỏ nó đi thì cả Đại Vận lẫn Lệnh năm dịch lên
 đúng ngần ấy.
 
-### Lưu niên canh phải
+### Lưu niên canh trái
 
-Mười hàng năm + can chi trong mỗi thẻ trước canh GIỮA, nên khoảng hở bên phải
-chạy theo **độ dài từng dòng**: đo trên A51 là 0px ở "2042 Nhâm Tuất" nhưng tới
-12,9px ở "2035 Ất Mão" — mép phải của cột can chi lởm chởm suốt 10 hàng. Tệ hơn,
-ở tổ hợp can chi dài nhất chữ còn **thò qua mép hàng 0,3px**, mà `.dv-card` có
+Mười hàng năm + can chi trong mỗi thẻ trước canh GIỮA, nên vị trí từng dòng chạy
+theo **độ dài của chính nó**: cột năm bắt đầu ở 10 chỗ khác nhau trong cùng một
+thẻ, lệch nhau tới 6,5px, nên mắt không dò dọc theo cột được. Tệ hơn, ở tổ hợp
+can chi dài nhất chữ còn **thò qua mép hàng 0,3px**, mà `.dv-card` có
 `overflow: hidden` nên đó là cắt cụt thật.
 
-Nay canh **phải**, lề phải 4px (3px ở máy ≤360px, 2px ở ≤340px). Cả 100 hàng
-dừng ở đúng một vạch, và không hàng nào còn thò ra.
+Nay canh **trái**, lề trái 4px (3px ở máy ≤360px, 2px ở ≤340px). Cả 100 hàng bắt
+đầu ở đúng một vạch, và không hàng nào còn thò ra.
 
 Đầu thẻ (`04/2033 - 6t` / `Mậu Tuất`) **giữ nguyên canh giữa** — không đụng tới.
 
 **Cái bẫy:** `shrinkDaiVanRows()` dò tràn bằng `scrollWidth > clientWidth`, mà
-phép ấy chỉ thấy phần tràn về phía **cuối dòng**. Hồi hàng còn canh giữa nó vẫn
-tạm đúng (tràn chia đều hai bên nên bên phải luôn có phần để thấy); từ khi canh
-phải thì phần thừa dồn hết sang **trái** và `scrollWidth` báo 0 — trong khi
-"2052 Nhâm Thân" đang thò 5,5px sang trái trên A51, 13,9px trên máy 320px, và
-mấy chữ số đầu của **năm** bị cắt mất trong im lặng ("2052" thành "052"). Nên
+phép ấy chỉ thấy phần tràn về phía **cuối dòng**. Bản canh phải (thử trước bản
+canh trái) dồn phần thừa sang **trái**, nơi `scrollWidth` không thấy gì: đo được
+"2052 Nhâm Thân" thò 5,5px trên A51 và 13,9px trên máy 320px mà vẫn báo 0, tức
+mấy chữ số đầu của **năm** bị cắt trong im lặng ("2052" thành "052"). Nên
 `rowOverflow()` nay đo thẳng mép ngoài cùng của đám con so với hộp nội dung,
-**cả hai phía**. Phép soi trong `test_lenh.mjs` cũng phải sửa y như vậy, bằng
-không nó xanh trong khi chữ đang bị cắt.
+**cả hai phía** — đúng dù canh bên nào. Phép soi trong `test_lenh.mjs` cũng phải
+sửa y như vậy, bằng không nó xanh trong khi chữ đang bị cắt.
 
 ### Mở Lệnh năm thì CẢ TRANG cuộn
 
@@ -693,6 +692,97 @@ Kéo theo ba chỗ:
   thanh tab" — cả hai đều mã hoá thiết kế cũ. Đã viết lại: vuốt **trên bảng**
   thì `window.scrollY` phải tăng, và phần dôi ra phải **cuộn tới được** (thay
   vì cấm dôi ra).
+
+## Tab Tra cứu — ba bảng tra theo năm
+
+Tab thứ tư, gom về một chỗ ba bảng vốn nằm rải rác và vốn chỉ tra được theo
+ngày giờ đang nhập:
+
+| Bảng | Trước ở đâu | Hiện được khi nào |
+|---|---|---|
+| Trí Nhuận pháp | cuối tab Kỳ Môn | chỉ khi đang chọn **đúng phái** Trí Nhuận |
+| Sách Bổ pháp | cuối tab Kỳ Môn | chỉ khi đang chọn **đúng phái** Sách Bổ |
+| Lệnh năm | cuối tab Bát Tự | luôn, nhưng chỉ cho **năm sinh** trong lá số |
+
+Nay cả ba tra theo **một năm người dùng tự chọn**, độc lập với lá số đang xem.
+Chọn năm ở ô bên trái; ba bảng hiện ra, mở sẵn, gập/mở độc lập, và cả trang
+cuộn bình thường. Bảng Lệnh năm có thêm **ô chọn bộ số riêng** — đang xem lá số
+theo Uyên Hải mà muốn tra thử bảng Tam Mệnh của một năm khác thì không phải đụng
+vào lá số.
+
+Bảng chi tiết **Âm Bàn pháp bỏ hẳn**, không chuyển đi đâu cả. Tab Kỳ Môn vì thế
+không còn bảng chi tiết nào.
+
+### Chuyển, không chép
+
+Ba bảng được **di chuyển** trong `index.html` sang `#traCuuView`, không nhân
+bản. Nhờ vậy mọi id (`#trn-tbody`, `#sb-tbody`, `#lenhBody`…) vẫn là **duy nhất
+trên trang**, và `tn_renderPanel()` / `sb_renderPanel()` của `app.js` chạy y
+nguyên — `js/tracuu.js` chỉ gọi chúng với tham số khác, không sửa một dòng nào
+trong chúng.
+
+Bảng Lệnh năm thì phải tách hàm, vì HTML của nó vốn dựng thẳng trong `render()`
+của `lenh.js`. Nay có `lenhTableHtml(Y, year, tzId, activePart)` — **một nguồn
+duy nhất cho cả hai tab**, lộ ra qua `window.__lenhShared`. Đổi cột, đổi cách tô
+hàng hay đổi định dạng ngày giờ ở `lenh.js` là tab Tra cứu đổi theo, không phải
+sửa hai chỗ. `buildYear(Y, r)` cũng nhận thêm bộ số, và khoá bộ nhớ đệm gồm cả
+bộ số — thiếu nó thì hai tab đang xem hai bộ khác nhau của cùng một năm sẽ "cho"
+nhau bảng của mình.
+
+### Không tô hàng nào
+
+Ở chỗ cũ, cả ba bảng đều tô một hàng "đang hiệu lực" theo ngày giờ trong lá số.
+Ở đây **không hàng nào được tô**: tra một năm bất kỳ thì không có thời điểm sinh
+nào để mà đang cầm lệnh, và tô một hàng là nói dối rằng nó liên quan tới lá số
+đang mở. Cụ thể: `tn_renderPanel()` nhận `null` làm kết quả tính sẵn,
+`sb_renderPanel()` nhận `jieQiZH = null`, `lenhTableHtml()` nhận
+`activePart = null`.
+
+`sb_renderPanel()` tự suy "năm mặt trời" từ ngày giờ truyền vào, nên phải đưa
+một mốc **giữa** năm (15/06 12:00). Đưa 01/01 thì mốc ấy còn thuộc năm trước
+theo tiết khí, và bảng hiện ra là bảng của năm liền trước.
+
+### Mở sẵn sau khi chọn năm
+
+Ba bảng mang theo trạng thái **đóng sẵn** từ chỗ cũ, vốn hợp lý ở đó: chúng là
+chi tiết *phụ* của một màn hình đã có nội dung chính. Ở tab này thì ngược hẳn —
+chúng **là** nội dung, và người dùng vừa chọn một năm chính là để xem chúng.
+Nên `openAll()` bung cả ba ngay sau khi chọn năm (và một lần khi mở tab với năm
+nhớ từ phiên trước), rồi tôn trọng trạng thái người dùng tự đặt: đổi ngôn ngữ
+hay đổi địa điểm không bung lại.
+
+### Bốn tab thì hàng dùng chung phải chia lại
+
+`#sharedBar #langDisplayBtn` bám **số tab**: ba tab thì một phần ba, bốn tab thì
+một phần tư. Để nguyên 33,3333% thì vạch ngăn của hàng dùng chung rơi vào *giữa*
+tab thứ hai — hai vạch lệch nhau ngay cạnh nhau, nhìn là thấy.
+
+Nhãn tab cũng phải co: bốn tab thì mỗi tab chỉ còn một phần tư hàng (S21: 90px),
+mà "TRA CỨU" in hoa đậm ở 14,5px không vừa. Nay `clamp(11,5px, 3,4vw, 14,5px)` —
+đo trên bốn bề ngang (320/360/384/412px) không nhãn nào bị cắt.
+
+### Trần khe nới lên 28px
+
+Tab Kỳ Môn mất bảng Âm Bàn (~44px), nên phần dôi tăng đúng ngần ấy mà số **khe**
+lại giảm đi một (5 khối → 4 khe). Ở trần cũ 24px, A51 852px chạm trần rồi vẫn
+còn **16,3px** nằm chết ngay trên thanh dưới — đúng cái khoảng hở mà cả cơ chế
+"rót phần thừa vào khe" sinh ra để xoá. 28px hấp thụ trọn (4 khe × 4,1px).
+S21 FE (19,3px) và S21 (17,6px) chưa chạm trần nên không đổi gì.
+
+## Bộ số: viết tắt ở ô, tên đầy đủ ở bảng chọn
+
+`RULES` nay có hai nhãn cho tiếng Việt:
+
+| | Ô chọn (`vi`) | Bảng chọn (`viFull`) |
+|---|---|---|
+| `yhzp` | UHTB | Uyên Hải Tử Bình |
+| `smth` | TMTH | Tam Mệnh Thông Hội |
+| `zpzq` | TBCT | Tử Bình Chân Thuyên |
+
+Ô chọn chỉ rộng một phần tư hàng — "Tam Mệnh Thông Hội" vào đó là bị "…" nuốt
+còn "Tam M…". Bảng chọn thì có cả chiều ngang, mà "UHTB" thì không ai đoán ra là
+sách nào nếu chưa quen. Tiếng Trung không có chuyện viết tắt: `zh` vốn đã là tên
+đầy đủ bốn chữ và vừa ô, nên cả hai chỗ dùng chung một bản.
 
 ## Tab Lệnh: nhân nguyên tư lệnh
 

@@ -28,7 +28,15 @@
     var BASE_GAP = 3;
     // Trần của khe sau khi rót phần thừa vào. Không có trần thì trên máy cao
     // (A51: dôi 82px cho 4 khe) các bảng rời rạc hẳn ra, xấu hơn cả khoảng hở.
-    var GAP_MAX = 24;
+    //
+    // 28 chứ không 24 từ khi bảng chi tiết Âm Bàn pháp bị gỡ khỏi tab Kỳ Môn:
+    // tab ấy mất một khối cao ~44px, nên phần dôi tăng đúng ngần ấy mà số KHE
+    // lại giảm đi một (5 khối → 4 khe). Ở trần 24px, A51 852px chạm trần rồi
+    // vẫn còn thừa 16,3px nằm chết ngay trên thanh dưới — đúng cái khoảng hở
+    // mà cả cơ chế này sinh ra để xoá. 28px hấp thụ trọn 16,3px ấy (4 khe ×
+    // 4,1px) mà vẫn còn là một khe, không phải một quãng trống.
+    // S21 FE (19,3px) và S21 (17,6px) chưa chạm trần nên không đổi gì.
+    var GAP_MAX = 28;
 
     var lastW = 0, lastH = 0, timer = null;
 

@@ -117,12 +117,13 @@
     border: none; border-radius: 0;
     min-height: var(--dock-row-h, 24px); padding: 2px 6px;
 }
-/* Vạch ngăn của hàng dùng chung rơi đúng vạch Kỳ Môn|Lịch ở hàng tab trên nó.
-   Từ khi có tab thứ ba (Lệnh) hàng tab chia BA, nên chia đôi 50/50 như cũ là
-   vạch dưới rơi vào giữa tab Lịch — hai vạch lệch nhau ngay cạnh nhau, nhìn
-   là thấy. Một phần ba cho ngôn ngữ ("Tiếng Việt" / "中文" chỉ cần chừng 60px)
-   và hai phần ba cho địa điểm, nơi tên thành phố dài mới thật sự cần chỗ. */
-#sharedBar #langDisplayBtn { flex: 0 0 33.3333%; }
+/* Vạch ngăn của hàng dùng chung phải rơi ĐÚNG một vạch của hàng tab trên nó.
+   Con số này bám SỐ TAB: ba tab thì một phần ba, bốn tab thì một phần tư. Từ
+   khi có tab thứ tư (Tra cứu) mà vẫn để 33,3333% thì vạch dưới rơi vào GIỮA
+   tab thứ hai — hai vạch lệch nhau ngay cạnh nhau, nhìn là thấy.
+   Một phần tư cho ngôn ngữ ("Tiếng Việt" / "中文" chỉ cần chừng 60px) và ba
+   phần tư cho địa điểm, nơi tên thành phố dài mới thật sự cần chỗ. */
+#sharedBar #langDisplayBtn { flex: 0 0 25%; }
 #sharedBar #countryDisplayBtn { flex: 1 1 auto; }
 #sharedBar #countryDisplayBtn { border-left: 1px solid var(--border-color, #ddd); }
 /* Thanh tab thấp thôi — nó ăn vào chiều cao vốn đã chật của màn Kỳ Môn.
@@ -177,10 +178,19 @@
    Chữ hoa tiếng Việt ĐỘI DẤU (Ỳ, Ô, Ệ) nên dòng chữ cao hơn hẳn chữ thường —
    --dock-row-h ở đầu tệp đã nâng theo, đừng hạ lại mà không đo. */
 .tab-lbl {
-    font-size: 14.5px; font-weight: 700;
+    /* Co theo bề ngang màn hình. Chốt cứng 14,5px là đủ cho ba tab, nhưng từ
+       khi có tab thứ tư mỗi tab chỉ còn một phần tư hàng — trên S21 (360px) là
+       90px, mà "TRA CỨU" in hoa đậm ở 14,5px cần hơn thế. Sàn 11,5px vẫn đọc
+       rõ, trần 14,5px giữ nguyên cỡ cũ trên máy rộng. */
+    font-size: clamp(11.5px, 3.4vw, 14.5px);
+    font-weight: 700;
     text-transform: uppercase; letter-spacing: .02em;
     line-height: 1.25;
+    /* Nhãn dài hơn ô thì cắt bằng "…", đừng đẩy tràn cả hàng tab. */
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* Bốn tab thì đệm ngang phải hẹp lại, bằng không nó ăn mất chỗ của chữ. */
+.tab-item { padding-inline: 2px; }
 /* Tab đang mở: nền khác hẳn tab kia, không chỉ đổi màu chữ. */
 .tab-item.tab-active {
     color: var(--accent, #007bff);

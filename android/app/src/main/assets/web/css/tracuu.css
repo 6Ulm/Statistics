@@ -1,0 +1,70 @@
+/* ════════════════════════════════════════════════════════════════
+   tracuu.css — tab "Tra cứu": ba bảng tra theo năm
+
+   Ba bảng (Trí Nhuận pháp · Sách Bổ pháp · Lệnh năm) đã được CHUYỂN HẲN
+   sang đây trong index.html, nên tệp này không phải tạo kiểu lại cho
+   chúng — chúng mang theo nguyên kiểu cũ (.dp-panel của app.css, #lenhHead
+   /#lenhSec của lenh.css). Ở đây chỉ có: luật ẩn/hiện của tab, hàng hai ô
+   chọn, và mấy chỗ chỉnh lại cho hợp vai trò mới.
+   ════════════════════════════════════════════════════════════════ */
+
+#traCuuView { display: none; width: 100%; max-width: var(--max-w, 400px); }
+
+/* Luật ẩn giống hệt hai tab kia: xoá mọi con của <body> trừ danh sách chừa.
+   Ba lớp phủ PHẢI có trong danh sách — ô ngôn ngữ và ô địa điểm ở hàng dùng
+   chung mở được ngay tại tab này, mà bảng chọn của chúng lại là con trực tiếp
+   của <body>; và chính tab này còn có thêm hai ô chọn của riêng nó (năm, bộ
+   số) cũng dùng #optOverlay. Quên chừa là bấm ra một bảng vô hình. */
+body.view-tracuu > *:not(#traCuuView):not(#bottomDock):not(#locOverlay):not(#drumOverlay):not(#optOverlay) {
+    display: none !important;
+}
+body.view-tracuu #traCuuView { display: flex; flex-direction: column; gap: 0; }
+
+/* ── Hàng hai ô chọn: năm · bộ số ──
+   Chia đôi, cùng hình khối với hàng điều khiển của hai tab kia (.picker-btn
+   trong app.css) để cả ứng dụng chỉ có MỘT kiểu ô chọn. */
+#tcBar {
+    display: flex; align-items: stretch; gap: 4px;
+    width: 100%;
+    margin-bottom: 6px;
+}
+#tcBar .picker-btn { flex: 1 1 0; min-width: 0; }
+/* Ô năm là thứ người dùng bấm trước và bấm nhiều nhất ở tab này — cho nó
+   nặng hơn một chút để mắt rơi vào đúng chỗ bắt đầu. */
+#tcYearBtn { font-weight: 700; }
+
+/* ── Dòng gợi ý khi chưa chọn năm ── */
+#tcHint {
+    display: none;
+    padding: 18px 12px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-dim, #666);
+    background: var(--bg-white, #fff);
+    border: var(--border-panel, 1px solid #ddd);
+    border-radius: var(--panel-radius, 8px);
+}
+/* Chưa chọn năm thì KHÔNG hiện ba khung bảng rỗng — một hộp trống có tiêu đề
+   trông như bảng hỏng, còn dòng gợi ý thì nói rõ phải làm gì. */
+body.view-tracuu #traCuuView.tc-empty #tcHint { display: block; }
+body.view-tracuu #traCuuView.tc-empty .dp-panel,
+body.view-tracuu #traCuuView.tc-empty #lenhHead,
+body.view-tracuu #traCuuView.tc-empty #lenhSec { display: none !important; }
+
+/* ── Ba bảng ──
+   Ở tab Kỳ Môn, .dp-panel để `display:none` và app.js bật lên cho ĐÚNG MỘT
+   bảng theo phái đang chọn. Ở đây cả ba luôn hiện cùng lúc — đó là cả điểm
+   của tab này — nên phải ghi đè. */
+body.view-tracuu #traCuuView:not(.tc-empty) .dp-panel { display: block; }
+#traCuuView .dp-panel + .dp-panel { margin-top: 6px; }
+
+/* Bảng Lệnh năm nối tiếp hai bảng kia: cùng khoảng cách, cùng cách gập/mở.
+   #lenhHead mang sẵn margin-top 4px từ lenh.css, thêm 2px cho bằng 6px. */
+#traCuuView #lenhHead { margin-top: 6px; }
+
+/* Ba bảng đều bung ĐỦ chiều cao tự nhiên và CẢ TRANG cuộn — đúng như tab Bát
+   Tự sau khi bỏ kẹp chiều cao, và như ba bảng gập/mở ở tab Kỳ Môn. Không khung
+   cuộn con nào: đặt ngón tay vào giữa một bảng 33 hàng mà chỉ bảng ấy nhúc
+   nhích còn cả trang đứng im là thao tác đã chết một lần rồi (xem fitLenhSec
+   trong lenh.js). */
+#traCuuView #lenhBody { max-height: none; }

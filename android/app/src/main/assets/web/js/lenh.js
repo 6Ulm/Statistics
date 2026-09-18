@@ -200,10 +200,19 @@
     // máy 360px. Tên đầy đủ vẫn còn NGUYÊN VĂN trong README và trong khối ghi
     // chú xuất xứ ở đầu tệp — chữ viết tắt chỉ là CÁCH HIỆN, không đổi việc gì
     // khác. Tiếng Trung không rút gọn: 渊海子平/三命通会/子平真诠 vốn đã ngắn.
+    /* `vi` là VIẾT TẮT, `viFull` là tên đầy đủ — hai chỗ dùng hai bản khác
+       nhau, cố ý:
+         · Ô chọn ngoài tab Bát Tự dùng bản TẮT. Ô ấy chỉ rộng một phần tư
+           hàng (xem #lenhRuleBtn trong tệp này), "Tam Mệnh Thông Hội" vào đó
+           là bị "…" nuốt còn "Tam M…".
+         · BẢNG CHỌN khi bấm vào ô thì dùng bản ĐẦY ĐỦ — ở đó có cả chiều
+           ngang, và "UHTB" thì không ai đoán ra là sách nào nếu chưa quen.
+       Tiếng Trung không có chuyện viết tắt: `zh` vốn đã là tên đầy đủ bốn
+       chữ và vừa ô, nên cả hai chỗ dùng chung một bản. */
     var RULES = [
-        { key: 'yhzp', fen: FEN_YHZP, vi: 'UHTB', zh: '渊海子平' },
-        { key: 'smth', fen: FEN_SMTH, vi: 'TMTH', zh: '三命通会' },
-        { key: 'zpzq', fen: FEN_ZPZQ, vi: 'TBCT', zh: '子平真诠' },
+        { key: 'yhzp', fen: FEN_YHZP, vi: 'UHTB', viFull: 'Uyên Hải Tử Bình', zh: '渊海子平' },
+        { key: 'smth', fen: FEN_SMTH, vi: 'TMTH', viFull: 'Tam Mệnh Thông Hội', zh: '三命通会' },
+        { key: 'zpzq', fen: FEN_ZPZQ, vi: 'TBCT', viFull: 'Tử Bình Chân Thuyên', zh: '子平真诠' },
     ];
     var K_RULE = 'qmdj.lenhRule';
     var rule = RULES[0];
@@ -211,7 +220,10 @@
         for (var i = 0; i < RULES.length; i++) if (RULES[i].key === k) return RULES[i];
         return RULES[0];
     }
+    /** Nhãn cho Ô CHỌN — bản viết tắt ở tiếng Việt. */
     function ruleLabel(r) { return isZH() ? r.zh : r.vi; }
+    /** Nhãn cho BẢNG CHỌN — bản đầy đủ. */
+    function ruleLabelFull(r) { return isZH() ? r.zh : r.viFull; }
 
     /* ─────────────── Ô Giới tính ───────────────
      * Quyết CHIỀU đại vận (thuận/nghịch) khi chéo với âm dương của can năm —
@@ -472,7 +484,10 @@
     /* ─────────────── Dựng bảng một năm ─────────────── */
 
     var _yearCache = {};
-    function cacheKey(Y) { return rule.key + '|' + Y; }
+    /* Khoá đệm phải gồm CẢ bộ số: tab Tra cứu có ô chọn bộ số riêng, nên hai
+       tab có thể đang xem hai bộ khác nhau của cùng một năm. Thiếu nó thì tab
+       nào vẽ trước sẽ "cho" tab kia bảng của mình. */
+    function cacheKey(Y, r) { return r.key + '|' + Y; }
 
     /**
      * 12 tháng lệnh của NĂM DƯƠNG LỊCH `Y`, từ Sửu (Tiểu Hàn, tháng 1) tới Tý
@@ -483,8 +498,13 @@
      * Mỗi phần tử: { chi, jie, n, parts: [{ can, from, to, jdFrom, jdTo }] }
      * với `from`/`to` là hoàng kinh ĐÃ MỞ VÒNG (cộng dồn qua các năm).
      */
-    function buildYear(Y) {
-        var ck = cacheKey(Y);
+    /**
+     * @param {object} [r]  Bộ số cần dùng. Bỏ trống thì lấy bộ đang chọn ở tab
+     *                      Bát Tự — tab Tra cứu truyền bộ riêng của nó vào.
+     */
+    function buildYear(Y, r) {
+        r = r || rule;
+        var ck = cacheKey(Y, r);
         if (_yearCache[ck]) return _yearCache[ck];
         // Người dùng bấm tới bấm lui vài trăm năm thì bộ nhớ đệm phình mãi.
         // Dựng một năm chỉ mất chừng một mili giây, nên dọn sạch rồi dựng lại
@@ -500,7 +520,7 @@
             var k = JIE_ORDER[i];
             var n0 = termIndexNear(jds[k + 1]);
             var parts = [], off = 0;
-            var fen = rule.fen[k];
+            var fen = r.fen[k];
             for (var j = 0; j < fen.length; j++) {
                 var can = fen[j][0], span = fen[j][1];
                 parts.push({
@@ -596,19 +616,73 @@
      *  nhất — xem buildDaiVanBang(). */
     var lastDaiVanBang = null;
 
+    /**
+     * HTML của bảng LỆNH NĂM — một nguồn DUY NHẤT cho cả hai tab.
+     *
+     * Tab Bát Tự và tab Tra cứu đều gọi hàm này, nên đổi cột, đổi cách tô hàng
+     * hay đổi định dạng ngày giờ ở đây là CẢ HAI tab đổi theo. Đó là lý do nó
+     * được tách ra khỏi render() chứ không để nguyên tại chỗ: chép một bản thứ
+     * hai sang tab kia thì sớm muộn hai bảng cũng lệch nhau.
+     *
+     * @param {number}      Y          Năm của bảng — quyết định hàng nào được
+     *                                 bỏ bớt phần năm trong cột ngày giờ.
+     * @param {Array}       year       Kết quả buildYear(Y, bộSố).
+     * @param {string}      tzId       Múi giờ để quy mốc UTC+8 sang giờ địa phương.
+     * @param {object|null} activePart Đoạn đang cầm lệnh, hoặc null khi không
+     *                                 có (tab Tra cứu xem một năm bất kỳ thì
+     *                                 không có "đang cầm lệnh" nào cả).
+     */
+    function lenhTableHtml(Y, year, tzId, activePart) {
+        var rows = '', alt = false;
+        for (var i = 0; i < year.length; i++) {
+            var mo = year[i];
+            for (var j = 0; j < mo.parts.length; j++) {
+                var p = mo.parts[j];
+                var on = !!activePart && activePart === p;
+                rows += '<tr class="' + (alt ? 'dp-row-alt' : '') + (on ? ' lenh-on' : '') + '"' +
+                    (on ? ' id="lenhActive"' : '') + '>';
+                if (j === 0) {
+                    rows += '<td class="lenh-mon" rowspan="' + mo.parts.length + '">' +
+                        esc(chiName(mo.chi)) +
+                        ' <span class="lenh-jie">(' + esc(jieName(mo.jie)) + ')</span></td>';
+                }
+                rows += '<td class="c lenh-can">' + esc(canName(p.can)) + '</td>' +
+                    '<td class="c dp-num lenh-lon">' + (p.to - p.from) + '</td>' +
+                    '<td class="c dp-num">' + esc(fmtLocal(p.jdFrom, tzId, Y)) + '</td>' +
+                    '<td class="c dp-num lenh-last">' + esc(fmtLocal(p.jdTo, tzId, Y)) + '</td>' +
+                    '</tr>';
+            }
+            alt = !alt;   // đổi nền theo THÁNG, không theo hàng: ba hàng của
+                          // một tháng phải cùng nền thì ô gộp mới liền khối.
+        }
+        return '<table class="dp-table lenh-tb">' +
+            '<colgroup><col><col><col><col><col></colgroup>' +
+            '<thead><tr class="lenh-head">' +
+            '<th>' + esc(t('colMonth')) + '</th>' +
+            '<th class="c">' + esc(t('colCan')) + '</th>' +
+            '<th class="c">' + esc(t('colLon')) + '</th>' +
+            '<th class="c">' + esc(t('colIn')) + '</th>' +
+            '<th class="c lenh-last">' + esc(t('colOut')) + '</th>' +
+            '</tr></thead><tbody>' + rows + '</tbody></table>';
+    }
+
+    /**
+     * Vẽ tab Bát Tự: dòng tóm tắt "Lệnh · Nhập vận" và bảng ĐẠI VẬN.
+     *
+     * KHÔNG còn vẽ bảng Lệnh năm — bảng ấy đã chuyển hẳn sang tab Tra cứu, nơi
+     * nó tra theo NĂM người dùng tự chọn. Nhưng phần TÍNH thì vẫn ở đây và vẫn
+     * dùng chung: lenhAt() cho biết can nào đang cầm lệnh lúc sinh, và
+     * lenhTableHtml() — hàm dựng bảng — được lộ ra qua window.__lenhShared để
+     * js/tracuu.js gọi. Nên đổi bảng ở đây là tab Tra cứu đổi theo.
+     */
     function render() {
-        var head = document.getElementById('lenhTitle');
         var nowBox = document.getElementById('lenhNow');
-        var body = document.getElementById('lenhBody');
-        if (!body) return;
+        if (!nowBox) return;
         if (typeof Solar === 'undefined' || typeof ShouXingUtil === 'undefined' ||
             typeof Ephem === 'undefined' || typeof TK_VI === 'undefined') return;
 
         var inp = readInput();
         if (!inp) return;
-
-        var year;
-        try { year = buildYear(inp.y); } catch (e) { body.innerHTML = ''; return; }
 
         // Can đang cầm lệnh: hỏi ở ĐÚNG thời điểm UTC+8 mà trụ tháng dùng, nên
         // chi của tháng lệnh luôn khớp chi của trụ tháng trong bảng Bát Tự
@@ -655,11 +729,6 @@
         }
         lastActive = active;
 
-        if (head) {
-            head.textContent = isZH()
-                ? (inp.y + '年' + t('title'))
-                : (t('title') + ' ' + inp.y);
-        }
         if (nowBox) {
             // Một dòng duy nhất — "Lệnh" và "Nhập vận" là hai mẩu thông tin
             // ngắn, không cần mỗi mẩu một dòng riêng như trước. Dòng "Đại
@@ -676,45 +745,9 @@
             nowBox.innerHTML = lệnhLine + vanLine;
         }
 
-        var tzId = inp.info.tzId;
-        var rows = '', alt = false;
-        for (var i = 0; i < year.length; i++) {
-            var mo = year[i];
-            for (var j = 0; j < mo.parts.length; j++) {
-                var p = mo.parts[j];
-                var on = active && active.part === p;
-                rows += '<tr class="' + (alt ? 'dp-row-alt' : '') + (on ? ' lenh-on' : '') + '"' +
-                    (on ? ' id="lenhActive"' : '') + '>';
-                if (j === 0) {
-                    rows += '<td class="lenh-mon" rowspan="' + mo.parts.length + '">' +
-                        esc(chiName(mo.chi)) +
-                        ' <span class="lenh-jie">(' + esc(jieName(mo.jie)) + ')</span></td>';
-                }
-                rows += '<td class="c lenh-can">' + esc(canName(p.can)) + '</td>' +
-                    '<td class="c dp-num lenh-lon">' + (p.to - p.from) + '</td>' +
-                    '<td class="c dp-num">' + esc(fmtLocal(p.jdFrom, tzId, inp.y)) + '</td>' +
-                    '<td class="c dp-num lenh-last">' + esc(fmtLocal(p.jdTo, tzId, inp.y)) + '</td>' +
-                    '</tr>';
-            }
-            alt = !alt;   // đổi nền theo THÁNG, không theo hàng: ba hàng của
-                          // một tháng phải cùng nền thì ô gộp mới liền khối.
-        }
-
-        body.innerHTML =
-            '<table class="dp-table lenh-tb">' +
-            '<colgroup><col><col><col><col><col></colgroup>' +
-            '<thead><tr class="lenh-head">' +
-            '<th>' + esc(t('colMonth')) + '</th>' +
-            '<th class="c">' + esc(t('colCan')) + '</th>' +
-            '<th class="c">' + esc(t('colLon')) + '</th>' +
-            '<th class="c">' + esc(t('colIn')) + '</th>' +
-            '<th class="c lenh-last">' + esc(t('colOut')) + '</th>' +
-            '</tr></thead><tbody>' + rows + '</tbody></table>';
-
         renderDaiVanTable(inp, active ? dv : null, thuan, mCanIdx, active ? active.month.chi : null);
 
         fit();
-        setTimeout(scrollToActive, 40);
         setTimeout(scrollToCurrentDaiVan, 40);
     }
 
@@ -988,7 +1021,7 @@
         if (typeof openOptionPicker !== 'function') return;
         var opts = [];
         for (var i = 0; i < RULES.length; i++) {
-            opts.push({ value: RULES[i].key, label: ruleLabel(RULES[i]) });
+            opts.push({ value: RULES[i].key, label: ruleLabelFull(RULES[i]) });
         }
         openOptionPicker(t('pickRule'), opts, rule.key, setRule);
     };
@@ -1024,6 +1057,39 @@
         showGender();
         if (document.body.classList.contains('view-lenh')) render();
     }
+
+    /* ─────────────── Cho tab Tra cứu ───────────────
+     * Tab ấy hiện CÙNG bảng Lệnh năm, chỉ khác là cho chọn năm và bộ số riêng.
+     * Nó KHÔNG dựng lại bảng — nó gọi đúng hai hàm dưới đây, nên mọi thay đổi
+     * về cột, cách tô hàng hay định dạng ngày giờ ở tab Bát Tự tự động có mặt
+     * ở tab Tra cứu. Ngược lại cũng đúng: sửa một chỗ là xong cả hai. */
+    window.__lenhShared = {
+        /** Danh sách bộ số, kèm cả nhãn tắt lẫn nhãn đầy đủ. */
+        rules: function () {
+            var out = [];
+            for (var i = 0; i < RULES.length; i++) {
+                out.push({ key: RULES[i].key, label: ruleLabel(RULES[i]),
+                           labelFull: ruleLabelFull(RULES[i]) });
+            }
+            return out;
+        },
+        ruleByKey: function (k) { return ruleByKey(k); },
+        /** HTML bảng Lệnh năm của năm Y theo bộ số `ruleKey`. */
+        tableHtml: function (Y, ruleKey, tzId) {
+            var r = ruleByKey(ruleKey);
+            return lenhTableHtml(Y, buildYear(Y, r), tzId, null);
+        },
+        /** Múi giờ của địa điểm đang chọn — dùng chung hàng địa điểm ở đáy. */
+        tzId: function () {
+            var inp = readInput();
+            return inp ? inp.info.tzId : 'Asia/Ho_Chi_Minh';
+        },
+        /** Tiêu đề bảng, theo ngôn ngữ đang chọn. */
+        title: function (Y) {
+            return isZH() ? (Y + '年' + t('title')) : (t('title') + ' ' + Y);
+        },
+        pickRuleTitle: function () { return t('pickRule'); },
+    };
 
     window.__lenhRefreshLabels = refreshLabels;
     window.__lenhRender = render;

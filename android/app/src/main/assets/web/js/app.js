@@ -37,7 +37,6 @@ function getDOM(id) { return DOM[id] || (DOM[id] = document.getElementById(id));
 const _panelIds = {
     trinhuan: { bodyId: 'trinhuanBody', chevId: 'trinhuanChevron' },
     sachbo:   { bodyId: 'sachboBody',   chevId: 'sachboChevron'   },
-    amban:    { bodyId: 'ambanBody',    chevId: 'ambanChevron'    },
     lenh:     { bodyId: 'lenhSec',      chevId: 'lenhHeadChevron' },
 };
 window.toggleDetailPanel = function(which) {
@@ -479,13 +478,9 @@ function updateTuTru(yPillar, mPillar, dPillar, hPillar) {
 function selectMethod(val) {
     getDOM('methodSelect').value = val;
     updateMethodDisplay();
-    const notZH = currentLang !== 'zh';
-    const trnPanel = getDOM('trinhuanPanel');
-    if (trnPanel) trnPanel.style.display = (val === 'trinhuan' && notZH) ? 'block' : 'none';
-    const sbPanel = getDOM('sachboPanel');
-    if (sbPanel)  sbPanel.style.display  = (val === 'bophap'   && notZH) ? 'block' : 'none';
-    const abPanel = getDOM('ambanPanel');
-    if (abPanel)  abPanel.style.display  = (val === 'amban'    && notZH) ? 'block' : 'none';
+    // Tab Kỳ Môn KHÔNG còn bảng chi tiết nào để bật/tắt theo phái. Trí Nhuận và
+    // Sách Bổ đã chuyển sang tab Tra cứu (tra theo NĂM tự chọn, không theo phái
+    // đang bày bàn); bảng Âm Bàn pháp đã bỏ hẳn.
     // Always save method to localStorage
     safeStorage.setItem('defaultMethod', val);
     if (typeof Solar !== 'undefined') processAll();
@@ -1425,7 +1420,7 @@ function tn_getSoCuc(year, month, day, hour, minute, lonDeg, tzH, tzId, dayGanId
 }
 
 /** Render bảng Trí Nhuận vào #trinhuanPanel */
-// ── Helpers render dùng chung — định nghĩa trước để tn/sb/ab_renderPanel đều dùng được ──
+// ── Helpers render dùng chung — định nghĩa trước để tn_/sb_renderPanel đều dùng được ──
 
 /** Badge Dương/Âm dùng CSS class (không inline style). sm=true → don-badge-sm */
 function _donBadge(isDuong, sm) {
@@ -1616,66 +1611,6 @@ function ab_getTyStart(socSolar, lonDeg, tzH, tzId) {
     return `${pad(dispD)}-${pad(dispM)}-${dispY} ${pad(tyH)}:${pad(tyMin)}`;
 }
 
-/**
- * Render bảng sóc 12 tháng âm vào panel #ambanPanel.
- * @param {number} lunarYear   - Năm âm lịch (vd: 2025)
- * @param {number} lunarMonth  - Tháng âm lịch hiện tại (để highlight hàng, có dấu)
- * @param {string} tzId        - Timezone ID (vd: "Asia/Ho_Chi_Minh")
- * @param {number} lonDeg      - Kinh độ địa phương (độ)
- * @param {number} tzH         - Múi giờ địa phương (giờ)
- */
-function ab_renderPanel(lunarYear, lunarMonth, tzId, lonDeg, tzH) {
-    const tbody = getDOM('ab-tbody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-
-    // Mốc múi giờ ĐỊA PHƯƠNG, không phải UTC+8.
-    //
-    // Chính hàng này là chỗ lỗi lộ rõ nhất: cột "Sóc" quy về giờ địa phương
-    // (formatPreciseSocLocal) còn cột "Mùng 1" lại lấy từ mo.getFirstJulianDay()
-    // tính ở UTC+8 — hai hệ quy chiếu nằm cạnh nhau trong CÙNG MỘT DÒNG. Ở
-    // Paris tháng 7 âm 2026: Sóc ghi 12-08-2026 19:37 nhưng Mùng 1 ghi
-    // 13-08-2026, trong khi quy tắc là mùng 1 phải là ngày CHỨA điểm Sóc.
-    //
-    // Đặt cùng một mốc cho cả hai thì cột Mùng 1 (và cột Rằm, vốn là mùng 1 +
-    // 14) tự khớp với giờ Sóc đang hiện.
-    // Mốc múi giờ ĐỊA PHƯƠNG cho cả khối (xem ghi chú dưới); Ephem giữ và trả
-    // lại biến toàn cục giúp, nên không cần tự chụp ảnh nữa.
-    const monthsOfYear = Ephem.monthsAtBasis(lunarYear, tzH);
-
-    // FIX (tháng nhuận): trước đây loop `for mo=1..12` gọi
-    // Lunar.fromYmd(lunarYear, mo, 1) — với năm có tháng nhuận (vd 2025 có
-    // nhuận tháng 6, getMonth()=-6), loop này HOÀN TOÀN BỎ QUA tháng nhuận
-    // (sóc 25/07/2025 không xuất hiện), và nếu ngày hiện tại rơi vào tháng
-    // nhuận (lunarMonth = -6, lunarMonthNum = abs = 6), dòng được highlight
-    // là "Tháng 6" thường (sóc 25/06/2025) — SAI, vì sóc đúng của tháng hiện
-    // tại là 25/07/2025.
-    // → Dùng LunarYear.fromYear(lunarYear).getMonths(), lọc các tháng thuộc
-    // đúng lunarYear (kể cả tháng nhuận, getMonth() âm), giữ thứ tự thời
-    // gian gốc của thư viện (đã đúng theo lịch), và so khớp active bằng
-    // getMonth() có dấu (lunarMonth truyền vào nay là lunar.getMonth() có
-    // dấu, không phải Math.abs()).
-    for (const mo of monthsOfYear) {
-        const isLeap   = mo.leap;
-        const moAbs    = mo.month;
-        const moNum    = isLeap ? -moAbs : moAbs;
-        const socSolar = Solar.fromJulianDay(mo.jd);
-
-        const socStr   = formatPreciseSocLocal(socSolar, tzId);
-        // Vọng: thời điểm trăng tròn THẬT của chính tuần trăng này — không
-        // phải "mùng 1 + 14". Hai cột Mùng 1 và Rằm cũ đều suy ra được từ ngày
-        // âm lịch đang hiện, còn Vọng thì không, nên nó đáng chỗ hơn.
-        const vongStr  = formatPreciseVongLocal(socSolar, tzId);
-        const isActive = (moNum === lunarMonth);
-        const fw = isActive ? ' style="font-weight:700;"' : '';
-        const label = isLeap ? `Tháng ${moAbs} (Nhuận)` : `Tháng ${moAbs}`;
-        tbody.appendChild(_mkRow(isActive, moAbs,
-            `<td class="dp-c"${fw}>${label}</td>` +
-            `<td class="dp-num-ab"${fw}>${socStr}</td>` +
-            `<td class="dp-num-ab"${fw}>${vongStr}</td>`
-        ));
-    }
-}
 
 /* ======================================================================
    Điểm khởi đầu cho mọi phương pháp lập bàn Kỳ Môn Độn Giáp.
@@ -2139,7 +2074,7 @@ function processAll() {
         //
         // Lưu ý: lunar.getYear()/getMonth()/getDay() (Sóc-based) VẪN được
         // giữ nguyên cho phần "ngày-tháng-năm ÂM LỊCH" hiển thị
-        // (lunarMonthNum, socStr, ab_renderPanel...) — đó là quy ước lịch âm
+        // (lunarMonthNum, socStr...) — đó là quy ước lịch âm
         // dân gian đúng, không đổi.
         const yearGanHan = baziBJ.getYearGan(), yearZhiHan = baziBJ.getYearZhi();
         const dayGanHan  = bazi.getDayGan(),    dayZhiHan  = bazi.getDayZhi();
@@ -2297,25 +2232,10 @@ function processAll() {
         getDOM('baziInfoPanel').style.display = 'block';
         getDOM('viaWrap').style.display = viaInfo ? 'inline' : 'none';
 
-        // ── Detail panels (Trí Nhuận / Sách Bổ / Âm Bàn) ──
-        const notZH = !isZH;
-        const panelCfg = [
-            { id: 'trinhuanPanel', ...(_panelIds.trinhuan), active: method === 'trinhuan' && notZH },
-            { id: 'sachboPanel',   ...(_panelIds.sachbo),   active: method === 'bophap'   && notZH },
-            { id: 'ambanPanel',    ...(_panelIds.amban),    active: method === 'amban'    && notZH },
-        ];
-        for (const cfg of panelCfg) {
-            const panel = getDOM(cfg.id);
-            if (!panel) continue;
-            panel.style.display = cfg.active ? 'block' : 'none';
-            if (cfg.active) {
-                const body = getDOM(cfg.bodyId), chev = getDOM(cfg.chevId);
-                if (body && body.style.display === 'none' && chev) chev.style.transform = 'rotate(0deg)';
-            }
-        }
-        if (method === 'trinhuan' && notZH) tn_renderPanel(y, lon, tz, info.tzId, inputJDFrac, dayGanIdx, dayZhiIdx, trinhuanResult);
-        if (method === 'bophap'   && notZH) sb_renderPanel(jieQiZH, y, m, d, h, min, tz, info.tzId);
-        if (method === 'amban'    && notZH) ab_renderPanel(lunar.getYear(), lunar.getMonth(), info.tzId, lon, tz);
+        // Tab Kỳ Môn không còn bảng chi tiết nào: Trí Nhuận và Sách Bổ đã
+        // chuyển sang tab Tra cứu (js/tracuu.js gọi thẳng tn_renderPanel() /
+        // sb_renderPanel() dưới đây, với NĂM người dùng tự chọn), còn bảng Âm
+        // Bàn pháp thì bỏ hẳn.
 
         // ── 12. Vẽ bàn KMDG ──
         const canGioSoSanh   = mapToVi[timeGanHan]  === 'Giáp' ? canTuan                   : mapToVi[timeGanHan];

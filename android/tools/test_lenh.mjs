@@ -322,6 +322,26 @@ const browser = await chromium.launch(
     fs.existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {}
 );
 
+/**
+ * Mở tab TRA CỨU ở năm `Y` — nơi bảng Lệnh năm nay nằm.
+ *
+ * Bảng đã chuyển hẳn khỏi tab Bát Tự (xem #traCuuView trong index.html): ở tab
+ * ấy nó tra theo năm sinh trong lá số, ở đây nó tra theo một năm người dùng tự
+ * chọn. Cùng MỘT hàm dựng bảng cho cả hai (lenhTableHtml trong lenh.js, lộ ra
+ * qua window.__lenhShared), nên mọi phép canh về cột, về số đoạn, về giờ vào
+ * lệnh dưới đây vẫn đo đúng cái bảng mà tab Bát Tự từng hiện.
+ *
+ * Khác một điểm: KHÔNG có hàng nào được tô "đang cầm lệnh" — tra một năm bất
+ * kỳ thì không có thời điểm sinh nào để mà cầm lệnh.
+ */
+async function mởTraCuu(page, Y) {
+    await page.evaluate(y => {
+        if (y !== undefined && y !== null) window.__tracuuYear(y);
+        window.showTab('tracuu');
+    }, Y);
+    await page.waitForTimeout(900);
+}
+
 async function open(ctx) {
     const page = await ctx.newPage();
     const errs = [];
@@ -338,7 +358,8 @@ console.log('\nTab thứ ba: đúng chỗ, và dùng lại đúng hai khối c�
     const { page, errs } = await open(ctx);
 
     const tabs = await page.$$eval('#tabBar .tab-item', els => els.map(e => e.id));
-    check('thanh tab có đúng ba mục, Lệnh đứng cuối', tabs.join(','), 'tabQmdj,tabCal,tabLenh');
+    check('thanh tab có đúng bốn mục, Bát Tự thứ ba', tabs.join(','),
+        'tabQmdj,tabCal,tabLenh,tabTraCuu');
 
     // Đánh dấu bảng Bát Tự lúc đang ở tab Kỳ Môn, rồi sang tab Lệnh xem CÓ
     // CÒN đúng cái đã đánh dấu không: chỉ cách này mới phân biệt "dùng lại
@@ -351,10 +372,6 @@ console.log('\nTab thứ ba: đúng chỗ, và dùng lại đúng hai khối c�
 
     await page.click('#tabLenh');
     await page.waitForTimeout(900);
-    // Bảng đóng SẴN (Trí Nhuận-style) — phải bấm mở trước khi đọc #lenhBody,
-    // bằng không mọi phép đo dưới đây ra số 0 (display:none).
-    await page.click('#lenhHead');
-    await page.waitForTimeout(500);
     const ln = await page.evaluate(() => {
         const tt = document.getElementById('tuTruPanel');
         const cs = getComputedStyle(tt);
@@ -382,20 +399,25 @@ console.log('\nTab thứ ba: đúng chỗ, và dùng lại đúng hai khối c�
     ok('bàn Kỳ Môn đã ẩn', ln.bànẨn);
     ok('tab Lịch đã ẩn', ln.lịchẨn);
 
-    // "Lệnh: X" phải khớp hàng đang tô đậm trong bảng.
+    // "Lệnh: X" ở tab Bát Tự phải khớp can đang cầm lệnh lúc sinh — nay đối
+    // chiếu với chính bảng ở tab TRA CỨU của cùng năm ấy, vì bảng đã chuyển
+    // sang đó. Cùng một hàm dựng bảng cho cả hai (lenhTableHtml trong lenh.js),
+    // nên hai bên phải nói cùng một con số.
+    const nămSinh = await page.$eval('#inYear', e => parseInt(e.value, 10));
+    const tómTắt = await page.evaluate(() =>
+        document.getElementById('lenhNowVal').textContent.trim());
+    await mởTraCuu(page, nămSinh);
     const now = await page.evaluate(() => ({
-        val: document.getElementById('lenhNowVal').textContent.trim(),
-        hàng: document.getElementById('lenhActive')
-            ? document.getElementById('lenhActive').cells[
-                document.getElementById('lenhActive').cells.length - 4].textContent.trim()
-            : null,
         sốHàng: document.querySelectorAll('#lenhBody tbody tr').length,
         cột: [...document.querySelectorAll('#lenhBody thead th')].map(e => e.textContent.trim()),
+        // Mọi can có mặt trong bảng — "Lệnh: X" phải là một trong số đó.
+        can: [...document.querySelectorAll('#lenhBody .lenh-can')].map(e => e.textContent.trim()),
     }));
     check('bảng đủ 33 đoạn của năm', now.sốHàng, 33);
     check('năm cột đúng như ảnh mẫu', now.cột.join('|'), 'Tháng|Can|Số độ|Vào lệnh|Hết lệnh');
-    ok('"Lệnh: X" khớp hàng đang tô đậm', now.val && now.val === now.hàng,
-        `dòng "${now.val}" vs hàng "${now.hàng}"`);
+    ok('"Lệnh: X" của tab Bát Tự là một can CÓ THẬT trong bảng cùng năm',
+        !!tómTắt && tómTắt !== '—' && now.can.indexOf(tómTắt) >= 0,
+        `dòng "${tómTắt}" không có trong ${now.can.length} đoạn của năm ${nămSinh}`);
     ok('không lỗi JS', errs.length === 0, errs.join('; '));
     await ctx.close();
 }
@@ -415,10 +437,6 @@ console.log('\nÔ chọn bộ số: cùng hàng với ô ngày giờ, và đổi
 
     await page.click('#tabLenh');
     await page.waitForTimeout(900);
-    // Bảng đóng SẴN (Trí Nhuận-style) — phải bấm mở trước khi đọc #lenhBody,
-    // bằng không mọi phép đo dưới đây ra số 0 (display:none).
-    await page.click('#lenhHead');
-    await page.waitForTimeout(500);
     const hàng = await page.evaluate(() => {
         const r = id => document.getElementById(id).getBoundingClientRect();
         const d = r('dateDisplayBtn'), g = r('lenhGenderBtn'), l = r('lenhRuleBtn'), row = r('qmRow');
@@ -453,10 +471,36 @@ console.log('\nÔ chọn bộ số: cùng hàng với ô ngày giờ, và đổi
         els => els.map(e => e.getAttribute('data-value')));
     check('bảng chọn có đúng ba sách', opts.join(','), 'yhzp,smth,zpzq');
     const optLabels = await page.$$eval('#optList .opt-name', els => els.map(e => e.textContent.trim()));
-    check('ba sách hiện viết tắt UHTB/TMTH/TBCT', optLabels.join(','), 'UHTB,TMTH,TBCT');
+    // BẢNG CHỌN dùng tên ĐẦY ĐỦ, Ô NGOÀI dùng viết tắt — hai chỗ, hai bản.
+    // "UHTB" thì không ai đoán ra là sách nào nếu chưa quen, mà ô ngoài chỉ
+    // rộng một phần tư hàng nên tên đầy đủ vào đó là bị "…" nuốt.
+    check('bảng chọn hiện TÊN ĐẦY ĐỦ', optLabels.join(','),
+        'Uyên Hải Tử Bình,Tam Mệnh Thông Hội,Tử Bình Chân Thuyên');
 
-    // Đổi sang 三命通会: tháng Dần phải từ 7·7·16 thành 5·5·20, và giờ vào
-    // lệnh của đoạn giữa phải dịch theo — đổi mỗi cái nhãn thì vô nghĩa.
+    await page.click('.opt-row[data-value="smth"]');
+    await page.waitForTimeout(900);
+    check('ô ngoài vẫn là VIẾT TẮT', await page.textContent('#lenhRuleText'), 'TMTH');
+
+    // Bộ số phải đổi THẬT chứ không đổi mỗi cái nhãn. Ở tab Bát Tự bảng Lệnh
+    // năm đã chuyển đi (sang tab Tra cứu), nên chỗ duy nhất còn thấy tác dụng
+    // ở đây là dòng tóm tắt "Lệnh: X" — can đang cầm lệnh lúc sinh, vốn tra từ
+    // chính bảng phân dã của bộ số.
+    const lệnhTheoBộ = () => page.evaluate(() =>
+        document.getElementById('lenhNowVal').textContent.trim());
+    const lệnhTMTH = await lệnhTheoBộ();
+    ok('dòng tóm tắt có giá trị thật', lệnhTMTH && lệnhTMTH !== '—', lệnhTMTH);
+
+    // Nhớ lựa chọn qua lần mở sau — người dùng theo một phái, không chọn lại
+    // mỗi lần mở app.
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(1000);
+    await page.click('#tabLenh');
+    await page.waitForTimeout(900);
+    check('mở lại vẫn nhớ bộ số đã chọn', await page.textContent('#lenhRuleText'), 'TMTH');
+
+    // ── Bộ số ĐỔI THẬT BẢNG — kiểm ở tab Tra cứu, nơi bảng Lệnh năm nay nằm.
+    // Ô bộ số ở đó là ô RIÊNG (#tcRuleBtn): ở tab Bát Tự bộ số thuộc về lá số
+    // của người dùng, còn ở đây là một phép tra độc lập.
     const dan = () => page.evaluate(() => {
         const rows = [...document.querySelectorAll('#lenhBody tbody tr')];
         let mon = null, out = [];
@@ -467,12 +511,14 @@ console.log('\nÔ chọn bộ số: cùng hàng với ô ngày giờ, và đổi
             const cells = [...r.cells].map(e => e.textContent.trim());
             out.push(cells.slice(-4).join('|'));
         }
-        return { dan: out, lenh: document.getElementById('lenhNowVal').textContent.trim(),
-                 sốHàng: rows.length };
+        return { dan: out, sốHàng: rows.length };
     });
+    await mởTraCuu(page, 2026);
+    await page.evaluate(() => window.__tracuuRule('yhzp'));
+    await page.waitForTimeout(700);
     const trước = await dan();
-    await page.click('.opt-row[data-value="smth"]');
-    await page.waitForTimeout(900);
+    await page.evaluate(() => window.__tracuuRule('smth'));
+    await page.waitForTimeout(700);
     const sau = await dan();
     check('Uyên Hải: tháng Dần 7·7·16', trước.dan.map(x => x.split('|')[1]).join('·'), '7·7·16');
     check('Tam Mệnh: tháng Dần 5·5·20', sau.dan.map(x => x.split('|')[1]).join('·'), '5·5·20');
@@ -480,20 +526,16 @@ console.log('\nÔ chọn bộ số: cùng hàng với ô ngày giờ, và đổi
         trước.dan[1].split('|')[2] !== sau.dan[1].split('|')[2],
         `vẫn ${sau.dan[1].split('|')[2]}`);
     check('Tam Mệnh có 32 đoạn (bốn tháng chỉ hai đoạn)', sau.sốHàng, 32);
-    check('nhãn ô đã đổi, viết tắt TMTH', await page.textContent('#lenhRuleText'), 'TMTH');
+    check('ô bộ số của Tra cứu hiện viết tắt', await page.textContent('#tcRuleText'), 'TMTH');
 
-    // Nhớ lựa chọn qua lần mở sau — người dùng theo một phái, không chọn lại
-    // mỗi lần mở app.
-    await page.reload({ waitUntil: 'networkidle' });
-    await page.waitForTimeout(1000);
+    // Ô bộ số của hai tab ĐỘC LẬP: đổi ở Tra cứu không kéo theo tab Bát Tự.
+    await page.evaluate(() => window.__tracuuRule('zpzq'));
+    await page.waitForTimeout(600);
+    check('đổi bộ số ở Tra cứu…', await page.textContent('#tcRuleText'), 'TBCT');
+    check('…không đụng tới bộ số của tab Bát Tự',
+        await page.textContent('#lenhRuleText'), 'TMTH');
     await page.click('#tabLenh');
-    await page.waitForTimeout(900);
-    // Bảng đóng SẴN (Trí Nhuận-style) — phải bấm mở trước khi đọc #lenhBody,
-    // bằng không mọi phép đo dưới đây ra số 0 (display:none).
-    await page.click('#lenhHead');
-    await page.waitForTimeout(500);
-    check('mở lại vẫn nhớ bộ số đã chọn', await page.textContent('#lenhRuleText'), 'TMTH');
-    check('…và bảng vẫn là bộ ấy', (await dan()).dan.map(x => x.split('|')[1]).join('·'), '5·5·20');
+    await page.waitForTimeout(700);
 
     // Tên sách sang tiếng Trung — KHÔNG viết tắt (giữ nguyên chuyện đã kiểm
     // ở nhóm số học phía trên: chỉ tiếng Việt được rút gọn).
@@ -533,17 +575,15 @@ console.log('\nĐịa điểm và ngôn ngữ dùng chung cho CẢ BA tab');
 {
     const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     const { page, errs } = await open(ctx);
-    await page.click('#tabLenh');
-    await page.waitForTimeout(900);
-    // Bảng đóng SẴN (Trí Nhuận-style) — phải bấm mở trước khi đọc #lenhBody,
-    // bằng không mọi phép đo dưới đây ra số 0 (display:none).
-    await page.click('#lenhHead');
-    await page.waitForTimeout(500);
+    // Bảng Lệnh năm nay ở tab Tra cứu — giờ vào/ra lệnh vẫn quy về giờ ĐỊA
+    // PHƯƠNG của địa điểm đang chọn, nên đây vẫn là chỗ thấy tác dụng rõ nhất
+    // của hàng dùng chung.
+    await mởTraCuu(page, 2026);
 
     const trước = await page.evaluate(() =>
         document.querySelector('#lenhBody tbody tr td:nth-last-child(2)').textContent.trim());
 
-    // Đổi địa điểm NGAY TẠI tab Lệnh (hàng dùng chung nằm dưới cả ba tab).
+    // Đổi địa điểm NGAY TẠI tab Tra cứu (hàng dùng chung nằm dưới cả bốn tab).
     await page.evaluate(() => window.QMDJLocation.apply(
         window.QMDJLocation.makeLoc('Hà Nội', 21.0278, 105.8342, 'Asia/Ho_Chi_Minh')));
     await page.waitForTimeout(900);
@@ -590,12 +630,7 @@ console.log('\nĐịa điểm và ngôn ngữ dùng chung cho CẢ BA tab');
     // Đổi ngôn ngữ ở tab Lịch rồi quay lại: nhãn tab và bảng phải sang tiếng Trung.
     await page.evaluate(() => window.setLang('zh'));
     await page.waitForTimeout(800);
-    await page.click('#tabLenh');
-    await page.waitForTimeout(900);
-    // Bảng đóng SẴN (Trí Nhuận-style) — phải bấm mở trước khi đọc #lenhBody,
-    // bằng không mọi phép đo dưới đây ra số 0 (display:none).
-    await page.click('#lenhHead');
-    await page.waitForTimeout(500);
+    await mởTraCuu(page, 2026);
     const zh = await page.evaluate(() => ({
         nhãn: document.querySelector('#tabLenh .tab-lbl').textContent,
         cột: [...document.querySelectorAll('#lenhBody thead th')].map(e => e.textContent.trim()).join('|'),
@@ -614,12 +649,7 @@ for (const d of [{ n: 'S21', w: 360, h: 740 }, { n: 'S21 FE', w: 393, h: 790 }, 
         const ctx = await browser.newContext({ viewport: { width: d.w, height: d.h }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
         const { page, errs } = await open(ctx);
         if (lang === 'zh') { await page.evaluate(() => window.setLang('zh')); await page.waitForTimeout(600); }
-        await page.click('#tabLenh');
-        await page.waitForTimeout(900);
-        // Bảng đóng SẴN (Trí Nhuận-style) — phải bấm mở trước khi đọc #lenhBody,
-        // bằng không mọi phép đo dưới đây ra số 0 (display:none).
-        await page.click('#lenhHead');
-        await page.waitForTimeout(500);
+        await mởTraCuu(page, 2026);
         const g = await page.evaluate(() => {
             const z = parseFloat(getComputedStyle(document.body).zoom) || 1;
             const box = document.getElementById('lenhBody');
@@ -649,7 +679,11 @@ for (const d of [{ n: 'S21', w: 360, h: 740 }, { n: 'S21 FE', w: 393, h: 790 }, 
                 cắt: cut, cụt,
                 ngang: box.scrollWidth > box.clientWidth + 1,
                 trang: document.documentElement.scrollWidth > window.innerWidth + 1,
-                cuộnĐược: Math.round(document.documentElement.scrollHeight - window.innerHeight),
+                // Nhân z: `thừa`/`low` ở trên đã chia cho z (px CHƯA phóng),
+                // còn scrollHeight là px của TÀI LIỆU (đã phóng). So thẳng hai
+                // bên là lệch đúng một hệ số zoom — đo ở tab Tra cứu (trang
+                // dài nên z = 0,95) thấy ngay: 1488 vs 1414 = 1488 × 0,95.
+                cuộnĐược: Math.round((document.documentElement.scrollHeight - window.innerHeight) / z),
                 hiện: [...box.querySelectorAll('tbody tr')].filter(r => {
                     const q = r.getBoundingClientRect(), c = box.getBoundingClientRect();
                     return q.top >= c.top - 1 && q.bottom <= c.bottom + 1;
@@ -666,8 +700,11 @@ for (const d of [{ n: 'S21', w: 360, h: 740 }, { n: 'S21 FE', w: 393, h: 790 }, 
         // THẬT SỰ quan trọng: phần thò ra phải CUỘN TỚI ĐƯỢC. <body> có
         // padding-bottom đúng bằng chiều cao thanh dưới, nên cuộn hết trang là
         // thấy trọn hàng cuối, không bị thanh che.
+        // Dung sai 1px: `thừa` giữ một chữ số thập phân còn `cuộnĐược` làm
+        // tròn về số nguyên, nên hai bên lệch nhau tới nửa pixel chỉ vì cách
+        // đọc, không phải vì thiếu chỗ cuộn (đo được 1488,3 vs 1488).
         ok(`${tag}: phần dôi ra cuộn tới được`,
-            g.thừa >= 0 || g.cuộnĐược >= -g.thừa,
+            g.thừa >= 0 || g.cuộnĐược + 1 >= -g.thừa,
             `thò ${(-g.thừa).toFixed(1)}px, cuộn được ${g.cuộnĐược}px`);
         ok(`${tag}: không còn dải trống ở đáy`, g.thừa <= 16, `còn thừa ${g.thừa}px`);
         ok(`${tag}: hàng đầu không nằm cụt dưới hàng tiêu đề`, !g.cụt, g.cụt);
@@ -717,9 +754,14 @@ for (const d of [{ n: 'S21', w: 360, h: 740 }, { n: 'S21 FE', w: 393, h: 790 }, 
         // Đặt ngón tay lên GIỮA BẢNG rồi vuốt — thứ phải nhúc nhích là CẢ
         // TRANG. Đây chính là thao tác từng chết: người dùng kéo mà màn hình
         // trên đứng im.
+        // Điểm đặt ngón tay phải nằm TRONG khung nhìn. Ở tab Tra cứu, bảng
+        // Lệnh năm đứng sau hai bảng kia nên mép trên của nó ở tận đâu dưới
+        // màn hình — chạm vào toạ độ ấy là chạm ra ngoài, không sự kiện nào
+        // sinh ra và phép canh xanh/đỏ vô nghĩa. Kẹp vào giữa màn hình.
         const hộp = await page.evaluate(() => {
             const q = document.getElementById('lenhBody').getBoundingClientRect();
-            return { x: q.left + q.width / 2, y: Math.min(q.top + 40, window.innerHeight - 60) };
+            const y = Math.min(Math.max(q.top + 40, 80), window.innerHeight - 120);
+            return { x: q.left + q.width / 2, y: y };
         });
         await page.evaluate(() => window.scrollTo(0, 0));
         await page.waitForTimeout(150);
@@ -1003,92 +1045,96 @@ console.log('\nTuổi nhập đại vận: chiều thuận/nghịch chéo Giới
     await ctx.close();
 }
 
-console.log('\nBảng "LỆNH NĂM" gập/mở được, như Trí Nhuận/Sách Bổ/Âm Bàn');
+console.log('\nBa bảng của tab Tra cứu gập/mở được, và MỞ SẴN sau khi chọn năm');
 {
     const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     const { page, errs } = await open(ctx);
+
+    // Chưa chọn năm: không bảng nào hiện, chỉ một dòng gợi ý — ba cái tiêu đề
+    // rỗng trông như bảng hỏng.
+    await page.evaluate(() => window.showTab('tracuu'));
+    await page.waitForTimeout(700);
+    const chưaChọn = await page.evaluate(() => ({
+        gợiÝ: getComputedStyle(document.getElementById('tcHint')).display !== 'none',
+        bảngHiện: ['trinhuanPanel', 'sachboPanel', 'lenhHead']
+            .filter(i => getComputedStyle(document.getElementById(i)).display !== 'none'),
+        nhãnNăm: document.getElementById('tcYearText').textContent.trim(),
+    }));
+    ok('chưa chọn năm: hiện dòng gợi ý', chưaChọn.gợiÝ);
+    check('chưa chọn năm: không bảng nào hiện', chưaChọn.bảngHiện.join(','), '');
+
+    // Chọn năm: cả ba bảng hiện VÀ mở sẵn. Chúng LÀ nội dung của tab này —
+    // chọn năm xong mà nhận ba cái tiêu đề đóng im thì phải bấm thêm ba lần.
+    await mởTraCuu(page, 2026);
+    const mởSẵn = await page.evaluate(() => ({
+        gợiÝ: getComputedStyle(document.getElementById('tcHint')).display !== 'none',
+        trn: getComputedStyle(document.getElementById('trinhuanBody')).display,
+        sb: getComputedStyle(document.getElementById('sachboBody')).display,
+        lenh: getComputedStyle(document.getElementById('lenhSec')).display,
+        lớpMở: document.getElementById('lenhHead').classList.contains('lenh-open'),
+        chev: document.getElementById('lenhHeadChevron').style.transform,
+        hàngTrn: document.querySelectorAll('#trn-tbody tr').length,
+        hàngSb: document.querySelectorAll('#sb-tbody tr').length,
+        hàngLenh: document.querySelectorAll('#lenhBody tbody tr').length,
+        tiêuĐề: document.getElementById('lenhTitle').textContent.trim(),
+    }));
+    ok('chọn năm rồi: dòng gợi ý biến mất', !mởSẵn.gợiÝ);
+    check('bảng Trí Nhuận mở sẵn', mởSẵn.trn, 'block');
+    check('bảng Sách Bổ mở sẵn', mởSẵn.sb, 'block');
+    check('bảng Lệnh năm mở sẵn', mởSẵn.lenh, 'block');
+    ok('đầu bảng Lệnh năm có lớp .lenh-open', mởSẵn.lớpMở);
+    ok('mũi tên đã xoay', mởSẵn.chev === 'rotate(180deg)', mởSẵn.chev);
+    check('Trí Nhuận đủ 25 hàng', mởSẵn.hàngTrn, 25);
+    check('Sách Bổ đủ 24 hàng', mởSẵn.hàngSb, 24);
+    check('Lệnh năm đủ 33 đoạn', mởSẵn.hàngLenh, 33);
+    check('tiêu đề mang đúng năm đã chọn', mởSẵn.tiêuĐề, 'LỆNH NĂM 2026');
+
+    // Tra một năm bất kỳ thì KHÔNG có thời điểm sinh nào để mà "đang cầm
+    // lệnh" — tô một hàng ở đây là nói dối rằng nó liên quan tới lá số đang mở.
+    check('không hàng nào bị tô "đang hiệu lực"',
+        await page.evaluate(() =>
+            document.querySelectorAll('#traCuuView .dp-row-active, #traCuuView .lenh-on').length), 0);
+
+    // Gập/mở từng bảng, độc lập với nhau.
+    for (const [head, body, tên] of [['#trinhuanHeader', 'trinhuanBody', 'Trí Nhuận'],
+                                     ['#sachboHeader', 'sachboBody', 'Sách Bổ'],
+                                     ['#lenhHead', 'lenhSec', 'Lệnh năm']]) {
+        await page.click(head);
+        await page.waitForTimeout(450);
+        check(`bấm một lần: ${tên} đóng lại`,
+            await page.evaluate(b => getComputedStyle(document.getElementById(b)).display, body), 'none');
+        await page.click(head);
+        await page.waitForTimeout(450);
+        check(`bấm lần nữa: ${tên} mở ra`,
+            await page.evaluate(b => getComputedStyle(document.getElementById(b)).display, body), 'block');
+    }
+
+    // Đóng bảng rồi ĐỔI NĂM rồi mở lại: nội dung phải là của năm MỚI, không
+    // phải một bản dựng từ lúc trước khi đổi.
+    await page.click('#lenhHead');
+    await page.waitForTimeout(400);
+    await page.evaluate(() => window.__tracuuYear(1984));
+    await page.waitForTimeout(800);
+    const sauĐổiNăm = await page.evaluate(() => ({
+        tiêuĐề: document.getElementById('lenhTitle').textContent.trim(),
+        hàng: document.querySelectorAll('#lenhBody tbody tr').length,
+        // Đổi năm thì openAll() bung lại cả ba — người dùng vừa chọn năm mới
+        // chính là để xem chúng.
+        lenh: getComputedStyle(document.getElementById('lenhSec')).display,
+    }));
+    check('đổi năm lúc bảng đang đóng: tiêu đề theo năm mới', sauĐổiNăm.tiêuĐề, 'LỆNH NĂM 1984');
+    check('…và bảng dựng lại đủ hàng', sauĐổiNăm.hàng, 33);
+    check('…và bung lại cho người dùng xem', sauĐổiNăm.lenh, 'block');
+
+    // Dòng tóm tắt "Lệnh: X" vẫn thuộc tab BÁT TỰ — nó nói về lá số, không
+    // phải về năm đang tra.
     await page.click('#tabLenh');
     await page.waitForTimeout(700);
-
-    // Đóng SẴN lúc mới vào tab — không đợi người dùng tự đóng lần đầu.
-    const đóngSẵn = await page.evaluate(() => ({
-        display: getComputedStyle(document.getElementById('lenhSec')).display,
-        lớpMở: document.getElementById('lenhHead').classList.contains('lenh-open'),
-        chev: document.getElementById('lenhHeadChevron').style.transform,
-        // "Lệnh:/Nhập vận:/Đại Vận:" vẫn phải hiện — đây là phần TÓM TẮT,
-        // không phụ thuộc bảng có mở hay không.
-        tómTắt: document.getElementById('lenhNowVal').textContent.trim(),
-    }));
-    ok('bảng đóng sẵn lúc mới vào tab', đóngSẵn.display === 'none', đóngSẵn.display);
-    ok('đầu bảng CHƯA có lớp .lenh-open', !đóngSẵn.lớpMở);
-    ok('mũi tên chưa xoay', đóngSẵn.chev !== 'rotate(180deg)', đóngSẵn.chev);
-    ok('dòng tóm tắt "Lệnh:" vẫn hiện dù bảng đóng', đóngSẵn.tómTắt && đóngSẵn.tómTắt !== '—', đóngSẵn.tómTắt);
-
-    // Bấm mở: hiện ra, đúng lớp, mũi tên xoay, kích thước hợp lý (không phải
-    // 0 — dấu hiệu fit() đo lúc còn ẩn rồi không đo lại).
-    await page.click('#lenhHead');
-    await page.waitForTimeout(600);
-    const mở = await page.evaluate(() => {
-        const box = document.getElementById('lenhBody');
-        return {
-            display: getComputedStyle(document.getElementById('lenhSec')).display,
-            lớpMở: document.getElementById('lenhHead').classList.contains('lenh-open'),
-            chev: document.getElementById('lenhHeadChevron').style.transform,
-            hàng: document.querySelectorAll('#lenhBody tbody tr').length,
-            caoKhung: box.getBoundingClientRect().height,
-            hiệnĐược: [...box.querySelectorAll('tbody tr')].filter(r => {
-                const q = r.getBoundingClientRect(), c = box.getBoundingClientRect();
-                return q.top >= c.top - 1 && q.bottom <= c.bottom + 1;
-            }).length,
-        };
-    });
-    ok('bấm vào thì bảng hiện ra', mở.display !== 'none', mở.display);
-    ok('đầu bảng nhận lớp .lenh-open', mở.lớpMở);
-    ok('mũi tên xoay 180°', mở.chev === 'rotate(180deg)', mở.chev);
-    check('vẫn đủ 33 đoạn', mở.hàng, 33);
-    ok('khung có chiều cao THẬT, không phải số rác từ lúc còn ẩn',
-        mở.caoKhung > 100, `cao ${mở.caoKhung}px`);
-    ok('hiện được ít nhất một tháng trọn vẹn', mở.hiệnĐược >= 3, `${mở.hiệnĐược} đoạn`);
-
-    // Bấm lần nữa: đóng lại, đúng lớp, mũi tên trả về.
-    await page.click('#lenhHead');
-    await page.waitForTimeout(500);
-    const đóngLại = await page.evaluate(() => ({
-        display: getComputedStyle(document.getElementById('lenhSec')).display,
-        lớpMở: document.getElementById('lenhHead').classList.contains('lenh-open'),
-        chev: document.getElementById('lenhHeadChevron').style.transform,
-    }));
-    ok('bấm lần nữa thì bảng đóng lại', đóngLại.display === 'none', đóngLại.display);
-    ok('đầu bảng mất lớp .lenh-open', !đóngLại.lớpMở);
-    ok('mũi tên xoay về 0°', đóngLại.chev === 'rotate(0deg)', đóngLại.chev);
-
-    // Đóng rồi đổi ngày sinh (render() chạy lại trong lúc bảng đang ẩn) rồi
-    // mới mở — kích thước và hàng đang cầm lệnh phải vẫn đúng, không phải
-    // một bản tính từ lúc TRƯỚC khi đổi ngày.
-    const ngàyTrước = parseInt(await page.$eval('#inDay', e => e.value), 10);
-    await page.evaluate(ngàyMới => {
-        const el = document.getElementById('inDay');
-        el.value = String(ngàyMới);
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-        if (window.processAll) window.processAll();
-    }, (ngàyTrước % 27) + 1);
-    await page.waitForTimeout(500);
-    await page.click('#lenhHead');
-    await page.waitForTimeout(600);
-    const sauKhiĐổiRồiMở = await page.evaluate(() => {
-        const active = document.getElementById('lenhActive');
-        const box = document.getElementById('lenhBody');
-        return {
-            lệnh: document.getElementById('lenhNowVal').textContent.trim(),
-            hàngChủĐộng: active ? active.cells[0].textContent.replace(/\s+/g, '').slice(0, 6) : null,
-            hàngChủĐộngTrongKhung: active ? (() => {
-                const q = active.getBoundingClientRect(), c = box.getBoundingClientRect();
-                return q.top >= c.top - 1 && q.bottom <= c.bottom + 1;
-            })() : false,
-        };
-    });
-    ok('đổi ngày lúc bảng đang đóng rồi mở lại: hàng đang cầm lệnh vẫn cuộn tới đúng chỗ',
-        sauKhiĐổiRồiMở.hàngChủĐộngTrongKhung, JSON.stringify(sauKhiĐổiRồiMở));
+    const tómTắt = await page.evaluate(() =>
+        document.getElementById('lenhNowVal').textContent.trim());
+    ok('tab Bát Tự vẫn có dòng tóm tắt "Lệnh:"', tómTắt && tómTắt !== '—', tómTắt);
+    ok('tab Bát Tự KHÔNG còn bảng Lệnh năm',
+        await page.evaluate(() => !document.querySelector('#lenhView #lenhHead')));
 
     ok('không lỗi JS', errs.length === 0, errs.join(' ; '));
     await ctx.close();
@@ -1435,36 +1481,29 @@ console.log('\nBảng ĐẠI VẬN: 10 đại vận × 10 năm, lấp chỗ tr�
     ok('hộp Đại Vận không cần tự cuộn dọc nội bộ (khớp đúng chiều cao tự nhiên)',
         khôngCuộnRiêng.khôngCầnCuộnNộiBộ, JSON.stringify(khôngCuộnRiêng));
 
-    const dvTrước = await page.evaluate(() =>
-        +document.getElementById('daiVanSec').getBoundingClientRect().height.toFixed(1));
-
-    // ── Mở LỆNH NĂM ra — ĐÚNG lỗi người dùng báo: trước đây hai khối tranh
-    // chung một ngân sách chiều cao, mở Lệnh năm ra đẩy Đại Vận co lại gần
-    // hết (có lúc coi như biến mất). Nay Đại Vận đứng TRƯỚC, không tranh chỗ
-    // với ai — mở Lệnh năm ra phải KHÔNG đổi Đại Vận một chút nào. ──
-    await page.click('#lenhHead');
-    await page.waitForTimeout(600);
-    const cảHai = await page.evaluate(() => {
+    // ── Bảng Lệnh năm đã RỜI HẲN tab này (sang tab Tra cứu) ──
+    // Bản trước canh "mở Lệnh năm ra không được làm Đại Vận co lại" — hai khối
+    // từng tranh chung một ngân sách chiều cao, mở cái này là cái kia teo đi.
+    // Nay chúng còn không ở chung một tab, nên phép canh mạnh hơn hẳn: tab Bát
+    // Tự KHÔNG chứa bảng Lệnh năm, và Đại Vận là nội dung duy nhất của nó.
+    const mộtMình = await page.evaluate(() => {
         const z = parseFloat(getComputedStyle(document.body).zoom) || 1;
         const dock = document.getElementById('bottomDock').getBoundingClientRect();
-        const lenh = document.getElementById('lenhBody').getBoundingClientRect();
         const dv = document.getElementById('daiVanSec').getBoundingClientRect();
+        const lv = document.getElementById('lenhView');
         return {
-            lenhCao: +(lenh.height / z).toFixed(1),
-            dvCaoSauKhiMởLệnhNăm: +dv.height.toFixed(1),
+            lệnhNămTrongTabNày: !!lv.querySelector('#lenhHead, #lenhSec, #lenhBody'),
+            dvCao: +(dv.height / z).toFixed(1),
             dockỞĐúngĐáyMànHình: Math.abs(dock.bottom - window.innerHeight) < 2,
             trangChoPhépCuộnKhiCần: document.documentElement.scrollHeight >= dock.bottom - 1,
         };
     });
-    ok('Lệnh năm vẫn có chiều cao thật khi mở (chiếm phần còn lại xuống thanh dưới)',
-        cảHai.lenhCao > 50, JSON.stringify(cảHai));
-    ok('Đại Vận KHÔNG đổi chiều cao dù Lệnh năm vừa mở ra — đúng bug đã báo, nay hết',
-        Math.abs(cảHai.dvCaoSauKhiMởLệnhNăm - dvTrước) < 1,
-        `trước ${dvTrước}px, sau ${cảHai.dvCaoSauKhiMởLệnhNăm}px`);
+    ok('tab Bát Tự KHÔNG còn chứa bảng Lệnh năm', !mộtMình.lệnhNămTrongTabNày);
+    ok('Đại Vận vẫn hiện trọn chiều cao của nó', mộtMình.dvCao > 100, JSON.stringify(mộtMình));
     ok('#bottomDock vẫn đứng cố định đúng đáy màn hình dù trang có dài hơn một màn',
-        cảHai.dockỞĐúngĐáyMànHình, JSON.stringify(cảHai));
+        mộtMình.dockỞĐúngĐáyMànHình, JSON.stringify(mộtMình));
     ok('trang cho phép cuộn xuống hết nội dung (không khoá overflow ở đâu đó)',
-        cảHai.trangChoPhépCuộnKhiCần, JSON.stringify(cảHai));
+        mộtMình.trangChoPhépCuộnKhiCần, JSON.stringify(mộtMình));
 
     // ── Hình học trên máy hẹp nhất: không cắt chữ, không kéo ngang ──
     ok('không lỗi JS', errs.length === 0, errs.join(' ; '));

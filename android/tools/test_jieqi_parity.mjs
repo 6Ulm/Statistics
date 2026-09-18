@@ -121,7 +121,17 @@ for (const city of PICK) {
         document.getElementById('country').value = city;
         selectMethod('bophap');
         processAll();
-        // Bảng Sách Bổ: mỗi dòng một tiết khí, cột 1 tên, cột 2 ngày giờ.
+        // Bảng Sách Bổ nay ở tab TRA CỨU, tra theo NĂM tự chọn chứ không theo
+        // phái đang bày bàn. Chọn đúng năm của lá số đang xem thì hai bảng nói
+        // về cùng một năm mặt trời, và phép đối chiếu vẫn nguyên ý nghĩa.
+        //
+        // Một khác biệt phải tính tới: ở đây KHÔNG dòng nào được tô "đang hiệu
+        // lực" (tra một năm bất kỳ thì không có thời điểm nào để mà hiệu lực),
+        // nên cờ `on` luôn false — phép canh dòng đang hiệu lực chuyển sang so
+        // với bảng của tab Lịch bên dưới.
+        const nămLáSố = parseInt(document.getElementById('inYear').value, 10);
+        window.__tracuuYear(nămLáSố);
+        window.showTab('tracuu');
         const kmdj = [...document.querySelectorAll('#sb-tbody tr')].map(tr => ({
             name: tr.cells[0].textContent.trim(),
             date: tr.cells[1].textContent.trim(),
@@ -159,13 +169,12 @@ for (const city of PICK) {
         }
     }
     const ai = r.kmdj.findIndex(x => x.on), bi = r.cal.findIndex(x => x.on);
-    if (ai < 0) diffs.push('bảng Kỳ Môn không tô đậm mục nào');
+    // Bảng Sách Bổ ở tab Tra cứu KHÔNG tô mục nào — cố ý. Nó tra một năm bất
+    // kỳ, không có thời điểm nào để mà "đang hiệu lực"; tô một mục ở đó là nói
+    // dối rằng nó liên quan tới lá số đang mở. Canh đúng điều ấy thay vì canh
+    // ngược lại.
+    if (ai >= 0) diffs.push(`bảng Tra cứu tô mục ${ai + 1} — đáng lẽ không tô mục nào`);
     if (bi < 0) diffs.push('bảng Lịch không tô đậm mục nào');
-    // Đúng ngày giao tiết thì hai bên có thể lệch một mục: tab Kỳ Môn lấy cả giờ
-    // phút đang nhập, tab Lịch chỉ có độ phân giải một ngày (lấy mốc 12:00 trưa).
-    if (ai >= 0 && bi >= 0 && Math.abs(ai - bi) > 1) {
-        diffs.push(`mục tô đậm lệch: Kỳ Môn ${ai + 1} (${r.kmdj[ai].name}), Lịch ${bi + 1} (${r.cal[bi].name})`);
-    }
     // Cột can chi tháng: mọi dòng phải có giá trị, hai dòng liền nhau của cùng
     // một tháng phải trùng nhau (tiết mở tháng, khí nằm giữa tháng), và dòng
     // đang hiệu lực phải khớp đúng trụ tháng mà tab Kỳ Môn đang hiện.
