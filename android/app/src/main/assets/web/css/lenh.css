@@ -231,3 +231,88 @@ table.lenh-tb tr.lenh-on td {
     table.lenh-tb .lenh-mon, table.lenh-tb th:first-child { padding-left: 5px; }
     table.lenh-tb .lenh-last { padding-right: 5px; }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   ĐẠI VẬN — 10 đại vận × 10 năm = 100 năm. Lấp đúng chỗ trống dưới
+   #lenhSec lúc bảng ấy đang đóng (mặc định) — xem lenh.js, fitDaiVan().
+
+   Máy hẹp (320–412px) không đủ chỗ cho 5 cột như ảnh mẫu (rõ ràng dựng
+   cho màn rộng) — đổi bố cục thành MỘT CỘT, xếp CHỒNG 10 "thẻ" đại vận,
+   cuộn dọc cả khối. Mỗi thẻ vẫn đúng nội dung ảnh mẫu: đầu thẻ hai dòng
+   (mốc bắt đầu + can chi đại vận), dưới là 10 hàng lưu niên.
+   ════════════════════════════════════════════════════════════════ */
+#daiVanHead {
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-white, #fff);
+    color: var(--text-main, #000);
+    border: 1px solid var(--border-color, #ddd);
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    margin-top: 6px;
+    padding: 5px 6px;
+    font-size: clamp(13px, 3.7vw, 15px);
+    font-weight: 700;
+    letter-spacing: .3px;
+}
+#daiVanSec .cal-sec-body { border-radius: 0 0 6px 6px; border-top-color: var(--border-color, #ddd); }
+/* Cùng lỗi, cùng cách sửa như #lenhSec ở trên: mượn .cal-sec thì mượn luôn
+   luật "mục đang đóng thì khoá cuộn" của tab Lịch, mà #daiVanSec cũng không
+   bao giờ nhận lớp cal-sec-open (không có nút đóng/mở). Ghi đè thẳng. */
+#daiVanSec .cal-sec-body { overflow-y: auto; }
+#daiVanSec::after {
+    background: #f0f0f0; border-color: var(--border-color, #ddd); border-radius: 0; height: 3px;
+}
+#daiVanBody { padding: 6px; }
+
+/* Mỗi đại vận một thẻ, cách nhau một khe — KHÔNG viền lồng viền (thẻ đã có
+   viền riêng, khung cuộn cũng có viền, viền lồng viền dày trông như lỗi). */
+.dv-card {
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    overflow: hidden;              /* bo góc ăn xuống cả đầu thẻ lẫn hàng */
+}
+.dv-card:last-child { margin-bottom: 0; }
+
+.dv-card-head {
+    background: #f0f0f0;
+    color: var(--text-main, #000);
+    text-align: center;
+    padding: 4px 6px;
+    line-height: 1.35;
+}
+.dv-card-head .dv-line1 {
+    display: block;
+    font-size: clamp(11px, 3vw, 12.5px);
+    color: var(--text-dim, #666);
+}
+.dv-card-head .dv-line2 {
+    display: block;
+    font-size: clamp(13.5px, 3.6vw, 15px);
+    font-weight: 700;
+}
+
+/* Đại vận ĐANG SỐNG (chứa năm nay): nền đậm hơn — chỉ đen/trắng/ghi, không
+   màu, nhưng vẫn phải nổi rõ giữa 10 thẻ giống hệt nhau về hình dạng. */
+.dv-card.dv-current { border-color: #888; border-width: 1.5px; }
+.dv-card.dv-current .dv-card-head { background: #999; color: #fff; }
+.dv-card.dv-current .dv-card-head .dv-line1 { color: #eee; }
+
+.dv-row {
+    display: flex; align-items: center;
+    padding: 3px 8px;
+    font-size: clamp(11.5px, 3.1vw, 13px);
+    font-variant-numeric: tabular-nums;
+    border-top: 1px solid var(--border-color, #eee);
+}
+.dv-row:nth-child(odd) { background: #f9f9f9; }
+.dv-card.dv-current .dv-row:nth-child(odd) { background: #f2f2f2; }
+.dv-row .dv-year { flex: 0 0 3.6em; color: var(--text-dim, #666); }
+.dv-row .dv-cc   { flex: 1 1 auto; font-weight: 600; }
+
+/* Lưu niên NĂM NAY: cùng cách bảng Lệnh tô hàng đang cầm lệnh — đậm chữ và
+   đổi nền, không đổi màu chữ. */
+.dv-row.dv-row-on {
+    background: #dcdcdc !important;
+    font-weight: 700;
+}

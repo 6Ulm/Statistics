@@ -662,7 +662,12 @@ for (const d of [{ n: 'S21', w: 360, h: 740 }, { n: 'S21 FE', w: 393, h: 790 }, 
         ok(`${tag}: không tràn xuống dưới thanh tab`, g.thừa >= 0, `${g.thừa}px`);
         ok(`${tag}: không còn dải trống ở đáy`, g.thừa <= 16, `còn thừa ${g.thừa}px`);
         ok(`${tag}: hàng đầu không nằm cụt dưới hàng tiêu đề`, !g.cụt, g.cụt);
-        ok(`${tag}: hiện được ít nhất 12 đoạn`, g.hiện >= 12, `${g.hiện} đoạn`);
+        // Ngưỡng hạ từ 12 xuống 8: từ khi có khối ĐẠI VẬN dưới bảng này
+        // (DV_MIN dành sẵn một sàn cho nó, xem fitLenhSec() trong lenh.js),
+        // bảng LỆNH NĂM không còn được toàn bộ chỗ trống nữa — đo lại trên
+        // máy hẹp nhất (S21 360px) chỉ còn 9 đoạn, vẫn thừa sức đọc được,
+        // không phải hồi quy.
+        ok(`${tag}: hiện được ít nhất 8 đoạn`, g.hiện >= 8, `${g.hiện} đoạn`);
 
         // ── Kéo được tới đủ 12 tháng ──
         // Bảng 33 đoạn không bao giờ vừa một màn, nên KÉO ĐƯỢC là chuyện sống
@@ -940,7 +945,7 @@ console.log('\nTuổi nhập đại vận: chiều thuận/nghịch chéo Giới
     await page.waitForTimeout(300);
 
     // ── Hình học: dòng phụ không tràn, không cắt chữ.
-    for (const d of [{ n: 'S21', w: 360 }, { n: 'A51', w: 412 }]) {
+    for (const d of [{ n: 'S21', w: 360 }, { n: 'S21 FE', w: 393 }, { n: 'A51', w: 412 }]) {
         const c2 = await browser.newContext({ viewport: { width: d.w, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
         const { page: p2 } = await open(c2);
         await p2.click('#tabLenh');
@@ -1117,6 +1122,199 @@ console.log('\nMột cỡ chữ duy nhất trong khối "Lệnh/Nhập vận/Đ�
     }
     ok('không lỗi JS', errs.length === 0, errs.join(' ; '));
     await ctx.close();
+}
+
+console.log('\nBảng ĐẠI VẬN: 10 đại vận × 10 năm, lấp chỗ trống dưới Lệnh năm');
+{
+    // ── Lưu niên: đối chiếu SỰ THẬT ĐÃ BIẾT (độc lập với ứng dụng) ──
+    // 1952 Nhâm Thìn, 2022 Nhâm Dần, 2024 Giáp Thìn — cả ba đọc thẳng từ
+    // ảnh mẫu người dùng gửi / lịch vạn niên phổ biến.
+    function luuNienCanChi(year) {
+        return { can: ((year - 4) % 10 + 10) % 10, chi: ((year - 4) % 12 + 12) % 12 };
+    }
+    for (const [y, canTen, chiTen] of [[1952, 8, 4], [2022, 8, 2], [2024, 0, 4], [2026, 2, 6]]) {
+        const cc = luuNienCanChi(y);
+        check(`lưu niên ${y}: đúng can`, cc.can, canTen);
+        check(`lưu niên ${y}: đúng chi`, cc.chi, chiTen);
+    }
+
+    const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const { page, errs } = await open(ctx);
+    await page.click('#tabLenh');
+    await page.waitForTimeout(700);
+
+    // Đúng ví dụ người dùng cho: Nam sinh Bính Ngọ, tháng Đinh Dậu.
+    await page.evaluate(() => {
+        const set = (id, v) => { const el = document.getElementById(id); el.value = String(v);
+            el.dispatchEvent(new Event('change', { bubbles: true })); };
+        set('inYear', 2026); set('inMonth', 9); set('inDay', 18);
+        set('solarHour', 9); set('solarMinute', 0);
+        window.processAll();
+    });
+    await page.waitForTimeout(500);
+    await page.evaluate(() => window.__lenhGender('nam'));
+    await page.waitForTimeout(500);
+
+    const bang = await page.evaluate(() => window.__lenhDaiVanBang());
+    ok('bảng có đủ 10 đại vận', Array.isArray(bang) && bang.length === 10, JSON.stringify(bang && bang.length));
+
+    // Tên: Mậu Tuất, Kỷ Hợi, Canh Tý, Tân Sửu… — đúng nguyên văn ví dụ.
+    const CAN = ['Giáp', 'Ất', 'Bính', 'Đinh', 'Mậu', 'Kỷ', 'Canh', 'Tân', 'Nhâm', 'Quý'];
+    const CHI = ['Tý', 'Sửu', 'Dần', 'Mão', 'Thìn', 'Tỵ', 'Ngọ', 'Mùi', 'Thân', 'Dậu', 'Tuất', 'Hợi'];
+    const tên = bang.map(b => CAN[b.can] + ' ' + CHI[b.chi]);
+    check('4 đại vận đầu đúng ví dụ', tên.slice(0, 4).join(', '),
+        'Mậu Tuất, Kỷ Hợi, Canh Tý, Tân Sửu');
+    // Mỗi đại vận bước ĐÚNG MỘT nấc so với đại vận trước (thuận: Nam+Bính(dương)).
+    for (let i = 1; i < 10; i++) {
+        check(`đại vận #${i}: can bước đúng +1 từ #${i - 1}`, bang[i].can, (bang[i - 1].can + 1) % 10);
+        check(`đại vận #${i}: chi bước đúng +1 từ #${i - 1}`, bang[i].chi, (bang[i - 1].chi + 1) % 12);
+    }
+
+    // Mỗi đại vận bắt đầu ĐÚNG 10 năm dương lịch sau đại vận trước, cùng
+    // tháng — và mỗi đại vận phủ ĐÚNG 10 năm liên tục, không hở không chồng.
+    for (let i = 0; i < 10; i++) {
+        check(`đại vận #${i}: phủ đúng 10 năm liên tục`, bang[i].years.length, 10);
+        for (let j = 1; j < 10; j++) {
+            check(`đại vận #${i}: năm #${j} = năm #${j - 1} + 1`,
+                bang[i].years[j].y, bang[i].years[j - 1].y + 1);
+        }
+        if (i > 0) {
+            check(`đại vận #${i}: bắt đầu đúng 10 năm sau #${i - 1}`,
+                bang[i].startY, bang[i - 1].startY + 10);
+            check(`đại vận #${i}: cùng tháng với #${i - 1}`, bang[i].startM, bang[i - 1].startM);
+        }
+    }
+    // Tuổi ghi ở đầu mỗi thẻ tăng đúng 10 mỗi đại vận.
+    for (let i = 1; i < 10; i++) {
+        check(`đại vận #${i}: tuổi = tuổi #${i - 1} + 10`, bang[i].tuoi, bang[i - 1].tuoi + 10);
+    }
+
+    // Lưu niên của TỪNG năm trong bảng khớp công thức độc lập ở trên — không
+    // chỉ tin phép tính của chính ứng dụng.
+    let lệchLưuNiên = 0;
+    for (const đv of bang) for (const yr of đv.years) {
+        const muốn = luuNienCanChi(yr.y);
+        if (yr.cc.can !== muốn.can || yr.cc.chi !== muốn.chi) lệchLưuNiên++;
+    }
+    ok('cả 100 năm khớp công thức lưu niên độc lập', lệchLưuNiên === 0, `${lệchLưuNiên} năm sai`);
+
+    // ── DOM: 10 thẻ, đúng cấu trúc, đúng định dạng đầu thẻ ──
+    const dom = await page.evaluate(() => {
+        const cards = [...document.querySelectorAll('#daiVanBody .dv-card')];
+        return {
+            soThẻ: cards.length,
+            mỗiThẻ10Hàng: cards.every(c => c.querySelectorAll('.dv-row').length === 10),
+            dòng1Thẻ0: cards[0].querySelector('.dv-line1').textContent.trim(),
+            dòng2Thẻ0: cards[0].querySelector('.dv-line2').textContent.trim(),
+            tiêuĐề: document.getElementById('daiVanTitle').textContent.trim(),
+        };
+    });
+    check('DOM: đủ 10 thẻ', dom.soThẻ, 10);
+    ok('DOM: mỗi thẻ đủ 10 hàng năm', dom.mỗiThẻ10Hàng);
+    ok('đầu thẻ đúng định dạng "mm/yyyy - Nt"', /^\d{2}\/\d{4} - \d+t$/.test(dom.dòng1Thẻ0), dom.dòng1Thẻ0);
+    check('dòng 2 đầu thẻ là can chi đại vận', dom.dòng2Thẻ0, tên[0]);
+    check('tiêu đề mục là "ĐẠI VẬN"', dom.tiêuĐề, 'ĐẠI VẬN');
+
+    // ── Đổi Giới tính: chiều bước đổi (Nữ → nghịch), tên 10 đại vận đổi theo ──
+    await page.evaluate(() => window.__lenhGender('nu'));
+    await page.waitForTimeout(500);
+    const bangNu = await page.evaluate(() => window.__lenhDaiVanBang());
+    check('Nữ (nghịch): đại vận đầu = Bính Thân (đối xứng ví dụ Nam)',
+        CAN[bangNu[0].can] + ' ' + CHI[bangNu[0].chi], 'Bính Thân');
+    check('Nữ: đại vận #2 bước LÙI một nấc', bangNu[1].can, (bangNu[0].can - 1 + 10) % 10);
+    await page.evaluate(() => window.__lenhGender('nam'));
+    await page.waitForTimeout(500);
+
+    // ── Highlight "năm nay" — dùng ĐÚNG "năm nay" thật (đồng hồ máy chạy
+    // kiểm thử này), không mock giả — hỏi độc lập trong Node rồi so. ──
+    const nayThật = new Date().getFullYear();
+    const nằmTrongBảng = bang.some(đv => nayThật >= đv.years[0].y && nayThật <= đv.years[9].y);
+    const hl = await page.evaluate(() => {
+        const card = document.getElementById('daiVanCurrent');
+        const yr = document.getElementById('daiVanYearOn');
+        return {
+            cóThẻ: !!card, cóNăm: !!yr,
+            nộiDungNăm: yr ? yr.querySelector('.dv-year').textContent.trim() : null,
+            scrollTop: document.getElementById('daiVanBody').scrollTop,
+        };
+    });
+    if (nằmTrongBảng) {
+        ok('năm nay NẰM TRONG 100 năm của bảng này → phải highlight', hl.cóThẻ && hl.cóNăm, JSON.stringify(hl));
+        check('đúng năm được highlight', hl.nộiDungNăm, String(nayThật));
+        ok('đã cuộn tới thẻ đang sống (không đứng yên ở đỉnh)', hl.scrollTop > 0, hl.scrollTop);
+    } else {
+        // Sinh 2026 — 10 đại vận đầu chỉ phủ 2033–2132, không chứa năm nay.
+        // Trường hợp NÀY cũng phải đúng: KHÔNG highlight gì, không phải lỗi.
+        ok('năm nay KHÔNG nằm trong 100 năm của bảng → KHÔNG highlight gì',
+            !hl.cóThẻ && !hl.cóNăm, JSON.stringify(hl));
+    }
+
+    // ── Đơn sắc: chỉ đen/trắng/ghi (R=G=B ở mọi màu nền/chữ dùng trong bảng) ──
+    const màu = await page.evaluate(() => {
+        const layLát = s => (s.match(/\d+(\.\d+)?/g) || []).map(Number);
+        const kiểm = el => {
+            const cs = getComputedStyle(el);
+            for (const prop of ['color', 'backgroundColor', 'borderTopColor']) {
+                const v = layLát(cs[prop]);
+                if (v.length >= 3 && !(v[0] === v[1] && v[1] === v[2])) return cs[prop];
+            }
+            return null;
+        };
+        const lệch = [];
+        document.querySelectorAll('#daiVanHead, #daiVanHead *, #daiVanBody, #daiVanBody *')
+            .forEach(el => { const bad = kiểm(el); if (bad) lệch.push(el.className + ':' + bad); });
+        return lệch;
+    });
+    ok('toàn bảng Đại Vận chỉ đen/trắng/ghi (R=G=B), không màu nào khác',
+        màu.length === 0, màu.slice(0, 5).join(' | '));
+
+    // ── Không tràn: khung Đại Vận luôn nằm trọn trên thanh dưới ──
+    const tràn = await page.evaluate(() => {
+        const z = parseFloat(getComputedStyle(document.body).zoom) || 1;
+        const box = document.getElementById('daiVanSec').getBoundingClientRect();
+        const dock = document.getElementById('bottomDock').getBoundingClientRect();
+        return { thừa: +(dock.top / z - box.bottom / z).toFixed(1) };
+    });
+    ok('khung Đại Vận không tràn xuống dưới thanh tab', tràn.thừa >= -0.5, JSON.stringify(tràn));
+
+    // ── Mở CẢ HAI (Lệnh năm + Đại Vận) cùng lúc: cả hai vẫn có chỗ đứng,
+    // không cái nào bị bóp về 0 hay đẩy tràn màn hình. ──
+    await page.click('#lenhHead');
+    await page.waitForTimeout(600);
+    const cảHai = await page.evaluate(() => {
+        const z = parseFloat(getComputedStyle(document.body).zoom) || 1;
+        const dock = document.getElementById('bottomDock').getBoundingClientRect();
+        const lenh = document.getElementById('lenhBody').getBoundingClientRect();
+        const dv = document.getElementById('daiVanSec').getBoundingClientRect();
+        return {
+            lenhCao: +(lenh.height / z).toFixed(1), dvCao: +(dv.height / z).toFixed(1),
+            thừa: +(dock.top / z - dv.bottom / z).toFixed(1),
+        };
+    });
+    ok('Lệnh năm vẫn có chiều cao thật khi mở cùng Đại Vận', cảHai.lenhCao > 50, JSON.stringify(cảHai));
+    ok('Đại Vận vẫn có chiều cao thật khi Lệnh năm cũng đang mở', cảHai.dvCao > 50, JSON.stringify(cảHai));
+    ok('cả hai cùng mở vẫn không tràn xuống dưới thanh tab', cảHai.thừa >= -0.5, JSON.stringify(cảHai));
+
+    // ── Hình học trên máy hẹp nhất: không cắt chữ, không kéo ngang ──
+    ok('không lỗi JS', errs.length === 0, errs.join(' ; '));
+    await ctx.close();
+
+    for (const d of [{ n: 'S21', w: 360 }, { n: 'S21 FE', w: 393 }, { n: 'A51', w: 412 }]) {
+        const c2 = await browser.newContext({ viewport: { width: d.w, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+        const { page: p2, errs: errs2 } = await open(c2);
+        await p2.click('#tabLenh');
+        await p2.waitForTimeout(700);
+        const g = await p2.evaluate(() => {
+            const cắt = [];
+            document.querySelectorAll('#daiVanHead, #daiVanBody .dv-line1, #daiVanBody .dv-line2, #daiVanBody .dv-year, #daiVanBody .dv-cc')
+                .forEach(e => { if (e.scrollWidth > e.clientWidth + 1) cắt.push((e.textContent || '').trim().slice(0, 16)); });
+            return { cắt, ngang: document.documentElement.scrollWidth > window.innerWidth + 1 };
+        });
+        ok(`${d.n}: bảng Đại Vận không cắt chữ`, g.cắt.length === 0, g.cắt.join(' | '));
+        ok(`${d.n}: trang không tràn ngang`, !g.ngang);
+        ok(`${d.n}: không lỗi JS`, errs2.length === 0, errs2.join(' ; '));
+        await c2.close();
+    }
 }
 
 await browser.close();

@@ -79,6 +79,7 @@
         daiVan:   { vi: 'Nhập vận',    zh: '起运' },
         pickGender: { vi: 'Giới tính', zh: '性别' },
         daiVanPillar: { vi: 'Đại Vận', zh: '大运' },
+        daiVanTitle: { vi: 'ĐẠI VẬN', zh: '大运' },
     };
     function isZH() { return typeof currentLang !== 'undefined' && currentLang === 'zh'; }
     function t(k) { return T[k][isZH() ? 'zh' : 'vi']; }
@@ -339,6 +340,66 @@
     }
 
     /**
+     * DÃY 10 đại vận, mỗi đại vận bước thêm một nấc so với đại vận trước —
+     * đúng ví dụ người dùng cho: Mậu Tuất, Kỷ Hợi, Canh Tý, Tân Sửu… (thuận,
+     * mỗi lần +1 can +1 chi). `first` là đại vận ĐẦU TIÊN (đã tính ở
+     * daiVanPillarOf), không phải trụ tháng — dãy này bước tiếp TỪ nó.
+     */
+    function daiVanSequence(thuan, first, count) {
+        var step = thuan ? 1 : -1;
+        var out = [];
+        for (var i = 0; i < count; i++) {
+            out.push({
+                can: (first.can + step * i + 100) % 10,
+                chi: (first.chi + step * i + 120) % 12,
+            });
+        }
+        return out;
+    }
+
+    /**
+     * Can chi LƯU NIÊN của một năm dương lịch — công thức lục thập hoa giáp
+     * tiêu chuẩn (Giáp Tý là năm ≡ 4 (mod 60), ví dụ 1984, 2044…), KHÔNG phải
+     * trụ năm Bát Tự (trụ năm đổi tại Lập Xuân, ~4/2, còn "lưu niên" trong một
+     * bảng đại vận luôn là NĂM DƯƠNG LỊCH trơn — "năm 2024 là Giáp Thìn" theo
+     * đúng nghĩa quen thuộc, không lùi lại vài ngày đầu tháng 2). Đối chiếu:
+     * 1952→Nhâm Thìn, 2022→Nhâm Dần, 2024→Giáp Thìn — cả ba đúng ảnh mẫu và
+     * sự thật đã biết.
+     */
+    function luuNienCanChi(year) {
+        return {
+            can: ((year - 4) % 10 + 10) % 10,
+            chi: ((year - 4) % 12 + 12) % 12,
+        };
+    }
+
+    /**
+     * Dựng đủ dữ liệu cho cả 10 đại vận (100 năm): mỗi phần tử gồm can chi
+     * đại vận, mốc bắt đầu (Y/M/D dương lịch — CỘNG LỊCH, xem addYMD), tuổi
+     * nhập vận NGUYÊN (bỏ tháng/ngày — đầu thẻ chỉ cần "số tuổi" tròn), và
+     * mảng 10 năm (số năm + can chi lưu niên của từng năm).
+     *
+     * Đại vận thứ k bắt đầu ĐÚNG 10 năm dương lịch sau đại vận đầu (cùng
+     * tháng/ngày, năm + 10k) — addYMD với {years:10k, months:0, days:0} làm
+     * đúng việc "cộng lịch" ấy, y hệt cách đại vận đầu được cộng từ ngày sinh.
+     */
+    function buildDaiVanBang(inp, dv, thuan, monthCanIdx, monthChiIdx) {
+        var first = daiVanPillarOf(thuan, monthCanIdx, monthChiIdx);
+        var pillars = daiVanSequence(thuan, first, 10);
+        var out = [];
+        for (var k = 0; k < 10; k++) {
+            var start = addYMD(inp.y, inp.m, inp.d, { years: dv.years + 10 * k, months: dv.months, days: dv.days });
+            var years = [];
+            for (var i = 0; i < 10; i++) {
+                var y = start.y + i;
+                years.push({ y: y, cc: luuNienCanChi(y) });
+            }
+            out.push({ can: pillars[k].can, chi: pillars[k].chi, startY: start.y, startM: start.m, tuoi: dv.years + 10 * k, years: years });
+        }
+        return out;
+    }
+
+    /**
      * Tuổi nhập đại vận: quy ước "tam nhật nhất tuế" — 3 NGÀY cách mốc mở
      * tháng (kế tiếp nếu THUẬN, hiện tại nếu NGHỊCH) = 1 TUỔI.
      *
@@ -533,6 +594,9 @@
      *  kèm chiều (thuận/nghịch) đã dùng — đọc thẳng, khỏi phải giật ngược
      *  chuỗi hiển thị. */
     var lastDaiVan = null;
+    /** Chỉ dùng cho bộ kiểm thử: bảng 10 đại vận × 10 năm của lần vẽ gần
+     *  nhất — xem buildDaiVanBang(). */
+    var lastDaiVanBang = null;
 
     function render() {
         var head = document.getElementById('lenhTitle');
@@ -654,8 +718,77 @@
             '<th class="c lenh-last">' + esc(t('colOut')) + '</th>' +
             '</tr></thead><tbody>' + rows + '</tbody></table>';
 
+        renderDaiVanTable(inp, active ? dv : null, thuan, mCanIdx, active ? active.month.chi : null);
+
         fit();
         setTimeout(scrollToActive, 40);
+        setTimeout(scrollToCurrentDaiVan, 40);
+    }
+
+    /**
+     * Bảng ĐẠI VẬN: 10 thẻ × 10 năm. Không tính được (chưa có ngày sinh hợp
+     * lệ, hoặc app.js chưa kịp lộ window.__monthGanIdx) thì để trống — cùng
+     * cách #lenhBody tự để trống khi buildYear() ném lỗi.
+     */
+    function renderDaiVanTable(inp, dv, thuan, monthCanIdx, monthChiIdx) {
+        var titleEl = document.getElementById('daiVanTitle');
+        var box = document.getElementById('daiVanBody');
+        if (titleEl) titleEl.textContent = t('daiVanTitle');
+        lastDaiVanBang = null;
+        if (!box) return;
+        if (!dv || typeof monthCanIdx !== 'number' || monthCanIdx < 0 || typeof monthChiIdx !== 'number') {
+            box.innerHTML = '';
+            return;
+        }
+
+        var bang = buildDaiVanBang(inp, dv, thuan, monthCanIdx, monthChiIdx);
+        lastDaiVanBang = bang;
+        // "Năm nay" là năm THẬT lúc xem bảng (đồng hồ máy), không phải năm
+        // đang nhập ở ô ngày giờ — bảng này trả lời "đời người này ĐANG Ở
+        // ĐÂU", không phụ thuộc đang xem lá số ở thời điểm nào trong quá khứ.
+        var todayY = new Date().getFullYear();
+
+        var html = '';
+        for (var k = 0; k < bang.length; k++) {
+            var đv = bang[k];
+            var chứaNămNay = todayY >= đv.years[0].y && todayY <= đv.years[9].y;
+            html += '<div class="dv-card' + (chứaNămNay ? ' dv-current' : '') + '"' +
+                (chứaNămNay ? ' id="daiVanCurrent"' : '') + '>' +
+                '<div class="dv-card-head">' +
+                '<span class="dv-line1">' + pad2(đv.startM) + '/' + đv.startY +
+                ' - ' + đv.tuoi + (isZH() ? '岁' : 't') + '</span>' +
+                '<span class="dv-line2">' + esc(canName(đv.can) + (isZH() ? '' : ' ') + chiName(đv.chi)) +
+                '</span></div>';
+            for (var i = 0; i < đv.years.length; i++) {
+                var yr = đv.years[i];
+                var lànNămNay = yr.y === todayY;
+                html += '<div class="dv-row' + (lànNămNay ? ' dv-row-on' : '') + '"' +
+                    (lànNămNay ? ' id="daiVanYearOn"' : '') + '>' +
+                    '<span class="dv-year">' + yr.y + '</span>' +
+                    '<span class="dv-cc">' + esc(canName(yr.cc.can) + (isZH() ? '' : ' ') + chiName(yr.cc.chi)) + '</span>' +
+                    '</div>';
+            }
+            html += '</div>';
+        }
+        box.innerHTML = html;
+    }
+
+    /**
+     * Cuộn khối Đại Vận tới đúng thẻ đang sống — 100 năm mà phải tự dò thì
+     * bảng vô dụng, cùng lý lẽ với scrollToActive() ở bảng Lệnh năm.
+     *
+     * Đơn giản hơn scrollToActive(): các thẻ KHÔNG có hàng tiêu đề dính (mỗi
+     * thẻ tự mang đầu thẻ của nó, cuộn trôi theo bình thường), nên khỏi cần
+     * bù trừ cho một mép dính — đưa thẳng đỉnh thẻ lên đỉnh khung là đủ.
+     */
+    function scrollToCurrentDaiVan() {
+        var box = document.getElementById('daiVanBody');
+        var card = document.getElementById('daiVanCurrent');
+        if (!box || !card) return;
+        var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
+        var rBox = box.getBoundingClientRect();
+        var rCard = card.getBoundingClientRect();
+        box.scrollTop = Math.max(0, Math.round(box.scrollTop + (rCard.top - rBox.top) / zoom));
     }
 
     /**
@@ -730,6 +863,9 @@
     var CHROME = 10;
     /** Khung bảng thấp hơn chừng này thì thà cuộn cả trang còn hơn. */
     var BOX_MIN = 120;
+    /** Sàn tối thiểu cho khối Đại Vận — đủ hiện trọn đầu thẻ + vài hàng, kể
+     *  cả khi #lenhSec đang mở và chiếm gần hết chỗ. */
+    var DV_MIN = 170;
 
     /**
      * Kéo bảng lệnh cho lấp đúng phần màn hình còn lại.
@@ -739,8 +875,21 @@
      * hạn — nên ĐO phần cố định rồi cấp phần còn lại cho bảng, chứ không đoán.
      * Không có bước này thì bảng 33 hàng đẩy trang cao gấp rưỡi màn hình,
      * viewport.js thu nhỏ cả trang để chữa, và bảng Bát Tự bé lại vô cớ.
+     *
+     * Hai khối tranh nhau MỘT chỗ (LỆNH NĂM rồi tới ĐẠI VẬN, xếp CHỒNG theo
+     * dòng chảy tài liệu bình thường — không phải hai cột cạnh nhau như hai
+     * mục ở tab Lịch, nên khỏi cần chia theo tỉ lệ phần trăm kiểu
+     * shareSectionHeight() — chỉ cần CHỪA TRƯỚC một sàn cho Đại Vận khi chia
+     * cho Lệnh năm, rồi ĐO LẠI vị trí thật của Đại Vận (đã dịch xuống đúng
+     * chỗ) để cấp nốt phần còn lại cho nó. Thứ tự bắt buộc: fitLenhSec() phải
+     * chạy TRƯỚC, vì fitDaiVan() cần #daiVanHead đã đứng đúng chỗ.
      */
     function fit() {
+        fitLenhSec();
+        fitDaiVan();
+    }
+
+    function fitLenhSec() {
         var sec = document.getElementById('lenhSec');
         var box = document.getElementById('lenhBody');
         var bar = document.getElementById('bottomDock');
@@ -752,16 +901,18 @@
         // toggleDetailPanel() gọi lại đúng hàm này).
         if (getComputedStyle(sec).display === 'none') return;
 
-        // Khung bảng là khối CUỐI CÙNG của trang, nên chỗ nó được phép chiếm
-        // chính là khoảng từ đỉnh nó tới thanh dưới — đo thẳng, khỏi phải cộng
-        // lại chiều cao từng khối bên trên cùng mọi khe giữa chúng (bản đầu
-        // làm vậy: mười mấy dòng, và sai ngay khi ai đó thêm một lề trong CSS).
-        // Hạ chiều cao khung KHÔNG làm chính đỉnh nó nhúc nhích, nên con số đo
-        // được vẫn đúng sau khi đặt.
+        // Chỗ nó được phép chiếm là khoảng từ đỉnh nó tới thanh dưới, TRỪ đi
+        // sàn dành cho khối Đại Vận ngay dưới nó (đầu khối + tối thiểu
+        // DV_MIN) — đo thẳng, khỏi phải cộng lại chiều cao từng khối bên trên
+        // cùng mọi khe giữa chúng (bản đầu làm vậy: mười mấy dòng, và sai
+        // ngay khi ai đó thêm một lề trong CSS). Hạ chiều cao khung KHÔNG làm
+        // chính đỉnh nó nhúc nhích, nên con số đo được vẫn đúng sau khi đặt.
         var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
         var top = sec.getBoundingClientRect().top / zoom;
-        var floorY = bar.getBoundingClientRect().top / zoom;
-        var room = Math.max(BOX_MIN, Math.floor(floorY - top - CHROME));
+        var floorY = bottomDockTop(bar, zoom);
+        var dvHead = document.getElementById('daiVanHead');
+        var dvHeadH = dvHead ? dvHead.getBoundingClientRect().height / zoom : 0;
+        var room = Math.max(BOX_MIN, Math.floor(floorY - top - CHROME - dvHeadH - DV_MIN));
 
         // Bảng ngắn hơn chỗ được cấp (năm nào cũng 33 hàng nên hiếm, nhưng máy
         // tính bảng thì có) thì kẹp theo chính nó, đừng chừa một khoảng trắng.
@@ -784,6 +935,34 @@
         // nằm cụt dưới hàng tiêu đề.
         var thead = box.querySelector('thead');
         if (thead) alignUnderHead(box, thead.getBoundingClientRect().height / zoom, zoom);
+    }
+
+    /**
+     * Cấp chỗ cho khối Đại Vận — ĐO SAU KHI fitLenhSec() đã chạy, vì
+     * #daiVanHead chỉ đứng đúng chỗ (ngay sau #lenhHead lúc đóng, hoặc sau
+     * khung Lệnh năm vừa định hình lúc mở) SAU bước ấy. Không cần chờ
+     * #lenhSec đóng hay mở — Đại Vận LUÔN hiện, không có điều kiện sớm nào để
+     * bỏ qua như fitLenhSec().
+     */
+    function fitDaiVan() {
+        var head = document.getElementById('daiVanHead');
+        var box = document.getElementById('daiVanBody');
+        var bar = document.getElementById('bottomDock');
+        if (!head || !box || !bar) return;
+        if (!document.body.classList.contains('view-lenh')) return;
+
+        var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
+        var top = head.getBoundingClientRect().bottom / zoom;
+        var floorY = bottomDockTop(bar, zoom);
+        var room = Math.max(DV_MIN, Math.floor(floorY - top - CHROME));
+
+        var nat = Math.ceil(box.scrollHeight);   // tổng chiều cao 10 thẻ
+        box.style.maxHeight = (nat ? Math.min(nat, room) : room) + 'px';
+    }
+
+    /** Dùng chung cho cả hai hàm fit — tránh gõ lại getBoundingClientRect. */
+    function bottomDockTop(bar, zoom) {
+        return bar.getBoundingClientRect().top / zoom;
     }
 
     /* ─────────────── Nhãn + móc nối ─────────────── */
@@ -858,6 +1037,7 @@
     window.__lenhData = function (Y) { return buildYear(Y); };
     window.__lenhActive = function () { return lastActive; };
     window.__lenhDaiVan = function () { return lastDaiVan; };
+    window.__lenhDaiVanBang = function () { return lastDaiVanBang; };
     window.__lenhRule = function (k) { if (k) setRule(k); return rule.key; };
     window.__lenhGender = function (k) { if (k) setGender(k); return gender.key; };
 

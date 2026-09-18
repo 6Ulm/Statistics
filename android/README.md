@@ -795,9 +795,67 @@ từng bảng cụ thể:
   tên vào một tiêu đề canh giữa thì "đẹp" nhưng lệch tâm thật, vì không có gì
   đối xứng bên trái) — đúng cách ba bảng kia đã trình bày.
 
-Hệ quả: tab Lệnh giờ khá TRỐNG lúc mới mở (chỉ khối tóm tắt ba dòng, không có
-bàn cờ lớn như tab Kỳ Môn để lấp chỗ) — chấp nhận được vì đó chính là điều
-được yêu cầu, nhưng đáng nói ra.
+Chỗ trống để lại lúc bảng đóng (tab Lệnh không có bàn cờ lớn như tab Kỳ Môn
+để lấp chỗ) nay có bảng ĐẠI VẬN lấp vào — xem mục ngay dưới.
+
+### Bảng ĐẠI VẬN: 10 đại vận × 10 năm
+
+Lấp đúng chỗ trống dưới "LỆNH NĂM" lúc bảng ấy đang đóng. KHÔNG gập/mở như
+"LỆNH NĂM" — luôn hiện, vì việc của nó chính là lấp chỗ trống.
+
+**Tên các đại vận** bước đúng một nấc lục thập hoa giáp mỗi lần, kể từ chính
+đại vận ĐẦU TIÊN đã tính ở khối tóm tắt phía trên (`daiVanPillarOf()`) —
+`daiVanSequence()` chỉ lặp lại phép bước ấy 10 lần, cùng chiều thuận/nghịch.
+Đối chiếu đúng ví dụ người dùng cho: Nam sinh Bính Ngọ, tháng Đinh Dậu →
+Mậu Tuất, Kỷ Hợi, Canh Tý, Tân Sửu…
+
+**Mỗi đại vận dài đúng 10 năm dương lịch**, kể từ mốc "ngày bắt đầu đại vận"
+đã tính ở khối tóm tắt (`addYMD`) — đại vận thứ k bắt đầu ở
+`addYMD(ngày sinh, {years: dv.years + 10k, …})`, tức CÙNG tháng/ngày, năm
++10k mỗi bước; "số tuổi" ghi ở đầu thẻ (`dv.years + 10k`) vì thế cũng tăng
+đúng 10 mỗi thẻ. Đầu thẻ hai dòng: `mm/yyyy - Nt` rồi tới can chi đại vận.
+
+**Lưu niên** (can chi của TỪNG năm trong 10 năm một thẻ) là công thức lục
+thập hoa giáp CHUẨN theo năm dương lịch trơn (`luuNienCanChi()`: Giáp Tý ≡
+năm 4 (mod 60), ví dụ 1984, 2044) — KHÔNG phải trụ năm Bát Tự (trụ năm đổi
+tại Lập Xuân, ~4/2 — hai khái niệm khác nhau, "lưu niên" luôn theo đúng nghĩa
+quen thuộc "năm 2024 là Giáp Thìn", không lùi lại vài ngày đầu tháng 2). Đối
+chiếu ba mốc đã biết: 1952→Nhâm Thìn, 2022→Nhâm Dần, 2024→Giáp Thìn — cả ba
+khớp ảnh mẫu người dùng gửi và sự thật lịch vạn niên.
+
+**Bố cục MỘT CỘT, không phải 5×2 như ảnh mẫu.** Ảnh mẫu rõ ràng dựng cho màn
+rộng (desktop/tablet); máy 320–412px không đủ chỗ cho 5 cột đọc được. Xếp
+CHỒNG 10 "thẻ" đại vận, cuộn dọc cả khối — vẫn đúng nội dung ảnh mẫu (đầu thẻ
+hai dòng, dưới là 10 hàng lưu niên), chỉ đổi hướng xếp.
+
+**Chỉ đen/trắng/ghi**, đúng yêu cầu — không màu nào khác trong cả khối (kiểm
+bằng máy: mọi `color`/`background-color`/`border-color` phải có R=G=B).
+Đại vận ĐANG SỐNG (chứa "năm nay" — xem dưới) và lưu niên "năm nay" bên
+trong nó tô đậm bằng NỀN GHI + CHỮ ĐẬM, không phải màu, mượn đúng cách bảng
+LỆNH NĂM đã tô hàng đang cầm lệnh (`.lenh-on`).
+
+**"Năm nay"** là năm THẬT lúc xem bảng (`new Date().getFullYear()`, đồng hồ
+máy) — KHÔNG phải năm đang nhập ở ô ngày giờ (đó là năm SINH, một khái niệm
+khác). Bảng này trả lời "đời người này đang ở đâu", không phụ thuộc đang xem
+lá số ở thời điểm nào trong quá khứ. Vì thế sinh năm 2026 mà "năm nay" cũng
+là 2026 thì KHÔNG highlight gì cả — 10 đại vận đầu chỉ phủ 2033–2132, chưa
+tới lượt; đó là kết quả ĐÚNG, không phải lỗi thiếu highlight. Có thẻ đang
+sống thì tự cuộn tới nó (`scrollToCurrentDaiVan()`) — không có hàng tiêu đề
+dính phải bù trừ như `scrollToActive()`, nên đơn giản hơn: đưa thẳng đỉnh
+thẻ lên đỉnh khung.
+
+**Chia chỗ với "LỆNH NĂM" — không phải shareSectionHeight() của tab Lịch.**
+Hai mục Tiết Khí/Lịch âm ở tab Lịch nằm CẠNH NHAU (chia theo tỉ lệ phần
+trăm một ngân sách chung); "LỆNH NĂM" và "ĐẠI VẬN" nằm CHỒNG (dòng chảy tài
+liệu bình thường), nên đơn giản hơn nhiều: `fitLenhSec()` CHỪA TRƯỚC một sàn
+(`DV_MIN = 170px` + chiều cao đầu khối Đại Vận) khi chia chỗ cho Lệnh năm,
+rồi `fitDaiVan()` ĐO LẠI vị trí thật của `#daiVanHead` (đã dịch xuống đúng
+chỗ sau khi Lệnh năm định hình) để cấp NỐT phần còn lại. Thứ tự bắt buộc:
+`fitLenhSec()` phải chạy trước `fitDaiVan()` trong `fit()`.
+
+`window.__monthGanIdx` (app.js) và `window.__lenhDaiVanBang()` (dữ liệu 10
+đại vận của lần vẽ gần nhất, chỉ dùng cho bộ kiểm thử) là hai chỗ lộ ra mới
+cho bảng này.
 
 ### "Chọn quy tắc" → "Quy tắc", và ba tên viết tắt
 

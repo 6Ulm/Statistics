@@ -349,6 +349,11 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
         <span id="lenhHeadChevron" class="dp-chevron">▾</span>
     </div>
     <div class="cal-sec" id="lenhSec"><div class="cal-sec-body" id="lenhBody"></div></div>
+    <!-- Bảng ĐẠI VẬN: 10 đại vận × 10 năm = 100 năm, lấp đúng chỗ trống dưới
+         #lenhSec lúc nó đang đóng. KHÔNG gập/mở như #lenhSec — luôn hiện,
+         vì việc của nó chính là lấp chỗ trống ấy. Nội dung do lenh.js dựng. -->
+    <div id="daiVanHead"><span id="daiVanTitle">ĐẠI VẬN</span></div>
+    <div class="cal-sec" id="daiVanSec"><div class="cal-sec-body" id="daiVanBody"></div></div>
 </div>
 
 <!-- ══ THANH DƯỚI MÀN HÌNH: tab + hàng dùng chung ══ -->
