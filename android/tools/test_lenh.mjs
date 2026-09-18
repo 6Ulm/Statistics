@@ -696,17 +696,9 @@ for (const d of [{ n: 'S21', w: 360, h: 740 }, { n: 'S21 FE', w: 393, h: 790 }, 
     }
 }
 
-console.log('\nTuổi nhập đại vận: tam nhật nhất tuế, dựa tiết khí kế tiếp');
+console.log('\nTuổi nhập đại vận: chiều thuận/nghịch chéo Giới tính × Can năm');
 {
-    // ── Số học trần trụi trên Node, dùng lại đúng ShouXingUtil/Solar mà
-    // lenh.js gọi — không mở trình duyệt cho phần đối chiếu công thức.
-    function termJd(n) { return ShouXingUtil.qiAccurate(n * Math.PI / 12, 8) + Solar.J2000; }
-    function termIndexNear(jd) {
-        const n = Math.round((jd - 2451259.0) / (365.2422 / 24));
-        for (let k = -2; k <= 2; k++) if (Math.abs(termJd(n + k) - jd) < 3) return n + k;
-        return n;
-    }
-    function nextTermAfter(jd) { let n = termIndexNear(jd) - 2; while (termJd(n) <= jd) n++; return termJd(n); }
+    // ── Công thức đổi tuổi (không đổi khi thêm chiều thuận/nghịch) ──
     function daiVanTuoi(diffDays) {
         const ageY = diffDays / 3, years = Math.floor(ageY + 1e-9);
         const monthsDec = (ageY - years) * 12, months = Math.floor(monthsDec + 1e-9);
@@ -716,41 +708,77 @@ console.log('\nTuổi nhập đại vận: tam nhật nhất tuế, dựa tiết
         if (M >= 12) { M -= 12; Y += 1; }
         return { years: Y, months: M, days };
     }
-
-    // Ví dụ đúng như người dùng cho: cách tiết khí kế tiếp 10,5 ngày.
     const ex = daiVanTuoi(10.5);
     ok('công thức: 10,5 ngày / 3 = 3,5 tuổi = 3 tuổi 6 tháng',
         ex.years === 3 && ex.months === 6 && ex.days === 0, JSON.stringify(ex));
 
-    // Vài mốc bất kỳ: NEXT term luôn ở tương lai và không xa quá một chu kỳ
-    // tiết khí (~15,2 ngày) — bắt lỗi "next" vô tình trả về mốc quá khứ hay
-    // nhảy quá xa (sai chỗ dò termIndexNear).
-    for (const jd of [2451545.0, 2460000.3, 2461301.7, 2415021.0, 2470000.123]) {
-        const nx = nextTermAfter(jd);
-        ok(`mốc kế tiếp sau JD ${jd} nằm trong tương lai và trong vòng 16 ngày`,
-            nx > jd && (nx - jd) <= 16, `cách ${(nx - jd).toFixed(3)} ngày`);
-    }
-
-    // Tuổi không bao giờ âm, và không bao giờ vượt 3 tuổi (khoảng cách tối đa
-    // giữa hai tiết khí liên tiếp là ~15,2 ngày, chia 3 là dưới 6 tuổi — nhưng
-    // với sai số làm tròn ngày, mọi kết quả thực tế phải nằm trong [0, 6) tuổi
-    // tính theo NGÀY thô, tức years phải ≤ 5).
-    for (const jd of [2451545.0, 2460000.3, 2461301.7]) {
-        const diff = nextTermAfter(jd) - jd;
-        const dv = daiVanTuoi(diff);
-        ok(`tuổi nhập vận không âm (JD ${jd})`, dv.years >= 0 && dv.months >= 0 && dv.days >= 0,
-            JSON.stringify(dv));
-        ok(`tuổi nhập vận dưới 6 (JD ${jd})`, dv.years < 6, JSON.stringify(dv));
-    }
-
-    // ── Trên trình duyệt: hiện đúng, đổi ngôn ngữ đúng, không lỗi JS, và
-    // khớp với chính công thức vừa kiểm ở trên bằng cách đọc lại input thật.
     const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     const { page, errs } = await open(ctx);
     await page.click('#tabLenh');
     await page.waitForTimeout(700);
 
-    const chk = await page.evaluate(() => {
+    /** Đặt ngày giờ sinh qua chính các <select> ẩn — cùng cách bàn tay người
+     *  dùng chạm, không lách qua API riêng. */
+    async function setBirth(y, m, d, h, mi) {
+        await page.evaluate(({ y, m, d, h, mi }) => {
+            const set = (id, v) => {
+                const el = document.getElementById(id);
+                el.value = String(v);
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            };
+            set('inYear', y); set('inMonth', m); set('inDay', d);
+            set('solarHour', h); set('solarMinute', mi);
+            if (window.processAll) window.processAll();
+        }, { y, m, d, h, mi });
+        await page.waitForTimeout(450);
+    }
+
+    // ── Can năm: đối chiếu với SỰ THẬT ĐÃ BIẾT, không phụ thuộc phép tính
+    // của chính ứng dụng — 2024 Giáp Thìn (DƯƠNG), 2025 Ất Tỵ (ÂM), 2026
+    // Bính Ngọ (DƯƠNG). Giữa năm (tháng 6) để khỏi vướng ranh giới Lập Xuân
+    // đầu năm dương lịch.
+    for (const [y, idx, ten] of [[2024, 0, 'Giáp (dương)'], [2025, 1, 'Ất (âm)'], [2026, 2, 'Bính (dương)']]) {
+        await setBirth(y, 6, 15, 12, 0);
+        const got = await page.evaluate(() => window.__yearGanIdx);
+        check(`can năm ${y} đúng là ${ten}`, got, idx);
+    }
+
+    // ── Chéo Giới tính × can năm ra đúng thuận/nghịch, đúng công thức người
+    // dùng cho: Nam+Dương hoặc Nữ+Âm → THUẬN; còn lại → NGHỊCH.
+    const CASES = [
+        { y: 2024, gender: 'nam', wantThuan: true,  ten: '2024 Giáp(dương) + Nam → thuận' },
+        { y: 2024, gender: 'nu',  wantThuan: false, ten: '2024 Giáp(dương) + Nữ → nghịch' },
+        { y: 2025, gender: 'nam', wantThuan: false, ten: '2025 Ất(âm) + Nam → nghịch' },
+        { y: 2025, gender: 'nu',  wantThuan: true,  ten: '2025 Ất(âm) + Nữ → thuận' },
+        { y: 2026, gender: 'nam', wantThuan: true,  ten: '2026 Bính(dương) + Nam → thuận' },
+        { y: 2026, gender: 'nu',  wantThuan: false, ten: '2026 Bính(dương) + Nữ → nghịch' },
+    ];
+    for (const c of CASES) {
+        await setBirth(c.y, 6, 15, 12, 0);
+        await page.evaluate(g => window.__lenhGender(g), c.gender);
+        await page.waitForTimeout(350);
+        const dv = await page.evaluate(() => window.__lenhDaiVan());
+        ok(c.ten, dv && dv.thuan === c.wantThuan, JSON.stringify(dv));
+    }
+
+    // ── Đối chiếu mốc mở/đóng tháng bằng MỘT NGUỒN KHÁC ngay trong chính
+    // lunar.js: getPrevJie()/getNextJie() — chỉ 12 "tiết", khác API với
+    // getPrevJieQi()/getNextJieQi() mà app.js dùng cho ô Tiết Khí (lấy CẢ
+    // "khí"). Đây là phép dò ĐỘC LẬP với monthBounds() của lenh.js, không
+    // gọi lại đúng những dòng code đang được kiểm.
+    //
+    // PHẢI đặt ShouXingUtil.setTzOffsetHours(8) ngay trước khi gọi — đúng cái
+    // bẫy mà lenh.js tự ghi chú ở đầu termJd(): ShouXingUtil giữ múi giờ
+    // trong một biến TOÀN CỤC, và getPrevJie/getNextJie (không như termJd)
+    // không tự truyền "8", nên lấy nguyên mốc múi giờ của LẦN GỌI CUỐI CÙNG
+    // — ở đây là múi giờ hiển thị hiện tại (0/UTC trong môi trường kiểm thử
+    // này), lệch đúng 8 giờ so với mốc UTC+8 mà lenh.js dùng. Đo tay xác nhận
+    // rồi mới sửa: thiếu bước này thì "đối chiếu độc lập" tự nó sai, chứ
+    // không phải monthBounds() sai (đã thử: KHÔNG setTzOffsetHours(8) thì
+    // lệch đúng 8,000 giờ ở cả hai mốc, đúng bằng offset UTC+8 — dấu hiệu
+    // kinh điển của lỗi múi giờ, không phải sai số thiên văn).
+    await setBirth(2026, 9, 17, 21, 0);
+    const doc = await page.evaluate(() => {
         const inp = {
             y: parseInt(document.getElementById('inYear').value, 10),
             m: parseInt(document.getElementById('inMonth').value, 10),
@@ -761,57 +789,102 @@ console.log('\nTuổi nhập đại vận: tam nhật nhất tuế, dựa tiết
         const info = countryData[document.getElementById('country').value];
         const tz = getTimezoneOffset(info.tzId, new Date(inp.y, inp.m - 1, inp.d, inp.h || 12));
         const bj = window._readInputBJ(inp.y, inp.m, inp.d, inp.h, inp.mi, tz);
-        const birthJd = bj.solarBJ.getJulianDay();
-        function termJd(n) { return ShouXingUtil.qiAccurate(n * Math.PI / 12, 8) + Solar.J2000; }
-        function termIndexNear(jd) {
-            const n = Math.round((jd - 2451259.0) / (365.2422 / 24));
-            for (let k = -2; k <= 2; k++) if (Math.abs(termJd(n + k) - jd) < 3) return n + k;
-            return n;
-        }
-        let n = termIndexNear(birthJd) - 2; while (termJd(n) <= birthJd) n++;
-        const diff = termJd(n) - birthJd;
-        const ageY = diff / 3, years = Math.floor(ageY + 1e-9);
-        const monthsDec = (ageY - years) * 12, months = Math.floor(monthsDec + 1e-9);
-        const days = Math.round((monthsDec - months) * 30);
-        const dt = new Date(inp.y, inp.m - 1, inp.d);
-        dt.setFullYear(dt.getFullYear() + years);
-        dt.setMonth(dt.getMonth() + months);
-        dt.setDate(dt.getDate() + days);
-        const pad2 = x => (x < 10 ? '0' : '') + x;
-        const ngàyBắtĐầu = pad2(dt.getDate()) + '/' + pad2(dt.getMonth() + 1) + '/' + dt.getFullYear();
-        const nhãn = document.getElementById('lenhDaiVan')
-            ? document.getElementById('lenhDaiVan').firstChild.textContent.trim() : null;
-        return {
-            hiện: document.getElementById('lenhDaiVanVal') ? document.getElementById('lenhDaiVanVal').textContent : null,
-            tựTính: { years, months, days }, ngàySinh: inp, ngàyBắtĐầu, nhãn,
-        };
+        const dv = window.__lenhDaiVan();
+        ShouXingUtil.setTzOffsetHours(8);
+        const lunar = bj.solarBJ.getLunar();
+        const prevJie = lunar.getPrevJie(false).getSolar().getJulianDay();
+        const nextJie = lunar.getNextJie(false).getSolar().getJulianDay();
+        ShouXingUtil.setTzOffsetHours(tz);  // trả lại đúng múi giờ hiển thị,
+                                             // cho các bước sau của bài kiểm.
+        return { prevJie, nextJie, dv };
     });
-    ok('dòng "Nhập vận" có hiện chữ', !!chk.hiện, JSON.stringify(chk));
-    const wantAge = [
-        chk.tựTính.years > 0 ? `${chk.tựTính.years} tuổi` : '',
-        chk.tựTính.months > 0 ? `${chk.tựTính.months} tháng` : '',
-        chk.tựTính.days > 0 ? `${chk.tựTính.days} ngày` : '',
-    ].filter(Boolean).join(' ') || '0 ngày';
-    const wantText = wantAge + ' · ' + chk.ngàyBắtĐầu;
-    check('số hiện ra khớp đúng công thức (tự tính lại từ CHÍNH input đang có)', chk.hiện, wantText);
-    check('nhãn tiếng Việt là "Nhập vận:"', chk.nhãn, 'Nhập vận:');
-    ok('có kèm ngày bắt đầu đại vận dd/mm/yyyy',
-        /\d{2}\/\d{2}\/\d{4}$/.test(chk.hiện), chk.hiện);
+    // Dung sai 3 giây, không phải 0: getPrevJie/getNextJie ở đây là MỘT
+    // ĐƯỜNG TÍNH KHÁC (không chắc cùng đi qua bảng DE423 như qiAccurate của
+    // lenh.js) — README đã đo và chép lại đúng mức lệch giữa hai đường tính
+    // độc lập cho cùng một tiết khí là "≤ 2 giây tại các mốc dùng chung".
+    // Đo thực tế ở đây ra 0,37 giây, khớp đúng cỡ đó.
+    const DUNG_SAI_NGAY = 3 / 86400;
+    ok('mốc mở tháng HIỆN TẠI khớp getPrevJie() — nguồn khác trong lunar.js',
+        doc.dv && Math.abs(doc.dv.mb.start - doc.prevJie) < DUNG_SAI_NGAY,
+        `monthBounds=${doc.dv && doc.dv.mb.start} vs getPrevJie=${doc.prevJie} ` +
+        `(lệch ${doc.dv && ((doc.dv.mb.start - doc.prevJie) * 86400).toFixed(2)}s)`);
+    ok('mốc mở tháng KẾ TIẾP khớp getNextJie() — nguồn khác trong lunar.js',
+        doc.dv && Math.abs(doc.dv.mb.end - doc.nextJie) < DUNG_SAI_NGAY,
+        `monthBounds=${doc.dv && doc.dv.mb.end} vs getNextJie=${doc.nextJie} ` +
+        `(lệch ${doc.dv && ((doc.dv.mb.end - doc.nextJie) * 86400).toFixed(2)}s)`);
 
-    // Đối chiếu bằng TAY: sinh + tuổi nhập vận = ngày bắt đầu (đúng công thức
-    // người dùng cho, cộng LỊCH chứ không cộng ngày thô).
-    {
-        const d0 = new Date(chk.ngàySinh.y, chk.ngàySinh.m - 1, chk.ngàySinh.d);
-        d0.setFullYear(d0.getFullYear() + chk.tựTính.years);
-        d0.setMonth(d0.getMonth() + chk.tựTính.months);
-        d0.setDate(d0.getDate() + chk.tựTính.days);
-        const pad2 = x => (x < 10 ? '0' : '') + x;
-        const tayTính = pad2(d0.getDate()) + '/' + pad2(d0.getMonth() + 1) + '/' + d0.getFullYear();
-        check('ngày bắt đầu = sinh + tuổi nhập vận (cộng lịch tay)', chk.ngàyBắtĐầu, tayTính);
+    // ── Nội bộ: thuận + nghịch từ CÙNG một khoảnh khắc phải cộng lại đúng
+    // bằng bề rộng cả tháng (mb.end − mb.start) — và giống nhau ở cả BA
+    // sách, vì n0 (mốc mở/đóng tháng) không phụ thuộc bộ số.
+    let mbTheoSách = null;
+    for (const rk of ['yhzp', 'smth', 'zpzq']) {
+        await page.evaluate(k => window.__lenhRule(k), rk);
+        await page.evaluate(() => window.__lenhGender('nam'));
+        await page.waitForTimeout(300);
+        const a = await page.evaluate(() => window.__lenhDaiVan());
+        await page.evaluate(() => window.__lenhGender('nu'));
+        await page.waitForTimeout(300);
+        const b = await page.evaluate(() => window.__lenhDaiVan());
+        const tong = a.diffDays + b.diffDays, rong = a.mb.end - a.mb.start;
+        ok(`${rk}: thuận + nghịch cộng đúng bề rộng tháng (bộ số không đổi việc này)`,
+            Math.abs(tong - rong) < 1e-6, `${tong} vs ${rong}`);
+        if (mbTheoSách === null) mbTheoSách = a.mb;
+        else ok(`${rk}: mốc mở/đóng tháng giống hệt sách trước (cùng một ngày sinh)`,
+            a.mb.start === mbTheoSách.start && a.mb.end === mbTheoSách.end,
+            `${JSON.stringify(a.mb)} vs ${JSON.stringify(mbTheoSách)}`);
+    }
+    await page.evaluate(() => window.__lenhRule('yhzp'));
+    await page.evaluate(() => window.__lenhGender('nam'));
+    await page.waitForTimeout(300);
+
+    // Tuổi không âm, và trong khoảng jié dài nhất có thể (README: tối đa
+    // 31,44 ngày → dưới 31,44/3 ≈ 10,48 tuổi — KHÔNG còn trần 6 tuổi của bản
+    // cũ, vì đó là trần của "tiết khí gần nhất trong 24 mốc", còn nay là bề
+    // rộng CẢ THÁNG, dài gấp đôi).
+    for (const c of CASES) {
+        await setBirth(c.y, 6, 15, 12, 0);
+        await page.evaluate(g => window.__lenhGender(g), c.gender);
+        await page.waitForTimeout(300);
+        const dv = await page.evaluate(() => window.__lenhDaiVan());
+        ok(`tuổi nhập vận không âm (${c.ten})`,
+            dv.dv.years >= 0 && dv.dv.months >= 0 && dv.dv.days >= 0, JSON.stringify(dv.dv));
+        ok(`tuổi nhập vận dưới 11 (${c.ten})`, dv.dv.years < 11, JSON.stringify(dv.dv));
     }
 
-    // Đổi ngôn ngữ: nhãn và đơn vị phải sang tiếng Trung, KHÔNG đổi số, và
-    // ngày bắt đầu GIỮ NGUYÊN dd/mm/yyyy (cố định, không đổi theo ngôn ngữ).
+    // ── Hiện đúng trên màn: dòng "Nhập vận" khớp CHÍNH dv vừa đọc, kèm ngày
+    // bắt đầu = sinh + tuổi (cộng lịch, không phải cộng ngày thô).
+    await setBirth(2026, 9, 18, 8, 28);
+    await page.evaluate(() => window.__lenhGender('nam'));
+    await page.waitForTimeout(400);
+    const chk = await page.evaluate(() => {
+        const dv = window.__lenhDaiVan().dv;
+        const inp = {
+            y: parseInt(document.getElementById('inYear').value, 10),
+            m: parseInt(document.getElementById('inMonth').value, 10),
+            d: parseInt(document.getElementById('inDay').value, 10),
+        };
+        const dt = new Date(inp.y, inp.m - 1, inp.d);
+        dt.setFullYear(dt.getFullYear() + dv.years);
+        dt.setMonth(dt.getMonth() + dv.months);
+        dt.setDate(dt.getDate() + dv.days);
+        const pad2 = x => (x < 10 ? '0' : '') + x;
+        const ngàyBắtĐầu = pad2(dt.getDate()) + '/' + pad2(dt.getMonth() + 1) + '/' + dt.getFullYear();
+        return {
+            hiện: document.getElementById('lenhDaiVanVal').textContent,
+            dv, ngàyBắtĐầu,
+            nhãn: document.getElementById('lenhDaiVan').firstChild.textContent.trim(),
+        };
+    });
+    const wantAge = [
+        chk.dv.years  > 0 ? `${chk.dv.years} tuổi`   : '',
+        chk.dv.months > 0 ? `${chk.dv.months} tháng` : '',
+        chk.dv.days   > 0 ? `${chk.dv.days} ngày`    : '',
+    ].filter(Boolean).join(' ') || '0 ngày';
+    check('số hiện trên màn khớp đúng dv nội bộ vừa đọc', chk.hiện, wantAge + ' · ' + chk.ngàyBắtĐầu);
+    check('nhãn tiếng Việt là "Nhập vận:"', chk.nhãn, 'Nhập vận:');
+    ok('có kèm ngày bắt đầu đại vận dd/mm/yyyy', /\d{2}\/\d{2}\/\d{4}$/.test(chk.hiện), chk.hiện);
+
+    // ── Đổi ngôn ngữ: nhãn/đơn vị sang tiếng Trung, ngày bắt đầu KHÔNG đổi.
     await page.evaluate(() => window.setLang('zh'));
     await page.waitForTimeout(700);
     const zh = await page.evaluate(() => ({
@@ -823,22 +896,26 @@ console.log('\nTuổi nhập đại vận: tam nhật nhất tuế, dựa tiết
         /^[0-9岁个月天]+ · \d{2}\/\d{2}\/\d{4}$/.test(zh.hiện), zh.hiện);
     ok('ngày bắt đầu KHÔNG đổi theo ngôn ngữ', zh.hiện.endsWith(chk.hiện.split('· ')[1]),
         `vi "${chk.hiện}" vs zh "${zh.hiện}"`);
-
-    // Đổi ngày sinh: số phải đổi theo (không phải một chuỗi tĩnh).
     await page.evaluate(() => window.setLang('vi'));
     await page.waitForTimeout(500);
+
+    // ── Đổi ngày sinh: số phải đổi theo (không phải một chuỗi tĩnh).
     const truoc = await page.textContent('#lenhDaiVanVal');
-    await page.evaluate(() => {
-        const sel = document.getElementById('inDay');
-        sel.value = (parseInt(sel.value, 10) % 27) + 1;   // đổi ngày, tránh out-of-range
-        sel.dispatchEvent(new Event('change', { bubbles: true }));
-        if (window.processAll) window.processAll();
-    });
-    await page.waitForTimeout(700);
+    const dNay = parseInt(await page.$eval('#inDay', e => e.value), 10);
+    await setBirth(2026, 9, (dNay % 27) + 1, 8, 28);
     const sau = await page.textContent('#lenhDaiVanVal');
     ok('đổi ngày sinh thì tuổi nhập vận đổi theo', sau !== truoc, `"${truoc}" → "${sau}"`);
 
-    // Hình học: dòng phụ không tràn, không cắt chữ, ở CẢ ba máy hẹp nhất.
+    // ── Đổi Giới tính: số phải đổi theo (chiều đổi, không phải chỉ nhãn).
+    const truocGT = await page.textContent('#lenhDaiVanVal');
+    await page.evaluate(() => window.__lenhGender('nu'));
+    await page.waitForTimeout(400);
+    const sauGT = await page.textContent('#lenhDaiVanVal');
+    ok('đổi Giới tính thì tuổi nhập vận đổi theo (chiều đổi)', sauGT !== truocGT, `"${truocGT}" → "${sauGT}"`);
+    await page.evaluate(() => window.__lenhGender('nam'));
+    await page.waitForTimeout(300);
+
+    // ── Hình học: dòng phụ không tràn, không cắt chữ.
     for (const d of [{ n: 'S21', w: 360 }, { n: 'A51', w: 412 }]) {
         const c2 = await browser.newContext({ viewport: { width: d.w, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
         const { page: p2 } = await open(c2);
@@ -855,7 +932,6 @@ console.log('\nTuổi nhập đại vận: tam nhật nhất tuế, dựa tiết
     ok('không lỗi JS suốt lượt kiểm tuổi nhập vận', errs.length === 0, errs.join(' ; '));
     await ctx.close();
 }
-
 await browser.close();
 server.close();
 console.log(`\n${pass} đạt · ${fail} hỏng`);

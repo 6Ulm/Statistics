@@ -214,11 +214,10 @@
     function ruleLabel(r) { return isZH() ? r.zh : r.vi; }
 
     /* ─────────────── Ô Giới tính ───────────────
-     * Chỉ là một Ô LỰA CHỌN được LƯU LẠI — như rule ở trên, nó KHÔNG (còn)
-     * đổi số nào trên bảng Lệnh. Bát Tự cổ điển đổi CHIỀU đại vận (thuận/
-     * nghịch) theo giới tính chéo với âm dương của can năm, nhưng ứng dụng
-     * này chưa có khái niệm "năm dương/âm của người xem" tách khỏi việc chọn
-     * ngày giờ, nên phần đó để dành cho một yêu cầu sau, rõ ràng hơn. */
+     * Quyết CHIỀU đại vận (thuận/nghịch) khi chéo với âm dương của can năm —
+     * xem isThuanHanh() ngay dưới hàm daiVanTuoi(). Không đụng gì tới bảng
+     * Lệnh của cả năm (bảng ấy chỉ phụ thuộc bộ số ở RULES), chỉ đụng dòng
+     * "Nhập vận: …" phía trên bảng. */
     var GENDERS = [
         { key: 'nam', vi: 'Nam', zh: '男' },
         { key: 'nu',  vi: 'Nữ',  zh: '女' },
@@ -282,26 +281,46 @@
     }
 
     /**
-     * Mốc TIẾT KHÍ kế tiếp sau `jdUTC8` — bất kỳ trong 24 mốc (mọi bội số của
-     * 15° hoàng kinh), KHÔNG riêng 12 "tiết" mở tháng lệnh mà JIE_ORDER lọc
-     * ra. Tuổi nhập đại vận tính theo khoảng cách tới mốc GẦN NHẤT trong toàn
-     * bộ 24 tiết khí, kể cả "khí" giữa tháng (Vũ Thuỷ, Xuân Phân…).
+     * Ranh giới THÁNG LỆNH chứa `active.part` — không phải ranh giới của
+     * riêng ĐOẠN cầm lệnh (`part.jdFrom/jdTo`, có thể là mốc GIỮA tháng khi
+     * đoạn ấy không phải đoạn đầu), mà là ranh giới của CẢ THÁNG: mốc mở
+     * tháng (đoạn ĐẦU cũng bắt đầu ở đó) và mốc mở tháng SAU (đoạn CUỐI cũng
+     * kết ở đó, vì buildYear() chốt cứng đoạn cuối bằng `termJd(n0 + 2)`).
      *
-     * Lùi 2 chỉ số trước khi dò tới, rồi bước tới cho lần đầu vượt `jdUTC8`:
-     * termJd đơn điệu tăng theo n nên cách này luôn ra đúng mốc kế tiếp, bất
-     * kể phỏng đoán ban đầu của termIndexNear (dựa vào khoảng cách trung
-     * bình) lệch bao nhiêu — không dựa vào giả định "n gần nhất luôn ở phía
-     * trước hay phía sau".
+     * Hai mốc này KHÔNG phụ thuộc bộ số đang chọn: `n0` tính một lần cho mỗi
+     * tháng, trước khi chia theo `rule.fen` — ba sách chỉ khác nhau ở chỗ
+     * CHIA nhỏ 30° ấy ra sao, không khác ở chỗ 30° ấy bắt đầu/kết thúc khi
+     * nào. Tuổi nhập đại vận vì thế giống nhau ở cả ba sách, dù can cầm lệnh
+     * (Mậu/Bính/Giáp…) có thể khác nhau.
      */
-    function nextTermAfter(jdUTC8) {
-        var n = termIndexNear(jdUTC8) - 2;
-        while (termJd(n) <= jdUTC8) n++;
-        return termJd(n);
+    function monthBounds(month) {
+        var parts = month.parts;
+        return { start: parts[0].jdFrom, end: parts[parts.length - 1].jdTo };
     }
 
     /**
-     * Tuổi nhập đại vận (thuận hành): quy ước "tam nhật nhất tuế" — 3 NGÀY
-     * cách tiết khí kế tiếp = 1 TUỔI.
+     * Thuận hành hay nghịch hành: chéo GIỚI TÍNH với ÂM DƯƠNG của can năm.
+     *
+     * Nam sinh năm can DƯƠNG (Giáp Bính Mậu Canh Nhâm — chỉ số CHẴN trong
+     * CAN_VI/CAN_ZH) hoặc Nữ sinh năm can ÂM (Ất Đinh Kỷ Tân Quý — chỉ số
+     * LẺ) thì THUẬN; còn lại (Nam+Âm hoặc Nữ+Dương) thì NGHỊCH.
+     *
+     * `yearGanIdx` do app.js lộ ra qua `window.__yearGanIdx` (0=Giáp…9=Quý),
+     * tính lại mỗi lần `processAll()` chạy — cùng lúc bảng Bát Tự phía trên vẽ
+     * lại, nên không lệch pha với can năm đang hiển thị. Chưa có (lần vẽ đầu
+     * tiên, trước khi processAll từng chạy) thì mặc định THUẬN — chỉ để khỏi
+     * ném lỗi, không phải một lựa chọn có ý nghĩa mệnh lý.
+     */
+    function isThuanHanh(genderKey, yearGanIdx) {
+        if (typeof yearGanIdx !== 'number' || yearGanIdx < 0) return true;
+        var duong = (yearGanIdx % 2 === 0);
+        var nam = (genderKey === 'nam');
+        return (nam && duong) || (!nam && !duong);
+    }
+
+    /**
+     * Tuổi nhập đại vận: quy ước "tam nhật nhất tuế" — 3 NGÀY cách mốc mở
+     * tháng (kế tiếp nếu THUẬN, hiện tại nếu NGHỊCH) = 1 TUỔI.
      *
      * `diffDays` là khoảng cách ấy theo ngày thập phân (giờ/phút của giờ sinh
      * đã gộp vào phần lẻ, vì `diffDays` tự nó là hiệu hai mốc Julian Day).
@@ -309,8 +328,9 @@
      * tháng), rồi phần lẻ của THÁNG quy ra NGÀY (1 tháng = 30 ngày) — dừng ở
      * ngày, không xuống giờ/phút.
      *
-     * Ví dụ đối chiếu: cách tiết khí kế tiếp 10,5 ngày → 10,5 / 3 = 3,5 tuổi
-     * = 3 tuổi + (0,5 × 12 =) 6 tháng, không dư ngày → "3 tuổi 6 tháng".
+     * Ví dụ đối chiếu (thuận hành): cách mốc mở tháng kế tiếp 10,5 ngày →
+     * 10,5 / 3 = 3,5 tuổi = 3 tuổi + (0,5 × 12 =) 6 tháng, không dư ngày →
+     * "3 tuổi 6 tháng".
      */
     function daiVanTuoi(diffDays) {
         var ageY = diffDays / 3;
@@ -489,6 +509,10 @@
     /* ─────────────── Vẽ ─────────────── */
 
     var lastActive = null;
+    /** Chỉ dùng cho bộ kiểm thử: kết quả tuổi nhập vận của lần vẽ gần nhất,
+     *  kèm chiều (thuận/nghịch) đã dùng — đọc thẳng, khỏi phải giật ngược
+     *  chuỗi hiển thị. */
+    var lastDaiVan = null;
 
     function render() {
         var head = document.getElementById('lenhTitle');
@@ -510,19 +534,32 @@
         // nặng hơn cả sai vài phút.
         var active = null;
         var vanText = null;
+        lastDaiVan = null;
         if (typeof _readInputBJ === 'function') {
             try {
                 var bj = _readInputBJ(inp.y, inp.m, inp.d, inp.h, inp.mi, inp.tz);
                 var birthJd = bj.solarBJ.getJulianDay();
                 active = lenhAt(birthJd, inp.y);
-                // Cùng mốc giờ Bắc Kinh mà lenhAt() vừa dùng, nên "cách tiết
-                // khí kế tiếp bao lâu" và "đang cầm lệnh can nào" luôn khớp
-                // cùng MỘT thời điểm sinh, không lệch nguồn.
-                var dv = daiVanTuoi(nextTermAfter(birthJd) - birthJd);
-                // Cộng lịch vào ĐÚNG ngày sinh người dùng đã chọn (inp.y/m/d,
-                // dương lịch địa phương) — không phải birthJd giờ Bắc Kinh,
-                // vì đó là ngày mà "tuổi nhập vận" phải được hiểu theo.
-                vanText = fmtTuoi(dv) + ' · ' + fmtYMD(addYMD(inp.y, inp.m, inp.d, dv));
+                // Cùng mốc giờ Bắc Kinh mà lenhAt() vừa dùng, nên "đang cầm
+                // lệnh can nào" và "tuổi nhập vận" luôn khớp cùng MỘT thời
+                // điểm sinh, không lệch nguồn.
+                if (active) {
+                    var mb = monthBounds(active.month);
+                    var yIdx = (typeof window !== 'undefined') ? window.__yearGanIdx : undefined;
+                    var thuan = isThuanHanh(gender.key, yIdx);
+                    // Thuận: mốc mở tháng KẾ TIẾP trừ giờ sinh.
+                    // Nghịch: giờ sinh trừ mốc mở tháng HIỆN TẠI.
+                    var diff = thuan ? (mb.end - birthJd) : (birthJd - mb.start);
+                    var dv = daiVanTuoi(diff);
+                    lastDaiVan = { dv: dv, thuan: thuan, diffDays: diff, mb: mb };
+                    // Cộng lịch vào ĐÚNG ngày sinh người dùng đã chọn (inp.y/
+                    // m/d, dương lịch địa phương) — không phải birthJd giờ
+                    // Bắc Kinh, vì đó là ngày mà "tuổi nhập vận" phải được
+                    // hiểu theo. Luôn CỘNG TỚI (không trừ) dù nghịch hành hay
+                    // thuận hành: "tuổi nhập vận" luôn là một tuổi DƯƠNG, và
+                    // ngày bắt đầu đại vận luôn ở SAU ngày sinh.
+                    vanText = fmtTuoi(dv) + ' · ' + fmtYMD(addYMD(inp.y, inp.m, inp.d, dv));
+                }
             } catch (e2) { active = null; vanText = null; }
         }
         lastActive = active;
@@ -740,9 +777,8 @@
         gender = genderByKey(key);
         if (typeof safeStorage !== 'undefined') safeStorage.setItem(K_GENDER, gender.key);
         showGender();
-        // Chưa đổi số nào (xem khối ghi chú ở GENDERS) — vẫn gọi render() để
-        // hôm nào giới tính bắt đầu quyết chiều đại vận thì chỗ móc nối đã
-        // sẵn, khỏi phải rà lại từng chỗ gọi setGender.
+        // Đổi giới tính đổi CHIỀU đại vận (thuận/nghịch), nên "Nhập vận: …"
+        // phải vẽ lại — xem isThuanHanh().
         render();
     }
 
@@ -772,6 +808,7 @@
     /** Chỉ dùng cho bộ kiểm thử: đọc thẳng bảng đã tính, khỏi phải đọc DOM. */
     window.__lenhData = function (Y) { return buildYear(Y); };
     window.__lenhActive = function () { return lastActive; };
+    window.__lenhDaiVan = function () { return lastDaiVan; };
     window.__lenhRule = function (k) { if (k) setRule(k); return rule.key; };
     window.__lenhGender = function (k) { if (k) setGender(k); return gender.key; };
 

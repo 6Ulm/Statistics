@@ -677,46 +677,62 @@ giữ màu chàm** — chúng là một bộ khác và phải khớp nhau (xem p
 ### Tuổi nhập đại vận
 
 Dòng "Lệnh: Canh" có thêm một dòng phụ: **"Nhập vận: 1 tuổi 8 tháng 17 ngày ·
-17/06/2028"**. Công thức là quy ước "tam nhật nhất tuế" (三日一岁) của Tử
-Bình — **thuận hành** (dùng tiết khí KẾ TIẾP, không phải tiết khí trước):
+17/06/2028"**. Công thức là quy ước "tam nhật nhất tuế" (三日一岁) của Tử Bình,
+và **có chiều** — thuận hay nghịch chéo giữa Giới tính và âm dương của can
+năm, đúng luật cổ điển (không phải luôn thuận như bản đầu tiên làm nhầm):
 
-1. Lấy mốc TIẾT KHÍ kế tiếp (bất kỳ trong 24 mốc — cả 12 "tiết" lẫn 12 "khí"
-   giữa tháng, KHÔNG riêng 12 "tiết" mà `JIE_ORDER` lọc ra để dựng bảng Lệnh)
-   trừ giờ sinh, ra số NGÀY thập phân (giờ/phút đã gộp vào phần lẻ).
-2. Chia 3 → tuổi nhập vận, dạng thập phân (`daiVanTuoi()` trong `lenh.js`).
-   Phần lẻ của TUỔI quy ra THÁNG (1 tuổi = 12 tháng), phần lẻ còn lại của
-   THÁNG quy ra NGÀY (1 tháng = 30 ngày) — dừng ở ngày, không xuống giờ/phút.
-   Ví dụ đối chiếu: cách tiết khí kế tiếp 10,5 ngày → 10,5⁄3 = 3,5 tuổi =
-   3 tuổi + 6 tháng (không dư ngày).
-3. **Ngày bắt đầu đại vận** = ngày sinh (dương lịch, đúng ngày người dùng đã
+1. **Chiều**: Nam sinh năm can DƯƠNG (Giáp Bính Mậu Canh Nhâm) hoặc Nữ sinh
+   năm can ÂM (Ất Đinh Kỷ Tân Quý) → **THUẬN**; còn lại (Nam+Âm hoặc Nữ+
+   Dương) → **NGHỊCH** (`isThuanHanh()` trong `lenh.js`).
+2. **Khoảng cách**, tính bằng NGÀY thập phân (giờ/phút gộp vào phần lẻ):
+   * Thuận: mốc MỞ THÁNG KẾ TIẾP trừ giờ sinh.
+   * Nghịch: giờ sinh trừ mốc MỞ THÁNG HIỆN TẠI.
+
+   "Tháng" ở đây là ranh giới THẬT của tháng lệnh (`monthBounds()`), tức mốc
+   TIẾT (12 "tiết" mở tháng — Lập Xuân, Kinh Trập…, KHÔNG phải 24 tiết khí:
+   "khí" giữa tháng như Vũ Thuỷ, Xuân Phân không phải ranh tháng). Hai mốc
+   này rule-independent: `n0` (mốc mở tháng) tính một lần trước khi chia
+   theo `rule.fen`, nên tuổi nhập vận giống nhau ở cả ba sách dù can cầm
+   lệnh khác nhau.
+3. Chia 3 → tuổi nhập vận, dạng thập phân (`daiVanTuoi()`). Phần lẻ của TUỔI
+   quy ra THÁNG (1 tuổi = 12 tháng), phần lẻ còn lại của THÁNG quy ra NGÀY
+   (1 tháng = 30 ngày) — dừng ở ngày, không xuống giờ/phút. Ví dụ đối chiếu:
+   cách mốc mở tháng 10,5 ngày → 10,5⁄3 = 3,5 tuổi = 3 tuổi + 6 tháng
+   (không dư ngày).
+4. **Ngày bắt đầu đại vận** = ngày sinh (dương lịch, đúng ngày người dùng đã
    chọn) **cộng LỊCH** ba con số năm/tháng/ngày ấy (`addYMD()`, dùng thẳng
    `Date` gốc của JS để việc tràn tháng/năm tự đúng) — **không phải** cộng
-   thẳng số-ngày-thập-phân đã dùng để RA ba con số ở bước 2 (tháng ở bước 2 là
-   ước lệ 30 ngày, còn ở bước 3 là tháng thật, dài ngắn khác nhau — hai phép
-   cộng gần nhau nhưng không hệt nhau; làm đúng theo cách người dùng yêu cầu:
-   "ngày sinh + tuổi nhập vận"). Hiện cố định `dd/mm/yyyy`, không đổi theo
-   ngôn ngữ — mọi cột ngày tháng khác trong tab này (Vào lệnh/Hết lệnh) đã
-   theo đúng quy ước ấy bất kể tiếng Việt hay tiếng Trung.
+   thẳng số-ngày-thập-phân đã dùng để RA ba con số ở bước 3 (tháng ở bước 3
+   là ước lệ 30 ngày, còn ở bước 4 là tháng thật, dài ngắn khác nhau). Luôn
+   **cộng tới**, dù thuận hay nghịch: "tuổi nhập vận" luôn dương, và ngày bắt
+   đầu đại vận luôn ở SAU ngày sinh. Hiện cố định `dd/mm/yyyy`, không đổi
+   theo ngôn ngữ — mọi cột ngày tháng khác trong tab này (Vào lệnh/Hết lệnh)
+   đã theo đúng quy ước ấy bất kể tiếng Việt hay tiếng Trung.
 
-**Chỉ tính chiều thuận.** Bát Tự cổ điển đổi CHIỀU đại vận (thuận/nghịch) theo
-giới tính chéo với âm dương của can năm — nhưng đó là việc khác với việc vừa
-làm ở đây; xem mục "Ô Giới tính" ngay dưới.
+Chỉ số Can năm (`window.__yearGanIdx`, 0=Giáp…9=Quý) app.js lộ ra mỗi lần
+`processAll()` chạy — cùng lúc bảng Bát Tự phía trên vẽ lại, nên không lệch
+pha với can năm đang hiển thị.
 
-Dò mốc tiết khí kế tiếp KHÔNG dùng lại `termIndexNear` một mình: hàm ấy chỉ
-tìm chỉ số GẦN NHẤT (trước hoặc sau), nên `nextTermAfter()` lùi thêm 2 chỉ số
-rồi bước tới cho tới khi vượt qua giờ sinh — `termJd` đơn điệu tăng theo chỉ
-số nên cách này luôn đúng bất kể phỏng đoán ban đầu lệch bao nhiêu.
+`test_lenh.mjs` đối chiếu bằng MỘT NGUỒN KHÁC ngay trong chính `lunar.js`:
+`getPrevJie()`/`getNextJie()` (chỉ 12 "tiết", khác API với `getPrevJieQi()`/
+`getNextJieQi()` mà app.js dùng cho ô Tiết Khí — API ấy lấy CẢ "khí"). Khớp
+`monthBounds()` trong vòng 3 giây — dung sai này không tuỳ tiện, mà đúng mức
+lệch đã đo giữa hai đường tính độc lập ở mục "Một nguồn duy nhất với bảng
+tiết khí" bên trên ("≤ 2 giây tại các mốc dùng chung"). Và phải đặt
+`ShouXingUtil.setTzOffsetHours(8)` ngay trước khi gọi — đúng cái bẫy mà
+`termJd()` tự ghi chú: ShouXingUtil giữ múi giờ trong một biến TOÀN CỤC, và
+`getPrevJie`/`getNextJie` không tự truyền "8" như `termJd` làm, nên lấy
+nguyên múi giờ của lần gọi cuối cùng — thiếu bước này thì phép đối chiếu tự
+nó lệch đúng 8,000 giờ (dấu hiệu kinh điển của lỗi múi giờ, không phải sai số
+thiên văn — đã đo tay xác nhận trước khi sửa).
 
 ### Ô Giới tính (Nam/Nữ)
 
 Cùng hàng với ô ngày giờ và ô Quy tắc, ở phần tư thứ ba của bảng Bát Tự (vạch
-50%–75%, đúng cột "Ngày"). Hiện tại đây là **một ô nhớ lựa chọn thuần tuý —
-KHÔNG đổi con số nào** trên bảng Lệnh. Bát Tự cổ điển dùng giới tính (chéo với
-âm dương của can năm) để quyết đại vận đi THUẬN hay NGHỊCH — nhưng ứng dụng
-chưa có khái niệm "năm dương/âm của người xem" tách rời khỏi việc chọn ngày
-giờ, nên phần nối giới tính vào chiều tính vẫn để dành cho một yêu cầu sau,
-rõ ràng hơn. `setGender()` vẫn gọi `render()` mỗi lần đổi, để chỗ móc nối sẵn
-đó khi cần.
+50%–75%, đúng cột "Ngày"). Quyết CHIỀU đại vận (thuận/nghịch) khi chéo với âm
+dương của can năm — xem mục "Tuổi nhập đại vận" bên trên. Không đụng gì tới
+bảng Lệnh của cả năm (bảng ấy chỉ phụ thuộc bộ số ở `RULES`), chỉ đụng dòng
+"Nhập vận: …" phía trên bảng.
 
 ### "Chọn quy tắc" → "Quy tắc", và ba tên viết tắt
 

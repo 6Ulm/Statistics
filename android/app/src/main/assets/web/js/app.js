@@ -2139,6 +2139,13 @@ function processAll() {
         const yearGanHan = baziBJ.getYearGan(), yearZhiHan = baziBJ.getYearZhi();
         const dayGanHan  = bazi.getDayGan(),    dayZhiHan  = bazi.getDayZhi();
 
+        // Chỉ số Can năm (0=Giáp…9=Quý), lộ ra cho tab Lệnh: tuổi nhập đại
+        // vận đi thuận hay nghịch phụ thuộc CHẴN/LẺ của can năm chéo với
+        // giới tính (xem js/lenh.js, daiVanTuoi/chieuThuanNghich). Cùng một
+        // biến này đổi mỗi lần processAll() chạy, đúng lúc mọi tab khác cũng
+        // vẽ lại — không cần tính riêng.
+        window.__yearGanIdx = arrGanZH.indexOf(yearGanHan);
+
         // ── Giờ Tý thiên văn (真子時) ──
         // Giờ Tý bắt đầu tại noonMins − 780 (Chính Ngọ − 13h).
         // Mỗi thời辰 = 120 phút thực, tính từ ranh giới Giờ Tý này.
