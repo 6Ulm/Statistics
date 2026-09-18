@@ -236,10 +236,13 @@ table.lenh-tb tr.lenh-on td {
    ĐẠI VẬN — 10 đại vận × 10 năm = 100 năm. Lấp đúng chỗ trống dưới
    #lenhSec lúc bảng ấy đang đóng (mặc định) — xem lenh.js, fitDaiVan().
 
-   Máy hẹp (320–412px) không đủ chỗ cho 5 cột như ảnh mẫu (rõ ràng dựng
-   cho màn rộng) — đổi bố cục thành MỘT CỘT, xếp CHỒNG 10 "thẻ" đại vận,
-   cuộn dọc cả khối. Mỗi thẻ vẫn đúng nội dung ảnh mẫu: đầu thẻ hai dòng
-   (mốc bắt đầu + can chi đại vận), dưới là 10 hàng lưu niên.
+   Bố cục 2 HÀNG × 5 CỘT đúng ảnh mẫu, ÉP VỪA đúng bề rộng màn hình —
+   không cuộn ngang (đã thử bản cuộn ngang cột cố định 116px, đọc rất rõ,
+   nhưng người dùng muốn thấy trọn 5 cột ngay, không cần vuốt). Đánh đổi
+   ngược lại: 5 cột ép vào 320–412px chỉ còn ~58–77px/cột, không đủ chỗ
+   cho cỡ chữ 11.5–13px như bản cuộn ngang — hạ xuống một mức VỪA ĐỌC
+   ĐƯỢC (9–10.5px, xem clamp() dưới), thấp hơn bản cuộn ngang nhưng KHÔNG
+   xuống tới 7.5px như bản đầu tiên (co thẳng theo vw không sàn hợp lý).
    ════════════════════════════════════════════════════════════════ */
 #daiVanHead {
     display: flex; align-items: center; justify-content: center;
@@ -264,55 +267,81 @@ table.lenh-tb tr.lenh-on td {
 }
 #daiVanBody { padding: 6px; }
 
-/* Mỗi đại vận một thẻ, cách nhau một khe — KHÔNG viền lồng viền (thẻ đã có
-   viền riêng, khung cuộn cũng có viền, viền lồng viền dày trông như lỗi). */
+/* overflow-x:auto là LƯỚI AN TOÀN, không phải cơ chế chính: bình thường 5
+   cột vừa khít, không cuộn gì cả — chỉ đỡ đòn nếu một tổ hợp chữ bất
+   thường nào đó vẫn tràn, khỏi vỡ layout cả trang. */
+.dv-grid { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.dv-grid-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 3px;
+}
+.dv-grid-row + .dv-grid-row { margin-top: 8px; }
+
 .dv-card {
     border: 1px solid var(--border-color, #ddd);
-    border-radius: 6px;
-    margin-bottom: 8px;
-    overflow: hidden;              /* bo góc ăn xuống cả đầu thẻ lẫn hàng */
+    border-radius: 5px;
+    overflow: hidden;   /* bo góc ăn xuống cả đầu thẻ lẫn hàng */
+    min-width: 0;       /* item lưới co được dưới kích thước tự nhiên của chữ —
+                            không co thì một hàng dài đẩy tràn cột, phá 5 cột đều nhau */
 }
-.dv-card:last-child { margin-bottom: 0; }
 
 .dv-card-head {
     background: #f0f0f0;
     color: var(--text-main, #000);
     text-align: center;
-    padding: 4px 6px;
-    line-height: 1.35;
+    padding: 3px 1px;
+    line-height: 1.25;
 }
 .dv-card-head .dv-line1 {
     display: block;
-    font-size: clamp(11px, 3vw, 12.5px);
+    font-size: clamp(8.5px, 2.3vw, 10px);
     color: var(--text-dim, #666);
+    white-space: nowrap;
 }
 .dv-card-head .dv-line2 {
     display: block;
-    font-size: clamp(13.5px, 3.6vw, 15px);
+    font-size: clamp(9.5px, 2.6vw, 11px);
     font-weight: 700;
+    white-space: nowrap;
 }
 
 /* Đại vận ĐANG SỐNG (chứa năm nay): nền đậm hơn — chỉ đen/trắng/ghi, không
-   màu, nhưng vẫn phải nổi rõ giữa 10 thẻ giống hệt nhau về hình dạng. */
+   màu, nhưng vẫn phải nổi rõ giữa 10 ô giống hệt nhau về hình dạng. */
 .dv-card.dv-current { border-color: #888; border-width: 1.5px; }
 .dv-card.dv-current .dv-card-head { background: #999; color: #fff; }
 .dv-card.dv-current .dv-card-head .dv-line1 { color: #eee; }
 
+/* Năm và can chi CẠNH NHAU một dòng — đúng ảnh mẫu ("1952  Nhâm Thìn").
+   tabular-nums để cột năm thẳng hàng theo chiều dọc, dễ dò. */
 .dv-row {
-    display: flex; align-items: center;
-    padding: 3px 8px;
-    font-size: clamp(11.5px, 3.1vw, 13px);
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 3px;
+    padding: 2px 1px;
+    font-size: clamp(9px, 2.4vw, 10.5px);
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
     border-top: 1px solid var(--border-color, #eee);
+    line-height: 1.25;
 }
 .dv-row:nth-child(odd) { background: #f9f9f9; }
 .dv-card.dv-current .dv-row:nth-child(odd) { background: #f2f2f2; }
-.dv-row .dv-year { flex: 0 0 3.6em; color: var(--text-dim, #666); }
-.dv-row .dv-cc   { flex: 1 1 auto; font-weight: 600; }
+.dv-row .dv-year { color: var(--text-dim, #666); }
+.dv-row .dv-cc   { font-weight: 600; }
 
 /* Lưu niên NĂM NAY: cùng cách bảng Lệnh tô hàng đang cầm lệnh — đậm chữ và
    đổi nền, không đổi màu chữ. */
 .dv-row.dv-row-on {
     background: #dcdcdc !important;
     font-weight: 700;
+}
+
+/* Máy rất hẹp (≤360px): 5 cột chỉ còn ~64px — bóp đệm/khe trước, đừng bóp
+   chữ xuống dưới sàn clamp() (cùng luật máy hẹp mà bảng Lệnh năm áp dụng). */
+@media (max-width: 360px) {
+    .dv-grid-row { gap: 2px; }
+    .dv-card-head { padding: 2px 0; }
+    .dv-row { padding: 1px 0; gap: 2px; }
 }

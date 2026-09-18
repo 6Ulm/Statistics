@@ -823,10 +823,48 @@ quen thuộc "năm 2024 là Giáp Thìn", không lùi lại vài ngày đầu th
 chiếu ba mốc đã biết: 1952→Nhâm Thìn, 2022→Nhâm Dần, 2024→Giáp Thìn — cả ba
 khớp ảnh mẫu người dùng gửi và sự thật lịch vạn niên.
 
-**Bố cục MỘT CỘT, không phải 5×2 như ảnh mẫu.** Ảnh mẫu rõ ràng dựng cho màn
-rộng (desktop/tablet); máy 320–412px không đủ chỗ cho 5 cột đọc được. Xếp
-CHỒNG 10 "thẻ" đại vận, cuộn dọc cả khối — vẫn đúng nội dung ảnh mẫu (đầu thẻ
-hai dòng, dưới là 10 hàng lưu niên), chỉ đổi hướng xếp.
+**Bố cục ĐÚNG 2 hàng × 5 cột như ảnh mẫu** (`.dv-grid` > 2 `.dv-grid-row` × 5
+`.dv-card`, `document.querySelectorAll('.dv-grid-row')` luôn trả về 2 phần
+tử, mỗi phần tử luôn đủ 5 `.dv-card`) — ép vừa đúng bề rộng màn hình
+(`grid-template-columns: repeat(5, 1fr)`), không cuộn ngang. Đầu thẻ hai dòng
+(mốc bắt đầu + tuổi, rồi can chi đại vận) dùng `clamp()` co theo bề rộng máy;
+mỗi hàng lưu niên (năm + can chi) nằm CHUNG MỘT DÒNG như ảnh mẫu ("1952
+Nhâm Thìn"), cũng `clamp()` nhưng có SÀN — xem đoạn "cỡ chữ" ngay dưới.
+
+Bản đầu tiên thử ép cứng 5 cột vào bề rộng thật đã làm cỡ chữ tụt xuống
+7.5–8.6px THẬT (đo bằng `getComputedStyle`, không phải nhìn ảnh chụp phóng
+to trên máy tính) — nhỏ hơn mọi chữ khác trong app, không đọc nổi trên máy
+thật. Bản kế tiếp đổi sang cột rộng cố định (116–128px) + cuộn ngang đồng bộ
+hai hàng, đọc rất rõ (11.5–13px) nhưng chỉ hiện ~3/5 cột cùng lúc trên máy
+hẹp — người dùng chọn ngược lại: **thấy trọn 5 cột ngay, chấp nhận chữ nhỏ
+hơn cuộn ngang nhưng không nhỏ như bản clamp() gốc.** Cỡ chữ cuối cùng
+(`clamp(9px, 2.4vw, 10.5px)` cho hàng lưu niên) đứng giữa hai thái cực đó.
+
+**Cỡ chữ có SÀN — và một số ít hàng cần co THÊM để khỏi cắt chữ.** Ngay cả
+với sàn `clamp()` hợp lý, khoảng 1/4 trong 60 tổ hợp can chi (can VÀ chi đều
+dài 4 chữ: Giáp/Bính/Đinh/Canh/Nhâm ghép với Thìn/Thân/Tuất — ví dụ "Nhâm
+Thân", "Giáp Thìn") vẫn tràn vài px ở đúng hai máy hẹp nhất (320–360px), vì
+năm+can chi CHUNG MỘT DÒNG mà cột chỉ còn ~55–65px. `.dv-card` có
+`overflow:hidden` nên tràn là CẮT CỤT chữ thật (mất chữ cái cuối), không
+phải chuyện vô hại — không thể lờ đi trong một app mà đúng tên can chi là
+cốt lõi. `shrinkDaiVanRows()` (gọi từ `fitDaiVan()` mỗi lần `fit()` chạy) đo
+từng `.dv-row` sau khi render, CHỈ co font-size (bước 0.2px, sàn 7.5px) của
+ĐÚNG những hàng đang tràn — khoảng 90/100 hàng còn lại vẫn giữ nguyên cỡ
+thoải mái của `clamp()`. Luôn XOÁ inline style trước khi đo lại mỗi lần
+`fit()` chạy, để một hàng từng phải co lúc màn hẹp được LỚN LẠI đúng cỡ nếu
+sau đó màn xoay ngang/rộng ra — co không phải vĩnh viễn.
+
+Bẫy khi tự kiểm tra điều này: `.dv-year`/`.dv-cc` là con `flex` bên trong
+`.dv-row`, mặc định `min-width: auto` khiến CON không bao giờ tự co dưới
+kích thước chữ của chính nó — `scrollWidth` riêng của con luôn bằng
+`clientWidth` riêng, "sạch" giả tạo dù CHA (`.dv-row`) đang tràn thật. Phải
+đo tràn trên chính `.dv-row`, không chỉ trên các span con — `tools/test_lenh.mjs`
+và `tools/_grid.mjs` đều từng mắc lỗi này trước khi phát hiện ra.
+
+`.dv-grid { overflow-x: auto }` vẫn còn đó nhưng chỉ là LƯỚI AN TOÀN (bình
+thường không cuộn gì — `grid.scrollWidth === grid.clientWidth`), phòng một tổ
+hợp cực đoan nào đó trong tương lai vẫn tràn dù đã co hết cỡ; không phải cơ
+chế chính của bố cục này.
 
 **Chỉ đen/trắng/ghi**, đúng yêu cầu — không màu nào khác trong cả khối (kiểm
 bằng máy: mọi `color`/`background-color`/`border-color` phải có R=G=B).
@@ -842,7 +880,10 @@ là 2026 thì KHÔNG highlight gì cả — 10 đại vận đầu chỉ phủ 2
 tới lượt; đó là kết quả ĐÚNG, không phải lỗi thiếu highlight. Có thẻ đang
 sống thì tự cuộn tới nó (`scrollToCurrentDaiVan()`) — không có hàng tiêu đề
 dính phải bù trừ như `scrollToActive()`, nên đơn giản hơn: đưa thẳng đỉnh
-thẻ lên đỉnh khung.
+thẻ lên đỉnh khung DỌC (`#daiVanBody`), và (phòng khi lưới an toàn cuộn
+ngang phải dùng tới — xem đoạn trên) đưa thẻ ra giữa khung nhìn NGANG
+(`.dv-grid`) nữa; bình thường 5 cột vừa khít nên vế ngang này là số 0, không
+việc gì để làm.
 
 **Chia chỗ với "LỆNH NĂM" — không phải shareSectionHeight() của tab Lịch.**
 Hai mục Tiết Khí/Lịch âm ở tab Lịch nằm CẠNH NHAU (chia theo tỉ lệ phần

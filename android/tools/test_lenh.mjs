@@ -1215,6 +1215,55 @@ console.log('\nBảng ĐẠI VẬN: 10 đại vận × 10 năm, lấp chỗ tr�
     check('dòng 2 đầu thẻ là can chi đại vận', dom.dòng2Thẻ0, tên[0]);
     check('tiêu đề mục là "ĐẠI VẬN"', dom.tiêuĐề, 'ĐẠI VẬN');
 
+    // ── Cỡ chữ THẬT phải đủ đọc — chính lỗi user bắt được lúc đầu: clamp()
+    // co theo bề rộng màn hình từng tụt xuống 7.5–8.6px ĐỀU KHẮP cả bảng
+    // (nhỏ hơn mọi chữ khác trong app), mà lúc soi ảnh chụp phóng to 2× lại
+    // tưởng ổn. Đầu thẻ (dòng mốc + dòng can chi) không bao giờ cần co động
+    // (đo thực nghiệm: luôn đủ chỗ, xem tools/_grid.mjs) nên khoá cứng
+    // ngưỡng tối thiểu ở đây — lỗi này không được lặp lại lặng lẽ. ──
+    const cỡChữĐầuThẻ = await page.evaluate(() => {
+        const px = sel => { const el = document.querySelector(sel); return el ? parseFloat(getComputedStyle(el).fontSize) : null; };
+        return { line1: px('#daiVanBody .dv-line1'), line2: px('#daiVanBody .dv-line2') };
+    });
+    ok('cỡ chữ dòng mốc+tuổi đầu thẻ đủ đọc (≥8px)', cỡChữĐầuThẻ.line1 >= 8, cỡChữĐầuThẻ.line1);
+    ok('cỡ chữ dòng can chi đại vận đầu thẻ đủ đọc (≥9px)', cỡChữĐầuThẻ.line2 >= 9, cỡChữĐầuThẻ.line2);
+
+    // ── Hàng lưu niên (năm + can chi): ĐA SỐ phải ở cỡ thoải mái (~9–10.5px,
+    // xem lenh.css) — chỉ THIỂU SỐ tổ hợp can chi DÀI NHẤT (can VÀ chi đều 4
+    // chữ: Giáp/Bính/Đinh/Canh/Nhâm × Thìn/Thân/Tuất, ví dụ "Nhâm Thân") mới
+    // cần shrinkDaiVanRows() co thêm — vẫn phải có SÀN, không được co xuống
+    // dưới ngưỡng đọc được luôn. ──
+    const cỡHàng = await page.evaluate(() => {
+        const px = el => parseFloat(getComputedStyle(el).fontSize);
+        const rows = [...document.querySelectorAll('#daiVanBody .dv-row')];
+        const sizes = rows.map(px);
+        return {
+            tổng: sizes.length,
+            nhỏNhất: Math.min(...sizes),
+            đaSốĐủ9px: sizes.filter(s => s >= 9).length,
+        };
+    });
+    ok('mọi hàng lưu niên vẫn có sàn đọc được (≥7.5px) dù có bị co để hết tràn',
+        cỡHàng.nhỏNhất >= 7.5, cỡHàng.nhỏNhất);
+    ok('đa số hàng lưu niên (≥70/100) giữ cỡ chữ thoải mái ≥9px, không phải co toàn bộ',
+        cỡHàng.đaSốĐủ9px >= 70, `${cỡHàng.đaSốĐủ9px}/100`);
+
+    // ── KHÔNG hàng lưu niên nào bị cắt chữ thật — kiểm tra chính .dv-row (là
+    // flex container), KHÔNG chỉ .dv-year/.dv-cc con bên trong: con flex mặc
+    // định min-width:auto nên không tự co dưới kích thước chữ của chính nó
+    // (scrollWidth riêng luôn bằng clientWidth riêng, "sạch" giả tạo dù cha
+    // đang tràn thật) — .dv-card có overflow:hidden nên cha tràn là cắt cụt
+    // chữ thật, phải bắt đúng ở cha. ──
+    const cắtHàng = await page.evaluate(() => {
+        const bad = [];
+        document.querySelectorAll('#daiVanBody .dv-row').forEach(r => {
+            if (r.scrollWidth > r.clientWidth + 0.5) bad.push(r.textContent.trim());
+        });
+        return bad;
+    });
+    ok('không hàng lưu niên nào bị cắt chữ (đo trên .dv-row, không chỉ span con)',
+        cắtHàng.length === 0, cắtHàng.join(' | '));
+
     // ── Đổi Giới tính: chiều bước đổi (Nữ → nghịch), tên 10 đại vận đổi theo ──
     await page.evaluate(() => window.__lenhGender('nu'));
     await page.waitForTimeout(500);
@@ -1247,6 +1296,60 @@ console.log('\nBảng ĐẠI VẬN: 10 đại vận × 10 năm, lấp chỗ tr�
         // Trường hợp NÀY cũng phải đúng: KHÔNG highlight gì, không phải lỗi.
         ok('năm nay KHÔNG nằm trong 100 năm của bảng → KHÔNG highlight gì',
             !hl.cóThẻ && !hl.cóNăm, JSON.stringify(hl));
+    }
+
+    // ── Người 50 tuổi: BẮT BUỘC "năm nay" rơi vào bảng (nhập vận luôn trước
+    // tuổi 15, nên bảng 100 năm từ đó chắc chắn phủ qua "năm nay") — lá số ở
+    // trên (sinh 2026) không bao giờ tự đi vào nhánh CÓ highlight, nên phải
+    // dựng riêng một lá số khác mới thật sự kiểm được scrollToCurrentDaiVan()
+    // đưa đúng thẻ vào khung nhìn (không chỉ "có cuộn", đo VỊ TRÍ THẬT). ──
+    {
+        const tuổi50 = new Date().getFullYear() - 50;
+        await page.evaluate((y) => {
+            const set = (id, v) => { const el = document.getElementById(id); el.value = String(v);
+                el.dispatchEvent(new Event('change', { bubbles: true })); };
+            set('inYear', y); set('inMonth', 9); set('inDay', 18);
+            set('solarHour', 9); set('solarMinute', 0);
+            window.processAll();
+        }, tuổi50);
+        await page.waitForTimeout(500);
+        await page.evaluate(() => window.__lenhGender('nam'));
+        await page.waitForTimeout(500);
+
+        const hl2 = await page.evaluate(() => {
+            const within = (el, anc) => {
+                const r = el.getBoundingClientRect(), a = anc.getBoundingClientRect();
+                return r.top >= a.top - 0.5 && r.bottom <= a.bottom + 0.5 &&
+                       r.left >= a.left - 0.5 && r.right <= a.right + 0.5;
+            };
+            const card = document.getElementById('daiVanCurrent');
+            const yr = document.getElementById('daiVanYearOn');
+            const body = document.getElementById('daiVanBody');
+            const grid = card ? card.closest('.dv-grid') : null;
+            return {
+                cóThẻ: !!card, cóNăm: !!yr,
+                dọcThấy: (card && body) ? within(card, body) : null,
+                ngangThấy: (card && grid) ? within(card, grid) : null,
+            };
+        });
+        ok('người 50 tuổi: năm nay chắc chắn rơi vào bảng 100 năm → có thẻ + có năm highlight',
+            hl2.cóThẻ && hl2.cóNăm, JSON.stringify(hl2));
+        ok('đã cuộn DỌC tới đúng chỗ: thẻ đang sống nằm TRỌN trong khung nhìn dọc',
+            hl2.dọcThấy === true, JSON.stringify(hl2));
+        ok('đã cuộn NGANG tới đúng chỗ (nếu cần): thẻ đang sống nằm TRỌN trong khung nhìn ngang',
+            hl2.ngangThấy === true, JSON.stringify(hl2));
+
+        // Khôi phục đúng lá số gốc (2026, ví dụ user cho) cho các phép đo sau.
+        await page.evaluate(() => {
+            const set = (id, v) => { const el = document.getElementById(id); el.value = String(v);
+                el.dispatchEvent(new Event('change', { bubbles: true })); };
+            set('inYear', 2026); set('inMonth', 9); set('inDay', 18);
+            set('solarHour', 9); set('solarMinute', 0);
+            window.processAll();
+        });
+        await page.waitForTimeout(500);
+        await page.evaluate(() => window.__lenhGender('nam'));
+        await page.waitForTimeout(500);
     }
 
     // ── Đơn sắc: chỉ đen/trắng/ghi (R=G=B ở mọi màu nền/chữ dùng trong bảng) ──
@@ -1304,9 +1407,27 @@ console.log('\nBảng ĐẠI VẬN: 10 đại vận × 10 năm, lấp chỗ tr�
         const { page: p2, errs: errs2 } = await open(c2);
         await p2.click('#tabLenh');
         await p2.waitForTimeout(700);
+        // Dùng lại đúng lá số 1975/Nam — 100 năm của lá số này CHỨA SẴN nhiều
+        // tổ hợp can chi DÀI NHẤT (Canh Thân, Nhâm Tuất, Nhâm Thân, Nhâm
+        // Thìn…, đo thật ở tools/_grid.mjs), nên vòng lặp này thật sự kiểm
+        // tra đúng trường hợp khó, không phải trạng thái mặc định trống.
+        await p2.evaluate(() => {
+            const set = (id, v) => { const el = document.getElementById(id); el.value = String(v);
+                el.dispatchEvent(new Event('change', { bubbles: true })); };
+            set('inYear', 1975); set('inMonth', 6); set('inDay', 15);
+            set('solarHour', 9); set('solarMinute', 0);
+            window.processAll();
+        });
+        await p2.waitForTimeout(500);
+        await p2.evaluate(() => window.__lenhGender('nam'));
+        await p2.waitForTimeout(500);
         const g = await p2.evaluate(() => {
             const cắt = [];
-            document.querySelectorAll('#daiVanHead, #daiVanBody .dv-line1, #daiVanBody .dv-line2, #daiVanBody .dv-year, #daiVanBody .dv-cc')
+            // .dv-row (cha, flex container) — KHÔNG chỉ .dv-year/.dv-cc con:
+            // con flex mặc định min-width:auto không tự co dưới kích thước
+            // chữ của chính nó, nên chỉ đo con thì luôn "sạch" giả tạo dù cha
+            // đang tràn thật (đã tự bắt lỗi này khi viết tools/_grid.mjs).
+            document.querySelectorAll('#daiVanHead, #daiVanBody .dv-line1, #daiVanBody .dv-line2, #daiVanBody .dv-row')
                 .forEach(e => { if (e.scrollWidth > e.clientWidth + 1) cắt.push((e.textContent || '').trim().slice(0, 16)); });
             return { cắt, ngang: document.documentElement.scrollWidth > window.innerWidth + 1 };
         });

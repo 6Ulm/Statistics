@@ -748,28 +748,37 @@
         // ĐÂU", không phụ thuộc đang xem lá số ở thời điểm nào trong quá khứ.
         var todayY = new Date().getFullYear();
 
-        var html = '';
-        for (var k = 0; k < bang.length; k++) {
-            var đv = bang[k];
-            var chứaNămNay = todayY >= đv.years[0].y && todayY <= đv.years[9].y;
-            html += '<div class="dv-card' + (chứaNămNay ? ' dv-current' : '') + '"' +
-                (chứaNămNay ? ' id="daiVanCurrent"' : '') + '>' +
-                '<div class="dv-card-head">' +
-                '<span class="dv-line1">' + pad2(đv.startM) + '/' + đv.startY +
-                ' - ' + đv.tuoi + (isZH() ? '岁' : 't') + '</span>' +
-                '<span class="dv-line2">' + esc(canName(đv.can) + (isZH() ? '' : ' ') + chiName(đv.chi)) +
-                '</span></div>';
-            for (var i = 0; i < đv.years.length; i++) {
-                var yr = đv.years[i];
-                var lànNămNay = yr.y === todayY;
-                html += '<div class="dv-row' + (lànNămNay ? ' dv-row-on' : '') + '"' +
-                    (lànNămNay ? ' id="daiVanYearOn"' : '') + '>' +
-                    '<span class="dv-year">' + yr.y + '</span>' +
-                    '<span class="dv-cc">' + esc(canName(yr.cc.can) + (isZH() ? '' : ' ') + chiName(yr.cc.chi)) + '</span>' +
-                    '</div>';
+        // 2 HÀNG × 5 CỘT đúng bố cục ảnh mẫu, ÉP VỪA đúng bề rộng màn hình
+        // (xem lenh.css để rõ cỡ chữ đã hạ xuống mức nào cho vừa). Năm và
+        // can chi vẫn CẠNH NHAU một dòng như ảnh mẫu ("1952  Nhâm Thìn").
+        var html = '<div class="dv-grid">';
+        for (var hang = 0; hang < 2; hang++) {
+            html += '<div class="dv-grid-row">';
+            for (var cot = 0; cot < 5; cot++) {
+                var k = hang * 5 + cot;
+                var đv = bang[k];
+                var chứaNămNay = todayY >= đv.years[0].y && todayY <= đv.years[9].y;
+                html += '<div class="dv-card' + (chứaNămNay ? ' dv-current' : '') + '"' +
+                    (chứaNămNay ? ' id="daiVanCurrent"' : '') + '>' +
+                    '<div class="dv-card-head">' +
+                    '<span class="dv-line1">' + pad2(đv.startM) + '/' + đv.startY +
+                    ' - ' + đv.tuoi + (isZH() ? '岁' : 't') + '</span>' +
+                    '<span class="dv-line2">' + esc(canName(đv.can) + (isZH() ? '' : ' ') + chiName(đv.chi)) +
+                    '</span></div>';
+                for (var i = 0; i < đv.years.length; i++) {
+                    var yr = đv.years[i];
+                    var lànNămNay = yr.y === todayY;
+                    html += '<div class="dv-row' + (lànNămNay ? ' dv-row-on' : '') + '"' +
+                        (lànNămNay ? ' id="daiVanYearOn"' : '') + '>' +
+                        '<span class="dv-year">' + yr.y + '</span>' +
+                        '<span class="dv-cc">' + esc(canName(yr.cc.can) + (isZH() ? '' : ' ') + chiName(yr.cc.chi)) + '</span>' +
+                        '</div>';
+                }
+                html += '</div>';
             }
             html += '</div>';
         }
+        html += '</div>';
         box.innerHTML = html;
     }
 
@@ -780,6 +789,12 @@
      * Đơn giản hơn scrollToActive(): các thẻ KHÔNG có hàng tiêu đề dính (mỗi
      * thẻ tự mang đầu thẻ của nó, cuộn trôi theo bình thường), nên khỏi cần
      * bù trừ cho một mép dính — đưa thẳng đỉnh thẻ lên đỉnh khung là đủ.
+     *
+     * Cuộn cả DỌC (#daiVanBody, đóng/mở xem hàng nào) lẫn NGANG (.dv-grid).
+     * Bình thường 5 cột vừa khít màn hình nên vế ngang là số 0 (không việc
+     * gì để làm) — chỉ có tác dụng nếu .dv-grid lỡ phải cuộn ngang (lưới an
+     * toàn ở lenh.css, xem ở đó), lúc ấy vẫn phải đưa đúng thẻ vào khung
+     * nhìn chứ không chỉ mỗi trục dọc.
      */
     function scrollToCurrentDaiVan() {
         var box = document.getElementById('daiVanBody');
@@ -789,6 +804,17 @@
         var rBox = box.getBoundingClientRect();
         var rCard = card.getBoundingClientRect();
         box.scrollTop = Math.max(0, Math.round(box.scrollTop + (rCard.top - rBox.top) / zoom));
+
+        var grid = card.closest('.dv-grid');
+        if (grid) {
+            var rGrid = grid.getBoundingClientRect();
+            // Đưa thẻ ra GIỮA khung nhìn ngang (khi rộng nội dung cho phép) —
+            // dễ thấy hơn là chỉ ghé mép trái, và tự nhiên đứng yên (không xê
+            // dịch nữa) một khi mọi thẻ trước nó không đủ để lấp nửa khung.
+            var cardMid = rCard.left + rCard.width / 2;
+            var gridMid = rGrid.left + rGrid.width / 2;
+            grid.scrollLeft = Math.max(0, Math.round(grid.scrollLeft + (cardMid - gridMid) / zoom));
+        }
     }
 
     /**
@@ -951,13 +977,50 @@
         if (!head || !box || !bar) return;
         if (!document.body.classList.contains('view-lenh')) return;
 
+        // Co RIÊNG những hàng bị tràn TRƯỚC khi đo chiều cao tự nhiên — co chữ
+        // có thể đổi chiều cao dòng đôi chút, đo sau bước này mới đúng.
+        shrinkDaiVanRows(box);
+
         var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
         var top = head.getBoundingClientRect().bottom / zoom;
         var floorY = bottomDockTop(bar, zoom);
         var room = Math.max(DV_MIN, Math.floor(floorY - top - CHROME));
 
-        var nat = Math.ceil(box.scrollHeight);   // tổng chiều cao 10 thẻ
+        var nat = Math.ceil(box.scrollHeight);   // tổng chiều cao 2 hàng thẻ
         box.style.maxHeight = (nat ? Math.min(nat, room) : room) + 'px';
+    }
+
+    /**
+     * 5 cột ép vừa màn hình đọc tốt với ĐA SỐ 60 tổ hợp can chi — nhưng
+     * khoảng 1/4 tổ hợp (can VÀ chi đều dài 4 chữ: Giáp/Bính/Đinh/Canh/Nhâm
+     * ghép với Thìn/Thân/Tuất, ví dụ "Nhâm Thân", "Giáp Thìn") vẫn tràn vài
+     * px ở đúng hai máy hẹp nhất (320–360px) — đo thật bằng phép dựng tổ hợp
+     * xấu nhất, xem tools/_grid.mjs. .dv-card có overflow:hidden nên tràn
+     * là CẮT CỤT chữ thật, không phải chuyện vô hại — không thể lờ đi.
+     *
+     * Sửa bằng co CHỈ ĐÚNG những hàng bị tràn (không hạ cả bảng xuống cỡ nhỏ
+     * nhất để chừa chỗ cho 1/4 tổ hợp hiếm) — 3/4 hàng còn lại vẫn giữ cỡ
+     * chữ thoải mái. Luôn TRẢ VỀ cỡ CSS gốc trước khi đo lại: máy xoay ngang
+     * rộng ra thì một hàng từng phải co lúc màn hẹp phải được lớn lại, không
+     * thì co một lần là co vĩnh viễn.
+     */
+    function shrinkDaiVanRows(box) {
+        var rows = box.querySelectorAll('.dv-row');
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            row.style.fontSize = '';
+            if (row.scrollWidth > row.clientWidth + 0.5) {
+                var size = parseFloat(getComputedStyle(row).fontSize);
+                // Bước nhỏ (0.2px) để dừng SÁT NGƯỠNG vừa hết tràn, không nhảy
+                // cách quá xa rồi dừng hụt (đo thật ở 320px: bước 0.5px từng
+                // dừng ở 8px mà vẫn còn thừa 1–2px — chữ không co tuyến tính
+                // tuyệt đối theo cỡ chữ).
+                while (size > 7.5 && row.scrollWidth > row.clientWidth + 0.5) {
+                    size -= 0.2;
+                    row.style.fontSize = size + 'px';
+                }
+            }
+        }
     }
 
     /** Dùng chung cho cả hai hàm fit — tránh gõ lại getBoundingClientRect. */
