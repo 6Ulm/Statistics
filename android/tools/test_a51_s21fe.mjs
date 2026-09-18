@@ -95,6 +95,9 @@ const ok = (tên, điều, ghi = '') => {
     if (điều) { đạt++; console.log(`  ok   ${tên}`); }
     else { hỏng++; console.log(`  ✗ SAI ${tên}   ${ghi}`); }
 };
+/** So khớp đúng một giá trị — in cả hai vế khi lệch, khỏi phải đoán. */
+const check = (tên, được, mong) =>
+    ok(tên, được === mong, `được "${được}", mong "${mong}"`);
 
 const browser = await chromium.launch(
     fs.existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {}
@@ -301,6 +304,172 @@ for (const d of [{ m: 'A51', w: 412, h: 866, dpr: 2.625 }, { m: 'S21 FE', w: 384
     }));
     ok(`${d.m}: tên thành phố dài không làm tràn ngang`, r.tràn <= 1, `${r.tràn}px`);
     ok(`${d.m}: tên thành phố dài bị "…" cắt gọn`, r.ell === 'ellipsis', r.ell);
+    await ctx.close();
+}
+
+/* ══ 4. Thanh tab sắp xếp lại được ══
+   GIỮ LÂU rồi KÉO NGANG — cử chỉ chuẩn của Android để sắp xếp lại. Phải thử
+   bằng CHẠM THẬT qua CDP: chuột và ngón tay đi hai đường sự kiện khác nhau,
+   và đường ngón tay mới là đường chạy trên máy. */
+console.log('\nSắp xếp lại thứ tự ba tab (giữ lâu rồi kéo)');
+for (const d of [{ m: 'A51', w: 412, h: 866, dpr: 2.625 }, { m: 'S21 FE', w: 384, h: 784, dpr: 2.8125 }]) {
+    const ctx = await browser.newContext({ viewport: { width: d.w, height: d.h }, deviceScaleFactor: d.dpr, isMobile: true, hasTouch: true });
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', e => errs.push(String(e).slice(0, 140)));
+    await page.goto(base, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(1200);
+    const cdp = await ctx.newCDPSession(page);
+    const thứTự = () => page.evaluate(() =>
+        [...document.querySelectorAll('#tabBar .tab-item')].map(e => e.id).join(','));
+    const ô = id => page.evaluate(i => {
+        const r = document.getElementById(i).getBoundingClientRect();
+        return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: r.width };
+    }, id);
+    const chạm = (type, x, y) => cdp.send('Input.dispatchTouchEvent',
+        { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, radiusX: 12, radiusY: 12, force: 1 }] });
+
+    check(`${d.m}: thứ tự mặc định`, await thứTự(), 'tabQmdj,tabCal,tabLenh');
+
+    // Vuốt NHANH qua thanh tab không được vào chế độ sắp xếp — bằng không chỉ
+    // quệt tay một cái là thứ tự tab đổi, không ai hiểu vì sao.
+    let q = await ô('tabQmdj');
+    await chạm('touchStart', q.x, q.y);
+    for (let i = 1; i <= 6; i++) { await chạm('touchMove', q.x + 8 * i, q.y); await page.waitForTimeout(25); }
+    const vuốtNhầm = await page.evaluate(() =>
+        document.getElementById('tabBar').classList.contains('tab-reordering'));
+    await chạm('touchEnd', 0, 0);
+    await page.waitForTimeout(400);
+    ok(`${d.m}: vuốt nhanh KHÔNG vào chế độ sắp xếp`, !vuốtNhầm);
+    check(`${d.m}: vuốt nhanh không đổi thứ tự`, await thứTự(), 'tabQmdj,tabCal,tabLenh');
+
+    // Giữ lâu rồi kéo Bát Tự từ cuối về đầu.
+    const t = await ô('tabLenh');
+    await chạm('touchStart', t.x, t.y);
+    await page.waitForTimeout(600);                       // vượt HOLD_MS
+    ok(`${d.m}: giữ lâu thì vào chế độ sắp xếp`, await page.evaluate(() =>
+        document.getElementById('tabBar').classList.contains('tab-reordering')));
+    for (let i = 1; i <= 14; i++) {
+        await chạm('touchMove', t.x - (t.w * 2) * i / 14, t.y);
+        await page.waitForTimeout(18);
+    }
+    await chạm('touchEnd', 0, 0);
+    await page.waitForTimeout(500);
+    check(`${d.m}: kéo Bát Tự về đầu`, await thứTự(), 'tabLenh,tabQmdj,tabCal');
+    ok(`${d.m}: buông tay là hết chế độ sắp xếp`, await page.evaluate(() =>
+        !document.getElementById('tabBar').classList.contains('tab-reordering') &&
+        !document.querySelector('#tabBar .tab-drag')));
+
+    // Vạch ngăn phải ĐI THEO: nó vẽ bằng `.tab-item + .tab-item{border-left}`,
+    // một chọn tử theo DOM — đây đúng là lý do phải đổi chỗ thật trong DOM chứ
+    // không dùng `order` của flex (xem js/taborder.js).
+    const viền = await page.evaluate(() => [...document.querySelectorAll('#tabBar .tab-item')]
+        .map(e => parseFloat(getComputedStyle(e).borderLeftWidth)));
+    ok(`${d.m}: tab đầu không có vạch ngăn trái`, viền[0] === 0, String(viền));
+    ok(`${d.m}: hai tab sau đều có vạch ngăn`, viền[1] > 0 && viền[2] > 0, String(viền));
+
+    // Chạm NGẮN vẫn phải là chuyển tab — cử chỉ mới không được nuốt cử chỉ cũ.
+    // (Lỗi đã gặp: cờ nuốt-click nằm lại sau cú kéo không sinh ra click, rồi
+    //  nuốt oan cú chạm kế tiếp.)
+    const c = await ô('tabCal');
+    await chạm('touchStart', c.x, c.y); await page.waitForTimeout(80); await chạm('touchEnd', 0, 0);
+    await page.waitForTimeout(600);
+    ok(`${d.m}: sau khi sắp xếp, chạm tab vẫn chuyển màn hình`,
+        await page.evaluate(() => document.body.classList.contains('view-cal')));
+
+    // Nhớ qua lần mở lại.
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(1300);
+    check(`${d.m}: thứ tự sống qua lần mở lại`, await thứTự(), 'tabLenh,tabQmdj,tabCal');
+
+    // Chuỗi lưu hỏng (bản sau thêm/bớt tab) thì quay về mặc định, đừng để mất
+    // tab nào khỏi thanh.
+    await page.evaluate(() => localStorage.setItem('qmdj.tabOrder', 'tabCal,tabKhongTonTai'));
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(1300);
+    check(`${d.m}: chuỗi lưu hỏng thì về thứ tự mặc định`, await thứTự(), 'tabQmdj,tabCal,tabLenh');
+
+    ok(`${d.m}: không lỗi JS`, errs.length === 0, [...new Set(errs)].join(' | '));
+    await ctx.close();
+}
+
+/* ══ 5. Tab Bát Tự: mở Lệnh năm thì CẢ TRANG cuộn ══
+   Bảng Lệnh năm từng bị kẹp vào chỗ trống còn lại (120px cho một bảng cao
+   683px) rồi tự cuộn bên trong — ngón tay đặt xuống là rơi vào ô cuộn tí hon
+   ấy, và toàn bộ màn hình phía trên (Bát Tự, Đại Vận) đứng im. Nay nó bung đủ
+   chiều cao như ba bảng gập/mở ở tab Kỳ Môn. */
+console.log('\nTab Bát Tự: mở Lệnh năm thì cả trang cuộn được');
+for (const d of [{ m: 'A51', w: 412, h: 866, dpr: 2.625 }, { m: 'S21 FE', w: 384, h: 784, dpr: 2.8125 }]) {
+    const ctx = await browser.newContext({ viewport: { width: d.w, height: d.h }, deviceScaleFactor: d.dpr, isMobile: true, hasTouch: true });
+    const page = await ctx.newPage();
+    await page.goto(base, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(1200);
+    await page.evaluate(() => window.showTab('lenh'));
+    await page.waitForTimeout(900);
+
+    ok(`${d.m}: không còn hàng tiêu đề "ĐẠI VẬN"`,
+        await page.evaluate(() => !document.getElementById('daiVanHead')));
+
+    // Hàng lưu niên canh PHẢI, và mọi hàng dừng ở CÙNG một vạch.
+    const canh = await page.evaluate(() => {
+        const rows = [...document.querySelectorAll('.dv-row')];
+        const hở = rows.map(r => {
+            const cc = r.querySelector('.dv-cc').getBoundingClientRect();
+            return +(r.getBoundingClientRect().right - cc.right).toFixed(2);
+        });
+        // Tràn ĐO HAI PHÍA: canh phải nên phần thừa dồn sang TRÁI, mà
+        // scrollWidth chỉ đếm phía cuối dòng (xem rowOverflow trong lenh.js).
+        let thò = 0, ví = '';
+        for (const r of rows) {
+            const kids = [...r.children].map(k => k.getBoundingClientRect());
+            const cs = getComputedStyle(r), b = r.getBoundingClientRect();
+            const o = Math.max(
+                (b.left + parseFloat(cs.paddingLeft)) - Math.min(...kids.map(k => k.left)),
+                Math.max(...kids.map(k => k.right)) - (b.right - parseFloat(cs.paddingRight)));
+            if (o > thò) { thò = o; ví = r.textContent.trim(); }
+        }
+        return { min: Math.min(...hở), max: Math.max(...hở), thò: +thò.toFixed(2), ví,
+                 canh: getComputedStyle(rows[0]).justifyContent };
+    });
+    check(`${d.m}: hàng lưu niên canh phải`, canh.canh, 'flex-end');
+    ok(`${d.m}: cả 100 hàng dừng ở cùng một vạch`,
+        canh.max - canh.min <= 0.5, `hở ${canh.min}–${canh.max}px`);
+    ok(`${d.m}: có lề thật với mép phải`, canh.min >= 2, `${canh.min}px`);
+    ok(`${d.m}: không hàng nào thò khỏi hộp nội dung`, canh.thò <= 0.5, `${canh.thò}px ở "${canh.ví}"`);
+
+    // Mở Lệnh năm rồi vuốt NGAY TRÊN bảng — cả trang phải nhúc nhích.
+    await page.click('#lenhHead');
+    await page.waitForTimeout(800);
+    const k = await page.evaluate(() => {
+        const b = document.getElementById('lenhBody');
+        const t = b.querySelector('table');
+        return { kẹp: b.style.maxHeight || '', dưDọc: b.scrollHeight - b.clientHeight,
+                 hụt: Math.round(t.getBoundingClientRect().height - b.getBoundingClientRect().height),
+                 cuộnĐược: Math.round(document.documentElement.scrollHeight - window.innerHeight) };
+    });
+    ok(`${d.m}: bảng Lệnh năm không bị kẹp chiều cao`, k.kẹp === '', k.kẹp);
+    ok(`${d.m}: bảng Lệnh năm không cuộn riêng`, k.dưDọc <= 1, `dư ${k.dưDọc}px`);
+    ok(`${d.m}: khung ôm trọn bảng`, k.hụt <= 2, `hụt ${k.hụt}px`);
+    ok(`${d.m}: cả trang cuộn được kha khá`, k.cuộnĐược > 200, `${k.cuộnĐược}px`);
+
+    const cdp2 = await ctx.newCDPSession(page);
+    const vị = await page.evaluate(() => {
+        const q = document.getElementById('lenhBody').getBoundingClientRect();
+        return { x: q.left + q.width / 2, y: Math.min(q.top + 40, window.innerHeight - 60) };
+    });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(200);
+    await cdp2.send('Input.dispatchTouchEvent',
+        { type: 'touchStart', touchPoints: [{ x: vị.x, y: vị.y }] });
+    for (let i = 1; i <= 8; i++) {
+        await cdp2.send('Input.dispatchTouchEvent',
+            { type: 'touchMove', touchPoints: [{ x: vị.x, y: vị.y - i * 25 }] });
+        await page.waitForTimeout(25);
+    }
+    await cdp2.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await page.waitForTimeout(700);
+    const sy = await page.evaluate(() => Math.round(window.scrollY));
+    ok(`${d.m}: vuốt trên bảng thì CẢ TRANG cuộn (không kẹt ở ô con)`, sy > 0, `scrollY ${sy}`);
     await ctx.close();
 }
 

@@ -649,6 +649,7 @@ for (const d of [{ n: 'S21', w: 360, h: 740 }, { n: 'S21 FE', w: 393, h: 790 }, 
                 cắt: cut, cụt,
                 ngang: box.scrollWidth > box.clientWidth + 1,
                 trang: document.documentElement.scrollWidth > window.innerWidth + 1,
+                cuộnĐược: Math.round(document.documentElement.scrollHeight - window.innerHeight),
                 hiện: [...box.querySelectorAll('tbody tr')].filter(r => {
                     const q = r.getBoundingClientRect(), c = box.getBoundingClientRect();
                     return q.top >= c.top - 1 && q.bottom <= c.bottom + 1;
@@ -659,7 +660,15 @@ for (const d of [{ n: 'S21', w: 360, h: 740 }, { n: 'S21 FE', w: 393, h: 790 }, 
         ok(`${tag}: không ô nào bị cắt chữ`, g.cắt.length === 0, g.cắt.join(', '));
         ok(`${tag}: bảng không phải kéo ngang`, !g.ngang);
         ok(`${tag}: trang không tràn ngang`, !g.trang);
-        ok(`${tag}: không tràn xuống dưới thanh tab`, g.thừa >= 0, `${g.thừa}px`);
+        // Mở Lệnh năm ra thì trang DÀI HƠN một màn hình — đó là chủ ý, đúng
+        // như tab Kỳ Môn khi mở Âm Bàn (đo: 1234px trên màn 866px). Nên không
+        // canh "nội dung không được thò xuống dưới thanh tab" nữa; canh thứ
+        // THẬT SỰ quan trọng: phần thò ra phải CUỘN TỚI ĐƯỢC. <body> có
+        // padding-bottom đúng bằng chiều cao thanh dưới, nên cuộn hết trang là
+        // thấy trọn hàng cuối, không bị thanh che.
+        ok(`${tag}: phần dôi ra cuộn tới được`,
+            g.thừa >= 0 || g.cuộnĐược >= -g.thừa,
+            `thò ${(-g.thừa).toFixed(1)}px, cuộn được ${g.cuộnĐược}px`);
         ok(`${tag}: không còn dải trống ở đáy`, g.thừa <= 16, `còn thừa ${g.thừa}px`);
         ok(`${tag}: hàng đầu không nằm cụt dưới hàng tiêu đề`, !g.cụt, g.cụt);
         // Ngưỡng hạ từ 8 xuống 5: ĐẠI VẬN giờ đứng TRƯỚC bảng này và không
@@ -672,37 +681,60 @@ for (const d of [{ n: 'S21', w: 360, h: 740 }, { n: 'S21 FE', w: 393, h: 790 }, 
         // đủ, LỆNH NĂM lùi thành chi tiết phụ), không phải hồi quy.
         ok(`${tag}: hiện được ít nhất 5 đoạn`, g.hiện >= 5, `${g.hiện} đoạn`);
 
-        // ── Kéo được tới đủ 12 tháng ──
+        // ── Kéo được tới đủ 12 tháng — bằng CẢ TRANG, không phải bằng một ô
+        // cuộn riêng ──
         // Bảng 33 đoạn không bao giờ vừa một màn, nên KÉO ĐƯỢC là chuyện sống
-        // còn, không phải tiện nghi. Và phải thử bằng NGÓN TAY thật: lỗi đã gặp
-        // là `overflow-y: hidden` (thừa kế luật "mục đang đóng" của tab Lịch),
-        // mà nó vẫn cho JS đặt scrollTop — kiểm bằng `box.scrollTop = n` thì
-        // đạt, người dùng vẫn chịu chết.
+        // còn. Nhưng nó phải kéo đúng CÁCH của tab Kỳ Môn: bảng bung đủ chiều
+        // cao tự nhiên và cả trang cuộn (xem fitLenhSec trong lenh.js).
+        //
+        // Bản trước kẹp bảng vào chỗ trống còn lại rồi cho nó tự cuộn bên
+        // trong. Chỗ ấy chỉ còn 120px cho một bảng cao 683px, nên ngón tay đặt
+        // xuống gần như chắc chắn rơi vào ô cuộn tí hon ấy và nó nuốt trọn cú
+        // vuốt — Bát Tự, Đại Vận, mọi thứ phía trên đứng im. Đo thật trên A51:
+        // cả trang chỉ cuộn được 46px, so với 368px khi mở Âm Bàn ở tab Kỳ Môn.
         const cuộn = await page.evaluate(() => {
             const b = document.getElementById('lenhBody');
-            return { của: getComputedStyle(b).overflowY, dư: b.scrollHeight - b.clientHeight };
+            const t = b.querySelector('table');
+            return {
+                // KHÔNG đọc getComputedStyle().overflowY: lenh.css khai
+                // `visible`, nhưng .cal-sec-body dùng chung đặt `overflow:auto`
+                // cho trục NGANG (lưới an toàn), và theo đúng đặc tả CSS thì
+                // `visible` ở một trục sẽ tính thành `auto` khi trục kia không
+                // phải `visible`. Con số đọc ra vì thế luôn là 'auto' dù khai
+                // gì. Đo THỨ THẬT SỰ quan trọng: có gì để cuộn dọc hay không.
+                dưDọc: b.scrollHeight - b.clientHeight,
+                kẹp: b.style.maxHeight || '',
+                // Hộp phải cao ĐÚNG BẰNG bảng bên trong: không kẹp, không cắt.
+                hụt: t ? Math.round(t.getBoundingClientRect().height
+                                    - b.getBoundingClientRect().height) : 0,
+            };
         });
-        ok(`${tag}: khung bảng mở quyền cuộn dọc`,
-            cuộn.của === 'auto' || cuộn.của === 'scroll', cuộn.của);
+        ok(`${tag}: khung bảng KHÔNG còn bị kẹp chiều cao`, cuộn.kẹp === '', cuộn.kẹp);
+        ok(`${tag}: khung bảng KHÔNG còn gì để cuộn dọc bên trong`,
+            cuộn.dưDọc <= 1, `còn dư ${cuộn.dưDọc}px`);
+        ok(`${tag}: khung cao đủ ôm trọn bảng`, cuộn.hụt <= 2, `hụt ${cuộn.hụt}px`);
 
+        // Đặt ngón tay lên GIỮA BẢNG rồi vuốt — thứ phải nhúc nhích là CẢ
+        // TRANG. Đây chính là thao tác từng chết: người dùng kéo mà màn hình
+        // trên đứng im.
         const hộp = await page.evaluate(() => {
             const q = document.getElementById('lenhBody').getBoundingClientRect();
-            return { x: q.left + q.width / 2, y: q.top + q.height / 2, h: q.height };
+            return { x: q.left + q.width / 2, y: Math.min(q.top + 40, window.innerHeight - 60) };
         });
-        await page.evaluate(() => { document.getElementById('lenhBody').scrollTop = 0; });
+        await page.evaluate(() => window.scrollTo(0, 0));
         await page.waitForTimeout(150);
         const cdp = await ctx.newCDPSession(page);
         await cdp.send('Input.dispatchTouchEvent',
-            { type: 'touchStart', touchPoints: [{ x: hộp.x, y: hộp.y + hộp.h / 3 }] });
+            { type: 'touchStart', touchPoints: [{ x: hộp.x, y: hộp.y }] });
         for (let i = 1; i <= 8; i++) {
             await cdp.send('Input.dispatchTouchEvent',
-                { type: 'touchMove', touchPoints: [{ x: hộp.x, y: hộp.y + hộp.h / 3 - i * 25 }] });
+                { type: 'touchMove', touchPoints: [{ x: hộp.x, y: hộp.y - i * 25 }] });
             await page.waitForTimeout(25);
         }
         await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-        await page.waitForTimeout(600);
-        const sauKéo = await page.evaluate(() => document.getElementById('lenhBody').scrollTop);
-        ok(`${tag}: ngón tay kéo được bảng`, sauKéo > 0, `scrollTop vẫn ${sauKéo}`);
+        await page.waitForTimeout(700);
+        const sauKéo = await page.evaluate(() => Math.round(window.scrollY));
+        ok(`${tag}: vuốt trên bảng thì CẢ TRANG cuộn`, sauKéo > 0, `scrollY vẫn ${sauKéo}`);
 
         // Kéo hết cỡ: đủ 12 tháng phải với tới được, tháng cuối (Sửu) hiện trọn.
         await page.evaluate(() => {
@@ -1220,14 +1252,17 @@ console.log('\nBảng ĐẠI VẬN: 10 đại vận × 10 năm, lấp chỗ tr�
             mỗiThẻ10Hàng: cards.every(c => c.querySelectorAll('.dv-row').length === 10),
             dòng1Thẻ0: cards[0].querySelector('.dv-line1').textContent.trim(),
             dòng2Thẻ0: cards[0].querySelector('.dv-line2').textContent.trim(),
-            tiêuĐề: document.getElementById('daiVanTitle').textContent.trim(),
+            cóTiêuĐềRiêng: !!document.getElementById('daiVanHead'),
         };
     });
     check('DOM: đủ 10 thẻ', dom.soThẻ, 10);
     ok('DOM: mỗi thẻ đủ 10 hàng năm', dom.mỗiThẻ10Hàng);
     ok('đầu thẻ đúng định dạng "mm/yyyy - Nt"', /^\d{2}\/\d{4} - \d+t$/.test(dom.dòng1Thẻ0), dom.dòng1Thẻ0);
     check('dòng 2 đầu thẻ là can chi đại vận', dom.dòng2Thẻ0, tên[0]);
-    check('tiêu đề mục là "ĐẠI VẬN"', dom.tiêuĐề, 'ĐẠI VẬN');
+    // Hàng tiêu đề "ĐẠI VẬN" đã gỡ hẳn (xem index.html): nó chỉ nhắc lại điều
+    // mà 10 thẻ can chi kèm khoảng tuổi đã nói rõ, trong khi ngốn 37px của tab
+    // chật nhất và đẩy "LỆNH NĂM" xuống quá sâu.
+    ok('không còn hàng tiêu đề "ĐẠI VẬN" riêng', !dom.cóTiêuĐềRiêng);
 
     // ── Cỡ chữ THẬT phải đủ đọc — chính lỗi user bắt được lúc đầu: clamp()
     // co theo bề rộng màn hình từng tụt xuống 7.5–8.6px ĐỀU KHẮP cả bảng
@@ -1378,7 +1413,7 @@ console.log('\nBảng ĐẠI VẬN: 10 đại vận × 10 năm, lấp chỗ tr�
             return null;
         };
         const lệch = [];
-        document.querySelectorAll('#daiVanHead, #daiVanHead *, #daiVanBody, #daiVanBody *')
+        document.querySelectorAll('#daiVanBody, #daiVanBody *')
             .forEach(el => { const bad = kiểm(el); if (bad) lệch.push(el.className + ':' + bad); });
         return lệch;
     });
@@ -1456,12 +1491,29 @@ console.log('\nBảng ĐẠI VẬN: 10 đại vận × 10 năm, lấp chỗ tr�
         await p2.waitForTimeout(500);
         const g = await p2.evaluate(() => {
             const cắt = [];
-            // .dv-row (cha, flex container) — KHÔNG chỉ .dv-year/.dv-cc con:
-            // con flex mặc định min-width:auto không tự co dưới kích thước
-            // chữ của chính nó, nên chỉ đo con thì luôn "sạch" giả tạo dù cha
-            // đang tràn thật (đã tự bắt lỗi này khi viết tools/_grid.mjs).
-            document.querySelectorAll('#daiVanHead, #daiVanBody .dv-line1, #daiVanBody .dv-line2, #daiVanBody .dv-row')
+            // Đầu thẻ vẫn canh giữa nên scrollWidth đủ dùng.
+            document.querySelectorAll('#daiVanBody .dv-line1, #daiVanBody .dv-line2')
                 .forEach(e => { if (e.scrollWidth > e.clientWidth + 1) cắt.push((e.textContent || '').trim().slice(0, 16)); });
+
+            // .dv-row thì KHÔNG: từ khi hàng canh PHẢI (xem .dv-row trong
+            // lenh.css) phần thừa dồn hết sang TRÁI, mà scrollWidth chỉ đếm
+            // phần tràn về phía CUỐI dòng — nó báo 0 trong khi "2052 Nhâm
+            // Thân" đang thò 13,9px sang trái và mấy chữ số đầu của NĂM bị
+            // .dv-card{overflow:hidden} cắt mất. Đo hai phía, so với hộp NỘI
+            // DUNG của hàng, đúng như rowOverflow() trong lenh.js.
+            //
+            // Đo ở hàng CHA (flex container), không phải ở .dv-year/.dv-cc:
+            // con flex mặc định min-width:auto nên không tự co dưới kích
+            // thước chữ của nó, chỉ đo con thì luôn "sạch" giả tạo.
+            document.querySelectorAll('#daiVanBody .dv-row').forEach(e => {
+                const kids = [...e.children].map(k => k.getBoundingClientRect());
+                if (!kids.length) return;
+                const cs = getComputedStyle(e), r = e.getBoundingClientRect();
+                const thò = Math.max(
+                    (r.left + parseFloat(cs.paddingLeft)) - Math.min(...kids.map(k => k.left)),
+                    Math.max(...kids.map(k => k.right)) - (r.right - parseFloat(cs.paddingRight)));
+                if (thò > 1) cắt.push((e.textContent || '').trim().slice(0, 16));
+            });
             return { cắt, ngang: document.documentElement.scrollWidth > window.innerWidth + 1 };
         });
         ok(`${d.n}: bảng Đại Vận không cắt chữ`, g.cắt.length === 0, g.cắt.join(' | '));

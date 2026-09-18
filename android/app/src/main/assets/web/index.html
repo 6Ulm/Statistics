@@ -346,8 +346,13 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
          đủ chiều cao tự nhiên của nó. Trang có thể dài hơn một màn hình lúc
          đó, và cả trang cuộn dọc bình thường (như mọi trang web) — #bottomDock
          đứng cố định đáy MÀN HÌNH (position:fixed) nên vẫn luôn thấy được dù
-         cuộn tới đâu. Nội dung do lenh.js dựng. -->
-    <div id="daiVanHead"><span id="daiVanTitle">ĐẠI VẬN</span></div>
+         cuộn tới đâu. Nội dung do lenh.js dựng.
+
+         KHÔNG có hàng tiêu đề "ĐẠI VẬN" riêng. Nó chỉ nhắc lại điều mà chính
+         nội dung đã nói rõ (10 thẻ, mỗi thẻ một can chi kèm khoảng tuổi —
+         không lẫn vào đâu được), trong khi ngốn 37px của tab CHẬT NHẤT và đẩy
+         "LỆNH NĂM" xuống quá sâu. Bàn Kỳ Môn ở tab kia cũng không có tiêu đề
+         nào phía trên, cùng một lý lẽ. -->
     <div class="cal-sec" id="daiVanSec"><div class="cal-sec-body" id="daiVanBody"></div></div>
     <!-- LỆNH NĂM — chi tiết PHỤ, đứng CUỐI cùng, gập/mở được như ba bảng chi
          tiết ở tab Kỳ Môn (Trí Nhuận/Sách Bổ/Âm Bàn) — dùng lại ĐÚNG hàm
@@ -406,6 +411,11 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
      engine tính, và cả hai đều gọi tiếp bản trước nên thứ tự bọc không đổi
      kết quả — nhưng nhãn tab thì do calendar.js dựng, nên để nó chạy trước. -->
 <script src="js/lenh.js"></script>
+<!-- taborder.js sau calendar.js: calendar.js gắn showTab() vào cú click của
+     từng tab, còn tệp này chặn đúng cú click sinh ra sau một lần KÉO — chặn ở
+     pha bắt nên thứ tự gắn không đổi kết quả, nhưng để sau cho đúng mạch đọc:
+     ai dựng thanh tab trước, ai thêm cử chỉ lên nó sau. -->
+<script src="js/taborder.js"></script>
 <script src="js/viewport.js"></script>
 </body>
 </html>

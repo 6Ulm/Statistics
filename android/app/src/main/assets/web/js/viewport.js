@@ -104,12 +104,14 @@
         // Ở tab ấy chỉ lấy tỉ lệ theo BỀ NGANG — thứ không co giãn — rồi để
         // vòng hạ dần bên dưới lo nốt máy quá thấp (fitGrid có sàn SEC_MIN nên
         // không bóp mãi được).
-        // Tab Lệnh cũng vậy: bảng 33 hàng của nó được lenh.js kẹp chiều cao
-        // theo innerHeight, nên chiều cao "tự nhiên" của trang cũng là hàm của
-        // chính tỉ lệ đang đặt.
-        var fitTab = body.classList.contains('view-cal') ? window.__calFit
-                   : body.classList.contains('view-lenh') ? window.__lenhFit
-                   : null;
+        // Tab Lệnh (Bát Tự) TỪNG nằm trong diện này, vì bảng 33 hàng của nó
+        // được kẹp chiều cao theo innerHeight. Nay bảng ấy bung đủ chiều cao
+        // tự nhiên và cả trang cuộn (xem fitLenhSec trong lenh.js), nên chiều
+        // cao của tab KHÔNG còn là hàm của tỉ lệ nữa — nó cư xử y như tab Kỳ
+        // Môn, và phải được đo y như thế. Để lại trong diện co giãn thì phép
+        // đo vẫn đúng nhưng vế chiều cao bị bỏ qua, và trang dài gấp đôi màn
+        // hình vẫn được giữ nguyên tỉ lệ thay vì thu lại như tab Kỳ Môn.
+        var fitTab = body.classList.contains('view-cal') ? window.__calFit : null;
         var elastic = typeof fitTab === 'function';
         var scale = elastic ? (availW / natW)
                             : Math.min(availW / natW, (availH - 2) / natH);

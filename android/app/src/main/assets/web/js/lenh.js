@@ -78,7 +78,6 @@
         pickRule: { vi: 'Quy tắc', zh: '选择流派' },
         daiVan:   { vi: 'Nhập vận',    zh: '起运' },
         pickGender: { vi: 'Giới tính', zh: '性别' },
-        daiVanTitle: { vi: 'ĐẠI VẬN', zh: '大运' },
     };
     function isZH() { return typeof currentLang !== 'undefined' && currentLang === 'zh'; }
     function t(k) { return T[k][isZH() ? 'zh' : 'vi']; }
@@ -725,9 +724,7 @@
      * cách #lenhBody tự để trống khi buildYear() ném lỗi.
      */
     function renderDaiVanTable(inp, dv, thuan, monthCanIdx, monthChiIdx) {
-        var titleEl = document.getElementById('daiVanTitle');
         var box = document.getElementById('daiVanBody');
-        if (titleEl) titleEl.textContent = t('daiVanTitle');
         lastDaiVanBang = null;
         if (!box) return;
         if (!dv || typeof monthCanIdx !== 'number' || monthCanIdx < 0 || typeof monthChiIdx !== 'number') {
@@ -812,104 +809,41 @@
     }
 
     /**
-     * Cuộn để hàng đang cầm lệnh nằm giữa khung — bảng dài 33 hàng, mở ra mà
-     * phải tự đi tìm hàng của hôm nay thì bảng vô dụng một nửa.
+     * Cuộn để hàng đang cầm lệnh lọt vào khung nhìn — bảng dài 33 hàng, mở ra
+     * mà phải tự đi tìm hàng của hôm nay thì bảng vô dụng một nửa.
      *
-     * Chốt về đúng ranh giới hàng: hàng tiêu đề DÍNH ở mép trên, nên cuộn tới
-     * một vị trí bất kỳ là để lại một hàng bị cắt ngang nằm ngay dưới nó.
+     * Cuộn CẢ TRANG, không phải cuộn bên trong khung bảng: từ khi bảng bung đủ
+     * chiều cao tự nhiên (xem fitLenhSec) nó KHÔNG còn là hộp cuộn nữa, nên
+     * `box.scrollTop` không nhúc nhích. Bản trước đặt scrollTop rồi chốt về
+     * ranh giới hàng để hàng tiêu đề DÍNH không cắt ngang hàng đầu — cả cơ chế
+     * ấy giờ không còn chỗ dụng: không có mép cắt nào để né.
+     *
+     * Đưa hàng lên khoảng MỘT PHẦN BA khung nhìn, không phải lên đỉnh: ngay
+     * trên hàng ấy là tên tháng và hàng tiêu đề, thấy được chúng thì con số
+     * mới có nghĩa.
      */
     function scrollToActive() {
-        var box = document.getElementById('lenhBody');
         var row = document.getElementById('lenhActive');
-        if (!box || !row) return;
-        // Cùng lý do với fit(): khung còn đóng thì mọi phép đo ra số 0, cuộn
-        // theo đó chỉ đặt scrollTop sai — bỏ qua, đợi lúc mở lại gọi.
         var sec = document.getElementById('lenhSec');
-        if (sec && getComputedStyle(sec).display === 'none') return;
-        var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
-        var thead = box.querySelector('thead');
-        var headH = thead ? thead.getBoundingClientRect().height / zoom : 0;
+        if (!row || !sec) return;
+        // Bảng còn đóng thì mọi phép đo ra số 0 — bỏ qua, chỗ bọc
+        // toggleDetailPanel() sẽ gọi lại đúng lúc mở.
+        if (getComputedStyle(sec).display === 'none') return;
 
-        // Bước 1 — cuộn thô, đo TƯƠNG ĐỐI: "hàng này đang cách đỉnh khung bao
-        // nhiêu" cộng vào scrollTop hiện thời. Không dựng lại hệ toạ độ nội
-        // dung từ scrollTop và các mép: viền, đệm và chính hàng tiêu đề DÍNH
-        // (getBoundingClientRect của <thead> vẫn trả vị trí lúc CHƯA dính, vì
-        // chỉ mấy ô <th> mới sticky chứ không phải cả <thead>) — ba thứ ấy đủ
-        // để lệch cả chục pixel.
-        var rBox = box.getBoundingClientRect();
-        var rRow = row.getBoundingClientRect();
-        var mid = Math.max(0, (box.clientHeight - headH - rRow.height / zoom) / 2);
-        box.scrollTop = Math.max(0, Math.round(
-            box.scrollTop + (rRow.top - rBox.top) / zoom - headH - mid));
+        var bar = document.getElementById('bottomDock');
+        var floorY = bar ? bar.getBoundingClientRect().top : window.innerHeight;
+        var r = row.getBoundingClientRect();
+        if (r.top >= 0 && r.bottom <= floorY) return;      // đã thấy rồi
 
-        alignUnderHead(box, headH, zoom);
-
-        // Khung quá thấp (chạm sàn BOX_MIN — từ khi Đại Vận không còn chừa
-        // chỗ, đây là chuyện THƯỜNG chứ không còn hiếm): chốt về đầu THÁNG ở
-        // alignUnderHead() có thể đẩy hàng đang cầm lệnh — mục tiêu CHÍNH của
-        // cả hàm này — tràn QUÁ đáy khung vài px, không đủ chỗ cho cả tháng
-        // lẫn đúng hàng ấy cùng lúc. Đẩy tiếp từng HÀNG một (luôn dừng ở ranh
-        // giới hàng thật — không phải một số px tuỳ tiện, kẻo lại biến hàng
-        // ĐẦU khung thành hàng bị cắt, đổi bệnh này lấy bệnh khác) cho tới khi
-        // hàng đang cầm lệnh hiện trọn, hy sinh mép tháng nếu buộc phải chọn.
-        var rows2 = box.querySelectorAll('tbody tr');
-        var bt2 = parseFloat(getComputedStyle(box).borderTopWidth) || 0;
-        for (var iter = 0; iter < rows2.length; iter++) {
-            var rRowN = row.getBoundingClientRect();
-            var rBoxN = box.getBoundingClientRect();
-            if ((rRowN.bottom - rBoxN.bottom) / zoom <= 0.5) break;
-            var edgeN = rBoxN.top / zoom + bt2 + headH;
-            var advanced = false;
-            for (var i = 0; i < rows2.length; i++) {
-                var qi = rows2[i].getBoundingClientRect().top / zoom;
-                if (qi > edgeN + 0.5) {
-                    box.scrollTop = Math.round(box.scrollTop + (qi - edgeN));
-                    advanced = true;
-                    break;
-                }
-            }
-            if (!advanced) break;   // hết hàng để đẩy — bảng ngắn hơn khung
+        var want = floorY / 3;
+        var by = Math.round(r.top - want);
+        if (Math.abs(by) > 1) {
+            try { window.scrollBy({ top: by, behavior: 'smooth' }); }
+            catch (e) { window.scrollBy(0, by); }
         }
-    }
-
-    /**
-     * ĐO rồi chỉnh: kéo khung xuống vừa đủ để hàng đang bị hàng tiêu đề cắt
-     * ngang lộ ra trọn vẹn.
-     *
-     * Các hàng KHÔNG cao bằng nhau — ô tháng gộp 2 hàng chứa hai dòng chữ nên
-     * kéo hai hàng ấy cao hơn ba hàng của tháng bên cạnh — nên không thể chốt
-     * bằng cách chia cho một "chiều cao hàng". Sau khi đã cuộn thì mọi thứ đã
-     * nằm trên trang, hỏi thẳng là xong; kéo xuống chỉ giấu thêm phần trên,
-     * không sinh ra hàng cụt mới.
-     */
-    function alignUnderHead(box, headH, zoom) {
-        var bt = parseFloat(getComputedStyle(box).borderTopWidth) || 0;
-        var edge = box.getBoundingClientRect().top / zoom + bt + headH;
-        var rows = box.querySelectorAll('tbody tr');
-
-        // Chốt về đầu THÁNG, không phải đầu hàng.
-        //
-        // Ô tháng gộp 2–3 hàng, nên dừng ở giữa một tháng là hàng đầu khung
-        // hiện "(Kinh Trập)" mà mất chữ "Mão" nằm trên nó — một cái tên tiết
-        // mồ côi, không biết của tháng nào. Một tháng chỉ cao 2–3 hàng mà
-        // khung thì hiện hơn 20 hàng, nên kéo lên tới đầu tháng gần nhất
-        // không hề đẩy hàng đang cầm lệnh ra khỏi khung.
-        var top = 0;
-        for (var i = 0; i < rows.length; i++) {
-            var q = rows[i].getBoundingClientRect();
-            if (q.top / zoom > edge + 0.5) break;
-            if (rows[i].querySelector('.lenh-mon')) top = q.top / zoom;
-        }
-        if (!top) return;
-        box.scrollTop = Math.max(0, box.scrollTop - Math.round(edge - top));
     }
 
     /* ─────────────── Chia chiều cao ─────────────── */
-
-    /** Đệm chống tràn — phép làm tròn nửa pixel, không phải phép cộng lề. */
-    var CHROME = 10;
-    /** Khung bảng thấp hơn chừng này thì thà cuộn cả trang còn hơn. */
-    var BOX_MIN = 120;
 
     /**
      * ĐẠI VẬN là nội dung CHÍNH của tab — như bàn Kỳ Môn ở tab Kỳ Môn, luôn
@@ -938,48 +872,30 @@
         fitLenhSec();
     }
 
+    /**
+     * Bảng LỆNH NĂM bung ĐỦ chiều cao tự nhiên của nó, y như ba bảng gập/mở ở
+     * tab Kỳ Môn (.dp-body trong app.css: mở ra là `display:block`, hết —
+     * không maxHeight, không khung cuộn riêng).
+     *
+     * Bản trước kẹp nó vào đúng khoảng trống còn lại xuống tới thanh dưới, rồi
+     * cho nó tự cuộn bên trong. Nghe thì gọn, dùng thì hỏng: chỗ còn lại sau
+     * Đại Vận chỉ đủ 120px (đúng sàn BOX_MIN), mà bảng thì cao 683px — nên cả
+     * tab Bát Tự thành một trang CAO ĐÚNG MỘT MÀN HÌNH với một ô cuộn tí hon ở
+     * đáy. Ngón tay đặt xuống gần như chắc chắn rơi vào ô ấy, và nó nuốt trọn
+     * cú vuốt (càng chắc từ khi có overscroll-behavior:contain) — Bát Tự, Đại
+     * Vận, mọi thứ phía trên ĐỨNG IM, không cách nào kéo lên xem được. Đo thật
+     * trên A51: mở Lệnh năm ra thì cả trang chỉ cuộn được 46px, so với 368px
+     * khi mở Âm Bàn ở tab Kỳ Môn.
+     *
+     * Nay không kẹp nữa: trang dài ra (A51: ~1480px) và CẢ TRANG cuộn bình
+     * thường, đúng như tab Kỳ Môn. #bottomDock cố định đáy màn hình nên vẫn
+     * luôn thấy được. Việc duy nhất còn lại ở đây là XOÁ maxHeight cũ — bản
+     * lưu trong localStorage có thể mở tab ra với style nội tuyến còn sót từ
+     * phiên trước.
+     */
     function fitLenhSec() {
-        var sec = document.getElementById('lenhSec');
         var box = document.getElementById('lenhBody');
-        var bar = document.getElementById('bottomDock');
-        if (!sec || !box || !bar) return;
-        if (!document.body.classList.contains('view-lenh')) return;
-        // Bảng đóng (xem #lenhSec{display:none} trong lenh.css): đo bây giờ
-        // chỉ ra toàn số 0 (getBoundingClientRect của phần tử display:none),
-        // và maxHeight tính từ đó là rác — bỏ qua, đợi lúc MỞ (xem chỗ bọc
-        // toggleDetailPanel() gọi lại đúng hàm này).
-        if (getComputedStyle(sec).display === 'none') return;
-
-        // Chỗ nó được phép chiếm là khoảng từ đỉnh CHÍNH NÓ (đã dịch xuống
-        // đúng chỗ, sau toàn bộ nội dung phía trên — ô tóm tắt + Đại Vận) tới
-        // thanh dưới — đo thẳng, khỏi phải cộng lại chiều cao từng khối bên
-        // trên cùng mọi khe giữa chúng.
-        var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
-        var top = sec.getBoundingClientRect().top / zoom;
-        var floorY = bottomDockTop(bar, zoom);
-        var room = Math.max(BOX_MIN, Math.floor(floorY - top - CHROME));
-
-        // Bảng ngắn hơn chỗ được cấp (năm nào cũng 33 hàng nên hiếm, nhưng máy
-        // tính bảng thì có) thì kẹp theo chính nó, đừng chừa một khoảng trắng.
-        var tb = box.querySelector('table');
-        var nat = tb ? Math.ceil(tb.getBoundingClientRect().height / zoom) + 2 : 0;
-        box.style.maxHeight = (nat ? Math.min(nat, room) : room) + 'px';
-
-        // Mép dưới không được cắt hàng cuối đúng chỗ có DẤU: "Mậu" cụt dấu
-        // nặng thành "Mâu", "Bạch Lộ" thành "Bạch Lô" — chữ khác hẳn, không
-        // phải hàng cụt. Phép canh nằm ở calendar.js (xem snapCut ở đó), dùng
-        // chung một bản cho cả hai tab.
-        if (typeof window.__snapCutRows === 'function') {
-            try { window.__snapCutRows(box); } catch (e) {}
-        }
-
-        // Canh lại mép TRÊN sau MỌI lần đổi chiều cao. Lượt cuộn tới hàng đang
-        // cầm lệnh chạy 40ms sau khi vẽ, còn viewport.js chỉnh tỉ lệ rồi gọi
-        // fit() lần nữa SAU đó — chia lại khung xong mà không canh lại thì cú
-        // canh trước đó tính trên một khung đã không còn nữa, và hàng đầu lại
-        // nằm cụt dưới hàng tiêu đề.
-        var thead = box.querySelector('thead');
-        if (thead) alignUnderHead(box, thead.getBoundingClientRect().height / zoom, zoom);
+        if (box && box.style.maxHeight) box.style.maxHeight = '';
     }
 
     /**
@@ -996,28 +912,55 @@
      * rộng ra thì một hàng từng phải co lúc màn hẹp phải được lớn lại, không
      * thì co một lần là co vĩnh viễn.
      */
+    /**
+     * Hàng tràn bao nhiêu px, ĐO CẢ HAI PHÍA.
+     *
+     * KHÔNG dùng `scrollWidth > clientWidth` như bản trước: phép ấy chỉ thấy
+     * phần tràn về phía CUỐI dòng. Hồi hàng còn canh giữa nó vẫn tạm đúng (tràn
+     * chia đều hai bên nên bên phải luôn có phần để thấy); từ khi hàng canh
+     * PHẢI (xem .dv-row trong lenh.css) thì phần thừa dồn hết sang TRÁI, và
+     * scrollWidth không nhúc nhích — đo thật: "2052 Nhâm Thân" thò 5,5px sang
+     * trái trên A51 và 13,9px trên máy 320px mà scrollWidth vẫn báo 0. Nghĩa là
+     * mấy chữ số đầu của NĂM bị .dv-card{overflow:hidden} cắt cụt trong im
+     * lặng — "2052" thành "052".
+     *
+     * Nên đo thẳng: mép ngoài cùng của đám con so với hộp NỘI DUNG của hàng.
+     */
+    function rowOverflow(row) {
+        var n = row.children.length;
+        if (!n) return 0;
+        var cs = getComputedStyle(row);
+        var r = row.getBoundingClientRect();
+        var left = Infinity, right = -Infinity;
+        for (var i = 0; i < n; i++) {
+            var k = row.children[i].getBoundingClientRect();
+            if (k.left  < left)  left  = k.left;
+            if (k.right > right) right = k.right;
+        }
+        return Math.max(
+            (r.left + (parseFloat(cs.paddingLeft) || 0)) - left,
+            right - (r.right - (parseFloat(cs.paddingRight) || 0))
+        );
+    }
+
     function shrinkDaiVanRows(box) {
         if (!box) return;
         var rows = box.querySelectorAll('.dv-row');
         for (var i = 0; i < rows.length; i++) {
             var row = rows[i];
             row.style.fontSize = '';
-            if (row.scrollWidth > row.clientWidth + 0.5) {
+            if (rowOverflow(row) > 0.5) {
                 var size = parseFloat(getComputedStyle(row).fontSize);
                 // Bước nhỏ (0.2px) để dừng SÁT NGƯỠNG vừa hết tràn, không nhảy
                 // cách quá xa rồi dừng hụt (đo thật ở 320px: bước 0.5px từng
                 // dừng ở 8px mà vẫn còn thừa 1–2px — chữ không co tuyến tính
                 // tuyệt đối theo cỡ chữ).
-                while (size > 7.5 && row.scrollWidth > row.clientWidth + 0.5) {
+                while (size > 7.5 && rowOverflow(row) > 0.5) {
                     size -= 0.2;
                     row.style.fontSize = size + 'px';
                 }
             }
         }
-    }
-
-    function bottomDockTop(bar, zoom) {
-        return bar.getBoundingClientRect().top / zoom;
     }
 
     /* ─────────────── Nhãn + móc nối ─────────────── */

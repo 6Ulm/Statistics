@@ -153,17 +153,28 @@ body.view-lenh #qmRow #lenhRuleText {
    Chỉ bỏ bo góc TRÊN để nối liền #lenhHead. */
 #lenhSec .cal-sec-body { border-radius: 0 0 6px 6px; border-top-color: var(--border-color, #ddd); }
 
-/* PHẢI trả lại quyền cuộn dọc.
+/* KHÔNG phải hộp cuộn.
+   Bảng bung ĐỦ chiều cao tự nhiên và CẢ TRANG cuộn, y như ba bảng gập/mở ở tab
+   Kỳ Môn (.dp-body trong app.css) — xem lời giải đầy đủ ở fitLenhSec() trong
+   lenh.js. Bản trước kẹp bảng vào chỗ trống còn lại rồi cho nó tự cuộn bên
+   trong; chỗ ấy chỉ còn 120px cho một bảng cao 683px, nên ô cuộn tí hon ấy
+   nuốt trọn mọi cú vuốt và toàn bộ màn hình phía trên coi như đứng im.
+
+   Phải ghi đè THẲNG bằng chọn tử có #id, không mượn lớp `cal-sec-open`:
    calendar.css có luật `.cal-sec:not(.cal-sec-open) .cal-sec-body
-   { overflow-y: hidden }` — ở tab Lịch nó đúng: mục nào người dùng chưa bấm mở
-   thì đừng cuộn. Nhưng tab Lệnh KHÔNG có nút đóng/mở, nên #lenhSec không bao
-   giờ nhận lớp `cal-sec-open`, và dính luôn luật của mục ĐANG ĐÓNG.
-   Hậu quả không thấy ngay, vì `overflow-y: hidden` vẫn cho JS đặt scrollTop:
-   bảng vẫn tự cuộn tới tháng đang cầm lệnh lúc mở tab, trông y như bình
-   thường — chỉ là NGÓN TAY không kéo được, nên 12 tháng chỉ với tới được
-   chừng một nửa. Phải ghi đè thẳng, không mượn lớp `cal-sec-open`: lớp ấy có
-   nghĩa "người dùng vừa bấm mở mục này", còn ở đây mục không bao giờ đóng. */
-#lenhSec .cal-sec-body { overflow-y: auto; }
+   { overflow-y: hidden }` cho mục ĐANG ĐÓNG của tab Lịch, mà #lenhSec thì
+   không bao giờ nhận lớp ấy (nút gập/mở nằm ở #lenhHead, không đụng tới lớp
+   này).
+
+   `visible` là để nói rõ Ý, KHÔNG phải thứ bảo đảm điều đó: .cal-sec-body
+   dùng chung đặt `overflow: auto`, nên trục ngang vẫn là `auto` — mà theo đặc
+   tả CSS, `visible` ở một trục sẽ tính thành `auto` khi trục kia không phải
+   `visible`. Đọc getComputedStyle ra đây luôn thấy 'auto'. Thứ THẬT SỰ giữ cho
+   hộp không cuộn là việc KHÔNG AI đặt maxHeight lên nó nữa (fitLenhSec trong
+   lenh.js): không kẹp thì hộp luôn cao đúng bằng nội dung, không còn gì để
+   cuộn. Giữ `auto` ở trục ngang là cố ý — lưới an toàn y như .dv-grid, phòng
+   một tổ hợp chữ bất thường nào đó làm bảng rộng hơn khung. */
+#lenhSec .cal-sec-body { overflow-y: visible; }
 /* Miếng vá phải bỏ BO GÓC: ở mục của tab Lịch nó bo 6px trên vì khung bảng
    cũng bo, còn khung này vuông góc trên (đã nối vào #lenhHead). Để nguyên bo
    góc thì hai góc trên hở ra đúng chỗ vệt rò hay lọt.
@@ -270,20 +281,11 @@ table.lenh-tb tr.lenh-on td {
    ĐƯỢC (9–10.5px, xem clamp() dưới), thấp hơn bản cuộn ngang nhưng KHÔNG
    xuống tới 7.5px như bản đầu tiên (co thẳng theo vw không sàn hợp lý).
    ════════════════════════════════════════════════════════════════ */
-#daiVanHead {
-    display: flex; align-items: center; justify-content: center;
-    background: var(--bg-white, #fff);
-    color: var(--text-main, #000);
-    border: 1px solid var(--border-color, #ddd);
-    border-bottom: 0;
-    border-radius: 8px 8px 0 0;
-    margin-top: 6px;
-    padding: 7px 6px;
-    font-size: clamp(13px, 3.7vw, 15px);
-    font-weight: 700;
-    letter-spacing: .3px;
-}
-#daiVanSec .cal-sec-body { border-radius: 0 0 6px 6px; border-top-color: var(--border-color, #ddd); }
+/* KHÔNG có hàng tiêu đề riêng (xem index.html): khối này đứng một mình nên
+   bo TRÒN CẢ BỐN GÓC — bản trước chỉ bo hai góc dưới vì phải nối lên cái tiêu
+   đề ấy. */
+#daiVanSec { margin-top: 6px; }
+#daiVanSec .cal-sec-body { border-radius: 6px; }
 /* #daiVanSec mượn khung .cal-sec (viền/bo góc) nhưng KHÔNG mượn cơ chế cuộn
    của nó — mượn .cal-sec thì mượn luôn luật "mục đang đóng thì khoá cuộn"
    của tab Lịch (.cal-sec:not(.cal-sec-open) .cal-sec-body{overflow-y:hidden}),
@@ -293,9 +295,11 @@ table.lenh-tb tr.lenh-on td {
    đúng Ý: hộp này KHÔNG BAO GIỜ cuộn riêng, dù ai đó sau này có lỡ đặt lại
    một chiều cao cố định ở đâu đó. */
 #daiVanSec .cal-sec-body { overflow-y: visible; }
-#daiVanSec::after {
-    background: #f0f0f0; border-color: var(--border-color, #ddd); border-radius: 0; height: 3px;
-}
+/* Miếng vá vệt rò của .cal-sec (xem .cal-sec::after trong calendar.css) sinh
+   ra để che chỗ hàng tiêu đề DÍNH rò ra ở tỉ lệ điểm ảnh lẻ. Khối này không có
+   hàng tiêu đề dính nào — nó là lưới thẻ, không phải bảng — nên miếng vá chỉ
+   còn là một dải ghi 3px dán lên đỉnh một hộp trắng. Gỡ hẳn. */
+#daiVanSec::after { content: none; }
 #daiVanBody { padding: 6px; }
 
 /* overflow-x:auto là LƯỚI AN TOÀN, không phải cơ chế chính: bình thường 5
@@ -348,9 +352,23 @@ table.lenh-tb tr.lenh-on td {
 .dv-row {
     display: flex;
     align-items: baseline;
-    justify-content: center;
-    gap: 3px;
-    padding: 2px 1px;
+    /* Canh PHẢI, không canh giữa. Canh giữa thì khoảng hở bên phải chạy theo
+       ĐỘ DÀI của từng dòng — đo trên A51: chỗ hở 0px ở "2042 Nhâm Tuất" mà tới
+       12,9px ở "2035 Ất Mão", nên mép phải của cột can chi lởm chởm suốt 10
+       hàng. Canh phải thì cả 10 hàng dừng ở cùng một vạch. */
+    justify-content: flex-end;
+    /* Khe theo EM, không theo px: shrinkDaiVanRows() hạ cỡ chữ của đúng những
+       hàng bị tràn (lenh.js), và khe tính theo em thì co theo luôn thay vì
+       đứng yên chiếm chỗ. Ở cỡ chữ mặc định 0,3em ≈ 3px, đúng bằng con số cũ.
+       Lợi ích khiêm tốn và chỉ thấy ở chỗ chật: trên S21 FE cỡ chữ nhỏ nhất
+       nhích từ 8,22px lên 8,42px, còn trên A51 thì không đổi gì. Giữ vì đúng
+       Ý hơn (khe là khoảng cách giữa hai mẩu CHỮ), không phải vì con số. */
+    gap: 0.3em;
+    /* Đệm phải 4px là "một chút lề" ấy. Trước là 1px, và ở tổ hợp can chi dài
+       nhất thì chữ còn THÒ QUA mép hàng 0,3px (đo trên A51 và S21) — .dv-card
+       có overflow:hidden nên đó là cắt cụt chữ thật. Đệm trái vẫn 1px: bên ấy
+       là chỗ hở tự do do canh phải, không cần lề riêng. */
+    padding: 2px 4px 2px 1px;
     font-size: clamp(9px, 2.4vw, 10.5px);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
@@ -372,5 +390,15 @@ table.lenh-tb tr.lenh-on td {
 @media (max-width: 360px) {
     .dv-grid-row { gap: 2px; }
     .dv-card-head { padding: 2px 0; }
-    .dv-row { padding: 1px 0; gap: 2px; }
+    /* Lề phải hạ 4→3px chứ không về 0 như bản trước: đây chính là máy mà chữ
+       thò qua mép, nên bỏ hẳn lề là bỏ đúng chỗ cần nó nhất. Một pixel tiết
+       kiệm được ở đây bù bằng khe hẹp lại. */
+    .dv-row { padding: 1px 3px 1px 0; gap: 0.22em; }
+}
+/* Máy 320px — hẹp nhất còn gặp. Thẻ chỉ còn ~56px, và 16 hàng đã chạm SÀN cỡ
+   chữ của shrinkDaiVanRows() (7,5px) mà vẫn thừa: đo được cắt cụt thật 1,06px
+   ở "2052 Nhâm Thân". Ở đây lề phải phải hạ tiếp xuống 2px — vẫn là lề, vẫn
+   thấy rõ chữ không dán vào viền, mà đủ để không hàng nào bị cắt. */
+@media (max-width: 340px) {
+    .dv-row { padding: 1px 2px 1px 0; gap: 0.18em; }
 }

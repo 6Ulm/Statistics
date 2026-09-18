@@ -586,6 +586,114 @@ việc ấy để riêng.
 * Chế độ tối: giao diện chốt sáng (`Theme.Material.Light`), nên WebView không
   bật thuật toán làm tối. Nhất quán, không phải lỗi.
 
+## Thứ tự ba tab do người dùng đặt
+
+Ba tab (Kỳ Môn · Lịch · Bát Tự) trước chốt cứng theo thứ tự viết trong
+`index.html`. Ai chủ yếu xem lịch thì vẫn phải với qua tab giữa; ai chỉ dùng
+Bát Tự thì nó nằm tận mép phải — chỗ khó với nhất trên máy 6,5 inch.
+
+Nay **giữ lâu (420ms) rồi kéo ngang** để sắp xếp lại, đúng cử chỉ Android dùng
+cho biểu tượng màn hình chính nên không phải dạy. Chạm bình thường vẫn là
+chuyển tab. Thứ tự lưu ở `localStorage['qmdj.tabOrder']` nên sống qua các lần
+mở ứng dụng. Mã ở `js/taborder.js`.
+
+Vài chỗ phải để ý:
+
+* **Đổi chỗ THẬT trong DOM, không dùng `order` của flex.** `order` chỉ đổi thứ
+  tự vẽ, mà vạch ngăn giữa các tab lại vẽ bằng `.tab-item + .tab-item
+  { border-left }` — một chọn tử theo DOM. Dùng `order` thì vạch ở lại trên tab
+  vốn đứng thứ hai trong HTML, tức rơi vào một chỗ tuỳ tiện giữa màn hình. Đổi
+  chỗ thật thì mọi chọn tử theo vị trí tự đúng, khỏi phải viết lại cái nào.
+* **`touch-action: none` trên `.tab-item`.** Cùng lý do với bánh xe ngày giờ:
+  thiếu nó thì Android chốt cử chỉ ngay từ frame đầu và đem cú vuốt đi cuộn
+  trang, nên `pointermove` không bao giờ tới tay ta. Thanh tab nằm trong
+  `#bottomDock` (`position: fixed`) nên không có gì để cuộn ở đó, không mất gì.
+* **Cờ nuốt-click phải xoá ở đầu mỗi lần chạm mới.** Nhấc tay sau một cú kéo
+  *không phải lúc nào cũng* sinh ra `click` — trình duyệt chỉ sinh khi điểm
+  nhấn và điểm nhả cùng nằm trên một phần tử, mà kéo thì theo định nghĩa là
+  không. Cờ vì thế nằm lại chờ rồi nuốt oan cú chạm kế tiếp: sắp xếp xong, bấm
+  tab Lịch một cái, không có gì xảy ra. Đã đo được đúng lỗi này khi viết.
+* **Chuỗi lưu không khớp tập tab đang có thì bỏ qua.** Bản sau có thể thêm hoặc
+  bớt tab; một chuỗi cũ còn sót hoặc thiếu tab mới (tab ấy biến mất khỏi thanh)
+  hoặc trỏ tới tab đã gỡ. Thà quay về thứ tự mặc định.
+* **Vuốt nhanh không được tính là sắp xếp.** Nhúc nhích quá 10px trước khi đủ
+  giờ giữ thì huỷ hẹn giờ — bằng không chỉ quệt tay một cái là thứ tự tab đổi
+  mà không ai hiểu vì sao.
+
+## Bảng Đại Vận và Lệnh năm
+
+### Không còn hàng tiêu đề "ĐẠI VẬN"
+
+Nó chỉ nhắc lại điều mà chính nội dung đã nói rõ — 10 thẻ, mỗi thẻ một can chi
+kèm khoảng tuổi, không lẫn vào đâu được — trong khi ngốn 37px của tab **chật
+nhất** và đẩy "LỆNH NĂM" xuống quá sâu. Bàn Kỳ Môn ở tab kia cũng không có tiêu
+đề nào phía trên, cùng một lý lẽ. Bỏ nó đi thì cả Đại Vận lẫn Lệnh năm dịch lên
+đúng ngần ấy.
+
+### Lưu niên canh phải
+
+Mười hàng năm + can chi trong mỗi thẻ trước canh GIỮA, nên khoảng hở bên phải
+chạy theo **độ dài từng dòng**: đo trên A51 là 0px ở "2042 Nhâm Tuất" nhưng tới
+12,9px ở "2035 Ất Mão" — mép phải của cột can chi lởm chởm suốt 10 hàng. Tệ hơn,
+ở tổ hợp can chi dài nhất chữ còn **thò qua mép hàng 0,3px**, mà `.dv-card` có
+`overflow: hidden` nên đó là cắt cụt thật.
+
+Nay canh **phải**, lề phải 4px (3px ở máy ≤360px, 2px ở ≤340px). Cả 100 hàng
+dừng ở đúng một vạch, và không hàng nào còn thò ra.
+
+Đầu thẻ (`04/2033 - 6t` / `Mậu Tuất`) **giữ nguyên canh giữa** — không đụng tới.
+
+**Cái bẫy:** `shrinkDaiVanRows()` dò tràn bằng `scrollWidth > clientWidth`, mà
+phép ấy chỉ thấy phần tràn về phía **cuối dòng**. Hồi hàng còn canh giữa nó vẫn
+tạm đúng (tràn chia đều hai bên nên bên phải luôn có phần để thấy); từ khi canh
+phải thì phần thừa dồn hết sang **trái** và `scrollWidth` báo 0 — trong khi
+"2052 Nhâm Thân" đang thò 5,5px sang trái trên A51, 13,9px trên máy 320px, và
+mấy chữ số đầu của **năm** bị cắt mất trong im lặng ("2052" thành "052"). Nên
+`rowOverflow()` nay đo thẳng mép ngoài cùng của đám con so với hộp nội dung,
+**cả hai phía**. Phép soi trong `test_lenh.mjs` cũng phải sửa y như vậy, bằng
+không nó xanh trong khi chữ đang bị cắt.
+
+### Mở Lệnh năm thì CẢ TRANG cuộn
+
+Bảng Lệnh năm từng bị kẹp vào đúng khoảng trống còn lại xuống tới thanh dưới rồi
+cho tự cuộn bên trong. Nghe thì gọn, dùng thì hỏng: chỗ còn lại sau Đại Vận chỉ
+đủ **120px** (đúng sàn `BOX_MIN`), mà bảng thì cao **683px** — nên cả tab Bát Tự
+thành một trang cao đúng một màn hình với một ô cuộn tí hon ở đáy. Ngón tay đặt
+xuống gần như chắc chắn rơi vào ô ấy, và nó nuốt trọn cú vuốt (càng chắc từ khi
+có `overscroll-behavior: contain`) — Bát Tự, Đại Vận, mọi thứ phía trên **đứng
+im**.
+
+Đo thật trên A51, mở mục ra rồi thử cuộn:
+
+| | Trước | Sau |
+|---|---|---|
+| Tab Bát Tự · mở Lệnh năm | cuộn được **46px** | cuộn được **579px** |
+| Tab Kỳ Môn · mở Âm Bàn (đối chiếu) | cuộn được 368px | không đổi |
+
+Nay Lệnh năm bung **đủ chiều cao tự nhiên**, y như ba bảng gập/mở ở tab Kỳ Môn
+(`.dp-body` trong `app.css`: mở ra là `display: block`, hết). Trang dài ra
+(~1480px) và cả trang cuộn bình thường; `#bottomDock` cố định đáy màn hình nên
+vẫn luôn thấy được.
+
+Kéo theo ba chỗ:
+
+* **`viewport.js` bỏ tab Bát Tự khỏi diện "co giãn".** Diện ấy dành cho tab mà
+  chiều cao tự nhiên là *hàm của chính tỉ lệ đang đặt* — đúng với tab Lịch
+  (`fitGrid` chia lại theo `innerHeight`) và đúng với tab Bát Tự **hồi còn kẹp
+  chiều cao**. Nay không kẹp nữa thì nó cư xử y như tab Kỳ Môn và phải được đo
+  y như thế: trang dài gấp đôi màn hình thì thu tỉ lệ lại, đúng như tab Kỳ Môn
+  vẫn làm khi mở Âm Bàn (đo được 0,95 ở cả hai).
+* **`scrollToActive()` cuộn CẢ TRANG, không cuộn trong khung.** Không còn khung
+  nào để cuộn, `box.scrollTop` không nhúc nhích. Cả cơ chế chốt về ranh giới
+  hàng (`alignUnderHead`) sinh ra để hàng tiêu đề dính không cắt ngang hàng đầu
+  cũng không còn chỗ dụng — không có mép cắt nào để né. Nay đưa hàng đang cầm
+  lệnh lên khoảng một phần ba khung nhìn.
+* **Phép kiểm cũ canh đúng hành vi vừa bỏ.** `test_lenh.mjs` có hai khẳng định
+  — "ngón tay kéo được bảng" (`box.scrollTop > 0`) và "không tràn xuống dưới
+  thanh tab" — cả hai đều mã hoá thiết kế cũ. Đã viết lại: vuốt **trên bảng**
+  thì `window.scrollY` phải tăng, và phần dôi ra phải **cuộn tới được** (thay
+  vì cấm dôi ra).
+
 ## Tab Lệnh: nhân nguyên tư lệnh
 
 *(Đổi tên nhãn tab sau đó: "Lệnh" → **"Bát Tự"** — `T.tabLenh.vi` trong
@@ -2239,6 +2347,20 @@ Khác `test_responsive.mjs` ở ba chỗ:
 Cộng thêm ba luật cử chỉ không nhìn thấy được — `touch-action` của bánh xe,
 `overscroll-behavior` của bốn khung cuộn, và mảng sáng mặc định đã tắt — vì
 ảnh chụp màn hình nào cũng đẹp dù thiếu cả ba.
+
+Và hai nhóm nữa, cũng bằng chạm thật qua CDP:
+
+4. **Sắp xếp lại ba tab**: vuốt nhanh *không* được vào chế độ sắp xếp, giữ lâu
+   thì có; kéo Bát Tự từ cuối về đầu; vạch ngăn đi theo (tab đầu không có viền
+   trái); **sau khi sắp xếp, chạm tab vẫn chuyển màn hình** — đúng cái lỗi cờ
+   nuốt-click nằm lại đã bắt được; thứ tự sống qua lần mở lại; chuỗi lưu hỏng
+   thì về mặc định.
+5. **Mở Lệnh năm thì cả trang cuộn**: bảng không bị kẹp chiều cao, không còn gì
+   để cuộn bên trong, khung ôm trọn bảng, và **vuốt ngay trên bảng thì
+   `window.scrollY` phải tăng** — thao tác từng chết. Cộng phép canh hàng lưu
+   niên: canh phải, cả 100 hàng dừng ở cùng một vạch, có lề thật với mép phải,
+   và không hàng nào thò khỏi hộp nội dung (đo **hai phía**, xem cái bẫy
+   `scrollWidth` ở mục Đại Vận bên trên).
 
 ### Hàng dùng chung và hai ô chọn
 
