@@ -29,11 +29,16 @@ const pad = n => String(n).padStart(2, '0');
 const DOM = {};
 function getDOM(id) { return DOM[id] || (DOM[id] = document.getElementById(id)); }
 
-// --- COLLAPSIBLE DETAIL PANEL (Trí Nhuận / Sách Bổ / Âm Bàn) ---
+// --- COLLAPSIBLE DETAIL PANEL (Trí Nhuận / Sách Bổ / Âm Bàn / Lệnh) ---
+// 'lenh' chỉ khai ID ở đây — hành vi RIÊNG của nó (đo lại chiều cao khung
+// cuộn sau khi mở, vì fit() không đo được gì trong lúc còn ẩn) nằm ở
+// lenh.js, bọc lấy chính hàm toggleDetailPanel() bên dưới. Hàm này vẫn
+// không biết gì về "Lệnh" cả — giữ nó chung cho mọi mục, giống ba mục kia.
 const _panelIds = {
     trinhuan: { bodyId: 'trinhuanBody', chevId: 'trinhuanChevron' },
     sachbo:   { bodyId: 'sachboBody',   chevId: 'sachboChevron'   },
     amban:    { bodyId: 'ambanBody',    chevId: 'ambanChevron'    },
+    lenh:     { bodyId: 'lenhSec',      chevId: 'lenhHeadChevron' },
 };
 window.toggleDetailPanel = function(which) {
     const cfg  = _panelIds[which];
@@ -2166,6 +2171,11 @@ function processAll() {
         const lunarMonthNum = Math.abs(lunar.getMonth());
         const monthGanHan   = baziBJ.getMonthGan();
         const monthZhiHan   = baziBJ.getMonthZhi();
+
+        // Chỉ số Can THÁNG (0=Giáp…9=Quý), lộ ra cho tab Lệnh — cùng lý do
+        // và cùng nhịp với window.__yearGanIdx ở trên: trụ tháng đang cầm
+        // đại vận đầu tiên tính LÙI hoặc TIẾN một bước từ đúng trụ này.
+        window.__monthGanIdx = arrGanZH.indexOf(monthGanHan);
 
         // ── 6. Tứ Trụ panel ──
         updateTuTru(bazi.getYear(), bazi.getMonth(), bazi.getDay(), bazi.getTime());

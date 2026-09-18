@@ -78,6 +78,7 @@
         pickRule: { vi: 'Quy tắc', zh: '选择流派' },
         daiVan:   { vi: 'Nhập vận',    zh: '起运' },
         pickGender: { vi: 'Giới tính', zh: '性别' },
+        daiVanPillar: { vi: 'Đại Vận', zh: '大运' },
     };
     function isZH() { return typeof currentLang !== 'undefined' && currentLang === 'zh'; }
     function t(k) { return T[k][isZH() ? 'zh' : 'vi']; }
@@ -319,6 +320,25 @@
     }
 
     /**
+     * Can chi của Đại Vận ĐẦU TIÊN: bước đúng MỘT nấc trong lục thập hoa
+     * giáp kể từ trụ THÁNG — tới nếu THUẬN, lùi nếu NGHỊCH. Ví dụ đối chiếu
+     * người dùng cho: tháng Đinh Dậu, thuận → Mậu Tuất; nghịch → Bính Thân.
+     *
+     * Can và chi CÙNG bước một nấc — không phải chọn can và chi độc lập rồi
+     * ghép: lục thập hoa giáp chỉ có 60 cặp hợp lệ trong 120 cặp có thể (can
+     * và chi phải cùng tính chẵn/lẻ), và bước cả hai chỉ số cùng lúc luôn giữ
+     * đúng tính chất ấy — cách DUY NHẤT sinh ra cặp kế tiếp/trước đó hợp lệ mà
+     * khỏi phải dò qua bảng 60 cặp.
+     */
+    function daiVanPillarOf(thuan, monthCanIdx, monthChiIdx) {
+        var step = thuan ? 1 : -1;
+        return {
+            can: (monthCanIdx + step + 10) % 10,
+            chi: (monthChiIdx + step + 12) % 12,
+        };
+    }
+
+    /**
      * Tuổi nhập đại vận: quy ước "tam nhật nhất tuế" — 3 NGÀY cách mốc mở
      * tháng (kế tiếp nếu THUẬN, hiện tại nếu NGHỊCH) = 1 TUỔI.
      *
@@ -534,6 +554,7 @@
         // nặng hơn cả sai vài phút.
         var active = null;
         var vanText = null;
+        var pillarText = null;
         lastDaiVan = null;
         if (typeof _readInputBJ === 'function') {
             try {
@@ -551,7 +572,16 @@
                     // Nghịch: giờ sinh trừ mốc mở tháng HIỆN TẠI.
                     var diff = thuan ? (mb.end - birthJd) : (birthJd - mb.start);
                     var dv = daiVanTuoi(diff);
-                    lastDaiVan = { dv: dv, thuan: thuan, diffDays: diff, mb: mb };
+                    // Can chi Đại Vận đầu tiên: bước một nấc từ CHÍNH trụ
+                    // tháng, cùng chiều thuận/nghịch vừa dùng ở trên — không
+                    // phải một phép tính tách rời. monthCanIdx đọc từ app.js
+                    // (window.__monthGanIdx); monthChiIdx dùng thẳng
+                    // active.month.chi — đã có sẵn và đã BẢO ĐẢM khớp trụ
+                    // tháng thật (xem khối ghi chú ngay trên `active`).
+                    var mCanIdx = (typeof window !== 'undefined') ? window.__monthGanIdx : undefined;
+                    var pillar = (typeof mCanIdx === 'number' && mCanIdx >= 0)
+                        ? daiVanPillarOf(thuan, mCanIdx, active.month.chi) : null;
+                    lastDaiVan = { dv: dv, thuan: thuan, diffDays: diff, mb: mb, pillar: pillar };
                     // Cộng lịch vào ĐÚNG ngày sinh người dùng đã chọn (inp.y/
                     // m/d, dương lịch địa phương) — không phải birthJd giờ
                     // Bắc Kinh, vì đó là ngày mà "tuổi nhập vận" phải được
@@ -559,6 +589,12 @@
                     // thuận hành: "tuổi nhập vận" luôn là một tuổi DƯƠNG, và
                     // ngày bắt đầu đại vận luôn ở SAU ngày sinh.
                     vanText = fmtTuoi(dv) + ' · ' + fmtYMD(addYMD(inp.y, inp.m, inp.d, dv));
+                    // Tiếng Việt cần khoảng trắng ("Mậu Tuất" là hai tiếng);
+                    // tiếng Trung thì không (ghép can chi liền nhau — "戊戌",
+                    // không phải "戊 戌" — đúng cách mọi cặp can chi khác
+                    // trong ứng dụng đã hiện, ví dụ cột "Tuần thủ" ở tab Kỳ
+                    // Môn).
+                    if (pillar) pillarText = canName(pillar.can) + (isZH() ? '' : ' ') + chiName(pillar.chi);
                 }
             } catch (e2) { active = null; vanText = null; }
         }
@@ -576,7 +612,11 @@
                 ? '<div id="lenhDaiVan">' + esc(t('daiVan')) + (isZH() ? '：' : ': ') +
                   '<b id="lenhDaiVanVal">' + esc(vanText) + '</b></div>'
                 : '';
-            nowBox.innerHTML = lệnhLine + vanLine;
+            var pillarLine = pillarText
+                ? '<div id="lenhDaiVanPillar">' + esc(t('daiVanPillar')) + (isZH() ? '：' : ': ') +
+                  '<b id="lenhDaiVanPillarVal">' + esc(pillarText) + '</b></div>'
+                : '';
+            nowBox.innerHTML = lệnhLine + vanLine + pillarLine;
         }
 
         var tzId = inp.info.tzId;
@@ -629,6 +669,10 @@
         var box = document.getElementById('lenhBody');
         var row = document.getElementById('lenhActive');
         if (!box || !row) return;
+        // Cùng lý do với fit(): khung còn đóng thì mọi phép đo ra số 0, cuộn
+        // theo đó chỉ đặt scrollTop sai — bỏ qua, đợi lúc mở lại gọi.
+        var sec = document.getElementById('lenhSec');
+        if (sec && getComputedStyle(sec).display === 'none') return;
         var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
         var thead = box.querySelector('thead');
         var headH = thead ? thead.getBoundingClientRect().height / zoom : 0;
@@ -702,6 +746,11 @@
         var bar = document.getElementById('bottomDock');
         if (!sec || !box || !bar) return;
         if (!document.body.classList.contains('view-lenh')) return;
+        // Bảng đóng (xem #lenhSec{display:none} trong lenh.css): đo bây giờ
+        // chỉ ra toàn số 0 (getBoundingClientRect của phần tử display:none),
+        // và maxHeight tính từ đó là rác — bỏ qua, đợi lúc MỞ (xem chỗ bọc
+        // toggleDetailPanel() gọi lại đúng hàm này).
+        if (getComputedStyle(sec).display === 'none') return;
 
         // Khung bảng là khối CUỐI CÙNG của trang, nên chỗ nó được phép chiếm
         // chính là khoảng từ đỉnh nó tới thanh dưới — đo thẳng, khỏi phải cộng
@@ -835,6 +884,41 @@
             };
             wrapped.__lenhWrapped = true;
             window.processAll = wrapped;
+        }
+
+        // Bảng đóng sẵn (xem #lenhSec{display:none} trong lenh.css) nên
+        // fit() không đo được gì trong lúc đóng — mọi con số nó tính lúc ấy
+        // đều dựa trên một khung rộng-cao 0 (getBoundingClientRect của phần
+        // tử display:none). Vừa MỞ ra thì phải đo lại NGAY, không đợi tới
+        // lần render() kế tiếp (có thể rất lâu sau, tới khi đổi ngày/địa
+        // điểm). toggleDetailPanel() ở app.js không biết gì về Lệnh — bọc nó
+        // ở đây, đúng cách processAll() vừa được bọc ở trên, để app.js vẫn
+        // dùng chung một hàm cho cả bốn bảng gập/mở.
+        if (typeof window.toggleDetailPanel === 'function' && !window.toggleDetailPanel.__lenhWrapped) {
+            var origToggle = window.toggleDetailPanel;
+            var wrappedToggle = function (which) {
+                var r = origToggle.apply(this, arguments);
+                if (which === 'lenh') {
+                    var sec = document.getElementById('lenhSec');
+                    var head = document.getElementById('lenhHead');
+                    var open = sec && getComputedStyle(sec).display !== 'none';
+                    if (head) head.classList.toggle('lenh-open', !!open);
+                    if (open) {
+                        // Đợi khung kịp lên 'block' rồi mới đo — cùng độ trễ
+                        // toggleDetailPanel() tự dùng cho phép cuộn trang của
+                        // chính nó (requestAnimationFrame), nên hai việc không
+                        // giẫm lên nhau: nó cuộn TRANG, còn đây cuộn TRONG
+                        // khung bảng — hai hộp cuộn khác nhau.
+                        setTimeout(function () {
+                            try { fit(); } catch (e) {}
+                            scrollToActive();
+                        }, 60);
+                    }
+                }
+                return r;
+            };
+            wrappedToggle.__lenhWrapped = true;
+            window.toggleDetailPanel = wrappedToggle;
         }
     });
 

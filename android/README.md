@@ -734,6 +734,71 @@ dương của can năm — xem mục "Tuổi nhập đại vận" bên trên. Kh
 bảng Lệnh của cả năm (bảng ấy chỉ phụ thuộc bộ số ở `RULES`), chỉ đụng dòng
 "Nhập vận: …" phía trên bảng.
 
+### Can chi Đại Vận đầu tiên
+
+Dòng thứ ba trong khối: **"Đại Vận: Mậu Tuất"**. Bước ĐÚNG MỘT NẤC trong lục
+thập hoa giáp kể từ trụ THÁNG — tới nếu thuận, lùi nếu nghịch
+(`daiVanPillarOf()` trong `lenh.js`). Ví dụ đối chiếu: tháng Đinh Dậu, thuận
+→ Mậu Tuất (Đinh+1=Mậu, Dậu+1=Tuất); nghịch → Bính Thân (Đinh−1=Bính,
+Dậu−1=Thân).
+
+Can và chi CÙNG bước một nấc, không phải chọn riêng rồi ghép: lục thập hoa
+giáp chỉ có 60 cặp hợp lệ trong 120 cặp có thể (can và chi phải cùng tính
+chẵn/lẻ), và bước cả hai chỉ số cùng lúc luôn giữ đúng tính chất ấy — cách
+DUY NHẤT sinh ra cặp kế tiếp/trước đó hợp lệ mà khỏi phải dò qua bảng 60 cặp.
+
+Cần chỉ số CAN của trụ tháng, mà lenh.js trước đó chưa có biến nào giữ số này
+(chỉ có `active.part.can` — can đang CẦM LỆNH, một khái niệm khác hẳn). Thêm
+`window.__monthGanIdx` vào app.js, ngay cạnh `window.__yearGanIdx` đã có sẵn,
+cùng cách lộ ra và cùng nhịp cập nhật (mỗi lần `processAll()` chạy).
+
+Tiếng Trung ghép LIỀN không khoảng trắng ("戊戌", không phải "戊 戌") — đúng quy
+ước can chi tiếng Trung đã dùng ở khắp ứng dụng (ví dụ cột "Tuần thủ" ở tab Kỳ
+Môn: `${arrGanZH[0]}${chi}` không có khoảng trắng). Tiếng Việt thì cần khoảng
+trắng ("Mậu Tuất" là hai tiếng).
+
+### Một cỡ chữ, không đậm
+
+Khối "Lệnh: X / Nhập vận: … / Đại Vận: …" trước đó có phân bậc: dòng "Lệnh:"
+đậm và to hơn hẳn, dòng "Nhập vận:" nhỏ hơn. Nay CẢ BA dòng cùng một cỡ chữ
+(`clamp(12.5px, 3.4vw, 14px)`), không chữ nào đậm — ba dòng thông tin ngang
+hàng nhau, không phải một tiêu điểm với chi tiết phụ đi kèm. Các thẻ `<b>` mà
+lenh.js vẫn dựng trong HTML (không xoá, đỡ sửa hai chỗ) nhận `font-weight` và
+`font-size` là `inherit`, ngả hẳn về chữ thường của dòng chứa nó.
+
+### Bảng "LỆNH NĂM" gập/mở được, như Trí Nhuận/Sách Bổ/Âm Bàn
+
+Đóng SẴN lúc mở tab — bảng 33 hàng không phải thứ ai cũng cần thấy ngay, còn
+khối "Lệnh/Nhập vận/Đại Vận" phía trên đã là phần tóm tắt. Bấm vào tiêu đề
+"LỆNH NĂM 2026" để mở/đóng, y hệt cách ba bảng chi tiết ở tab Kỳ Môn hoạt
+động — và dùng lại ĐÚNG hàm `toggleDetailPanel()` của app.js, chỉ khai thêm
+một khoá `lenh: { bodyId: 'lenhSec', chevId: 'lenhHeadChevron' }` ở
+`_panelIds`, không viết hàm mở/đóng riêng.
+
+`toggleDetailPanel()` vẫn hoàn toàn không biết "Lệnh" là gì — hành vi RIÊNG
+(đo lại khung cuộn sau khi mở) nằm ở `lenh.js`, BỌC lấy hàm ấy đúng cách
+`render()` đã bọc `processAll()` từ trước, không sửa app.js để nó biết về
+từng bảng cụ thể:
+
+* **`fit()`/`scrollToActive()` đo ra RÁC lúc bảng còn đóng.** Phần tử
+  `display:none` trả `getBoundingClientRect()` toàn số 0, nên `maxHeight` và
+  `scrollTop` tính lúc ấy là vô nghĩa. Hai hàm tự BỎ QUA khi `#lenhSec` đang
+  đóng (đỡ tính rác mỗi lần `render()` chạy trong lúc ẩn), và lớp bọc quanh
+  `toggleDetailPanel()` gọi lại CẢ HAI ngay sau khi mở — không đợi tới lần
+  `render()` kế tiếp (có thể rất lâu sau, tới khi đổi ngày/địa điểm).
+* **Hai hình dạng khác nhau tuỳ trạng thái.** Đóng: `#lenhHead` đứng một mình,
+  bo tròn cả bốn góc, có viền dưới — một cái hộp đầy đủ. Mở: dính liền khung
+  bảng bên dưới thành một khối (bỏ bo góc dưới, bỏ viền dưới — khung bảng đã
+  có viền trên của nó). Lớp bọc `toggleDetailPanel()` gắn/gỡ lớp `.lenh-open`
+  trên `#lenhHead` sau mỗi lần bấm để CSS biết chọn hình nào.
+* **Tiêu đề lệch trái, mũi tên lệch phải** — bỏ cách canh giữa cũ (thêm mũi
+  tên vào một tiêu đề canh giữa thì "đẹp" nhưng lệch tâm thật, vì không có gì
+  đối xứng bên trái) — đúng cách ba bảng kia đã trình bày.
+
+Hệ quả: tab Lệnh giờ khá TRỐNG lúc mới mở (chỉ khối tóm tắt ba dòng, không có
+bàn cờ lớn như tab Kỳ Môn để lấp chỗ) — chấp nhận được vì đó chính là điều
+được yêu cầu, nhưng đáng nói ra.
+
 ### "Chọn quy tắc" → "Quy tắc", và ba tên viết tắt
 
 Hai đổi riêng, cùng một chỗ:

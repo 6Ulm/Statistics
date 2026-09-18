@@ -340,7 +340,14 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
      Nội dung dưới đây do lenh.js dựng. -->
 <div id="lenhView">
     <div id="lenhNow">Lệnh: <b id="lenhNowVal">—</b></div>
-    <div id="lenhHead"><span id="lenhTitle">LỆNH NĂM</span></div>
+    <!-- Gập/mở được như ba bảng chi tiết ở tab Kỳ Môn (Trí Nhuận/Sách Bổ/
+         Âm Bàn) — dùng lại ĐÚNG hàm toggleDetailPanel() của app.js, khai
+         thêm khoá 'lenh' → #lenhSec/#lenhHeadChevron ở _panelIds. Đóng sẵn
+         lúc mở tab, giống ba bảng kia. -->
+    <div id="lenhHead" onclick="toggleDetailPanel('lenh')">
+        <span id="lenhTitle">LỆNH NĂM</span>
+        <span id="lenhHeadChevron" class="dp-chevron">▾</span>
+    </div>
     <div class="cal-sec" id="lenhSec"><div class="cal-sec-body" id="lenhBody"></div></div>
 </div>
 

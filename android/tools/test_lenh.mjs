@@ -351,6 +351,10 @@ console.log('\nTab thứ ba: đúng chỗ, và dùng lại đúng hai khối c�
 
     await page.click('#tabLenh');
     await page.waitForTimeout(900);
+    // Bảng đóng SẴN (Trí Nhuận-style) — phải bấm mở trước khi đọc #lenhBody,
+    // bằng không mọi phép đo dưới đây ra số 0 (display:none).
+    await page.click('#lenhHead');
+    await page.waitForTimeout(500);
     const ln = await page.evaluate(() => {
         const tt = document.getElementById('tuTruPanel');
         const cs = getComputedStyle(tt);
@@ -411,6 +415,10 @@ console.log('\nÔ chọn bộ số: cùng hàng với ô ngày giờ, và đổi
 
     await page.click('#tabLenh');
     await page.waitForTimeout(900);
+    // Bảng đóng SẴN (Trí Nhuận-style) — phải bấm mở trước khi đọc #lenhBody,
+    // bằng không mọi phép đo dưới đây ra số 0 (display:none).
+    await page.click('#lenhHead');
+    await page.waitForTimeout(500);
     const hàng = await page.evaluate(() => {
         const r = id => document.getElementById(id).getBoundingClientRect();
         const d = r('dateDisplayBtn'), g = r('lenhGenderBtn'), l = r('lenhRuleBtn'), row = r('qmRow');
@@ -480,6 +488,10 @@ console.log('\nÔ chọn bộ số: cùng hàng với ô ngày giờ, và đổi
     await page.waitForTimeout(1000);
     await page.click('#tabLenh');
     await page.waitForTimeout(900);
+    // Bảng đóng SẴN (Trí Nhuận-style) — phải bấm mở trước khi đọc #lenhBody,
+    // bằng không mọi phép đo dưới đây ra số 0 (display:none).
+    await page.click('#lenhHead');
+    await page.waitForTimeout(500);
     check('mở lại vẫn nhớ bộ số đã chọn', await page.textContent('#lenhRuleText'), 'TMTH');
     check('…và bảng vẫn là bộ ấy', (await dan()).dan.map(x => x.split('|')[1]).join('·'), '5·5·20');
 
@@ -523,6 +535,10 @@ console.log('\nĐịa điểm và ngôn ngữ dùng chung cho CẢ BA tab');
     const { page, errs } = await open(ctx);
     await page.click('#tabLenh');
     await page.waitForTimeout(900);
+    // Bảng đóng SẴN (Trí Nhuận-style) — phải bấm mở trước khi đọc #lenhBody,
+    // bằng không mọi phép đo dưới đây ra số 0 (display:none).
+    await page.click('#lenhHead');
+    await page.waitForTimeout(500);
 
     const trước = await page.evaluate(() =>
         document.querySelector('#lenhBody tbody tr td:nth-last-child(2)').textContent.trim());
@@ -576,6 +592,10 @@ console.log('\nĐịa điểm và ngôn ngữ dùng chung cho CẢ BA tab');
     await page.waitForTimeout(800);
     await page.click('#tabLenh');
     await page.waitForTimeout(900);
+    // Bảng đóng SẴN (Trí Nhuận-style) — phải bấm mở trước khi đọc #lenhBody,
+    // bằng không mọi phép đo dưới đây ra số 0 (display:none).
+    await page.click('#lenhHead');
+    await page.waitForTimeout(500);
     const zh = await page.evaluate(() => ({
         nhãn: document.querySelector('#tabLenh .tab-lbl').textContent,
         cột: [...document.querySelectorAll('#lenhBody thead th')].map(e => e.textContent.trim()).join('|'),
@@ -596,6 +616,10 @@ for (const d of [{ n: 'S21', w: 360, h: 740 }, { n: 'S21 FE', w: 393, h: 790 }, 
         if (lang === 'zh') { await page.evaluate(() => window.setLang('zh')); await page.waitForTimeout(600); }
         await page.click('#tabLenh');
         await page.waitForTimeout(900);
+        // Bảng đóng SẴN (Trí Nhuận-style) — phải bấm mở trước khi đọc #lenhBody,
+        // bằng không mọi phép đo dưới đây ra số 0 (display:none).
+        await page.click('#lenhHead');
+        await page.waitForTimeout(500);
         const g = await page.evaluate(() => {
             const z = parseFloat(getComputedStyle(document.body).zoom) || 1;
             const box = document.getElementById('lenhBody');
@@ -932,6 +956,169 @@ console.log('\nTuổi nhập đại vận: chiều thuận/nghịch chéo Giới
     ok('không lỗi JS suốt lượt kiểm tuổi nhập vận', errs.length === 0, errs.join(' ; '));
     await ctx.close();
 }
+
+console.log('\nBảng "LỆNH NĂM" gập/mở được, như Trí Nhuận/Sách Bổ/Âm Bàn');
+{
+    const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const { page, errs } = await open(ctx);
+    await page.click('#tabLenh');
+    await page.waitForTimeout(700);
+
+    // Đóng SẴN lúc mới vào tab — không đợi người dùng tự đóng lần đầu.
+    const đóngSẵn = await page.evaluate(() => ({
+        display: getComputedStyle(document.getElementById('lenhSec')).display,
+        lớpMở: document.getElementById('lenhHead').classList.contains('lenh-open'),
+        chev: document.getElementById('lenhHeadChevron').style.transform,
+        // "Lệnh:/Nhập vận:/Đại Vận:" vẫn phải hiện — đây là phần TÓM TẮT,
+        // không phụ thuộc bảng có mở hay không.
+        tómTắt: document.getElementById('lenhNowVal').textContent.trim(),
+    }));
+    ok('bảng đóng sẵn lúc mới vào tab', đóngSẵn.display === 'none', đóngSẵn.display);
+    ok('đầu bảng CHƯA có lớp .lenh-open', !đóngSẵn.lớpMở);
+    ok('mũi tên chưa xoay', đóngSẵn.chev !== 'rotate(180deg)', đóngSẵn.chev);
+    ok('dòng tóm tắt "Lệnh:" vẫn hiện dù bảng đóng', đóngSẵn.tómTắt && đóngSẵn.tómTắt !== '—', đóngSẵn.tómTắt);
+
+    // Bấm mở: hiện ra, đúng lớp, mũi tên xoay, kích thước hợp lý (không phải
+    // 0 — dấu hiệu fit() đo lúc còn ẩn rồi không đo lại).
+    await page.click('#lenhHead');
+    await page.waitForTimeout(600);
+    const mở = await page.evaluate(() => {
+        const box = document.getElementById('lenhBody');
+        return {
+            display: getComputedStyle(document.getElementById('lenhSec')).display,
+            lớpMở: document.getElementById('lenhHead').classList.contains('lenh-open'),
+            chev: document.getElementById('lenhHeadChevron').style.transform,
+            hàng: document.querySelectorAll('#lenhBody tbody tr').length,
+            caoKhung: box.getBoundingClientRect().height,
+            hiệnĐược: [...box.querySelectorAll('tbody tr')].filter(r => {
+                const q = r.getBoundingClientRect(), c = box.getBoundingClientRect();
+                return q.top >= c.top - 1 && q.bottom <= c.bottom + 1;
+            }).length,
+        };
+    });
+    ok('bấm vào thì bảng hiện ra', mở.display !== 'none', mở.display);
+    ok('đầu bảng nhận lớp .lenh-open', mở.lớpMở);
+    ok('mũi tên xoay 180°', mở.chev === 'rotate(180deg)', mở.chev);
+    check('vẫn đủ 33 đoạn', mở.hàng, 33);
+    ok('khung có chiều cao THẬT, không phải số rác từ lúc còn ẩn',
+        mở.caoKhung > 100, `cao ${mở.caoKhung}px`);
+    ok('hiện được ít nhất một tháng trọn vẹn', mở.hiệnĐược >= 3, `${mở.hiệnĐược} đoạn`);
+
+    // Bấm lần nữa: đóng lại, đúng lớp, mũi tên trả về.
+    await page.click('#lenhHead');
+    await page.waitForTimeout(500);
+    const đóngLại = await page.evaluate(() => ({
+        display: getComputedStyle(document.getElementById('lenhSec')).display,
+        lớpMở: document.getElementById('lenhHead').classList.contains('lenh-open'),
+        chev: document.getElementById('lenhHeadChevron').style.transform,
+    }));
+    ok('bấm lần nữa thì bảng đóng lại', đóngLại.display === 'none', đóngLại.display);
+    ok('đầu bảng mất lớp .lenh-open', !đóngLại.lớpMở);
+    ok('mũi tên xoay về 0°', đóngLại.chev === 'rotate(0deg)', đóngLại.chev);
+
+    // Đóng rồi đổi ngày sinh (render() chạy lại trong lúc bảng đang ẩn) rồi
+    // mới mở — kích thước và hàng đang cầm lệnh phải vẫn đúng, không phải
+    // một bản tính từ lúc TRƯỚC khi đổi ngày.
+    const ngàyTrước = parseInt(await page.$eval('#inDay', e => e.value), 10);
+    await page.evaluate(ngàyMới => {
+        const el = document.getElementById('inDay');
+        el.value = String(ngàyMới);
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        if (window.processAll) window.processAll();
+    }, (ngàyTrước % 27) + 1);
+    await page.waitForTimeout(500);
+    await page.click('#lenhHead');
+    await page.waitForTimeout(600);
+    const sauKhiĐổiRồiMở = await page.evaluate(() => {
+        const active = document.getElementById('lenhActive');
+        const box = document.getElementById('lenhBody');
+        return {
+            lệnh: document.getElementById('lenhNowVal').textContent.trim(),
+            hàngChủĐộng: active ? active.cells[0].textContent.replace(/\s+/g, '').slice(0, 6) : null,
+            hàngChủĐộngTrongKhung: active ? (() => {
+                const q = active.getBoundingClientRect(), c = box.getBoundingClientRect();
+                return q.top >= c.top - 1 && q.bottom <= c.bottom + 1;
+            })() : false,
+        };
+    });
+    ok('đổi ngày lúc bảng đang đóng rồi mở lại: hàng đang cầm lệnh vẫn cuộn tới đúng chỗ',
+        sauKhiĐổiRồiMở.hàngChủĐộngTrongKhung, JSON.stringify(sauKhiĐổiRồiMở));
+
+    ok('không lỗi JS', errs.length === 0, errs.join(' ; '));
+    await ctx.close();
+}
+
+console.log('\nĐại Vận (can chi Đại Vận đầu tiên) — bước một nấc từ trụ tháng');
+{
+    const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const { page, errs } = await open(ctx);
+    await page.click('#tabLenh');
+    await page.waitForTimeout(700);
+
+    // Đúng ví dụ người dùng cho: tháng Đinh Dậu → Nam thuận → Mậu Tuất;
+    // Nữ nghịch → Bính Thân. Đặt ngày để chắc chắn trụ tháng là Đinh Dậu.
+    await page.evaluate(() => {
+        const set = (id, v) => { const el = document.getElementById(id); el.value = String(v);
+            el.dispatchEvent(new Event('change', { bubbles: true })); };
+        set('inYear', 2026); set('inMonth', 9); set('inDay', 18);
+        set('solarHour', 9); set('solarMinute', 0);
+        window.processAll();
+    });
+    await page.waitForTimeout(500);
+    const thángHiện = await page.evaluate(() =>
+        document.getElementById('ttCanThang').textContent + document.getElementById('ttChiThang').textContent);
+    check('trụ tháng đúng là Đinh Dậu (tiền đề của ví dụ)', thángHiện, 'ĐinhDậu');
+
+    await page.evaluate(() => window.__lenhGender('nam'));
+    await page.waitForTimeout(400);
+    check('Nam (thuận): Đại Vận đầu = Mậu Tuất', await page.textContent('#lenhDaiVanPillarVal'), 'Mậu Tuất');
+
+    await page.evaluate(() => window.__lenhGender('nu'));
+    await page.waitForTimeout(400);
+    check('Nữ (nghịch): Đại Vận đầu = Bính Thân', await page.textContent('#lenhDaiVanPillarVal'), 'Bính Thân');
+
+    // Nhãn và đơn vị tiếng Trung: ghép LIỀN không khoảng trắng (quy ước can
+    // chi tiếng Trung trong cả ứng dụng, xem "Tuần thủ" ở tab Kỳ Môn).
+    await page.evaluate(() => window.setLang('zh'));
+    await page.waitForTimeout(600);
+    const zh = await page.evaluate(() => ({
+        nhãn: document.getElementById('lenhDaiVanPillar').firstChild.textContent.trim(),
+        giá: document.getElementById('lenhDaiVanPillarVal').textContent,
+    }));
+    check('nhãn tiếng Trung là "大运："', zh.nhãn, '大运：');
+    ok('can chi tiếng Trung KHÔNG có khoảng trắng ở giữa', !zh.giá.includes(' '), zh.giá);
+    ok('…và đúng hai chữ Hán', /^[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]$/.test(zh.giá), zh.giá);
+    await page.evaluate(() => window.setLang('vi'));
+    await page.waitForTimeout(500);
+
+    ok('không lỗi JS', errs.length === 0, errs.join(' ; '));
+    await ctx.close();
+}
+
+console.log('\nMột cỡ chữ duy nhất trong khối "Lệnh/Nhập vận/Đại Vận", không đậm');
+{
+    const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const { page, errs } = await open(ctx);
+    await page.click('#tabLenh');
+    await page.waitForTimeout(700);
+
+    const kiểu = await page.evaluate(() => {
+        const ids = ['lenhNowVal', 'lenhDaiVanVal', 'lenhDaiVanPillarVal'];
+        return ids.map(id => {
+            const e = document.getElementById(id);
+            const cs = getComputedStyle(e);
+            return { id, cỡ: cs.fontSize, đậm: cs.fontWeight };
+        });
+    });
+    const cỡs = new Set(kiểu.map(k => k.cỡ));
+    ok('cả ba dòng cùng MỘT cỡ chữ', cỡs.size === 1, JSON.stringify(kiểu));
+    for (const k of kiểu) {
+        ok(`${k.id}: không đậm (weight ${k.đậm}, cần < 700)`, parseInt(k.đậm, 10) < 700, k.đậm);
+    }
+    ok('không lỗi JS', errs.length === 0, errs.join(' ; '));
+    await ctx.close();
+}
+
 await browser.close();
 server.close();
 console.log(`\n${pass} đạt · ${fail} hỏng`);

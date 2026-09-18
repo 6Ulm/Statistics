@@ -55,56 +55,76 @@ body.view-lenh #qmRow #lenhRuleText {
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-/* ── Dòng "Lệnh: Mậu" ── */
-#lenhNow {
+/* ── Khối "Lệnh: Mậu" / "Nhập vận: …" / "Đại Vận: …" ──
+   Một cỡ chữ DUY NHẤT cho cả khối, không chữ nào đậm hơn chữ nào — người
+   dùng yêu cầu rõ: đây là ba dòng thông tin ngang hàng nhau, không phải một
+   tiêu điểm với chi tiết phụ đi kèm (bản trước cho dòng "Lệnh: X" đậm và to
+   hẳn lên, nay bỏ). `b`/`strong` bên trong (còn lại trong HTML do lenh.js
+   dựng) vì thế phải NGẢ VỀ chữ thường — đặt `font-weight`/`font-size` bằng
+   `inherit` chứ không xoá thẻ trong lenh.js, đỡ phải sửa hai chỗ. */
+#lenhNow, #lenhDaiVan, #lenhDaiVanPillar {
     box-sizing: border-box;
+    text-align: center;
+    font-size: clamp(12.5px, 3.4vw, 14px);
+    font-weight: 400;
+    color: var(--text-main, #000);
+}
+#lenhNow {
     border: var(--border-panel, 1px solid #ddd);
     border-radius: var(--panel-radius, 8px);
     background: var(--bg-white, #fff);
     padding: 3px 10px;
     margin-bottom: 3px;
-    text-align: center;
-    font-size: clamp(13px, 3.6vw, 15px);
-    color: var(--text-main, #000);
 }
-#lenhNow b {
-    font-size: clamp(15px, 4.4vw, 18px);
-    font-weight: 700;
-    color: var(--text-main, #000);
-}
-
-/* ── Dòng phụ "Nhập vận: 3 tuổi 6 tháng" ──
-   Cùng khối #lenhNow (chung viền, chung khung) nhưng cỡ chữ nhỏ hơn dòng
-   "Lệnh: X" — đây là chi tiết bổ sung, không phải tiêu điểm của khối. Vẫn
-   một màu đen như cả tab, chỉ khác đậm nhạt để phân bậc. */
-#lenhDaiVan {
-    margin-top: 2px;
-    font-size: clamp(11.5px, 3.2vw, 13px);
-    color: var(--text-main, #000);
-}
-#lenhDaiVan b {
-    font-weight: 700;
+#lenhDaiVan { margin-top: 2px; }
+#lenhDaiVanPillar { margin-top: 2px; }
+#lenhNow b, #lenhDaiVan b, #lenhDaiVanPillar b {
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
 }
 
-/* ── Đầu bảng ──
-   Dính liền khung bảng bên dưới thành một khối (gap của #lenhView đặt 0, và
-   khung bảng bỏ bo góc trên) — hai mảnh rời có khe ở giữa thì cái tiêu đề
-   trông như đang trôi. Cả tab chỉ một màu: chữ ĐEN trên nền giấy, kể cả cái
-   tiêu đề này — nên nó cần VIỀN mới ra hình một khối, chứ không còn dải màu
-   để tự tách khỏi nền. Viền dưới bỏ đi để liền một mạch với khung bảng (khung
-   bảng đã có viền trên của nó), bằng không chỗ nối dày gấp đôi. */
+/* ── Đầu bảng — gập/mở được, như ba bảng chi tiết ở tab Kỳ Môn ──
+   Đóng SẴN lúc mở tab (giống Trí Nhuận/Sách Bổ/Âm Bàn): bảng 33 hàng không
+   phải thứ ai cũng cần thấy ngay, còn "Lệnh/Nhập vận/Đại Vận" ở #lenhNow phía
+   trên đã là phần tóm tắt. Dùng lại ĐÚNG toggleDetailPanel() của app.js (khai
+   ở _panelIds trong app.js), không viết hàm mở/đóng riêng.
+
+   Hai hình dạng khác nhau tuỳ trạng thái — lenh.js gắn/gỡ lớp .lenh-open sau
+   mỗi lần bấm (xem lenh.js, bọc toggleDetailPanel):
+     ĐÓNG: đứng một mình, bo tròn CẢ BỐN góc, có viền dưới — một cái hộp đầy
+           đủ, không phải nửa hộp cụt đáy.
+     MỞ:   dính liền khung bảng bên dưới thành MỘT khối (gap của #lenhView
+           đặt 0) — bỏ bo góc dưới và bỏ viền dưới, khung bảng đã có viền
+           trên của nó, không chỗ nối dày gấp đôi.
+   Cả tab chỉ một màu: chữ ĐEN trên nền giấy, kể cả cái tiêu đề này — nên nó
+   cần VIỀN mới ra hình một khối, chứ không còn dải màu để tự tách khỏi nền. */
 #lenhHead {
-    display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 6px;
     background: var(--bg-white, #fff);
     color: var(--text-main, #000);
     border: 1px solid var(--border-color, #ddd);
-    border-bottom: 0;
-    border-radius: 8px 8px 0 0;
+    border-radius: 8px;
     padding: 5px 6px;
     font-size: clamp(13px, 3.7vw, 15px);
     font-weight: 700;
     letter-spacing: .3px;
+    cursor: pointer; user-select: none;
 }
+#lenhHead:active { filter: brightness(.96); }
+#lenhHead.lenh-open {
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+}
+/* Tiêu đề lệch trái + mũi tên lệch phải — đúng cách ba bảng chi tiết kia
+   trình bày (.dp-header/.dp-title), không còn canh giữa như bản đứng một
+   mình lúc trước (thêm mũi tên thì canh giữa "đẹp" nhưng LỆCH TÂM thật, vì
+   không có gì đối xứng ở bên trái). */
+#lenhHeadChevron { flex: 0 0 auto; font-size: 15px; }
+
+/* Đóng SẴN — inline style của toggleDetailPanel() ghi đè khi mở ('block'). */
+#lenhSec { display: none; }
 
 /* ── Khung bảng ──
    Dùng lại .cal-sec/.cal-sec-body của calendar.css: khung cuộn, viền, và
