@@ -818,10 +818,19 @@ từng bảng cụ thể:
 Chỗ trống để lại lúc bảng đóng (tab Lệnh không có bàn cờ lớn như tab Kỳ Môn
 để lấp chỗ) nay có bảng ĐẠI VẬN lấp vào — xem mục ngay dưới.
 
+*(Cập nhật sau đó: quan hệ này ĐẢO NGƯỢC — xem đoạn "Đổi chỗ: ĐẠI VẬN lên
+trước, LỆNH NĂM xuống cuối" cuối mục "Bảng ĐẠI VẬN" ngay dưới. LỆNH NĂM
+không còn "lấp chỗ trống của ai" nữa — tự nó là thứ được cấp phần CÒN LẠI.)*
+
 ### Bảng ĐẠI VẬN: 10 đại vận × 10 năm
 
 Lấp đúng chỗ trống dưới "LỆNH NĂM" lúc bảng ấy đang đóng. KHÔNG gập/mở như
 "LỆNH NĂM" — luôn hiện, vì việc của nó chính là lấp chỗ trống.
+
+*(Cập nhật sau đó: câu trên mô tả bản ĐẦU TIÊN — ĐẠI VẬN đứng SAU LỆNH NĂM,
+chia sẻ một ngân sách chiều cao. Bản hiện tại đã đổi hẳn: ĐẠI VẬN đứng
+TRƯỚC, không còn "lấp chỗ trống" của khối nào — nó LÀ nội dung chính, giống
+bàn Kỳ Môn ở tab Kỳ Môn. Chi tiết ở đoạn cuối mục này.)*
 
 **Tên các đại vận** bước đúng một nấc lục thập hoa giáp mỗi lần, kể từ chính
 đại vận ĐẦU TIÊN đã tính ở khối tóm tắt phía trên (`daiVanPillarOf()`) —
@@ -905,18 +914,82 @@ ngang phải dùng tới — xem đoạn trên) đưa thẻ ra giữa khung nhì
 (`.dv-grid`) nữa; bình thường 5 cột vừa khít nên vế ngang này là số 0, không
 việc gì để làm.
 
-**Chia chỗ với "LỆNH NĂM" — không phải shareSectionHeight() của tab Lịch.**
-Hai mục Tiết Khí/Lịch âm ở tab Lịch nằm CẠNH NHAU (chia theo tỉ lệ phần
-trăm một ngân sách chung); "LỆNH NĂM" và "ĐẠI VẬN" nằm CHỒNG (dòng chảy tài
-liệu bình thường), nên đơn giản hơn nhiều: `fitLenhSec()` CHỪA TRƯỚC một sàn
-(`DV_MIN = 170px` + chiều cao đầu khối Đại Vận) khi chia chỗ cho Lệnh năm,
-rồi `fitDaiVan()` ĐO LẠI vị trí thật của `#daiVanHead` (đã dịch xuống đúng
-chỗ sau khi Lệnh năm định hình) để cấp NỐT phần còn lại. Thứ tự bắt buộc:
-`fitLenhSec()` phải chạy trước `fitDaiVan()` trong `fit()`.
+**~~Chia chỗ với "LỆNH NĂM" — không phải shareSectionHeight() của tab
+Lịch.~~** *(Đoạn này mô tả bản ĐẦU TIÊN, nay không còn đúng — xem đoạn "Đổi
+chỗ" ngay dưới thay cho nó.)* ~~Hai mục Tiết Khí/Lịch âm ở tab Lịch nằm CẠNH
+NHAU (chia theo tỉ lệ phần trăm một ngân sách chung); "LỆNH NĂM" và "ĐẠI
+VẬN" nằm CHỒNG (dòng chảy tài liệu bình thường), nên đơn giản hơn nhiều:
+`fitLenhSec()` CHỪA TRƯỚC một sàn (`DV_MIN = 170px` + chiều cao đầu khối
+Đại Vận) khi chia chỗ cho Lệnh năm, rồi `fitDaiVan()` ĐO LẠI vị trí thật của
+`#daiVanHead` (đã dịch xuống đúng chỗ sau khi Lệnh năm định hình) để cấp
+NỐT phần còn lại. Thứ tự bắt buộc: `fitLenhSec()` phải chạy trước
+`fitDaiVan()` trong `fit()`.~~
 
 `window.__monthGanIdx` (app.js) và `window.__lenhDaiVanBang()` (dữ liệu 10
 đại vận của lần vẽ gần nhất, chỉ dùng cho bộ kiểm thử) là hai chỗ lộ ra mới
 cho bảng này.
+
+### Đổi chỗ: ĐẠI VẬN lên trước, LỆNH NĂM xuống cuối — không còn chung ngân sách
+
+**Lỗi người dùng báo**: bấm mở "LỆNH NĂM" thì bảng ĐẠI VẬN "biến mất". Nguồn
+gốc đúng như đoạn gạch ngang ở trên mô tả: hai khối CHIA CHUNG một ngân sách
+chiều cao — LỆNH NĂM (đứng TRƯỚC) chừa sẵn một sàn cố định cho Đại Vận rồi
+tự lấy phần còn lại cho MÌNH; Đại Vận (đứng SAU) đo lại vị trí thật của đầu
+khối nó (đã bị đẩy xuống bởi bảng Lệnh năm vừa mở, có khi cao gần hết màn
+hình) rồi mới biết phần CÒN LẠI của CHÍNH NÓ là bao nhiêu. Bảng Lệnh năm mở
+càng rộng, phần còn sót cho Đại Vận càng bé — chạm sàn `DV_MIN` thì Đại Vận
+chỉ còn thấy đầu thẻ + vài hàng, có cảm giác như "biến mất".
+
+**Sửa tận gốc, không phải vá triệu chứng**: đổi hẳn vai trò của hai khối,
+không chỉnh lại con số ngân sách.
+
+* **ĐẠI VẬN chuyển lên đứng NGAY SAU ô tóm tắt** (trước LỆNH NĂM) và **không
+  còn `maxHeight`/`overflow-y` riêng nữa** — `#daiVanBody` (`.cal-sec-body`
+  mượn từ tab Lịch) đổi `overflow-y: auto` thành `overflow-y: visible`, và
+  `fit()` không còn gọi bước tính `maxHeight` cho nó (hàm `fitDaiVan()` cũ bị
+  xoá hẳn, chỉ còn giữ lại việc gọi `shrinkDaiVanRows()` — co chữ hàng tràn,
+  chuyện bề RỘNG chứ không phải chiều cao). ĐẠI VẬN vì thế LUÔN đúng chiều
+  cao tự nhiên của 100 năm dữ liệu, không phụ thuộc LỆNH NĂM đang đóng hay
+  mở, đúng như bàn Kỳ Môn ở tab Kỳ Môn luôn hiện trọn vẹn.
+* **Trang được phép DÀI HƠN một màn hình và cuộn dọc bình thường** — trước
+  đây tab Lệnh (thuộc nhóm "elastic" trong viewport.js, cùng tab Lịch) vẫn cố
+  giữ mọi thứ vừa đúng một màn nhờ ép chiều cao từng bảng con; nay bỏ hẳn nỗ
+  lực đó cho khối Đại Vận. Không cần đổi gì ở tầng cuộn: `body`/`html` chưa
+  từng khoá `overflow`, và `#bottomDock` đã sẵn `position: fixed` — cuộn tới
+  đâu thanh dưới vẫn đứng nguyên. `body { padding-bottom: var(--tabbar-h) }`
+  (đã có sẵn, dùng chung mọi tab) tự chừa đúng chỗ cho thanh ấy ở cuối trang
+  khi cuộn hết.
+* **LỆNH NĂM chuyển xuống CUỐI CÙNG**, vẫn gập/mở đúng như "Bảng LỆNH NĂM
+  gập/mở được" ở mục trên — không đổi gì về cơ chế mở/đóng, chỉ đổi VỊ TRÍ.
+  `fitLenhSec()` viết lại: đo vị trí thật của CHÍNH NÓ (đã dịch xuống đúng
+  chỗ, sau TOÀN BỘ nội dung phía trên — kể cả Đại Vận cao bao nhiêu tuỳ nội
+  dung) rồi cấp toàn bộ phần còn lại xuống `#bottomDock` cho MÌNH NÓ — không
+  còn phải chừa sàn cho ai khác nữa, vì không còn ai đứng sau nó để chừa.
+  `DV_MIN` bỏ hẳn (không còn ý nghĩa); `BOX_MIN = 120px` (sàn cũ của riêng
+  Lệnh năm) giữ nguyên, và giờ là ngưỡng THƯỜNG chạm tới (trước đây hiếm chạm
+  hơn, vì Đại Vận từng chỉ xin một sàn NHỎ chừa trước nó thay vì lấy hết chỗ
+  còn lại như bây giờ) — bảng 33 hàng vì thế thường chỉ hiện ~5 hàng trước
+  khi phải cuộn NỘI BỘ trong `#lenhBody`, đổi lại Đại Vận không bao giờ phải
+  nhường một mm nào nữa.
+* **`scrollToActive()` lộ thêm một bẫy cũ, giờ mới hay chạm tới**: chạm sàn
+  `BOX_MIN=120px` là chuyện thường thì đôi khi khung LỆNH NĂM không đủ chỗ
+  cho CẢ hai việc `alignUnderHead()` vẫn làm cùng lúc — chốt mép trên đúng
+  đầu THÁNG, và giữ trọn hàng đang cầm lệnh trong khung. Khi phải chọn, hàng
+  đang cầm lệnh (mục tiêu CHÍNH của cả bảng) thắng: `scrollToActive()` đo lại
+  SAU `alignUnderHead()`, và nếu hàng ấy vẫn tràn đáy khung thì đẩy tiếp từng
+  HÀNG một (luôn dừng ở ranh giới hàng thật, không phải một số px tuỳ tiện —
+  nếu không sẽ biến hàng ĐẦU khung thành hàng bị cắt, đổi bệnh này lấy bệnh
+  khác) cho tới khi hàng đang cầm lệnh hiện trọn.
+* **Khe hở giữa các khối trong tab Lệnh từng bị viewport.js bơm quá tay.**
+  Cơ chế "rót phần chiều cao dư vào khe giữa các bảng" (`GAP_MAX = 24px`)
+  vốn dựng riêng cho bàn Kỳ Môn — lưới vuông, cỡ CỐ ĐỊNH, không thể cao thêm
+  nếu không rộng thêm, nên chỗ dư duy nhất nhận được là khe. Tab Lệnh không
+  giống vậy: Đại Vận cao tuỳ nội dung của chính nó, không có "chỗ dư" nào
+  cần lấp bằng khe cho vừa khít một màn hình — vậy mà cơ chế ấy vẫn chạy
+  chung cho mọi tab, có lúc bơm khe `.controls`→`#tuTruPanel`→`#lenhView`
+  gần kịch trần (đo được 21.5px, so với `BASE_GAP = 3px` bình thường), nhìn
+  thừa hẳn. Sửa bằng cách bỏ qua đúng bước ấy khi `body.classList.contains
+  ('view-lenh')` — tab Kỳ Môn (và tab Lịch) không đổi gì cả.
 
 **Cập nhật sau đó: bỏ chữ năm mờ và nền xen kẽ trong mỗi hàng lưu niên.**
 `.dv-row .dv-year` trước tô màu mờ (`var(--text-dim)`, #666) để phân biệt với

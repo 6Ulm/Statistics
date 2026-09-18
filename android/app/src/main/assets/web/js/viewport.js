@@ -142,13 +142,21 @@
         // ngay trên thanh dưới. Bàn Kỳ Môn là lưới vuông nên không cao thêm
         // được nếu không rộng thêm, vậy chỗ duy nhất nhận được phần dôi ấy là
         // khe giữa các bảng.
+        //
+        // Tab Lệnh (Bát Tự) BỎ QUA bước này: lý luận trên chỉ đúng cho bàn Kỳ
+        // Môn (lưới vuông, cỡ CỐ ĐỊNH, không thể cao thêm) — Đại Vận ở tab
+        // Lệnh thì NGƯỢC LẠI, cao tuỳ nội dung của chính nó, không có "chỗ
+        // dôi" nào cần lấp bằng khe cho vừa khít một màn hình. Người dùng
+        // phản ánh đúng khe này (.controls → #tuTruPanel → #lenhView) từng bị
+        // bơm gần kịch trần GAP_MAX (đo được 21.5px, so với BASE_GAP 3px),
+        // nhìn thừa hẳn.
         var kids = [];
         for (var g = 0; g < body.children.length; g++) {
             var el = body.children[g];
             var cs = getComputedStyle(el);
             if (cs.display !== 'none' && cs.position !== 'fixed') kids.push(el);
         }
-        if (kids.length > 1) {
+        if (kids.length > 1 && !body.classList.contains('view-lenh')) {
             var used = body.getBoundingClientRect().height;
             var spare = (availH - used) / (parseFloat(body.style.zoom) || 1);
             if (spare > 1) {

@@ -843,6 +843,33 @@
             box.scrollTop + (rRow.top - rBox.top) / zoom - headH - mid));
 
         alignUnderHead(box, headH, zoom);
+
+        // Khung quá thấp (chạm sàn BOX_MIN — từ khi Đại Vận không còn chừa
+        // chỗ, đây là chuyện THƯỜNG chứ không còn hiếm): chốt về đầu THÁNG ở
+        // alignUnderHead() có thể đẩy hàng đang cầm lệnh — mục tiêu CHÍNH của
+        // cả hàm này — tràn QUÁ đáy khung vài px, không đủ chỗ cho cả tháng
+        // lẫn đúng hàng ấy cùng lúc. Đẩy tiếp từng HÀNG một (luôn dừng ở ranh
+        // giới hàng thật — không phải một số px tuỳ tiện, kẻo lại biến hàng
+        // ĐẦU khung thành hàng bị cắt, đổi bệnh này lấy bệnh khác) cho tới khi
+        // hàng đang cầm lệnh hiện trọn, hy sinh mép tháng nếu buộc phải chọn.
+        var rows2 = box.querySelectorAll('tbody tr');
+        var bt2 = parseFloat(getComputedStyle(box).borderTopWidth) || 0;
+        for (var iter = 0; iter < rows2.length; iter++) {
+            var rRowN = row.getBoundingClientRect();
+            var rBoxN = box.getBoundingClientRect();
+            if ((rRowN.bottom - rBoxN.bottom) / zoom <= 0.5) break;
+            var edgeN = rBoxN.top / zoom + bt2 + headH;
+            var advanced = false;
+            for (var i = 0; i < rows2.length; i++) {
+                var qi = rows2[i].getBoundingClientRect().top / zoom;
+                if (qi > edgeN + 0.5) {
+                    box.scrollTop = Math.round(box.scrollTop + (qi - edgeN));
+                    advanced = true;
+                    break;
+                }
+            }
+            if (!advanced) break;   // hết hàng để đẩy — bảng ngắn hơn khung
+        }
     }
 
     /**
@@ -883,30 +910,32 @@
     var CHROME = 10;
     /** Khung bảng thấp hơn chừng này thì thà cuộn cả trang còn hơn. */
     var BOX_MIN = 120;
-    /** Sàn tối thiểu cho khối Đại Vận — đủ hiện trọn đầu thẻ + vài hàng, kể
-     *  cả khi #lenhSec đang mở và chiếm gần hết chỗ. */
-    var DV_MIN = 170;
 
     /**
-     * Kéo bảng lệnh cho lấp đúng phần màn hình còn lại.
+     * ĐẠI VẬN là nội dung CHÍNH của tab — như bàn Kỳ Môn ở tab Kỳ Môn, luôn
+     * hiện TRỌN VẸN, không maxHeight, không tự cuộn riêng (xem lenh.css:
+     * #daiVanBody không còn overflow-y). Trang có thể dài hơn một màn hình vì
+     * vậy, và CẢ TRANG cuộn dọc bình thường — #bottomDock đứng cố định đáy
+     * MÀN HÌNH (position:fixed) nên vẫn luôn thấy được dù cuộn tới đâu. Việc
+     * duy nhất còn lại cho nó ở đây là co RIÊNG những hàng lưu niên bị tràn
+     * chữ (shrinkDaiVanRows()) — chuyện bề RỘNG của từng hàng, không phải
+     * chia chỗ theo chiều cao.
      *
-     * Cùng bài toán của fitGrid bên calendar.js: khung trên (ô ngày giờ, bảng
-     * Bát Tự, dòng "Lệnh:") cao bao nhiêu là do nội dung, còn bảng thì dài vô
-     * hạn — nên ĐO phần cố định rồi cấp phần còn lại cho bảng, chứ không đoán.
-     * Không có bước này thì bảng 33 hàng đẩy trang cao gấp rưỡi màn hình,
-     * viewport.js thu nhỏ cả trang để chữa, và bảng Bát Tự bé lại vô cớ.
-     *
-     * Hai khối tranh nhau MỘT chỗ (LỆNH NĂM rồi tới ĐẠI VẬN, xếp CHỒNG theo
-     * dòng chảy tài liệu bình thường — không phải hai cột cạnh nhau như hai
-     * mục ở tab Lịch, nên khỏi cần chia theo tỉ lệ phần trăm kiểu
-     * shareSectionHeight() — chỉ cần CHỪA TRƯỚC một sàn cho Đại Vận khi chia
-     * cho Lệnh năm, rồi ĐO LẠI vị trí thật của Đại Vận (đã dịch xuống đúng
-     * chỗ) để cấp nốt phần còn lại cho nó. Thứ tự bắt buộc: fitLenhSec() phải
-     * chạy TRƯỚC, vì fitDaiVan() cần #daiVanHead đã đứng đúng chỗ.
+     * LỆNH NĂM — chi tiết PHỤ gập/mở được, đứng SAU Đại Vận trong dòng chảy
+     * tài liệu — mới là khối cần "chia chỗ" kiểu fitGrid bên calendar.js: đo
+     * phần cố định phía TRÊN nó (nay gồm cả Đại Vận, cao bao nhiêu tuỳ nội
+     * dung) rồi cấp phần CÒN LẠI xuống thanh dưới cho chính nó. Trước đây khi
+     * Lệnh năm đứng TRƯỚC Đại Vận, hai khối phải chia chung một ngân sách
+     * (Lệnh năm chừa sẵn một sàn cho Đại Vận, Đại Vận đo lại phần còn dư) —
+     * mở Lệnh năm ra vì vậy đẩy Đại Vận co lại, có lúc coi như biến mất. Nay
+     * Đại Vận không tranh chỗ với ai nữa, nên Lệnh năm chỉ còn phải lo cho
+     * chính nó.
      */
     function fit() {
+        if (document.body.classList.contains('view-lenh')) {
+            shrinkDaiVanRows(document.getElementById('daiVanBody'));
+        }
         fitLenhSec();
-        fitDaiVan();
     }
 
     function fitLenhSec() {
@@ -921,18 +950,14 @@
         // toggleDetailPanel() gọi lại đúng hàm này).
         if (getComputedStyle(sec).display === 'none') return;
 
-        // Chỗ nó được phép chiếm là khoảng từ đỉnh nó tới thanh dưới, TRỪ đi
-        // sàn dành cho khối Đại Vận ngay dưới nó (đầu khối + tối thiểu
-        // DV_MIN) — đo thẳng, khỏi phải cộng lại chiều cao từng khối bên trên
-        // cùng mọi khe giữa chúng (bản đầu làm vậy: mười mấy dòng, và sai
-        // ngay khi ai đó thêm một lề trong CSS). Hạ chiều cao khung KHÔNG làm
-        // chính đỉnh nó nhúc nhích, nên con số đo được vẫn đúng sau khi đặt.
+        // Chỗ nó được phép chiếm là khoảng từ đỉnh CHÍNH NÓ (đã dịch xuống
+        // đúng chỗ, sau toàn bộ nội dung phía trên — ô tóm tắt + Đại Vận) tới
+        // thanh dưới — đo thẳng, khỏi phải cộng lại chiều cao từng khối bên
+        // trên cùng mọi khe giữa chúng.
         var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
         var top = sec.getBoundingClientRect().top / zoom;
         var floorY = bottomDockTop(bar, zoom);
-        var dvHead = document.getElementById('daiVanHead');
-        var dvHeadH = dvHead ? dvHead.getBoundingClientRect().height / zoom : 0;
-        var room = Math.max(BOX_MIN, Math.floor(floorY - top - CHROME - dvHeadH - DV_MIN));
+        var room = Math.max(BOX_MIN, Math.floor(floorY - top - CHROME));
 
         // Bảng ngắn hơn chỗ được cấp (năm nào cũng 33 hàng nên hiếm, nhưng máy
         // tính bảng thì có) thì kẹp theo chính nó, đừng chừa một khoảng trắng.
@@ -958,33 +983,6 @@
     }
 
     /**
-     * Cấp chỗ cho khối Đại Vận — ĐO SAU KHI fitLenhSec() đã chạy, vì
-     * #daiVanHead chỉ đứng đúng chỗ (ngay sau #lenhHead lúc đóng, hoặc sau
-     * khung Lệnh năm vừa định hình lúc mở) SAU bước ấy. Không cần chờ
-     * #lenhSec đóng hay mở — Đại Vận LUÔN hiện, không có điều kiện sớm nào để
-     * bỏ qua như fitLenhSec().
-     */
-    function fitDaiVan() {
-        var head = document.getElementById('daiVanHead');
-        var box = document.getElementById('daiVanBody');
-        var bar = document.getElementById('bottomDock');
-        if (!head || !box || !bar) return;
-        if (!document.body.classList.contains('view-lenh')) return;
-
-        // Co RIÊNG những hàng bị tràn TRƯỚC khi đo chiều cao tự nhiên — co chữ
-        // có thể đổi chiều cao dòng đôi chút, đo sau bước này mới đúng.
-        shrinkDaiVanRows(box);
-
-        var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
-        var top = head.getBoundingClientRect().bottom / zoom;
-        var floorY = bottomDockTop(bar, zoom);
-        var room = Math.max(DV_MIN, Math.floor(floorY - top - CHROME));
-
-        var nat = Math.ceil(box.scrollHeight);   // tổng chiều cao 2 hàng thẻ
-        box.style.maxHeight = (nat ? Math.min(nat, room) : room) + 'px';
-    }
-
-    /**
      * 5 cột ép vừa màn hình đọc tốt với ĐA SỐ 60 tổ hợp can chi — nhưng
      * khoảng 1/4 tổ hợp (can VÀ chi đều dài 4 chữ: Giáp/Bính/Đinh/Canh/Nhâm
      * ghép với Thìn/Thân/Tuất, ví dụ "Nhâm Thân", "Giáp Thìn") vẫn tràn vài
@@ -999,6 +997,7 @@
      * thì co một lần là co vĩnh viễn.
      */
     function shrinkDaiVanRows(box) {
+        if (!box) return;
         var rows = box.querySelectorAll('.dv-row');
         for (var i = 0; i < rows.length; i++) {
             var row = rows[i];
@@ -1017,7 +1016,6 @@
         }
     }
 
-    /** Dùng chung cho cả hai hàm fit — tránh gõ lại getBoundingClientRect. */
     function bottomDockTop(bar, zoom) {
         return bar.getBoundingClientRect().top / zoom;
     }

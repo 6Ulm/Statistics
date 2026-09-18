@@ -662,12 +662,15 @@ for (const d of [{ n: 'S21', w: 360, h: 740 }, { n: 'S21 FE', w: 393, h: 790 }, 
         ok(`${tag}: không tràn xuống dưới thanh tab`, g.thừa >= 0, `${g.thừa}px`);
         ok(`${tag}: không còn dải trống ở đáy`, g.thừa <= 16, `còn thừa ${g.thừa}px`);
         ok(`${tag}: hàng đầu không nằm cụt dưới hàng tiêu đề`, !g.cụt, g.cụt);
-        // Ngưỡng hạ từ 12 xuống 8: từ khi có khối ĐẠI VẬN dưới bảng này
-        // (DV_MIN dành sẵn một sàn cho nó, xem fitLenhSec() trong lenh.js),
-        // bảng LỆNH NĂM không còn được toàn bộ chỗ trống nữa — đo lại trên
-        // máy hẹp nhất (S21 360px) chỉ còn 9 đoạn, vẫn thừa sức đọc được,
-        // không phải hồi quy.
-        ok(`${tag}: hiện được ít nhất 8 đoạn`, g.hiện >= 8, `${g.hiện} đoạn`);
+        // Ngưỡng hạ từ 8 xuống 5: ĐẠI VẬN giờ đứng TRƯỚC bảng này và không
+        // còn maxHeight (luôn hiện trọn, xem fitDaiVan cũ đã bỏ) — bảng LỆNH
+        // NĂM vì thế chỉ còn được đúng phần CÒN LẠI xuống thanh dưới, thường
+        // chạm sàn BOX_MIN=120px (trước đây hiếm khi chạm, vì Đại Vận từng
+        // chỉ xin một sàn nhỏ DV_MIN chừa TRƯỚC nó). Đo lại trên cả 3 máy:
+        // thấp nhất 5 đoạn (kể cả tiêu đề tháng), vẫn đủ thấy ít nhất một
+        // tháng trọn vẹn — đánh đổi có chủ đích của người dùng (Đại Vận luôn
+        // đủ, LỆNH NĂM lùi thành chi tiết phụ), không phải hồi quy.
+        ok(`${tag}: hiện được ít nhất 5 đoạn`, g.hiện >= 5, `${g.hiện} đoạn`);
 
         // ── Kéo được tới đủ 12 tháng ──
         // Bảng 33 đoạn không bao giờ vừa một màn, nên KÉO ĐƯỢC là chuyện sống
@@ -1382,17 +1385,28 @@ console.log('\nBảng ĐẠI VẬN: 10 đại vận × 10 năm, lấp chỗ tr�
     ok('toàn bảng Đại Vận chỉ đen/trắng/ghi (R=G=B), không màu nào khác',
         màu.length === 0, màu.slice(0, 5).join(' | '));
 
-    // ── Không tràn: khung Đại Vận luôn nằm trọn trên thanh dưới ──
-    const tràn = await page.evaluate(() => {
-        const z = parseFloat(getComputedStyle(document.body).zoom) || 1;
-        const box = document.getElementById('daiVanSec').getBoundingClientRect();
-        const dock = document.getElementById('bottomDock').getBoundingClientRect();
-        return { thừa: +(dock.top / z - box.bottom / z).toFixed(1) };
+    // ── Đại Vận KHÔNG còn maxHeight, KHÔNG tự cuộn riêng — nó là nội dung
+    // CHÍNH của tab (như bàn Kỳ Môn), luôn hiện TRỌN dù có tràn xuống dưới
+    // thanh tab hay không (trang cuộn dọc lo phần đó, không phải hộp này). ──
+    const khôngCuộnRiêng = await page.evaluate(() => {
+        const box = document.getElementById('daiVanBody');
+        return {
+            maxHeight: getComputedStyle(box).maxHeight,
+            khôngCầnCuộnNộiBộ: box.scrollHeight <= box.clientHeight + 1,
+        };
     });
-    ok('khung Đại Vận không tràn xuống dưới thanh tab', tràn.thừa >= -0.5, JSON.stringify(tràn));
+    ok('Đại Vận không còn bị ép maxHeight (luôn hiện trọn, không tuỳ chỗ còn lại)',
+        khôngCuộnRiêng.maxHeight === 'none', khôngCuộnRiêng.maxHeight);
+    ok('hộp Đại Vận không cần tự cuộn dọc nội bộ (khớp đúng chiều cao tự nhiên)',
+        khôngCuộnRiêng.khôngCầnCuộnNộiBộ, JSON.stringify(khôngCuộnRiêng));
 
-    // ── Mở CẢ HAI (Lệnh năm + Đại Vận) cùng lúc: cả hai vẫn có chỗ đứng,
-    // không cái nào bị bóp về 0 hay đẩy tràn màn hình. ──
+    const dvTrước = await page.evaluate(() =>
+        +document.getElementById('daiVanSec').getBoundingClientRect().height.toFixed(1));
+
+    // ── Mở LỆNH NĂM ra — ĐÚNG lỗi người dùng báo: trước đây hai khối tranh
+    // chung một ngân sách chiều cao, mở Lệnh năm ra đẩy Đại Vận co lại gần
+    // hết (có lúc coi như biến mất). Nay Đại Vận đứng TRƯỚC, không tranh chỗ
+    // với ai — mở Lệnh năm ra phải KHÔNG đổi Đại Vận một chút nào. ──
     await page.click('#lenhHead');
     await page.waitForTimeout(600);
     const cảHai = await page.evaluate(() => {
@@ -1401,13 +1415,21 @@ console.log('\nBảng ĐẠI VẬN: 10 đại vận × 10 năm, lấp chỗ tr�
         const lenh = document.getElementById('lenhBody').getBoundingClientRect();
         const dv = document.getElementById('daiVanSec').getBoundingClientRect();
         return {
-            lenhCao: +(lenh.height / z).toFixed(1), dvCao: +(dv.height / z).toFixed(1),
-            thừa: +(dock.top / z - dv.bottom / z).toFixed(1),
+            lenhCao: +(lenh.height / z).toFixed(1),
+            dvCaoSauKhiMởLệnhNăm: +dv.height.toFixed(1),
+            dockỞĐúngĐáyMànHình: Math.abs(dock.bottom - window.innerHeight) < 2,
+            trangChoPhépCuộnKhiCần: document.documentElement.scrollHeight >= dock.bottom - 1,
         };
     });
-    ok('Lệnh năm vẫn có chiều cao thật khi mở cùng Đại Vận', cảHai.lenhCao > 50, JSON.stringify(cảHai));
-    ok('Đại Vận vẫn có chiều cao thật khi Lệnh năm cũng đang mở', cảHai.dvCao > 50, JSON.stringify(cảHai));
-    ok('cả hai cùng mở vẫn không tràn xuống dưới thanh tab', cảHai.thừa >= -0.5, JSON.stringify(cảHai));
+    ok('Lệnh năm vẫn có chiều cao thật khi mở (chiếm phần còn lại xuống thanh dưới)',
+        cảHai.lenhCao > 50, JSON.stringify(cảHai));
+    ok('Đại Vận KHÔNG đổi chiều cao dù Lệnh năm vừa mở ra — đúng bug đã báo, nay hết',
+        Math.abs(cảHai.dvCaoSauKhiMởLệnhNăm - dvTrước) < 1,
+        `trước ${dvTrước}px, sau ${cảHai.dvCaoSauKhiMởLệnhNăm}px`);
+    ok('#bottomDock vẫn đứng cố định đúng đáy màn hình dù trang có dài hơn một màn',
+        cảHai.dockỞĐúngĐáyMànHình, JSON.stringify(cảHai));
+    ok('trang cho phép cuộn xuống hết nội dung (không khoá overflow ở đâu đó)',
+        cảHai.trangChoPhépCuộnKhiCần, JSON.stringify(cảHai));
 
     // ── Hình học trên máy hẹp nhất: không cắt chữ, không kéo ngang ──
     ok('không lỗi JS', errs.length === 0, errs.join(' ; '));

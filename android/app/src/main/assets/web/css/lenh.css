@@ -105,6 +105,12 @@ body.view-lenh #qmRow #lenhRuleText {
     color: var(--text-main, #000);
     border: 1px solid var(--border-color, #ddd);
     border-radius: 8px;
+    /* Đứng ngay sau #daiVanSec (không còn ngay sau #lenhNow như bản trước) —
+       #lenhView dùng flex column với gap:0 nên hai khối liền kề dính sát
+       nhau (đo thật: 0px) nếu không tự mang lề riêng. Cùng 6px với
+       #daiVanHead ở trên cho nhất quán — mọi "đầu khối mới" trong tab đều
+       cách khối trước đúng ngần ấy. */
+    margin-top: 6px;
     padding: 5px 6px;
     font-size: clamp(13px, 3.7vw, 15px);
     font-weight: 700;
@@ -232,8 +238,13 @@ table.lenh-tb tr.lenh-on td {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   ĐẠI VẬN — 10 đại vận × 10 năm = 100 năm. Lấp đúng chỗ trống dưới
-   #lenhSec lúc bảng ấy đang đóng (mặc định) — xem lenh.js, fitDaiVan().
+   ĐẠI VẬN — 10 đại vận × 10 năm = 100 năm. Nội dung CHÍNH của tab, đứng NGAY
+   sau ô tóm tắt — như bàn Kỳ Môn ở tab Kỳ Môn, LUÔN hiện TRỌN VẸN, không co
+   lại theo chỗ còn trống (bản trước: lấp đúng chỗ trống dưới #lenhSec lúc
+   bảng ấy đang đóng — nay đổi chỗ, LỆNH NĂM xuống dưới cùng, xem index.html).
+   KHÔNG maxHeight, KHÔNG tự cuộn dọc riêng — trang có thể dài hơn một màn
+   hình, cả trang cuộn dọc bình thường; #bottomDock cố định đáy MÀN HÌNH nên
+   vẫn luôn thấy được. Xem lenh.js: fit()/fitLenhSec().
 
    Bố cục 2 HÀNG × 5 CỘT đúng ảnh mẫu, ÉP VỪA đúng bề rộng màn hình —
    không cuộn ngang (đã thử bản cuộn ngang cột cố định 116px, đọc rất rõ,
@@ -257,10 +268,15 @@ table.lenh-tb tr.lenh-on td {
     letter-spacing: .3px;
 }
 #daiVanSec .cal-sec-body { border-radius: 0 0 6px 6px; border-top-color: var(--border-color, #ddd); }
-/* Cùng lỗi, cùng cách sửa như #lenhSec ở trên: mượn .cal-sec thì mượn luôn
-   luật "mục đang đóng thì khoá cuộn" của tab Lịch, mà #daiVanSec cũng không
-   bao giờ nhận lớp cal-sec-open (không có nút đóng/mở). Ghi đè thẳng. */
-#daiVanSec .cal-sec-body { overflow-y: auto; }
+/* #daiVanSec mượn khung .cal-sec (viền/bo góc) nhưng KHÔNG mượn cơ chế cuộn
+   của nó — mượn .cal-sec thì mượn luôn luật "mục đang đóng thì khoá cuộn"
+   của tab Lịch (.cal-sec:not(.cal-sec-open) .cal-sec-body{overflow-y:hidden}),
+   mà #daiVanSec không bao giờ nhận lớp cal-sec-open (không có nút đóng/mở).
+   Không maxHeight nên hộp luôn tự cao đúng bằng nội dung — overflow-y:hidden
+   mặc định vì thế vô hại (không có gì để cắt), nhưng ghi rõ `visible` cho
+   đúng Ý: hộp này KHÔNG BAO GIỜ cuộn riêng, dù ai đó sau này có lỡ đặt lại
+   một chiều cao cố định ở đâu đó. */
+#daiVanSec .cal-sec-body { overflow-y: visible; }
 #daiVanSec::after {
     background: #f0f0f0; border-color: var(--border-color, #ddd); border-radius: 0; height: 3px;
 }

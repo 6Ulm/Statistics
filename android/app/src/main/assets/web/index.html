@@ -340,20 +340,27 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
      Nội dung dưới đây do lenh.js dựng. -->
 <div id="lenhView">
     <div id="lenhNow">Lệnh: <b id="lenhNowVal">—</b></div>
-    <!-- Gập/mở được như ba bảng chi tiết ở tab Kỳ Môn (Trí Nhuận/Sách Bổ/
-         Âm Bàn) — dùng lại ĐÚNG hàm toggleDetailPanel() của app.js, khai
-         thêm khoá 'lenh' → #lenhSec/#lenhHeadChevron ở _panelIds. Đóng sẵn
-         lúc mở tab, giống ba bảng kia. -->
+    <!-- Bảng ĐẠI VẬN — nội dung CHÍNH của tab, đứng NGAY sau ô tóm tắt, giống
+         cách bàn Kỳ Môn luôn hiện trọn vẹn ở tab Kỳ Môn: KHÔNG gập/mở, KHÔNG
+         tự cuộn riêng (không maxHeight/overflow-y ép chiều cao) — luôn dựng
+         đủ chiều cao tự nhiên của nó. Trang có thể dài hơn một màn hình lúc
+         đó, và cả trang cuộn dọc bình thường (như mọi trang web) — #bottomDock
+         đứng cố định đáy MÀN HÌNH (position:fixed) nên vẫn luôn thấy được dù
+         cuộn tới đâu. Nội dung do lenh.js dựng. -->
+    <div id="daiVanHead"><span id="daiVanTitle">ĐẠI VẬN</span></div>
+    <div class="cal-sec" id="daiVanSec"><div class="cal-sec-body" id="daiVanBody"></div></div>
+    <!-- LỆNH NĂM — chi tiết PHỤ, đứng CUỐI cùng, gập/mở được như ba bảng chi
+         tiết ở tab Kỳ Môn (Trí Nhuận/Sách Bổ/Âm Bàn) — dùng lại ĐÚNG hàm
+         toggleDetailPanel() của app.js, khai thêm khoá 'lenh' →
+         #lenhSec/#lenhHeadChevron ở _panelIds. Đóng sẵn lúc mở tab, giống ba
+         bảng kia — và mở/đóng nó giờ không còn ảnh hưởng gì tới Đại Vận ở
+         trên (trước đây hai khối tranh nhau một ngân sách chiều cao chung;
+         mở Lệnh năm ra đẩy Đại Vận co lại gần hết, có lúc coi như biến mất). -->
     <div id="lenhHead" onclick="toggleDetailPanel('lenh')">
         <span id="lenhTitle">LỆNH NĂM</span>
         <span id="lenhHeadChevron" class="dp-chevron">▾</span>
     </div>
     <div class="cal-sec" id="lenhSec"><div class="cal-sec-body" id="lenhBody"></div></div>
-    <!-- Bảng ĐẠI VẬN: 10 đại vận × 10 năm = 100 năm, lấp đúng chỗ trống dưới
-         #lenhSec lúc nó đang đóng. KHÔNG gập/mở như #lenhSec — luôn hiện,
-         vì việc của nó chính là lấp chỗ trống ấy. Nội dung do lenh.js dựng. -->
-    <div id="daiVanHead"><span id="daiVanTitle">ĐẠI VẬN</span></div>
-    <div class="cal-sec" id="daiVanSec"><div class="cal-sec-body" id="daiVanBody"></div></div>
 </div>
 
 <!-- ══ THANH DƯỚI MÀN HÌNH: tab + hàng dùng chung ══ -->
