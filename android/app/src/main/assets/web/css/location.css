@@ -44,6 +44,10 @@
 }
 #optList {
     overflow-y: auto; -webkit-overflow-scrolling: touch;
+    /* Cuộn hết danh sách rồi thì DỪNG. Không có dòng này, cú vuốt thừa chảy
+       sang trang phía sau tấm nền mờ: bảng chọn đứng yên mà nội dung sau lưng
+       nó trôi đi — người dùng đóng bảng ra thì thấy đang ở chỗ khác. */
+    overscroll-behavior: contain;
     border-top: 1px solid var(--border-color);
 }
 /* Tiêu đề nằm ĐÚNG giữa hàng: lưới ba cột, hai cột bên bằng nhau. Để nguyên
@@ -105,6 +109,9 @@
 /* ── Danh sách kết quả ── */
 #locList {
     flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    /* Cùng lý do với #optList — và ở đây nặng hơn: danh sách 34.006 thành phố
+       là chỗ vuốt nhiều nhất trong cả ứng dụng. */
+    overscroll-behavior: contain;
     border-top: 1px solid var(--border-color);
     min-height: 180px;
 }
@@ -128,11 +135,17 @@
 
 /* ── Nhập toạ độ thủ công ── */
 #locManualToggle {
-    padding: 8px 12px;
+    /* Đệm 10px chứ không 8px: hàng này cao 29px, mà nó lại là hàng CUỐI của
+       bảng — nằm sát mép dưới màn hình, đúng chỗ ngón cái hay trượt. 10px đưa
+       vùng chạm lên 33px mà bảng chỉ cao thêm 4px. */
+    padding: 10px 12px;
     border-top: 1px solid var(--border-color);
     font-size: 12.5px; font-weight: 600; color: var(--accent);
     cursor: pointer; user-select: none;
 }
+/* Mảng sáng mặc định của WebView đã tắt ở khối reset của app.css, nên hai chỗ
+   bấm này phải tự có phản hồi. */
+#locManualToggle:active { background: var(--accent-light); }
 #locManualBox {
     display: none;
     padding: 0 12px 10px;

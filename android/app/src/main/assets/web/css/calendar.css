@@ -5,10 +5,76 @@
 /* ── Thanh dưới cố định đáy màn hình: hàng tab, rồi hàng dùng chung ── */
 /* Chiều cao một hàng của thanh dưới — hàng tab và hàng dùng chung dùng chung
    con số này để cao bằng nhau ở cả hai ngôn ngữ.
-   24 chứ không phải 28: thanh dưới ăn THẲNG vào chiều cao của hai mục trong
-   tab Lịch, mà nội dung một hàng (biểu tượng 13px + nhãn 11,5px + đệm 3px)
-   chỉ cần 22px — 28 là chừa thừa 6px mỗi hàng, 12px cho cả thanh. */
+
+   Trước là 29px, chọn theo lý "nội dung một hàng chỉ cần 22px, chừa thêm là
+   phí" — thanh dưới ăn THẲNG vào chiều cao hai mục gập của tab Lịch. Lý ấy
+   đúng về chỗ, nhưng nó tính chỗ cho CHỮ mà quên chỗ cho NGÓN TAY: ba tab và
+   hai ô dùng chung là năm chỗ bấm nhiều nhất của cả ứng dụng, mà 29px chỉ hơn
+   nửa mức 48dp Android khuyên — và chúng lại nằm sát mép dưới, nơi ngón cái
+   chạm kém chính xác nhất.
+
+   38px là chỗ cân được: đo trên chính hai máy đang ngắm, phần phải trả là
+   ~10px cho MỖI mục gập, tức chừng hai phần ba một hàng bảng —
+
+     A51 412×914   Tiết khí 201→191px · Lịch âm 196→188px
+     S21 FE 384×832  Tiết khí 157→147px · Lịch âm 158→150px
+
+   — trong khi hàng lịch vẫn 52px, tỉ lệ vẫn 1,000 và tab Lịch vẫn vừa đúng
+   một màn hình ở cả hai (viewport.js không phải thu nhỏ gì). Ở tab Kỳ Môn thì
+   không mất gì cả: 18px ấy lấy từ phần dôi vốn đang bị rót vào khe giữa các
+   bảng (A51 dôi 26px, khe kịch trần 24px), nên bảng còn xít lại gọn hơn.
+   Nhưng 38px CHỐT CỨNG thì máy thấp phải trả bằng cả giao diện: trên S21 dọc
+   (360×800, khung web 740px) tab Kỳ Môn hết chỗ và viewport.js thu nhỏ toàn
+   trang còn 0,977 — chữ bé đi ở mọi nơi để thanh dưới dày lên, đúng cái đánh
+   đổi không đáng. Nên chia ba nấc theo chiều cao khung web: cao bao nhiêu thì
+   ngón tay được chừng ấy.
+
+   Cả hai nấc trên sàn đều hỏi HAI điều: đủ cao, và đủ cao SO VỚI BỀ NGANG.
+
+     ≥800px + tỉ lệ   38px   A51 mặc định (842–912) · S21 FE nấc zoom nhỏ (819–843)
+     ≥780px + tỉ lệ   34px   S21 FE mặc định + cử chỉ (784) · S21 Ultra 794
+     còn lại          29px   máy nhỏ, cấu hình đã chật sẵn, và MỌI máy ngang
+
+   Hai mốc đặt SÁT NHAU (780/800) là cố ý, và là kết quả đo chứ không phải chọn
+   cho tròn: quét cả 12 cấu hình hợp lý của hai máy (ba nấc Screen zoom × nút
+   ảo ba phím / điều hướng cử chỉ) rồi lấy mốc cao nhất mà KHÔNG cấu hình nào
+   phải đổi tỉ lệ so với bản cũ. Kết quả: 8/12 cấu hình được ô to hơn, 4 cấu
+   hình còn lại (nấc zoom lớn nhất, nơi màn hình vốn đã chật) giữ nguyên 29px
+   — không máy nào phải trả bằng cỡ chữ.
+
+   Sàn 29px đúng bằng con số cũ nên KHÔNG máy nào tệ hơn trước, và nấc thấp
+   nhất tự lo luôn màn ngang — chỗ chiều cao quý nhất thì thanh dưới mỏng lại
+   mà không phải viết thêm luật nào.
+
+   Phải hỏi TỈ LỆ chứ không chỉ chiều cao, vì bàn Kỳ Môn là hình VUÔNG rộng
+   bằng màn hình (tối đa 400px): màn càng RỘNG thì bàn càng CAO, nên cùng một
+   790px mà 393px thì còn dư chỗ (bàn 381) trong khi 412px thì đã hết (bàn
+   400). Chốt theo mỗi chiều cao thì màn rộng-mà-thấp được nới thanh dưới rồi
+   tràn, và viewport.js thu nhỏ cả trang để bù — đo được 0,984 ở nấc 38px và
+   vẫn còn 0,994 ở nấc 34px, trên cả 412×790 lẫn 520×790.
+   1/1,95 (≈0,513) là mốc tách hai bên: mọi kích thước THẬT của A51 và S21 FE
+   đều nằm dưới (0,45–0,50) nên ăn trọn nấc của mình, còn hai trường hợp
+   rộng-mà-thấp kia nằm trên (0,52 và 0,66) và rơi thẳng về sàn 29px — đúng
+   bằng bản cũ, nên chúng không mất gì cả.
+
+   Thứ chặn mốc trên là tab BÁT TỰ, không phải hai tab kia. Bảng Lệnh năm của
+   nó có sàn cứng BOX_MIN=120px (lenh.js), nên khi màn hình đã hết chỗ thì nó
+   KHÔNG co thêm được nữa — thanh dưới dày lên bao nhiêu là trang dài ra bấy
+   nhiêu, và viewport.js thu nhỏ TOÀN TRANG để bù. Đo ở 393×790 · tiếng Trung:
+   nấc 38px kéo tỉ lệ xuống 0,994, tức chữ bé đi ở khắp ba tab để đổi lấy 4px
+   cho ngón tay ở một. Không đáng, nên mốc dừng trên nó.
+
+   NẤC RỜI chứ không phải clamp()/vh liên tục: vh cho ra số LẺ, mà cả thanh
+   dưới là một chồng hộp canh từng phần mười pixel với bảng Tứ Trụ và hàng tab
+   (xem test_shared_bar.mjs). Thử 4,6vh: khe giữa hai hàng đo ra 2,9995px thay
+   vì 3, và ô phái rộng 98,7px ở tiếng Việt so với 100px ở tiếng Trung — ba
+   phép canh đỏ, không phải vì bố cục sai mà vì phép làm tròn. Số nguyên thì
+   không có chỗ cho chuyện đó.
+   Đừng hạ lại mà không đo — tools/test_responsive.mjs và test_shared_bar.mjs
+   canh cả hai chiều. */
 :root { --dock-row-h: 29px; }
+@media (min-height: 780px) and (max-aspect-ratio: 1/1.95) { :root { --dock-row-h: 34px; } }
+@media (min-height: 800px) and (max-aspect-ratio: 1/1.95) { :root { --dock-row-h: 38px; } }
 
 #bottomDock {
     position: fixed;
@@ -128,6 +194,16 @@ body.view-cal #calView { display: block; }
     white-space: nowrap;               /* tiêu đề phải nằm gọn một dòng */
     overflow: hidden; text-overflow: ellipsis;
     cursor: pointer; user-select: none;   /* chạm vào là về tháng hiện tại */
+    /* Cùng mẹo với .cal-nav ngay dưới, cùng lý do. Đây là lối tắt DUY NHẤT để
+       về tháng hiện tại sau khi đã lật đi vài tháng, mà chữ thì chỉ cao 16px —
+       vùng chạm 16px là thấp hơn cả mức tối thiểu 24px của WCAG 2.5.8, trên
+       một affordance vốn đã không nhìn ra được (không có viền, không có biểu
+       tượng). Đệm dọc 10px rồi kéo lề âm lại đúng chừng ấy: hộp LỀ vẫn cao
+       16px nên #calHead không cao thêm pixel nào — chiều cao của nó do .cal-nav
+       (20px) quyết định — còn vùng chạm thành cao 36px, trọn thanh tiêu đề.
+       Đệm NGANG vẫn 0: cho đệm ngang thì phần chữ nhìn thấy được hẹp lại và
+       "LỊCH ÂM THÁNG 9/2026" bị "…" nuốt mất ở máy hẹp. */
+    padding: 10px 0; margin: -10px 0;
 }
 #calTitle:active { opacity: .65; }
 /* Nới VÙNG CHẠM của hai mũi tên đổi tháng mà KHÔNG đụng tới bố cục.
@@ -341,6 +417,12 @@ table.cal-jq thead tr.cal-sec-head th {
 .cal-sec-open .cal-sec-head { border-radius: 6px 6px 0 0; border-bottom: none; }
 .cal-sec-body {
     overflow: auto;
+    /* Hai mục này là khung cuộn NHỎ nằm trong tab Lịch, mà tab Lịch thì được
+       fitGrid canh vừa đúng một màn hình. Vuốt hết 24 mục Tiết khí rồi mà còn
+       đà thì Android đẩy tiếp cú vuốt ấy sang trang: trang nhích được đúng vài
+       pixel padding — vừa đủ để cả màn hình giật một cái rồi bật lại. Trông
+       như lỗi vẽ. `contain` cắt chuỗi ấy: hết bảng là dừng. */
+    overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     background: var(--bg-white, #fff);
     border: 1px solid var(--border-color, #ddd);
@@ -424,7 +506,11 @@ table.cal-jq .cal-jq-on {
 #calPinBtn {
     display: none;                 /* chỉ hiện khi chạy trong app Android */
     width: 100%; margin-top: 4px;
-    padding: 5px;
+    /* 5px cho vùng chạm cao 28px. Đây là NÚT cuối trang, ngay trên thanh dưới:
+       bấm hụt là trúng tab ở dưới và nhảy sang màn hình khác. 9px đưa nó lên
+       36px, ngang với một hàng của thanh dưới. fitGrid() ĐO nút này chứ không
+       đoán, nên 8px thêm vào chỉ dịch ngân sách của hai mục gập đúng 8px. */
+    padding: 9px 5px;
     border: var(--border-accent, 1.5px solid #007bff);
     border-radius: 6px;
     background: var(--accent-light, #e8edff);
