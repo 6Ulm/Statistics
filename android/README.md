@@ -811,7 +811,8 @@ Chế độ được trả về đầy đủ **ngay khi đóng**, kể cả khi 
 mở sau có thể là ô ngày giờ ở tab Kỳ Môn, mà ba cột kia còn đang ẩn.
 
 Tiêu đề đổi từ "LỊCH ÂM THÁNG m/yyyy" thành **"LỊCH THÁNG m/yyyy"** — lưới hiện
-cả dương lẫn âm, gọi nó là "lịch âm" là gọi thiếu.
+cả dương lẫn âm, gọi nó là "lịch âm" là gọi thiếu. Lịch đã ghim đổi theo: nó
+hiện ĐÚNG tiêu đề ấy, để hai mặt của cùng một thứ không gọi tên khác nhau.
 
 Lối tắt "về tháng hiện tại" (chạm tiêu đề) mất đi, nhưng bảng chọn luôn mở ở
 đúng tháng đang xem và hai mũi tên ‹ › vẫn ở đó — đổi lại là nhảy thẳng tới một
@@ -1831,11 +1832,23 @@ Lịch — nó chuyển sang tab Tra cứu, nơi tra được **năm bất kỳ*
 đang xem. `W_JQ` nhận luôn phần trọng số của nó (26 → 42) và `gridHeightDp()`
 chỉ còn trừ **một** hàng tiêu đề mục.
 
-**Gập/mở: chuyện của riêng widget.** Bảng tiết khí trong TAB LỊCH nay luôn mở,
-không gập được (xem "Mục Tiết khí của tab Lịch"). Ngoài widget thì vẫn gập được
-— màn hình chính chật, giấu bảng đi cho lưới lịch rộng ra là việc có lý ở đó —
-nên `qmdj.calSecJq` vẫn sống, chỉ khác là nay **chỉ WidgetPrefs đọc và ghi nó**,
-ứng dụng không đụng tới nữa.
+**Gập/mở đã bỏ HẲN, ở cả hai nơi.** Đã thử để widget giữ riêng nút gập (màn
+hình chính chật, giấu bảng đi cho lưới lịch rộng ra là việc có lý ở đó), nhưng
+người dùng chốt bỏ luôn: *"có bỏ luôn gập ngoài pinned calendar"*. Nên cả đường
+bấm lẫn khoá đều đi hết — `ACTION_SEC`, `secToggleIntent`, `SEC_TOGGLE_CODE`,
+`WidgetPrefs.SEC_JQ`, `secOpen`, `toggleSec`, trường `Sec.open`, action
+`WIDGET_SEC` trong manifest, và cả dấu ▾/▸ ở cột đầu (nó hứa một cú bấm không
+còn tồn tại). `qmdj.calSecJq` từ đây không bên nào đọc, không bên nào ghi.
+
+`jqOpen` trong `gridHeightDp()` vẫn còn tên cũ nhưng đổi nghĩa: nay là **"mục có
+DỰNG ĐƯỢC không"** — bảng tra thiếu dữ liệu cho năm đang xem thì
+`WidgetSections.build()` bỏ hẳn mục ấy và trả cả phần chiều cao về cho lưới.
+
+**Bỏ nút gập KHÔNG đụng tới chuyện cuộn.** Thân mục vẫn là `ListView` do
+`WidgetSectionService` nuôi, vẫn kéo được bằng ngón tay và vẫn tự cuộn tới tiết
+khí đang hiệu lực (`setScrollPosition`). Đó là hai cơ chế khác nhau: gập/mở là
+`setViewVisibility`, còn cuộn là collection view — `test_cal_sections.mjs` canh
+riêng điều này.
 
 Hai mũi tên **‹ ›** lùi/tiến tháng, chạm tiêu đề thì về tháng hiện tại; tháng
 đang xem được nhớ riêng cho **từng widget** (`qmdj_widget` / `w<id>.offset`), nên
@@ -2142,10 +2155,9 @@ khí trong tab Lịch thì ngoài màn hình chính đành chịu — mà hàng 
 hệt trong ứng dụng, nơi bấm vào là gập/mở được, nên chẳng có gì gợi ý rằng ở đây
 nó chỉ để nhìn.
 
-Nay hàng tiêu đề của mục là một `PendingIntent`: bấm là lật khoá rồi vẽ lại
-**mọi** widget — trạng thái này là của chung, không phải của riêng một widget.
-Cột đầu thêm dấu `▾`/`▸` cho biết bấm được (cột đầu là cột căn trái duy nhất,
-thêm vào đấy không đẩy hai cột kia lệch tâm).
+Bản chữa đầu tiên: hàng tiêu đề của mục thành một `PendingIntent` — bấm là lật
+khoá rồi vẽ lại **mọi** widget, và cột đầu thêm dấu `▾`/`▸` cho biết bấm được.
+Bản chữa sau bỏ luôn cả cơ chế, xem ngay dưới.
 
 **Về sau hai bên tách hẳn ra.** Tab Lịch nay LUÔN mở mục Tiết khí, không gập
 được nữa, còn widget thì vẫn gập được — màn hình chính chật, giấu bảng đi cho

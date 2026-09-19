@@ -1025,18 +1025,11 @@ const setOpen = (page, which, want) => page.evaluate(() => {});
     // cho nó — sót lại là widget vẫn vẽ mục người dùng đã bảo bỏ.
     ok('KHÔNG còn mục Lịch âm (Sóc/Vọng) trong widget',
         !/socJdn/.test(secKt) && !/vongJdn/.test(secKt));
-    ok('…và không còn khoá gập/mở riêng của nó',
+    ok('…và không còn trọng số chiều cao riêng của nó',
         !/SEC_AM/.test(supKt) && !/W_AM/.test(supKt));
-    // Trạng thái gập/mở phải ĐỌC TỪ chính khoá mà calendar.js ghi.
-    check('widget đọc khoá gập/mở của mục Tiết khí',
-        /SEC_JQ = "([^"]+)"/.exec(supKt)?.[1], 'qmdj.calSecJq');
-    ok('…và mặc định khớp calendar.js (Tiết khí mở sẵn)',
-        /getString\(key, null\) != "0"/.test(supKt));
-    // Gập/mở nay CHỈ còn ở widget (lịch đã ghim thì nhỏ, giấu bảng đi cho lưới
-    // rộng ra là việc có lý ở đó) — ứng dụng không còn ghi khoá ấy nữa, nên
-    // cũng không còn phải đánh thức widget vì một cú bấm gập/mở.
-    ok('ứng dụng không còn ghi khoá gập/mở của widget',
-        !/prefSet\(K_SEC_JQ/.test(calJs));
+    // Khoá `qmdj.calSecJq` đã đi hết: không bên nào đọc, không bên nào ghi.
+    ok('ứng dụng không còn ghi khoá gập/mở nào',
+        !/prefSet\(K_SEC_JQ/.test(calJs) && !/K_SEC_JQ =/.test(calJs));
 
     /* ── Widget dùng được bằng ngón tay, không phải ảnh tĩnh ── */
     console.log('\nWidget cuộn được và chạm được');
@@ -1060,7 +1053,7 @@ const setOpen = (page, which, want) => page.evaluate(() => {});
     ok('bảo factory đọc lại sau mỗi lần vẽ',
         /notifyAppWidgetViewDataChanged\(id, R\.id\.jqList\)/.test(provKt) &&
         !/R\.id\.amList/.test(provKt));
-    ok('mục đang mở thì cuộn tới hàng đang hiệu lực',
+    ok('cuộn tới hàng đang hiệu lực',
         /setScrollPosition\(sv\.listId, sec\.active\)/.test(provKt));
 
     // Chạm ngày: 42 ô, mỗi ô một PendingIntent riêng.
@@ -1075,25 +1068,31 @@ const setOpen = (page, which, want) => page.evaluate(() => {});
     ok('ngày đang chọn có viền riêng, khác hôm nay',
         /isSel/.test(provKt) && /#007BFF/.test(provKt));
 
-    /* ── Gập/mở ngay trên widget ──
-       Lỗi người dùng gặp: "trong lịch đã ghim, mục Tiết khí không mở ra được".
-       Widget vốn chỉ SOI trạng thái của ứng dụng, không có chỗ nào bấm để lật —
-       ai lỡ gập Tiết khí trong ứng dụng thì ngoài màn hình chính đành chịu. */
-    ok('hàng tiêu đề mục ấy bấm được',
-        /setOnClickPendingIntent\(sv\.headId/.test(provKt)
-        && /R\.id\.jqHead\b/.test(provKt) && !/R\.id\.amHead\b/.test(provKt));
-    ok('bấm vào là lật đúng khoá mà tab Lịch đọc',
-        /ACTION_SEC/.test(provKt) && /WidgetPrefs\.toggleSec\(context, key\)/.test(provKt)
-        && /putString\(key, if \(secOpen\(context, key\)\) "0" else "1"\)/.test(supKt));
-    ok('…rồi vẽ lại MỌI widget, vì trạng thái là của chung',
-        /ACTION_SEC -> \{[\s\S]{0,400}?refreshAll\(context\)/.test(provKt));
-    ok('manifest khai action gập/mở',
-        /com\.bazi\.qimen\.WIDGET_SEC/.test(manifest));
-    ok('nút gập/mở có requestCode riêng, không đụng ‹ › hay ô ngày',
-        /toggle\/\$key/.test(provKt) && /SEC_TOGGLE_CODE = (\d+)/.test(provKt)
-        && +/SEC_TOGGLE_CODE = (\d+)/.exec(provKt)[1] < +/CELL_CODE_BASE = (\d+)/.exec(provKt)[1]
-        && +/SEC_TOGGLE_CODE = (\d+)/.exec(provKt)[1] > 3);
-    ok('tiêu đề có dấu ▾/▸ cho biết bấm được', /"  ▾" else "  ▸"/.test(provKt));
+    /* ── KHÔNG còn gập/mở ở bất cứ đâu ──
+       Trước đây mục gập được ở cả hai nơi, và hai bên dùng chung khoá
+       `qmdj.calSecJq`. Người dùng chốt bỏ hẳn: "ô tiết khí từ giờ ko hide nữa
+       mà luôn hiển thị, cho phép scroll up down" — rồi "có bỏ luôn gập ngoài
+       pinned calendar". Nên cả đường bấm lẫn khoá đều phải đi hết, ở cả ứng
+       dụng lẫn widget; sót một mẩu là còn một nửa cơ chế treo lơ lửng. */
+    ok('widget KHÔNG còn đường bấm gập/mở nào',
+        !/ACTION_SEC/.test(provKt) && !/secToggleIntent/.test(provKt)
+        && !/setOnClickPendingIntent\(sv\.headId/.test(provKt));
+    ok('…không còn khoá gập/mở nào trong WidgetPrefs',
+        !/SEC_JQ/.test(supKt) && !/fun secOpen/.test(supKt) && !/fun toggleSec/.test(supKt));
+    ok('…không còn cờ `open` trong mô hình mục',
+        !/val open: Boolean/.test(secKt) && !/sec\.open/.test(provKt));
+    ok('…manifest thôi khai action ấy',
+        !/com\.bazi\.qimen\.WIDGET_SEC/.test(manifest));
+    ok('…và tiêu đề thôi mang dấu ▾/▸ (nó hứa một cú bấm không còn)',
+        !/"  ▾"/.test(provKt) && !/▸/.test(provKt));
+
+    // Bỏ nút gập KHÔNG được đụng tới chuyện CUỘN: thân mục vẫn là ListView do
+    // RemoteViewsService nuôi, vẫn kéo được bằng ngón tay. Đây là điều người
+    // dùng dặn thêm ("nhưng vẫn scroll up down được").
+    ok('thân mục VẪN là ListView cuộn được, không phải ảnh tĩnh',
+        /<ListView[\s\S]{0,200}@\+id\/jqList/.test(layXml)
+        && /setRemoteAdapter\(sv\.listId/.test(provKt)
+        && /class WidgetSectionService : RemoteViewsService\(\)/.test(svcKt));
 
     /* ── Mục dựng hụt không được để lại ListView mồ côi ──
        WidgetSections.build() bỏ hẳn một mục nếu năm đang xem thiếu dữ liệu.
@@ -1104,10 +1103,11 @@ const setOpen = (page, which, want) => page.evaluate(() => {});
         /for \(sv in SECTION_VIEWS\)/.test(provKt) && !/for \(sec in secs\)/.test(provKt));
     ok('mục không dựng được thì ẩn cả tiêu đề lẫn danh sách',
         /setViewVisibility\(sv\.headId, if \(sec == null\)/.test(provKt)
-        && /setViewVisibility\(sv\.listId, if \(open\)/.test(provKt));
+        && /setViewVisibility\(sv\.listId, if \(sec == null\)/.test(provKt));
 
-    /* ── Chiều ngược lại: bấm ở widget thì ứng dụng phải biết ── */
-    ok('ứng dụng đọc lại trạng thái mỗi lần trở lại',
+    // __calSyncSections ở lại dù không còn trạng thái nào để đồng bộ: nó chia
+    // lại chiều cao khi người dùng quay về sau khi đổi cỡ chữ hệ thống.
+    ok('ứng dụng vẫn canh lại bố cục mỗi lần trở lại',
         /override fun onResume\(\)/.test(mainKt)
         && /__calSyncSections/.test(mainKt) && /__calSyncSections/.test(calJs));
     // Lưới bitmap phải luôn 6 hàng, không thì ô chạm lệch khỏi ô nhìn thấy.

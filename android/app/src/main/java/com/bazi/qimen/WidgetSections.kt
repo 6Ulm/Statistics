@@ -26,7 +26,6 @@ object WidgetSections {
         val rows: List<Array<String>>,
         /** Hàng ứng với ngày đang chọn; −1 nghĩa là không tô hàng nào. */
         val active: Int,
-        val open: Boolean,
         val headBg: Int,
         val headFg: Int,
         val bar: Int,
@@ -73,7 +72,6 @@ object WidgetSections {
                 ),
                 jieQi.map { arrayOf(it.name, dateText(it), LunarTable.ganZhi60(it.gz, zh)) },
                 active,
-                WidgetPrefs.secOpen(context, WidgetPrefs.SEC_JQ),
                 Color.parseColor("#FDEEEE"), Color.parseColor("#B71C1C"),
                 Color.parseColor("#D32F2F"),
             ))
@@ -83,6 +81,10 @@ object WidgetSections {
         // lịch đã ghim — người dùng chốt: widget chỉ còn lưới lịch và bảng tiết
         // khí. Khoá SEC_AM đã bỏ theo; hằng số AM còn lại chỉ để một widget bản
         // cũ chưa kịp vẽ lại không vỡ khi đọc phải khoá mục lạ trong Intent.
+        //
+        // Mục còn lại KHÔNG gập được nữa (không có trường `open`): dựng được
+        // thì hiện, thế thôi. Nhưng vẫn CUỘN được — thân nó là ListView do
+        // WidgetSectionService nuôi, không phải ảnh tĩnh.
         return out
     }
 

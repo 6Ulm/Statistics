@@ -234,7 +234,7 @@ body.view-cal #calView { display: block; }
        16px nên #calHead không cao thêm pixel nào — chiều cao của nó do .cal-nav
        (20px) quyết định — còn vùng chạm thành cao 36px, trọn thanh tiêu đề.
        Đệm NGANG vẫn 0: cho đệm ngang thì phần chữ nhìn thấy được hẹp lại và
-       "LỊCH ÂM THÁNG 9/2026" bị "…" nuốt mất ở máy hẹp. */
+       "LỊCH THÁNG 9/2026" bị "…" nuốt mất ở máy hẹp. */
     padding: 10px 0; margin: -10px 0;
 }
 #calTitle:active { opacity: .65; }

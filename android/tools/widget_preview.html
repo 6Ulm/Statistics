@@ -165,36 +165,12 @@ function buildSections(year, month, todayJdn){
                         ganZhi60(it.gz)];
             }),
             active,
-            open: sp.get('jq') !== '0',
             headBg:'#FDEEEE', headFg:'#B71C1C', bar:'#D32F2F',
         });
     }
 
-    const ly = lunarYearOf(ref);
-    const months = ly===null ? [] : monthsOfYear(ly);
-    if (months.length) {
-        const today = lunarOf(todayJdn);
-        const sameYear = lunarYearOf(todayJdn) === ly;
-        let active=-1;
-        if (today && sameYear) {
-            for (let i=0;i<months.length;i++) {
-                if (months[i].month===today.month && months[i].leap===today.leap){active=i;break;}
-            }
-        }
-        const leap = ZH ? '闰' : 'Nhuận';
-        out.push({
-            key: 'am',
-            heads: ZH ? ['农历月','朔','望'] : ['Tháng âm','Sóc','Vọng'],
-            rows: months.map(m=>[
-                monthLabel(m.month, m.leap, leap),
-                stamp(m.socJdn, m.socMin),
-                stamp(m.vongJdn, m.vongMin),
-            ]),
-            active,
-            open: sp.get('am') === '1',
-            headBg:'#EEF1FD', headFg:'#283593', bar:'#3949AB',
-        });
-    }
+    // Mục "Lịch âm" đã bỏ hẳn khỏi lịch đã ghim (chuyển sang tab Tra cứu của
+    // ứng dụng) — xem WidgetSections.build().
     return out;
 }
 
@@ -209,7 +185,7 @@ function buildSections(year, month, todayJdn){
 
 /* Phải khớp values/dimens.xml và WidgetLayout.kt. */
 const HEADER_DP = 32, DOW_DP = 16, SEC_HEAD_DP = 22, ROW_DP = 20, CORNER_PAD_DP = 6;
-const W_GRID = 58, W_JQ = 26, W_AM = 16;
+const W_GRID = 58, W_JQ = 42;
 const COL = [27, 35, 38];
 const BAR_DP = 3;
 const GRID_WEEKS = 6;
@@ -219,13 +195,17 @@ function rowTextSp(wDp) {
     return Math.min(TEXT_SP, Math.max(TEXT_SP_MIN, TEXT_SP * wDp / TEXT_FULL_DP));
 }
 
-/** WidgetLayout.gridHeightDp — mục đóng thì ListView là GONE, weight chia lại. */
-function gridHeightDp(totalDp, jqOpen, amOpen) {
-    const fixed = HEADER_DP + DOW_DP + 2 * SEC_HEAD_DP + CORNER_PAD_DP;
+/**
+ * WidgetLayout.gridHeightDp — `jqOpen` nay chỉ còn nghĩa "mục có DỰNG ĐƯỢC
+ * không" (bảng tra thiếu dữ liệu cho năm đang xem thì bỏ hẳn mục và trả cả
+ * phần chiều cao về cho lưới), chứ không còn "người dùng có gập nó lại không":
+ * mục không gập được nữa. Nó vẫn CUỘN được.
+ */
+function gridHeightDp(totalDp, jqOpen) {
+    const fixed = HEADER_DP + DOW_DP + SEC_HEAD_DP + CORNER_PAD_DP;
     const avail = Math.max(60, totalDp - fixed);
     let sum = W_GRID;
     if (jqOpen) sum += W_JQ;
-    if (amOpen) sum += W_AM;
     return avail * W_GRID / sum;
 }
 
@@ -347,9 +327,9 @@ function headEl(sec, sp) {
         t.style.cssText = `flex:${COL[i]} 1 0;text-align:${grav[i]};` +
             `color:${sec.headFg};font-weight:700;font-size:${sp}px`;
         if (i === 0) t.style.paddingLeft = '5px';
-        // Dấu ▾/▸ ở cột đầu — giống hệt CalendarWidgetProvider.render(): hàng
-        // tiêu đề bấm được thì phải có dấu cho biết.
-        t.textContent = i === 0 ? txt + (sec.open ? '  ▾' : '  ▸') : txt;
+        // KHÔNG còn dấu mũi — hàng tiêu đề thôi bấm được, dấu ấy hứa một cú
+        // bấm không còn tồn tại.
+        t.textContent = txt;
         el.append(t);
     });
     return el;
@@ -363,8 +343,8 @@ function headEl(sec, sp) {
 function buildWidget(host, wDp, hDp, density, year, month, todayJdn, selJdn) {
     const secs = buildSections(year, month, selJdn > 0 ? selJdn : todayJdn);
     const jq = secs.find(s => s.key === 'jq') || null;
-    const am = secs.find(s => s.key === 'am') || null;
-    const jqOpen = !!(jq && jq.open), amOpen = !!(am && am.open);
+    // Nghĩa nay là DỰNG ĐƯỢC, không phải ĐANG MỞ.
+    const jqOpen = !!jq;
 
     host.innerHTML = '';
     host.style.cssText = `width:${wDp}px;height:${hDp}px;box-sizing:border-box;display:flex;` +
@@ -375,7 +355,7 @@ function buildWidget(host, wDp, hDp, density, year, month, todayJdn, selJdn) {
     head.className = 'whead';
     head.style.height = HEADER_DP + 'px';
     head.innerHTML = `<div class="wnav">‹</div><div class="wtitle">${
-        ZH ? `农历 ${year}年${month}月` : `LỊCH ÂM THÁNG ${month}/${year}`
+        ZH ? `农历 ${year}年${month}月` : `LỊCH THÁNG ${month}/${year}`
     }</div><div class="wnav">›</div>`;
     host.append(head);
 
@@ -394,7 +374,7 @@ function buildWidget(host, wDp, hDp, density, year, month, todayJdn, selJdn) {
     });
     host.append(dowRow);
 
-    const gridDp = gridHeightDp(hDp, jqOpen, amOpen);
+    const gridDp = gridHeightDp(hDp, jqOpen);
     const holder = document.createElement('div');
     holder.style.cssText = `height:${gridDp}px;flex:none`;
     const cv = document.createElement('canvas');
@@ -404,20 +384,18 @@ function buildWidget(host, wDp, hDp, density, year, month, todayJdn, selJdn) {
 
     const sp = rowTextSp(wDp);
     const lists = {};
-    for (const sec of [jq, am]) {
+    for (const sec of [jq]) {
         if (!sec) continue;
         host.append(headEl(sec, sp));
         const list = document.createElement('div');
         list.className = 'list';
-        list.style.cssText = `flex:${sec.key === 'jq' ? W_JQ : W_AM} 1 0;overflow:auto;` +
-            'background:#fff';
-        if (!sec.open) list.style.display = 'none';
+        // `overflow:auto` — thân mục là ListView do WidgetSectionService nuôi,
+        // CUỘN được bằng ngón tay. Bỏ nút gập KHÔNG đụng tới chuyện ấy.
+        list.style.cssText = `flex:${W_JQ} 1 0;overflow:auto;background:#fff`;
         sec.rows.forEach((r, i) => list.append(rowEl(r, i === sec.active, i % 2 === 0, sp)));
         host.append(list);
         // RemoteViews.setScrollPosition đưa hàng ấy lên ĐẦU khung nhìn.
-        if (sec.open && sec.active > 0) list.scrollTop = sec.active * ROW_DP;
-        // RemoteViews.setScrollPosition đưa hàng ấy lên ĐẦU khung nhìn.
-        if (sec.open && sec.active > 0) list.scrollTop = sec.active * ROW_DP;
+        if (sec.active > 0) list.scrollTop = sec.active * ROW_DP;
         lists[sec.key] = { el: list, sec };
     }
 
@@ -429,16 +407,16 @@ function buildWidget(host, wDp, hDp, density, year, month, todayJdn, selJdn) {
     }
     const seen = k => {
         const l = lists[k];
-        if (!l || !l.sec.open) return 0;
+        if (!l) return 0;
         return Math.round(l.el.clientHeight / ROW_DP);
     };
     return {
         wDp, hDp, density, gridDp,
         cellH: g.cellH / density, dayPx: g.dayPx / density, gzPx: g.gzPx / density,
         showGanZhi: g.showGanZhi,
-        jqOpen, amOpen,
-        jqRows: jq ? jq.rows.length : 0, amRows: am ? am.rows.length : 0,
-        jqSeen: seen('jq'), amSeen: seen('am'),
+        jqOpen,
+        jqRows: jq ? jq.rows.length : 0,
+        jqSeen: seen('jq'),
         spill, spillText,
         over: host.scrollHeight > hDp + 1,
     };

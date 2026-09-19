@@ -63,6 +63,12 @@ object WidgetLayout {
     /**
      * Mục "Lịch âm" đã bỏ hẳn khỏi lịch đã ghim (chuyển sang tab Tra cứu của
      * ứng dụng), nên chỉ còn MỘT hàng tiêu đề mục và một trọng số để chia.
+     *
+     * `jqOpen` chỉ còn nghĩa "mục có DỰNG ĐƯỢC không" — bảng tra thiếu dữ liệu
+     * cho năm đang xem thì WidgetSections.build() bỏ hẳn mục ấy và cả phần
+     * chiều cao của nó về cho lưới. Không còn nghĩa "người dùng có gập nó lại
+     * không": mục không gập được nữa, ở cả ứng dụng lẫn lịch đã ghim. Nó vẫn
+     * CUỘN được — thân mục là ListView do WidgetSectionService nuôi.
      */
     fun gridHeightDp(totalDp: Int, jqOpen: Boolean): Float {
         val fixed = HEADER_DP + DOW_DP + SEC_HEAD_DP + CORNER_PAD_DP
@@ -75,13 +81,14 @@ object WidgetLayout {
 
 /**
  * Trạng thái của widget: tháng đang xem, ngày đang chọn, và những thứ nó đọc
- * ké từ ứng dụng (ngôn ngữ, địa điểm, hai mục đang mở hay đóng).
+ * ké từ ứng dụng (ngôn ngữ, địa điểm).
  *
  * Cả provider lẫn `WidgetSectionService` đều cần đúng những con số này — để
  * chung một chỗ thì hai bên không thể hiểu khác nhau.
  */
 object WidgetPrefs {
-    const val SEC_JQ = "qmdj.calSecJq"
+    // KHÔNG còn khoá gập/mở nào. Mục Tiết khí luôn hiện, ở cả ứng dụng lẫn
+    // lịch đã ghim; `qmdj.calSecJq` đã thôi được đọc và thôi được ghi.
 
     fun widget(context: Context): SharedPreferences =
         context.getSharedPreferences("qmdj_widget", Context.MODE_PRIVATE)
@@ -135,23 +142,6 @@ object WidgetPrefs {
     }
 
     fun isZh(context: Context): Boolean = LunarTable.langOf(context) == "zh"
-
-    /**
-     * Widget chỉ còn mục Tiết khí, và nó mặc định MỞ — đúng như calendar.js,
-     * vốn chỉ coi là đóng khi khoá được ghi tường minh "0".
-     */
-    fun secOpen(context: Context, key: String): Boolean =
-        app(context).getString(key, null) != "0"
-
-    /**
-     * Lật gập/mở một mục rồi ghi lại NGAY vào đúng khoá mà tab Lịch đọc.
-     *
-     * Trạng thái này dùng chung cho mọi widget và cho cả ứng dụng — không phải
-     * của riêng một widget — nên bấm ở đâu cũng đổi cho tất cả.
-     */
-    fun toggleSec(context: Context, key: String) {
-        app(context).edit().putString(key, if (secOpen(context, key)) "0" else "1").apply()
-    }
 
     /**
      * Múi giờ của địa điểm người dùng đã chọn trong ứng dụng. Ứng dụng ghi cả

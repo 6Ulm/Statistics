@@ -150,12 +150,10 @@ for (const dev of DEVICES) {
         // 3. Không tràn khỏi chiều cao widget.
         if (L.over) bad(`${tag}: nội dung tràn khỏi chiều cao widget`); else ok();
 
-        // 4. Mục đang mở phải hiện được mấy hàng, không thì cuộn cũng vô nghĩa.
+        // 4. Mục LUÔN HIỆN (không gập được nữa) nên phải luôn đủ mấy hàng,
+        //    không thì cuộn cũng vô nghĩa.
         if (L.jqOpen && L.jqSeen < MIN_ROWS_SEEN) {
             bad(`${tag}: mục Tiết khí chỉ hiện ${L.jqSeen} hàng`);
-        } else ok();
-        if (L.amOpen && L.amSeen < MIN_ROWS_SEEN) {
-            bad(`${tag}: mục Lịch âm chỉ hiện ${L.amSeen} hàng`);
         } else ok();
 
         // 5. Ba cột chia bằng layout_weight nên KHÔNG tự nới theo chữ — cột hẹp
@@ -180,7 +178,7 @@ for (const dev of DEVICES) {
 
         console.log(`  ${tag}: lưới ${L.gridDp.toFixed(0)}dp · ô ${L.cellH.toFixed(1)}dp`
             + ` · số ngày ${L.dayPx.toFixed(1)}dp · can chi ${L.showGanZhi ? 'có' : 'tắt'}`
-            + ` · hàng hiện ${L.jqSeen}+${L.amSeen}`
+            + ` · hàng hiện ${L.jqSeen}`
             + ` · cắt chữ ${L.spill.toFixed(1)}px · lưới ${(share * 100).toFixed(0)}%`);
     });
     await ctx.close();
