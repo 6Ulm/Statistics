@@ -1,11 +1,12 @@
 /* ════════════════════════════════════════════════════════════════
-   tracuu.css — tab "Tra cứu": ba bảng tra theo năm
+   tracuu.css — tab "Tra cứu": bốn bảng tra theo năm
 
-   Ba bảng (Trí Nhuận pháp · Sách Bổ pháp · Lệnh năm) đã được CHUYỂN HẲN
-   sang đây trong index.html, nên tệp này không phải tạo kiểu lại cho
-   chúng — chúng mang theo nguyên kiểu cũ (.dp-panel của app.css, #lenhHead
-   /#lenhSec của lenh.css). Ở đây chỉ có: luật ẩn/hiện của tab, hàng hai ô
-   chọn, và mấy chỗ chỉnh lại cho hợp vai trò mới.
+   Bốn bảng (Trí Nhuận pháp · Sách Bổ pháp · Lệnh năm · Lịch âm) đã được
+   CHUYỂN HẲN sang đây trong index.html, nên tệp này không dựng lại chúng —
+   chúng mang theo nguyên kiểu cũ (.dp-panel của app.css, #lenhHead/#lenhSec
+   của lenh.css). Ở đây có: luật ẩn/hiện của tab, hàng hai ô chọn, khe dọc
+   dùng chung, và MỘT hình khối duy nhất cho cả bốn hàng tiêu đề (chúng đến
+   từ ba nơi khác nhau nên vốn có ba kiểu).
    ════════════════════════════════════════════════════════════════ */
 
 #traCuuView { display: none; width: 100%; max-width: var(--max-w, 400px); }
@@ -20,13 +21,20 @@ body.view-tracuu > *:not(#traCuuView):not(#bottomDock):not(#locOverlay):not(#dru
 }
 body.view-tracuu #traCuuView { display: flex; flex-direction: column; gap: 0; }
 
+/* ── Khe dọc giữa các khối: MỘT con số, nhỏ nhất còn đọc được ──
+   Người dùng chốt "giảm tối đa vertical space giữa các boxes (nhưng vẫn có 1
+   chút space nhỏ)". `gap` của flex thì không dùng được: nó chen cả vào giữa
+   một hàng tiêu đề và THÂN của chính nó, tách đôi khối vừa nối liền. Nên đặt
+   lề trên cho mọi khối SAU khối đầu, rồi gỡ lại đúng ở hai chỗ thân-nối-đầu. */
+#traCuuView > * + * { margin-top: 3px; }
+#traCuuView #lenhSec, #traCuuView #tcAmSec { margin-top: 0; }
+
 /* ── Hàng hai ô chọn: năm · bộ số ──
    Chia đôi, cùng hình khối với hàng điều khiển của hai tab kia (.picker-btn
    trong app.css) để cả ứng dụng chỉ có MỘT kiểu ô chọn. */
 #tcBar {
     display: flex; align-items: stretch; gap: 4px;
     width: 100%;
-    margin-bottom: 6px;
 }
 #tcBar .picker-btn { flex: 1 1 0; min-width: 0; }
 /* Ô năm là thứ người dùng bấm trước và bấm nhiều nhất ở tab này — cho nó
@@ -49,20 +57,99 @@ body.view-tracuu #traCuuView { display: flex; flex-direction: column; gap: 0; }
 body.view-tracuu #traCuuView.tc-empty #tcHint { display: block; }
 body.view-tracuu #traCuuView.tc-empty .dp-panel,
 body.view-tracuu #traCuuView.tc-empty #lenhHead,
-body.view-tracuu #traCuuView.tc-empty #lenhSec { display: none !important; }
+body.view-tracuu #traCuuView.tc-empty #lenhSec,
+body.view-tracuu #traCuuView.tc-empty #tcAmHead,
+body.view-tracuu #traCuuView.tc-empty #tcAmSec { display: none !important; }
 
-/* ── Ba bảng ──
+/* ── Hai bảng chi tiết ──
    Ở tab Kỳ Môn, .dp-panel để `display:none` và app.js bật lên cho ĐÚNG MỘT
-   bảng theo phái đang chọn. Ở đây cả ba luôn hiện cùng lúc — đó là cả điểm
+   bảng theo phái đang chọn. Ở đây cả hai luôn hiện cùng lúc — đó là cả điểm
    của tab này — nên phải ghi đè. */
 body.view-tracuu #traCuuView:not(.tc-empty) .dp-panel { display: block; }
-#traCuuView .dp-panel + .dp-panel { margin-top: 6px; }
 
-/* Bảng Lệnh năm nối tiếp hai bảng kia: cùng khoảng cách, cùng cách gập/mở.
-   #lenhHead mang sẵn margin-top 4px từ lenh.css, thêm 2px cho bằng 6px. */
-#traCuuView #lenhHead { margin-top: 6px; }
+/* ── Mục LỊCH ÂM — chuyển từ tab Lịch sang ── */
+#tcAmHead:active { filter: brightness(.96); }
+#tcAmHead.lenh-open { border-bottom: 0; border-radius: 8px 8px 0 0; }
+#tcAmSec { display: none; }
 
-/* Ba bảng đều bung ĐỦ chiều cao tự nhiên và CẢ TRANG cuộn — đúng như tab Bát
+/* ══ MỘT hình khối duy nhất cho CẢ BỐN hàng tiêu đề ══
+   Bốn mục của tab này đến từ ba nơi khác nhau — Trí Nhuận và Sách Bổ mang theo
+   .dp-header của tab Kỳ Môn (nền #fff, đệm 8px/12px, chữ 13px nửa đậm, viết
+   thường), Lệnh năm mang #lenhHead của tab Bát Tự (đệm 6px, chữ 13–15px đậm,
+   viết hoa), Lịch âm là bản sao của cái thứ hai. Xếp chồng lên nhau thì thấy rõ
+   ba kiểu khác nhau trong cùng một màn hình. Người dùng chốt: "tất cả các
+   headers của tables trong tab tra cứu phải có chung format, chung fontsize,
+   background".
+
+   Gom về ĐÂY, ở một chỗ, thay vì sửa ba tệp gốc: hai tệp kia còn phục vụ những
+   chỗ khác (.dp-header vẫn là kiểu chung của ứng dụng), nên đè tại tab này là
+   cách duy nhất không kéo theo tab khác.
+
+   min-height 34px: đây là chỗ bấm chính của cả tab, và ở tư thế NGANG (866×412)
+   đệm 6px chỉ cho ra 31,8px — dưới mức 32px mà test_a51_s21fe.mjs chốt. Đặt sàn
+   thì không còn phụ thuộc cỡ chữ đang co giãn. */
+#traCuuView .dp-header,
+#traCuuView #lenhHead,
+#traCuuView #tcAmHead {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 6px;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 34px;
+    margin: 0;
+    padding: 5px 10px;
+    /* CHỐT line-height. .dp-panel khai 1.7 và .dp-title thừa kế xuống, nên hai
+       hàng tiêu đề đầu cao 37,5px trong khi hai hàng dưới (không nằm trong
+       .dp-panel) cao 34px — lệch 3,5px, thấy rõ khi bốn hàng xếp chồng. */
+    line-height: 1.35;
+    background: var(--bg-white, #fff);
+    color: var(--text-main, #000);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 8px;
+    font-size: clamp(12.5px, 3.6vw, 14.5px);
+    font-weight: 700;
+    letter-spacing: .2px;
+    cursor: pointer; user-select: none;
+}
+/* Chữ tiêu đề: cùng cỡ, cùng độ đậm, cùng VIẾT HOA — và cắt bằng "…" chứ không
+   đẩy dấu mũi ra khỏi hàng ("BẢNG CHI TIẾT - TRÍ NHUẬN PHÁP" là chuỗi dài nhất,
+   ~30 chữ). */
+#traCuuView .dp-title,
+#traCuuView #lenhTitle,
+#traCuuView #tcAmTitle {
+    flex: 1 1 auto; min-width: 0;
+    font-size: inherit; font-weight: inherit; color: inherit;
+    text-transform: uppercase;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#traCuuView .dp-chevron,
+#traCuuView #lenhHeadChevron,
+#traCuuView #tcAmChevron {
+    flex: 0 0 auto;
+    font-size: 15px; font-weight: 400; color: inherit;
+}
+#traCuuView .dp-header:active,
+#traCuuView #lenhHead:active,
+#traCuuView #tcAmHead:active { background: var(--bg-white, #fff); filter: brightness(.96); }
+
+/* Khe 3px cho hai mục cuối nữa. `margin: 0` ở trên đặc thù hơn luật
+   `#traCuuView > * + *` (hai id so với một), nên phải nhắc lại ở đây — bằng
+   không hai mục ấy dính sát mục trên chúng trong khi hai bảng đầu cách 3px. */
+#traCuuView > #lenhHead, #traCuuView > #tcAmHead { margin-top: 3px; }
+
+/* .dp-panel mang `border-top` từ tab Kỳ Môn (ở đó nó ngăn bảng chi tiết với
+   bàn cờ ngay trên). Ở đây mỗi mục đã tự có viền đủ bốn cạnh, nên vạch ấy chỉ
+   là một nét thừa chạy ngang phía trên hàng tiêu đề. */
+#traCuuView .dp-panel { border-top: 0; }
+#tcAmSec .cal-sec-body {
+    border-radius: 0 0 6px 6px;
+    border-top-color: var(--border-color, #ddd);
+    overflow-y: visible;
+}
+#tcAmSec::after { content: none; }
+#tcAmBody { max-height: none; }
+
+/* Cả bốn mục đều bung ĐỦ chiều cao tự nhiên và CẢ TRANG cuộn — đúng như tab Bát
    Tự sau khi bỏ kẹp chiều cao, và như ba bảng gập/mở ở tab Kỳ Môn. Không khung
    cuộn con nào: đặt ngón tay vào giữa một bảng 33 hàng mà chỉ bảng ấy nhúc
    nhích còn cả trang đứng im là thao tác đã chết một lần rồi (xem fitLenhSec

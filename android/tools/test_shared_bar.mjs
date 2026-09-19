@@ -503,12 +503,16 @@ for (const d of DEVICES) {
     }
 }
 
-/* ── 8. Không còn khoảng hở ở đáy màn Kỳ Môn ──
-   Tỉ lệ phóng bị chặn bởi BỀ NGANG, nên trên máy cao phần dôi chiều cao nằm
-   chết ngay trên thanh dưới (S21 FE: 39px, A51: 82px). viewport.js rót phần ấy
-   vào các khe giữa các bảng — canh cho nó thật sự rót. */
+/* ── 8. Khe giữa các bảng: NHỎ NHẤT, phần dôi dồn xuống đáy ──
+   Bản trước canh ngược hẳn: "hở ≤ 16px trên thanh dưới", vì viewport.js rót
+   phần chiều cao dôi ra vào chính các khe để lấp cho kín màn hình. Người dùng
+   chốt ngược lại: "giảm tối đa vertical space giữa các boxes (nhưng vẫn có 1
+   chút space nhỏ), có thể thừa 1 space rộng ở dưới cùng cũng ko sao".
+
+   Nên nay canh đúng điều ấy: MỌI khe giữa các khối của <body> phải nhỏ (≤ 6px),
+   dải trống ở đáy bao nhiêu cũng được, và vẫn không được tràn dọc. */
 {
-    console.log('\nKhoảng hở ở đáy màn Kỳ Môn');
+    console.log('\nKhe giữa các bảng ở màn Kỳ Môn');
     for (const d of [{ name: 'S21', w: 360, h: 740 }, { name: 'S21 FE', w: 393, h: 790 },
                      { name: 'S21 Ultra', w: 384, h: 794 }, { name: 'A51', w: 412, h: 852 }]) {
         const ctx = await browser.newContext({ viewport: { width: d.w, height: d.h }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
@@ -516,18 +520,27 @@ for (const d of DEVICES) {
         await page.goto(base, { waitUntil: 'networkidle' });
         await page.waitForTimeout(1400);
         const r = await page.evaluate(() => {
+            const z = parseFloat(getComputedStyle(document.body).zoom) || 1;
             const dock = document.getElementById('bottomDock').getBoundingClientRect();
             const kids = [...document.body.children].filter(e => {
                 const cs = getComputedStyle(e);
                 return cs.display !== 'none' && cs.position !== 'fixed';
             });
+            const khe = [];
+            for (let i = 1; i < kids.length; i++) {
+                khe.push(+((kids[i].getBoundingClientRect().top
+                            - kids[i - 1].getBoundingClientRect().bottom) / z).toFixed(1));
+            }
             const last = kids[kids.length - 1].getBoundingClientRect();
-            return { gap: dock.top - last.bottom,
+            return { khe, gap: (dock.top - last.bottom) / z,
                      over: document.documentElement.scrollHeight > window.innerHeight + 1 };
         });
-        ok(`${d.name} ${d.w}×${d.h}: hở ≤ 16px trên thanh dưới`, r.gap <= 16,
-            `hở ${r.gap.toFixed(1)}px`);
-        ok(`${d.name}: vẫn không tràn dọc`, !r.over);
+        ok(`${d.name} ${d.w}×${d.h}: mọi khe giữa các bảng đều nhỏ (≤ 6px)`,
+            r.khe.every(k => k <= 6 + 0.5), r.khe.join(' · ') + 'px');
+        ok(`${d.name}: vẫn còn khe thật, không dính sát nhau`,
+            r.khe.every(k => k >= 1), r.khe.join(' · ') + 'px');
+        ok(`${d.name}: vẫn không tràn dọc`, !r.over,
+            `dải trống ở đáy ${r.gap.toFixed(1)}px`);
         await ctx.close();
     }
 }

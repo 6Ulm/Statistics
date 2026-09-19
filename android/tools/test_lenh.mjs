@@ -334,12 +334,31 @@ const browser = await chromium.launch(
  * Khác một điểm: KHÔNG có hàng nào được tô "đang cầm lệnh" — tra một năm bất
  * kỳ thì không có thời điểm sinh nào để mà cầm lệnh.
  */
-async function mởTraCuu(page, Y) {
+/** Bốn mục của tab Tra cứu, theo thứ tự trên xuống: [tiêu đề, thân]. */
+const TC_MỤC = [['trinhuanHeader', 'trinhuanBody'], ['sachboHeader', 'sachboBody'],
+                ['lenhHead', 'lenhSec'], ['tcAmHead', 'tcAmSec']];
+
+/**
+ * Mở tab Tra cứu ở một năm, rồi (mặc định) bung hết các mục ra.
+ *
+ * Bốn mục nay ĐÓNG SẴN — người dùng chốt "hiển thị cả ba tab… click vào thì
+ * expand hoặc hide" — nên phép đo nào cần thấy nội dung phải tự mở lấy.
+ * Truyền `mở = false` khi muốn đo đúng trạng thái vừa chọn năm xong.
+ */
+async function mởTraCuu(page, Y, mở = true) {
     await page.evaluate(y => {
         if (y !== undefined && y !== null) window.__tracuuYear(y);
         window.showTab('tracuu');
     }, Y);
     await page.waitForTimeout(900);
+    if (!mở) return;
+    await page.evaluate(mục => {
+        for (const [head, body] of mục) {
+            const b = document.getElementById(body), h = document.getElementById(head);
+            if (b && h && getComputedStyle(b).display === 'none') h.click();
+        }
+    }, TC_MỤC);
+    await page.waitForTimeout(800);
 }
 
 async function open(ctx) {
@@ -365,21 +384,30 @@ console.log('\nTab thứ ba: đúng chỗ, và dùng lại đúng hai khối c�
     // CÒN đúng cái đã đánh dấu không: chỉ cách này mới phân biệt "dùng lại
     // đúng phần tử" với "dựng một bản trông giống".
     await page.evaluate(() => { document.getElementById('tuTruPanel').dataset.moc = 'x'; });
-    const qm = await page.evaluate(() => ({
-        bazi: document.getElementById('tuTruPanel').innerText.replace(/\s+/g, ' ').trim(),
-        ngày: document.getElementById('dateDisplayText').textContent,
-    }));
+    // `chung` = những hàng CẢ HAI tab đều hiện (can · chi · nạp âm · lịch âm).
+    // Ba hàng .tt-bazi-only là của RIÊNG tab Bát Tự, nên đo tách ra.
+    const đoBảng = () => page.evaluate(() => {
+        const tt = document.getElementById('tuTruPanel');
+        const hiện = el => el.getBoundingClientRect().height > 0;
+        const txt = tr => [...tr.cells].map(c => c.textContent.trim()).join('|');
+        const hàng = [...tt.querySelectorAll('tbody tr')];
+        return {
+            moc: tt.dataset.moc,
+            chung: hàng.filter(tr => !tr.classList.contains('tt-bazi-only'))
+                       .map(txt).join(' / '),
+            riêng: hàng.filter(tr => tr.classList.contains('tt-bazi-only') && hiện(tr)).length,
+            ngày: document.getElementById('dateDisplayText').textContent,
+        };
+    });
+    const qm = await đoBảng();
 
     await page.click('#tabLenh');
     await page.waitForTimeout(900);
-    const ln = await page.evaluate(() => {
+    const ln = { ...(await đoBảng()), ...(await page.evaluate(() => {
         const tt = document.getElementById('tuTruPanel');
         const cs = getComputedStyle(tt);
         return {
-            moc: tt.dataset.moc,
             hiện: cs.display !== 'none',
-            bazi: tt.innerText.replace(/\s+/g, ' ').trim(),
-            ngày: document.getElementById('dateDisplayText').textContent,
             ngàyHiện: getComputedStyle(document.getElementById('dateDisplayBtn')).display !== 'none',
             pháiẨn: getComputedStyle(document.getElementById('methodDisplayBtn')).display === 'none',
             // Hỏi CHIỀU CAO THẬT chứ không hỏi `display` của chính nó: lúc
@@ -389,10 +417,15 @@ console.log('\nTab thứ ba: đúng chỗ, và dùng lại đúng hai khối c�
             bànẨn: document.getElementById('board').getBoundingClientRect().height === 0,
             lịchẨn: document.getElementById('calView').getBoundingClientRect().height === 0,
         };
-    });
+    })) };
     ok('bảng Bát Tự ở tab Lệnh là CHÍNH phần tử của tab Kỳ Môn', ln.moc === 'x');
     ok('…và đang hiện', ln.hiện);
-    check('…với đúng nội dung ấy', ln.bazi, qm.bazi);
+    // Cùng MỘT phần tử ⇒ những hàng dùng chung phải in ra y hệt nhau.
+    check('…với đúng nội dung ấy ở các hàng dùng chung', ln.chung, qm.chung);
+    // …nhưng ba hàng tàng can · phó tinh · hàng trống là CỦA RIÊNG tab Bát Tự:
+    // hộp bát tự bên Kỳ Môn phải y như trước khi thêm chúng.
+    check('hộp Bát Tự ở tab KỲ MÔN không mọc thêm hàng nào', qm.riêng, 0);
+    check('…còn ở tab Bát Tự thì có đủ ba hàng riêng ấy', ln.riêng, 3);
     ok('ô ngày giờ cũng là chính ô của tab Kỳ Môn, đang hiện', ln.ngàyHiện);
     check('…và đúng chuỗi ngày giờ ấy', ln.ngày, qm.ngày);
     ok('ô chọn phái đã ẩn (chuyện của riêng Kỳ Môn)', ln.pháiẨn);
@@ -1045,7 +1078,7 @@ console.log('\nTuổi nhập đại vận: chiều thuận/nghịch chéo Giới
     await ctx.close();
 }
 
-console.log('\nBa bảng của tab Tra cứu gập/mở được, và MỞ SẴN sau khi chọn năm');
+console.log('\nBốn mục của tab Tra cứu: hiện đủ tiêu đề, ĐÓNG SẴN, bấm là gập/mở');
 {
     const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     const { page, errs } = await open(ctx);
@@ -1056,38 +1089,69 @@ console.log('\nBa bảng của tab Tra cứu gập/mở được, và MỞ SẴN
     await page.waitForTimeout(700);
     const chưaChọn = await page.evaluate(() => ({
         gợiÝ: getComputedStyle(document.getElementById('tcHint')).display !== 'none',
-        bảngHiện: ['trinhuanPanel', 'sachboPanel', 'lenhHead']
+        bảngHiện: ['trinhuanPanel', 'sachboPanel', 'lenhHead', 'tcAmHead']
             .filter(i => getComputedStyle(document.getElementById(i)).display !== 'none'),
         nhãnNăm: document.getElementById('tcYearText').textContent.trim(),
     }));
     ok('chưa chọn năm: hiện dòng gợi ý', chưaChọn.gợiÝ);
     check('chưa chọn năm: không bảng nào hiện', chưaChọn.bảngHiện.join(','), '');
 
-    // Chọn năm: cả ba bảng hiện VÀ mở sẵn. Chúng LÀ nội dung của tab này —
-    // chọn năm xong mà nhận ba cái tiêu đề đóng im thì phải bấm thêm ba lần.
-    await mởTraCuu(page, 2026);
-    const mởSẵn = await page.evaluate(() => ({
+    // Chọn năm: hiện ĐỦ BỐN tiêu đề, nhưng THÂN ĐÓNG SẴN — bung cả bốn ra là
+    // một trang gần 2000px, người dùng phải cuộn qua ba bảng mới tới bảng thứ
+    // tư. Người dùng chốt: "hiển thị cả 3 tab… click vào thì expand hoặc hide".
+    await mởTraCuu(page, 2026, false);
+    const vừaChọn = await page.evaluate(() => ({
         gợiÝ: getComputedStyle(document.getElementById('tcHint')).display !== 'none',
+        đầuHiện: ['trinhuanHeader', 'sachboHeader', 'lenhHead', 'tcAmHead']
+            .filter(i => document.getElementById(i).getBoundingClientRect().height > 0).length,
         trn: getComputedStyle(document.getElementById('trinhuanBody')).display,
         sb: getComputedStyle(document.getElementById('sachboBody')).display,
         lenh: getComputedStyle(document.getElementById('lenhSec')).display,
+        am: getComputedStyle(document.getElementById('tcAmSec')).display,
+        // Đóng hết thì cả tab lọt gọn một màn hình: không có gì để cuộn.
+        cuộnĐược: document.documentElement.scrollHeight - window.innerHeight,
+    }));
+    ok('chọn năm rồi: dòng gợi ý biến mất', !vừaChọn.gợiÝ);
+    check('hiện đủ BỐN hàng tiêu đề', vừaChọn.đầuHiện, 4);
+    check('bảng Trí Nhuận đóng sẵn', vừaChọn.trn, 'none');
+    check('bảng Sách Bổ đóng sẵn', vừaChọn.sb, 'none');
+    check('bảng Lệnh năm đóng sẵn', vừaChọn.lenh, 'none');
+    check('mục Lịch âm đóng sẵn', vừaChọn.am, 'none');
+    ok('đóng hết thì tab gọn trong một màn hình', vừaChọn.cuộnĐược <= 2,
+        `còn cuộn được ${vừaChọn.cuộnĐược}px`);
+
+    // Bung cả bốn: nội dung đủ, và vượt màn hình thì CẢ TRANG cuộn được —
+    // không mục nào có khung cuộn con nuốt cú vuốt.
+    await mởTraCuu(page, null);
+    const mởSẵn = await page.evaluate(() => ({
         lớpMở: document.getElementById('lenhHead').classList.contains('lenh-open'),
         chev: document.getElementById('lenhHeadChevron').style.transform,
+        lớpMởAm: document.getElementById('tcAmHead').classList.contains('lenh-open'),
         hàngTrn: document.querySelectorAll('#trn-tbody tr').length,
         hàngSb: document.querySelectorAll('#sb-tbody tr').length,
         hàngLenh: document.querySelectorAll('#lenhBody tbody tr').length,
+        hàngAm: document.querySelectorAll('#tcAmBody tbody tr').length,
         tiêuĐề: document.getElementById('lenhTitle').textContent.trim(),
+        cuộnĐược: document.documentElement.scrollHeight - window.innerHeight,
+        // Không mục nào được giữ phần cuộn cho riêng mình.
+        cuộnCon: ['trinhuanBody', 'sachboBody', 'lenhBody', 'tcAmBody']
+            .filter(i => {
+                const e = document.getElementById(i);
+                return e && e.scrollHeight - e.clientHeight > 1;
+            }),
     }));
-    ok('chọn năm rồi: dòng gợi ý biến mất', !mởSẵn.gợiÝ);
-    check('bảng Trí Nhuận mở sẵn', mởSẵn.trn, 'block');
-    check('bảng Sách Bổ mở sẵn', mởSẵn.sb, 'block');
-    check('bảng Lệnh năm mở sẵn', mởSẵn.lenh, 'block');
     ok('đầu bảng Lệnh năm có lớp .lenh-open', mởSẵn.lớpMở);
     ok('mũi tên đã xoay', mởSẵn.chev === 'rotate(180deg)', mởSẵn.chev);
+    ok('đầu mục Lịch âm cũng có lớp .lenh-open', mởSẵn.lớpMởAm);
     check('Trí Nhuận đủ 25 hàng', mởSẵn.hàngTrn, 25);
     check('Sách Bổ đủ 24 hàng', mởSẵn.hàngSb, 24);
     check('Lệnh năm đủ 33 đoạn', mởSẵn.hàngLenh, 33);
+    ok('Lịch âm có đủ 12–13 tháng', mởSẵn.hàngAm >= 12 && mởSẵn.hàngAm <= 13,
+        `${mởSẵn.hàngAm} hàng`);
     check('tiêu đề mang đúng năm đã chọn', mởSẵn.tiêuĐề, 'LỆNH NĂM 2026');
+    ok('mở hết thì CẢ TRANG cuộn được', mởSẵn.cuộnĐược > 100,
+        `chỉ cuộn được ${mởSẵn.cuộnĐược}px`);
+    check('không mục nào có khung cuộn riêng', mởSẵn.cuộnCon.join(','), '');
 
     // Tra một năm bất kỳ thì KHÔNG có thời điểm sinh nào để mà "đang cầm
     // lệnh" — tô một hàng ở đây là nói dối rằng nó liên quan tới lá số đang mở.
@@ -1095,10 +1159,11 @@ console.log('\nBa bảng của tab Tra cứu gập/mở được, và MỞ SẴN
         await page.evaluate(() =>
             document.querySelectorAll('#traCuuView .dp-row-active, #traCuuView .lenh-on').length), 0);
 
-    // Gập/mở từng bảng, độc lập với nhau.
+    // Gập/mở từng mục, độc lập với nhau.
     for (const [head, body, tên] of [['#trinhuanHeader', 'trinhuanBody', 'Trí Nhuận'],
                                      ['#sachboHeader', 'sachboBody', 'Sách Bổ'],
-                                     ['#lenhHead', 'lenhSec', 'Lệnh năm']]) {
+                                     ['#lenhHead', 'lenhSec', 'Lệnh năm'],
+                                     ['#tcAmHead', 'tcAmSec', 'Lịch âm']]) {
         await page.click(head);
         await page.waitForTimeout(450);
         check(`bấm một lần: ${tên} đóng lại`,
@@ -1118,13 +1183,21 @@ console.log('\nBa bảng của tab Tra cứu gập/mở được, và MỞ SẴN
     const sauĐổiNăm = await page.evaluate(() => ({
         tiêuĐề: document.getElementById('lenhTitle').textContent.trim(),
         hàng: document.querySelectorAll('#lenhBody tbody tr').length,
-        // Đổi năm thì openAll() bung lại cả ba — người dùng vừa chọn năm mới
-        // chính là để xem chúng.
+        // Đổi năm KHÔNG được tự bung lại: gập/mở là lựa chọn của người dùng,
+        // và tự mở ra thì cả bốn mục cùng bung, đẩy trang dài gấp ba.
         lenh: getComputedStyle(document.getElementById('lenhSec')).display,
     }));
     check('đổi năm lúc bảng đang đóng: tiêu đề theo năm mới', sauĐổiNăm.tiêuĐề, 'LỆNH NĂM 1984');
     check('…và bảng dựng lại đủ hàng', sauĐổiNăm.hàng, 33);
-    check('…và bung lại cho người dùng xem', sauĐổiNăm.lenh, 'block');
+    check('…nhưng vẫn ĐÓNG: đổi năm không tự bung mục người dùng đã gập',
+        sauĐổiNăm.lenh, 'none');
+    // …và bung ra thì đúng là nội dung năm mới, không phải bản dựng cũ.
+    await page.click('#lenhHead');
+    await page.waitForTimeout(450);
+    check('mở lại: đúng nội dung năm mới',
+        await page.evaluate(() =>
+            document.querySelector('#lenhBody tbody tr td').textContent.trim().slice(0, 40)
+            && getComputedStyle(document.getElementById('lenhSec')).display), 'block');
 
     // Dòng tóm tắt "Lệnh: X" vẫn thuộc tab BÁT TỰ — nó nói về lá số, không
     // phải về năm đang tra.
@@ -1447,24 +1520,44 @@ console.log('\nBảng ĐẠI VẬN: 10 đại vận × 10 năm, lấp chỗ tr�
         await page.waitForTimeout(500);
     }
 
-    // ── Đơn sắc: chỉ đen/trắng/ghi (R=G=B ở mọi màu nền/chữ dùng trong bảng) ──
+    // ── Màu trong bảng Đại Vận: CHỈ can chi được tô ──
+    // Người dùng chốt: "TẤT CẢ các chữ CAN CHI có màu tương ứng với ngũ hành…
+    // TẤT CẢ các chữ KO PHẢI CAN CHI thì đều màu đen". Bảng Đại Vận vốn đơn
+    // sắc, nên ở đây phép canh tách đôi: mỗi <span.nh> phải mang ĐÚNG màu của
+    // hành ghi trong lớp của nó, còn mọi thứ khác vẫn phải R=G=B.
     const màu = await page.evaluate(() => {
-        const layLát = s => (s.match(/\d+(\.\d+)?/g) || []).map(Number);
-        const kiểm = el => {
-            const cs = getComputedStyle(el);
-            for (const prop of ['color', 'backgroundColor', 'borderTopColor']) {
-                const v = layLát(cs[prop]);
-                if (v.length >= 3 && !(v[0] === v[1] && v[1] === v[2])) return cs[prop];
-            }
-            return null;
+        const HÀNH = {
+            kim: 'rgb(110, 119, 129)', moc: 'rgb(30, 125, 52)',
+            thuy: 'rgb(18, 64, 143)', hoa: 'rgb(198, 40, 40)', tho: 'rgb(138, 90, 43)',
         };
-        const lệch = [];
-        document.querySelectorAll('#daiVanBody, #daiVanBody *')
-            .forEach(el => { const bad = kiểm(el); if (bad) lệch.push(el.className + ':' + bad); });
-        return lệch;
+        const lát = s => (s.match(/\d+(\.\d+)?/g) || []).map(Number);
+        const xám = v => v.length >= 3 && v[0] === v[1] && v[1] === v[2];
+        const sai = [], saiHành = [];
+        let sốNh = 0;
+        for (const el of document.querySelectorAll('#daiVanBody, #daiVanBody *')) {
+            const cs = getComputedStyle(el);
+            // Nền và viền KHÔNG bao giờ được có màu, kể cả trên ô can chi.
+            // Viền chỉ xét khi THỰC SỰ có viền: border-color mặc định là
+            // `currentColor`, nên một <span> không viền vẫn khai đúng màu chữ
+            // của nó — đọc con số ấy là bắt nhầm chính màu ngũ hành.
+            if (!xám(lát(cs.backgroundColor))) sai.push(`${el.className}·nền:${cs.backgroundColor}`);
+            if (parseFloat(cs.borderTopWidth) > 0 && !xám(lát(cs.borderTopColor))) {
+                sai.push(`${el.className}·viền:${cs.borderTopColor}`);
+            }
+            const hành = (/\bnh-(\w+)\b/.exec(el.className || '') || [])[1];
+            if (hành) {
+                sốNh++;
+                if (cs.color !== HÀNH[hành]) saiHành.push(`${hành}:${cs.color}`);
+            } else if (!xám(lát(cs.color))) {
+                sai.push(`${el.className}·color:${cs.color}`);
+            }
+        }
+        return { sai, saiHành, sốNh };
     });
-    ok('toàn bảng Đại Vận chỉ đen/trắng/ghi (R=G=B), không màu nào khác',
-        màu.length === 0, màu.slice(0, 5).join(' | '));
+    ok('bảng Đại Vận có tô can chi theo ngũ hành', màu.sốNh > 0, `${màu.sốNh} chữ`);
+    check('…mỗi chữ đúng màu của hành ấy', màu.saiHành.slice(0, 5).join(' | '), '');
+    ok('…còn mọi thứ KHÔNG PHẢI can chi vẫn đen/trắng/ghi (R=G=B)',
+        màu.sai.length === 0, màu.sai.slice(0, 5).join(' | '));
 
     // ── Đại Vận KHÔNG còn maxHeight, KHÔNG tự cuộn riêng — nó là nội dung
     // CHÍNH của tab (như bàn Kỳ Môn), luôn hiện TRỌN dù có tràn xuống dưới

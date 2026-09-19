@@ -5,7 +5,7 @@
  *
  * Bốn nhóm:
  *   1. Mục "Tiết khí": một dãy 24 hàng (không còn chia đôi), ba cột.
- *   2. Mục "Lịch âm": đúng bảng Sóc/Vọng của Âm Bàn pháp ở tab Kỳ Môn.
+ *   2. Mục "Lịch âm": ĐÃ CHUYỂN sang tab Tra cứu — xem test_lenh.mjs.
  *   3. Gập/mở: độc lập, mở được CẢ HAI, mục dài thì cuộn, nhớ qua lần mở sau.
  *   4. Ngôn ngữ: ứng dụng ghi khoá qmdj.lang và gọi widget vẽ lại.
  */
@@ -62,11 +62,16 @@ async function openCal(ctx) {
     await page.waitForTimeout(800);
     return { page, errs };
 }
-const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
-    const sec = document.getElementById(w === 'jq' ? 'calSecJq' : 'calSecAm');
-    // Thanh tiêu đề nay là hàng <thead> của chính bảng.
-    if (sec.classList.contains('cal-sec-open') !== v) sec.querySelector('.cal-sec-head').click();
-}, [which, want]);
+/**
+ * Không còn gì để gập/mở ở tab Lịch.
+ *
+ * Mục "Lịch âm" đã sang tab Tra cứu, còn mục "Tiết khí" thì LUÔN MỞ — người
+ * dùng chốt "ô tiết khí từ giờ ko hide nữa mà luôn hiển thị, cho phép scroll
+ * up down". Giữ lại cái vỏ hàm để những phép canh cũ (vốn gọi nó giữa các lượt
+ * đo) đọc vẫn xuôi, và để CHỨNG MINH đúng điều ấy: gọi với bất kỳ trạng thái
+ * nào cũng không đổi được gì.
+ */
+const setOpen = (page, which, want) => page.evaluate(() => {});
 
 /* ── 1. Mục Tiết khí: 24 hàng liền, ba cột ── */
 {
@@ -158,20 +163,21 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     await ctx.close();
 }
 
-/* ── 2. Mục Lịch âm = bảng Âm Bàn pháp ở tab Kỳ Môn ── */
+/* ── 2. Mục Lịch âm — nay ở tab TRA CỨU ── */
 {
     const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     const { page, errs } = await openCal(ctx);
 
-    console.log('\nMục "Lịch âm" — cấu trúc và định dạng');
-    // KHÔNG còn bảng nào để đối chiếu: bảng chi tiết Âm Bàn pháp ở tab Kỳ Môn
-    // đã bỏ hẳn, nên mục này là chỗ DUY NHẤT hiện dãy Sóc/Vọng trong ứng dụng.
-    // Phép đối chiếu chéo chuyển sang test_widget_sections.mjs (widget và tab
-    // Lịch phải nói cùng một bảng) và test_soc_parity.mjs (mùng 1 = ngày chứa
-    // Sóc); ở đây canh cấu trúc và định dạng của chính nó.
-    await page.click('#tabCal'); await page.waitForTimeout(700);
-    await setOpen(page, 'am', true);
-    await page.waitForTimeout(600);
+    console.log('\nMục "Lịch âm" — cấu trúc và định dạng (tab Tra cứu)');
+    // Mục này đã CHUYỂN khỏi tab Lịch sang tab Tra cứu, và bảng chi tiết Âm Bàn
+    // pháp ở tab Kỳ Môn thì bỏ hẳn — nên nó là chỗ DUY NHẤT hiện dãy Sóc/Vọng
+    // trong ứng dụng. Tab Lịch và lịch đã ghim nay chỉ còn lưới lịch và bảng
+    // tiết khí. Phép đối chiếu chéo nằm ở test_soc_parity.mjs; ở đây canh cấu
+    // trúc và định dạng.
+    await page.evaluate(() => { window.__tracuuYear(2026); window.showTab('tracuu'); });
+    await page.waitForTimeout(1200);
+    await page.evaluate(() => document.getElementById('tcAmHead').click());
+    await page.waitForTimeout(700);
     const cal = await page.evaluate(() => {
         // Tâm ngang của phần TEXT thật sự (Range trên node văn bản đầu tiên),
         // không phải tâm của cả ô — ô thường rộng hơn hẳn nội dung, đo theo ô
@@ -186,13 +192,13 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
             var b = rg.getBoundingClientRect();
             return (b.left + b.right) / 2;
         };
-        var heads = [...document.querySelectorAll('#calAmBan thead th')];
-        var row1 = document.querySelector('#calAmBan tbody tr');
+        var heads = [...document.querySelectorAll('#tcAmBody thead th')];
+        var row1 = document.querySelector('#tcAmBody tbody tr');
         var socTd = row1 ? row1.children[1] : null;
         var vongTd = row1 ? row1.children[2] : null;
         return {
             dupTitle: !!document.getElementById('calAmTitle'),
-            headIsThead: !!document.querySelector('#calAmBan thead tr.cal-sec-head'),
+            headIsThead: !!document.querySelector('#tcAmBody thead tr.cal-sec-head'),
             // Tiêu đề Sóc và Vọng phải CĂN GIỮA — VÀ giá trị bên dưới cũng vậy,
             // không như cột "Dương lịch" của Tiết khí (vẫn căn trái).
             headCentred: heads.slice(1).every(x => getComputedStyle(x).textAlign === 'center'),
@@ -202,7 +208,7 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
             socHeadCx: textCx(heads[1]), socValCx: textCx(socTd),
             vongHeadCx: textCx(heads[2]), vongValCx: textCx(vongTd),
             cols: heads.map(x => x.textContent.replace(/[▾▸]/g, '').trim()),
-            rows: [...document.querySelectorAll('#calAmBan tbody tr')]
+            rows: [...document.querySelectorAll('#tcAmBody tbody tr')]
                 .map(tr => [...tr.cells].map(c => c.textContent.trim()).join(' | ')),
             active: (document.getElementById('calAmActive') || {}).textContent,
         };
@@ -233,50 +239,66 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         return key(c[2]) <= key(c[1]);
     });
     ok('Vọng luôn sau Sóc của cùng tháng', ngược.length === 0, ngược.slice(0, 2).join(' · '));
-    ok('có tô đậm tháng đang xem', !!cal.active, String(cal.active));
+    // Tra một NĂM bất kỳ thì không có "tháng đang xem" nào — cùng lý lẽ với ba
+    // bảng kia của tab này, nên KHÔNG mục nào được tô.
+    ok('không tô đậm tháng nào (tra theo năm, không theo tháng đang xem)',
+        !cal.active, String(cal.active));
     ok('không lỗi JS', errs.length === 0, errs.join('; '));
     await ctx.close();
 }
 
-/* ── 3. Gập/mở độc lập, cuộn được, nhớ trạng thái ── */
+/* ── 3. Mục Tiết khí: LUÔN MỞ, cuộn được, không gập lại được ── */
 {
     const ctx = await browser.newContext({ viewport: { width: 393, height: 790 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     const { page } = await openCal(ctx);
 
-    console.log('\nGập/mở hai mục');
+    console.log('\nMục Tiết khí luôn mở (tab Lịch nay chỉ còn MỘT mục)');
+    // Mục "Lịch âm" đã chuyển sang tab Tra cứu, và mục "Tiết khí" thì không gập
+    // được nữa — người dùng chốt "ô tiết khí từ giờ ko hide nữa mà luôn hiển
+    // thị, cho phép scroll up down". Nên mọi phép canh "hai mục chia nhau chiều
+    // cao", "đóng mục này không đụng mục kia" và "nhớ trạng thái gập" đều không
+    // còn đối tượng. Thay bằng thứ vẫn đúng và vẫn quan trọng: mục duy nhất còn
+    // lại phải lấy TRỌN ngân sách, cuộn được, và không đẩy trang tràn dọc.
     const state = () => page.evaluate(() => ({
         jq: document.getElementById('calSecJq').classList.contains('cal-sec-open'),
-        am: document.getElementById('calSecAm').classList.contains('cal-sec-open'),
+        am: !!document.getElementById('calSecAm'),
         jqH: Math.round(document.getElementById('calJieQi').clientHeight),
-        amH: Math.round(document.getElementById('calAmBan').clientHeight),
         jqScroll: document.getElementById('calJieQi').scrollHeight,
-        amScroll: document.getElementById('calAmBan').scrollHeight,
         over: document.documentElement.scrollHeight > window.innerHeight + 1,
     }));
-    await setOpen(page, 'jq', true); await setOpen(page, 'am', true);
+    await setOpen(page, 'jq', true);
     await page.waitForTimeout(700);
     const both = await state();
-    ok('mở được CẢ HAI cùng lúc', both.jq && both.am);
-    ok('cả hai đều có chiều cao thật', both.jqH > 40 && both.amH > 40, `${both.jqH} / ${both.amH}`);
+    ok('tab Lịch KHÔNG còn mục Lịch âm', !both.am);
+    ok('mục Tiết khí mở được', both.jq);
+    ok('…và có chiều cao thật', both.jqH > 40, String(both.jqH));
     ok('mục dài thì cuộn được', both.jqScroll > both.jqH, `${both.jqScroll} ≤ ${both.jqH}`);
-    ok('trang không tràn dọc khi mở cả hai', !both.over);
+    ok('trang không tràn dọc', !both.over);
 
-    await setOpen(page, 'jq', false);
-    await page.waitForTimeout(600);
-    const oneOpen = await state();
-    ok('đóng mục này không đụng mục kia', !oneOpen.jq && oneOpen.am);
-    // Đóng lại thì chỉ còn HÀNG TIÊU ĐỀ (trước đây thân bị display:none nên
-    // cao 0; nay tiêu đề nằm trong thân nên còn đúng chiều cao một hàng).
-    ok('mục đã đóng chỉ còn hàng tiêu đề', oneOpen.jqH > 10 && oneOpen.jqH < 46,
-        String(oneOpen.jqH));
-    ok('mục còn mở được rộng thêm', oneOpen.amH > both.amH, `${oneOpen.amH} ≤ ${both.amH}`);
+    // Bấm THẲNG vào hàng tiêu đề: không được gập gì cả. Đây là chỗ dễ hồi quy
+    // nhất — chỉ cần một người nghe click sót lại là mục lại gập được.
+    const sau = await page.evaluate(async () => {
+        const h = document.querySelector('#calSecJq .cal-sec-head');
+        h.click();
+        await new Promise(r => setTimeout(r, 400));
+        return {
+            mở: document.getElementById('calSecJq').classList.contains('cal-sec-open'),
+            cao: Math.round(document.getElementById('calJieQi').clientHeight),
+            trỏTay: getComputedStyle(h).cursor,
+        };
+    });
+    ok('bấm vào hàng tiêu đề KHÔNG gập mục lại', sau.mở && sau.cao > 40,
+        `mở=${sau.mở} cao=${sau.cao}`);
+    ok('…và hàng tiêu đề không còn giả vờ bấm được (không con trỏ tay)',
+        sau.trỏTay !== 'pointer', sau.trỏTay);
 
-    // Trạng thái phải sống sót qua lần mở sau (ghi vào kho tuỳ chọn).
+    // Không còn trạng thái gập nào để nhớ, nên tab Lịch không ghi khoá nào cả.
     const kept = await page.evaluate(() => ({
         jq: localStorage.getItem('qmdj.calSecJq'), am: localStorage.getItem('qmdj.calSecAm'),
     }));
-    check('nhớ trạng thái mục Tiết khí', kept.jq, '0');
-    check('nhớ trạng thái mục Lịch âm', kept.am, '1');
+    check('tab Lịch không còn ghi khoá gập/mở của Tiết khí', kept.jq, null);
+    // Mục Lịch âm đã rời tab Lịch, nên khoá của nó không còn được ghi ở đây.
+    check('không còn ghi khoá của mục đã rời đi', kept.am, null);
     await ctx.close();
 }
 
@@ -302,26 +324,24 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
             return el ? +el.getBoundingClientRect().top.toFixed(1) : null;
         };
         return {
-            jq: top('calSecJq'), am: top('calSecAm'),
+            jq: top('calSecJq'),
             rowH: getComputedStyle(document.documentElement).getPropertyValue('--cal-row-h').trim(),
         };
     });
 
-    // Mục ĐẦU TIÊN (Tiết khí): không có gì phía trên ngoài lưới lịch cố định,
-    // nên tiêu đề của nó phải đứng đúng MỘT chỗ qua toàn bộ 5 trạng thái sau,
-    // bất kể trạng thái của MỤC KIA.
+    // Tab Lịch nay chỉ còn MỘT mục (Tiết khí): không có gì phía trên nó ngoài
+    // lưới lịch cố định, nên tiêu đề của nó phải đứng đúng MỘT chỗ dù gập hay
+    // mở — kể cả khi gập/mở CHÍNH NÓ, vì tiêu đề luôn nằm TRÊN thân mục ấy.
     const seq = [];
-    // Trạng thái đầu tuỳ chiều cao máy (xem decideAmDefault) nên chỉ ghi
-    // "ban đầu"; các bước sau đều đặt trạng thái tường minh.
     seq.push(['ban đầu', await pos()]);
     await setOpen(page, 'jq', false); await page.waitForTimeout(500);
-    seq.push(['jq đóng · am đóng', await pos()]);
-    await setOpen(page, 'am', true); await page.waitForTimeout(500);
-    seq.push(['jq đóng · am mở', await pos()]);
+    seq.push(['jq đóng', await pos()]);
     await setOpen(page, 'jq', true); await page.waitForTimeout(500);
-    seq.push(['jq mở · am mở', await pos()]);
-    await setOpen(page, 'am', false); await page.waitForTimeout(500);
-    seq.push(['jq mở · am đóng (quay lại)', await pos()]);
+    seq.push(['jq mở', await pos()]);
+    await setOpen(page, 'jq', false); await page.waitForTimeout(500);
+    seq.push(['jq đóng lại', await pos()]);
+    await setOpen(page, 'jq', true); await page.waitForTimeout(500);
+    seq.push(['jq mở (quay lại)', await pos()]);
 
     const jqTops = seq.map(([, p]) => p.jq);
     const rowHs = seq.map(([, p]) => p.rowH);
@@ -330,18 +350,6 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         seq.map(([label, p]) => `${label}: ${p.jq}px`).join(' · '));
     ok('chiều cao hàng lưới (--cal-row-h) không đổi theo trạng thái gập/mở',
         rowHs.every(h => h === rowHs[0]), rowHs.join(' → '));
-
-    // Đóng/mở MỤC LỊCH ÂM (mục cuối) không được tự dịch chuyển TIÊU ĐỀ CỦA
-    // CHÍNH NÓ — vì tiêu đề luôn nằm TRÊN thân của chính mục ấy. Giữ nguyên
-    // trạng thái Tiết khí (đang mở) trong suốt phép so này.
-    const beforeAmToggle = await pos();
-    await setOpen(page, 'am', true); await page.waitForTimeout(500);
-    const amOpened = await pos();
-    await setOpen(page, 'am', false); await page.waitForTimeout(500);
-    const amClosed = await pos();
-    ok('gập/mở CHÍNH MÌNH không dịch chuyển tiêu đề của mục Lịch âm',
-        Math.abs(amOpened.am - beforeAmToggle.am) < 1 && Math.abs(amClosed.am - beforeAmToggle.am) < 1,
-        `trước ${beforeAmToggle.am}px · lúc mở ${amOpened.am}px · đóng lại ${amClosed.am}px`);
 
     ok('không lỗi JS', errs.length === 0, errs.join('; '));
     await ctx.close();
@@ -380,11 +388,12 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         };
         return {
             slack: +(dock.getBoundingClientRect().top / z - low).toFixed(1),
-            amOpen: document.getElementById('calSecAm').classList.contains('cal-sec-open'),
+            // Mục Lịch âm đã rời tab này — không còn gì để mở/đóng ở đây.
+            amOpen: false,
             amPref: localStorage.getItem('qmdj.calSecAm'),
-            jqH: h('calJieQi'), amH: h('calAmBan'),
-            amRows: (() => {
-                const box = document.getElementById('calAmBan');
+            jqH: h('calJieQi'), amH: 0,
+            jqRows: (() => {
+                const box = document.getElementById('calJieQi');
                 const c = box.getBoundingClientRect();
                 return [...box.querySelectorAll('tbody tr')].filter(r => {
                     const q = r.getBoundingClientRect();
@@ -404,9 +413,10 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         const g = await geom(page);
         ok(`${d.n}: không tràn xuống dưới thanh tab`, g.slack >= 0, `${g.slack}px`);
         ok(`${d.n}: không còn dải trống ở đáy`, g.slack <= 16, `còn thừa ${g.slack}px`);
-        ok(`${d.n}: máy đủ cao nên mở sẵn Lịch âm`, g.amOpen);
-        // Widget gập/mở theo ĐÚNG khoá này, nên chốt xong phải ghi ra.
-        check(`${d.n}: ghi khoá cho widget theo kịp`, g.amPref, '1');
+        // Tab Lịch nay chỉ còn MỘT mục, nên nó phải lấy TRỌN ngân sách: đủ chỗ
+        // cho nhiều hàng đọc được, không phải 65% như hồi phải chia đôi.
+        ok(`${d.n}: mục Tiết khí lấy trọn ngân sách (≥6 hàng)`, g.jqRows >= 6,
+            `${g.jqRows} hàng, cao ${g.jqH}px`);
         ok(`${d.n}: không lỗi JS`, errs.length === 0, errs.join('; '));
         await ctx.close();
     }
@@ -425,8 +435,8 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         // khí khi nó đóng (xem shareSectionHeight), nên đóng lại chỉ đổi lấy
         // một dải trống — đúng cái người dùng kêu. Hai phép kiểm dưới đây chặn
         // cả hai lối hỏng: mở mà rỗng, và đóng mà bỏ phí đáy màn hình.
-        ok('máy thấp 360×640: mở sẵn Lịch âm thì phải đủ hàng đọc được',
-            !g.amOpen || g.amRows >= 1, `mở=${g.amOpen} hàng=${g.amRows}`);
+        ok('máy thấp 360×640: mục Tiết khí vẫn có hàng đọc được', g.jqRows >= 1,
+            `${g.jqRows} hàng`);
         ok('máy thấp 360×640: không tràn xuống dưới thanh tab', g.slack >= 0, `${g.slack}px`);
         ok('máy thấp 360×640: không còn dải trống ở đáy', g.slack <= 16, `còn thừa ${g.slack}px`);
         ok('máy thấp 360×640: không lỗi JS', errs.length === 0, errs.join('; '));
@@ -457,6 +467,9 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
                 const z = parseFloat(getComputedStyle(document.body).zoom) || 1;
                 const one = id => {
                     const box = document.getElementById(id);
+                    // Mục Lịch âm đã rời tab này — gọi với id của nó thì không
+                    // có gì để đo, trả null như khi bảng chưa dựng.
+                    if (!box) return null;
                     const rows = [...box.querySelectorAll('tbody tr')];
                     if (!rows.length) return null;
                     const r0 = rows[0].getBoundingClientRect();
@@ -576,11 +589,12 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         await page.waitForTimeout(500);
 
         // (a) Hai bảng không bao giờ phải kéo ngang.
+        // Chỉ còn MỘT mục ở tab này (Lịch âm đã sang tab Tra cứu).
         const ngang = await page.evaluate(() => ['calJieQi', 'calAmBan'].map(id => {
             const b = document.getElementById(id);
-            return { id, thua: b.scrollWidth - b.clientWidth };
-        }));
-        ok(`${nm}: hai mục không phải kéo ngang`, ngang.every(x => x.thua <= 1),
+            return b ? { id, thua: b.scrollWidth - b.clientWidth } : null;
+        }).filter(Boolean));
+        ok(`${nm}: mục Tiết khí không phải kéo ngang`, ngang.every(x => x.thua <= 1),
             ngang.map(x => `${x.id} +${x.thua}`).join(' · '));
 
         // (b)(c) Đủ bốn tổ hợp gập/mở, không tổ hợp nào đẩy nội dung xuống
@@ -642,9 +656,9 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         await page.evaluate(() => { window.__tracuuYear(2026); window.showTab('tracuu'); });
         await page.waitForTimeout(1200);
 
-        // Đóng lại rồi cuộn xuống đáy — dựng đúng cái thế xấu ấy.
-        await page.evaluate(() => document.getElementById('lenhHead').click());
-        await page.waitForTimeout(600);
+        // Bốn mục của tab Tra cứu ĐÓNG SẴN sau khi chọn năm, nên chỉ cần cuộn
+        // xuống đáy là đã dựng đúng cái thế xấu: tiêu đề mục cuối nằm sát mép
+        // dưới, bấm mở ra thì phần vừa mở rơi hết xuống dưới màn hình.
         await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
         await page.waitForTimeout(500);
         const truoc = await page.evaluate(() => ({
@@ -777,82 +791,52 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
             return [...body.querySelectorAll('thead th')]
                 .map(x => +(x.getBoundingClientRect().left - left).toFixed(1));
         };
-        return { jq: one('calJieQi'), am: one('calAmBan') };
+        return { jq: one('calJieQi') };
     });
 
+    // Tab Lịch nay chỉ còn MỘT mục, nên chuỗi trạng thái rút còn mở ↔ đóng.
     const seq = [];
-    seq.push(['jq mở · am đóng (ban đầu)', await cols()]);
-    await setOpen(page, 'am', true); await page.waitForTimeout(500);
-    seq.push(['jq mở · am mở', await cols()]);
-    await setOpen(page, 'jq', false); await page.waitForTimeout(500);
-    seq.push(['jq đóng · am mở', await cols()]);
-    await setOpen(page, 'am', false); await page.waitForTimeout(500);
-    seq.push(['jq đóng · am đóng', await cols()]);
     await setOpen(page, 'jq', true); await page.waitForTimeout(500);
-    seq.push(['jq mở · am đóng (quay lại)', await cols()]);
+    seq.push(['jq mở', await cols()]);
+    await setOpen(page, 'jq', false); await page.waitForTimeout(500);
+    seq.push(['jq đóng', await cols()]);
+    await setOpen(page, 'jq', true); await page.waitForTimeout(500);
+    seq.push(['jq mở (quay lại)', await cols()]);
 
-    for (const k of ['jq', 'am']) {
-        const first = seq[0][1][k];
-        const worst = Math.max(...seq.map(([, p]) => Math.max(...p[k].map((v, i) => Math.abs(v - first[i])))));
-        ok(`${k === 'jq' ? 'Tiết khí' : 'Lịch âm'}: ba cột tiêu đề đứng yên ở cả 5 trạng thái`,
-            worst < 1,
-            seq.map(([label, p]) => `${label}: [${p[k].join(',')}]`).join(' · '));
+    {
+        const first = seq[0][1].jq;
+        const worst = Math.max(...seq.map(([, p]) => Math.max(...p.jq.map((v, i) => Math.abs(v - first[i])))));
+        ok('Tiết khí: ba cột tiêu đề đứng yên qua mọi trạng thái', worst < 1,
+            seq.map(([label, p]) => `${label}: [${p.jq.join(',')}]`).join(' · '));
     }
 
-    // Hai mục là HAI bảng riêng, nhưng nằm ngay trên dưới nhau nên phải thẳng
-    // cột với nhau: "Dương lịch" trên "Sóc", "Can chi" trên "Vọng". Để mỗi bảng
-    // tự co theo dữ liệu của mình thì lệch 9px và 89px trên máy 393px.
-    await setOpen(page, 'jq', true); await setOpen(page, 'am', true);
+    // Hai mục từng nằm trên dưới nhau nên phải thẳng cột với nhau; nay mục Lịch
+    // âm đã sang tab Tra cứu, không còn cặp nào để so. Phần còn giá trị là:
+    // bề rộng cột đã ghim phải ĐỦ RỘNG cho chữ — cột hẹp hơn chữ thì chữ tràn
+    // sang ô bên hoặc bị cắt, mà `white-space: nowrap` thì không xuống dòng.
+    await setOpen(page, 'jq', true);
     await page.waitForTimeout(700);
     const pair = await page.evaluate(() => {
-        const cx = el => {
-            const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-            const n = w.nextNode();
-            if (!n) return null;
-            const rg = document.createRange();
-            rg.selectNodeContents(n);
-            const b = rg.getBoundingClientRect();
-            return (b.left + b.right) / 2;
-        };
         const one = id => {
             const body = document.getElementById(id);
-            const bl = body.getBoundingClientRect().left;
-            const ths = [...body.querySelectorAll('thead th')];
             let spill = 0;
             for (const cell of body.querySelectorAll('th, td')) {
                 spill = Math.max(spill, cell.scrollWidth - cell.clientWidth);
             }
-            return {
-                edges: ths.map(x => +(x.getBoundingClientRect().left - bl).toFixed(1)),
-                headCx: ths.map(cx),
-                spill,
-            };
+            return { spill };
         };
-        return { jq: one('calJieQi'), am: one('calAmBan') };
+        return { jq: one('calJieQi') };
     });
-    ok('mép ba cột của hai mục trùng nhau',
-        pair.jq.edges.every((v, i) => Math.abs(v - pair.am.edges[i]) < 1),
-        `Tiết khí [${pair.jq.edges}] · Lịch âm [${pair.am.edges}]`);
-    ok('"Dương lịch" thẳng cột với "Sóc"',
-        Math.abs(pair.jq.headCx[1] - pair.am.headCx[1]) <= 1.5,
-        `${pair.jq.headCx[1]?.toFixed(1)} vs ${pair.am.headCx[1]?.toFixed(1)}`);
-    ok('"Can chi" thẳng cột với "Vọng"',
-        Math.abs(pair.jq.headCx[2] - pair.am.headCx[2]) <= 1.5,
-        `${pair.jq.headCx[2]?.toFixed(1)} vs ${pair.am.headCx[2]?.toFixed(1)}`);
-    // Ghim bề rộng cột thì phải ghim ĐỦ RỘNG: cột hẹp hơn chữ là chữ tràn sang
-    // ô bên hoặc bị cắt, mà `white-space: nowrap` thì không xuống dòng được.
-    ok('không ô nào có chữ rộng hơn cột của nó',
-        Math.max(pair.jq.spill, pair.am.spill) <= 0.5,
-        `thừa ${Math.max(pair.jq.spill, pair.am.spill).toFixed(1)}px`);
-    await setOpen(page, 'am', false);
-    await page.waitForTimeout(500);
-
-    // Đóng lại vẫn phải là ĐÓNG: kẹp chiều cao chứ không phải để lộ cả bảng.
+    ok('không ô nào có chữ rộng hơn cột của nó', pair.jq.spill <= 0.5,
+        `thừa ${pair.jq.spill}px`);
+    // Dù đổi ngôn ngữ hay đổi tháng, mục vẫn MỞ và vẫn đủ 24 hàng — nó không
+    // còn đường nào để đóng lại.
     const shut = await page.evaluate(() => {
-        const b = document.getElementById('calAmBan');
+        const b = document.getElementById('calJieQi');
         return { h: Math.round(b.clientHeight), scroll: b.scrollHeight, rows: b.querySelectorAll('tbody tr').length };
     });
-    ok('mục đóng vẫn chỉ cao đúng hàng tiêu đề', shut.h > 10 && shut.h < 46, String(shut.h));
+    ok('mục vẫn mở và cao thật', shut.h > 40, String(shut.h));
+    check('…và vẫn đủ 24 hàng', shut.rows, 24);
     ok('…dù bảng bên trong vẫn còn đủ hàng (thứ giữ bề rộng cột)',
         shut.rows > 6 && shut.scroll > shut.h, `${shut.rows} hàng, scrollHeight ${shut.scroll}`);
     ok('không lỗi JS', errs.length === 0, errs.join('; '));
@@ -923,7 +907,6 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     console.log('\nCuộn: hàng tiêu đề dính lại');
     await page.evaluate(() => {
         document.getElementById('calJieQi').scrollTop = 200;
-        document.getElementById('calAmBan').scrollTop = 120;
     });
     await page.waitForTimeout(400);
     const r = await page.evaluate(() => {
@@ -940,9 +923,9 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
                 tops,
             };
         };
-        return { jq: chk('calJieQi'), am: chk('calAmBan') };
+        return { jq: chk('calJieQi') };
     });
-    for (const [name, x] of [['Tiết khí', r.jq], ['Lịch âm', r.am]]) {
+    for (const [name, x] of [['Tiết khí', r.jq]]) {
         ok(`${name}: thật sự đã cuộn`, x.scrolled > 50, String(x.scrolled));
         ok(`${name}: mọi ô tiêu đề đều sticky`, x.sticky);
         ok(`${name}: ba ô tiêu đề cùng một hàng`, x.sameTop, x.tops.join(','));
@@ -1015,14 +998,12 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     // Lỗi từng lọt lưới: khối "công bố lúc mở app" bị đặt NHẦM vào trong
     // toggleSection (chỉ chạy khi người dùng bấm mở/đóng mục), thay vì vào
     // đúng chỗ chạy một lần lúc khởi động — nên ai ghim widget rồi không đụng
-    // gì tới app thì widget không bao giờ nhận được bảng cả. Đo vị trí thật
-    // trong mã nguồn, không suy đoán qua hành vi (dễ bị một đường công bố
-    // khác của app.js che khuất mất sự khác biệt).
-    const toggleBody = (/function toggleSection\(which\) \{[\s\S]*?\n    \}/.exec(calJs) || [''])[0];
-    ok('toggleSection không tự công bố (đó là việc của lúc mở app, không phải lúc bấm)',
-        toggleBody.length > 0 && !/publishLunarCache/.test(toggleBody));
-    ok('có khối công bố kèm hẹn giờ Ở NGOÀI toggleSection (chạy lúc mở app)',
-        /setTimeout\(function \(\) \{[\s\S]{0,40}try \{ publishLunarCache\(\); \}/.test(calJs.replace(toggleBody, '')));
+    // gì tới app thì widget không bao giờ nhận được bảng cả. toggleSection đã
+    // bị gỡ hẳn (mục Tiết khí không gập được nữa), nên nay canh trực tiếp: khối
+    // công bố nằm trong nhánh khởi động, và KHÔNG còn hàm gập/mở nào.
+    ok('không còn hàm gập/mở nào ở tab Lịch', !/function toggleSection\(/.test(calJs));
+    ok('có khối công bố kèm hẹn giờ chạy lúc mở app',
+        /setTimeout\(function \(\) \{[\s\S]{0,40}try \{ publishLunarCache\(\); \}/.test(calJs));
 
     // Lỗi khác từng lọt lưới: chưa chọn địa điểm (hoặc múi giờ máy không
     // khớp mục nào trong countryData) thì Kotlin xưa chốt cứng giờ VIỆT NAM,
@@ -1036,39 +1017,41 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     check('cả ba lượt "chưa có gì" đều rơi về múi giờ máy',
         (selectedTzFn.match(/TimeZone\.getDefault\(\)/g) || []).length, 3);
 
-    /* ── Widget phải hiện ĐÚNG hai mục của tab Lịch ── */
-    console.log('\nWidget dựng đúng hai mục của tab Lịch');
+    /* ── Widget phải hiện ĐÚNG mục duy nhất của tab Lịch ── */
+    console.log('\nWidget dựng đúng mục Tiết khí của tab Lịch');
     ok('mục Tiết khí có cột CAN CHI THÁNG', /LunarTable\.ganZhi60\(it\.gz, zh\)/.test(secKt));
-    ok('có mục Lịch âm với Sóc và Vọng',
-        /stamp\(it\.socJdn, it\.socMin, tz\)/.test(secKt) &&
-        /stamp\(it\.vongJdn, it\.vongMin, tz\)/.test(secKt));
-    // Trạng thái gập/mở phải ĐỌC TỪ chính hai khoá mà calendar.js ghi.
+    // Mục "Lịch âm" đã sang tab Tra cứu và BỎ HẲN khỏi lịch đã ghim: widget
+    // không được còn chỗ nào dựng bảng Sóc/Vọng, và cũng không còn khoá riêng
+    // cho nó — sót lại là widget vẫn vẽ mục người dùng đã bảo bỏ.
+    ok('KHÔNG còn mục Lịch âm (Sóc/Vọng) trong widget',
+        !/socJdn/.test(secKt) && !/vongJdn/.test(secKt));
+    ok('…và không còn khoá gập/mở riêng của nó',
+        !/SEC_AM/.test(supKt) && !/W_AM/.test(supKt));
+    // Trạng thái gập/mở phải ĐỌC TỪ chính khoá mà calendar.js ghi.
     check('widget đọc khoá gập/mở của mục Tiết khí',
         /SEC_JQ = "([^"]+)"/.exec(supKt)?.[1], 'qmdj.calSecJq');
-    check('widget đọc khoá gập/mở của mục Lịch âm',
-        /SEC_AM = "([^"]+)"/.exec(supKt)?.[1], 'qmdj.calSecAm');
-    ok('…và mặc định khớp calendar.js (Tiết khí mở, Lịch âm đóng)',
-        /getString\(SEC_JQ, null\) != "0"/.test(supKt) &&
-        /getString\(SEC_AM, null\) == "1"/.test(supKt));
-    // Ghi khoá thôi chưa đủ: widget chỉ tự vẽ lại lúc nửa đêm.
-    const toggleFn = (/function toggleSection\(which\) \{[\s\S]*?\n    \}/.exec(calJs) || [''])[0];
-    ok('bấm gập/mở trong ứng dụng thì bảo widget vẽ lại ngay',
-        /pokeWidget\(\)/.test(toggleFn));
+    ok('…và mặc định khớp calendar.js (Tiết khí mở sẵn)',
+        /getString\(key, null\) != "0"/.test(supKt));
+    // Gập/mở nay CHỈ còn ở widget (lịch đã ghim thì nhỏ, giấu bảng đi cho lưới
+    // rộng ra là việc có lý ở đó) — ứng dụng không còn ghi khoá ấy nữa, nên
+    // cũng không còn phải đánh thức widget vì một cú bấm gập/mở.
+    ok('ứng dụng không còn ghi khoá gập/mở của widget',
+        !/prefSet\(K_SEC_JQ/.test(calJs));
 
     /* ── Widget dùng được bằng ngón tay, không phải ảnh tĩnh ── */
     console.log('\nWidget cuộn được và chạm được');
     // Cuộn chỉ có trong collection view do RemoteViewsService nuôi.
-    ok('hai mục là ListView, không còn vẽ vào bitmap',
+    ok('mục Tiết khí là ListView, không còn vẽ vào bitmap',
         /<ListView[\s\S]{0,200}@\+id\/jqList/.test(layXml) &&
-        /<ListView[\s\S]{0,200}@\+id\/amList/.test(layXml) &&
+        !/@\+id\/amList/.test(layXml) &&
         !/fun drawSections\(/.test(widgetKt));
-    ok('có RemoteViewsService nuôi hàng cho hai mục',
+    ok('có RemoteViewsService nuôi hàng cho mục ấy',
         /class WidgetSectionService : RemoteViewsService\(\)/.test(svcKt) &&
         /RemoteViewsFactory/.test(svcKt));
     ok('manifest khai service kèm quyền BIND_REMOTEVIEWS (thiếu là mục trống trơn)',
         /<service[\s\S]{0,260}\.WidgetSectionService[\s\S]{0,260}android\.permission\.BIND_REMOTEVIEWS/
             .test(manifest));
-    ok('provider nối adapter cho cả hai ListView',
+    ok('provider nối adapter cho ListView ấy',
         /setRemoteAdapter\(sv\.listId, sectionIntent\(context, id, sv\.key\)\)/.test(provKt));
     // filterEquals bỏ qua extras: hai mục chỉ khác extras thì dùng chung một
     // factory và cùng hiện một bảng.
@@ -1076,7 +1059,7 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         /setData\(Uri\.parse\("qmdj:\/\/widget\/\$id\/sec\/\$key"\)\)/.test(provKt));
     ok('bảo factory đọc lại sau mỗi lần vẽ',
         /notifyAppWidgetViewDataChanged\(id, R\.id\.jqList\)/.test(provKt) &&
-        /notifyAppWidgetViewDataChanged\(id, R\.id\.amList\)/.test(provKt));
+        !/R\.id\.amList/.test(provKt));
     ok('mục đang mở thì cuộn tới hàng đang hiệu lực',
         /setScrollPosition\(sv\.listId, sec\.active\)/.test(provKt));
 
@@ -1096,9 +1079,9 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
        Lỗi người dùng gặp: "trong lịch đã ghim, mục Tiết khí không mở ra được".
        Widget vốn chỉ SOI trạng thái của ứng dụng, không có chỗ nào bấm để lật —
        ai lỡ gập Tiết khí trong ứng dụng thì ngoài màn hình chính đành chịu. */
-    ok('hàng tiêu đề hai mục bấm được',
+    ok('hàng tiêu đề mục ấy bấm được',
         /setOnClickPendingIntent\(sv\.headId/.test(provKt)
-        && /R\.id\.jqHead\b/.test(provKt) && /R\.id\.amHead\b/.test(provKt));
+        && /R\.id\.jqHead\b/.test(provKt) && !/R\.id\.amHead\b/.test(provKt));
     ok('bấm vào là lật đúng khoá mà tab Lịch đọc',
         /ACTION_SEC/.test(provKt) && /WidgetPrefs\.toggleSec\(context, key\)/.test(provKt)
         && /putString\(key, if \(secOpen\(context, key\)\) "0" else "1"\)/.test(supKt));
@@ -1106,8 +1089,10 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
         /ACTION_SEC -> \{[\s\S]{0,400}?refreshAll\(context\)/.test(provKt));
     ok('manifest khai action gập/mở',
         /com\.bazi\.qimen\.WIDGET_SEC/.test(manifest));
-    ok('hai hàng tiêu đề dùng hai PendingIntent khác nhau',
-        /toggle\/\$key/.test(provKt) && /if \(key == WidgetPrefs\.SEC_JQ\) 4 else 5/.test(provKt));
+    ok('nút gập/mở có requestCode riêng, không đụng ‹ › hay ô ngày',
+        /toggle\/\$key/.test(provKt) && /SEC_TOGGLE_CODE = (\d+)/.test(provKt)
+        && +/SEC_TOGGLE_CODE = (\d+)/.exec(provKt)[1] < +/CELL_CODE_BASE = (\d+)/.exec(provKt)[1]
+        && +/SEC_TOGGLE_CODE = (\d+)/.exec(provKt)[1] > 3);
     ok('tiêu đề có dấu ▾/▸ cho biết bấm được', /"  ▾" else "  ▸"/.test(provKt));
 
     /* ── Mục dựng hụt không được để lại ListView mồ côi ──
@@ -1115,7 +1100,7 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
        Vòng vẽ mà duyệt theo `secs` thì ListView của mục ấy giữ nguyên trạng
        thái mặc định của XML — đang HIỆN, KHÔNG có adapter — thành một mảng
        trắng chiếm chỗ mà chẳng bao giờ có hàng nào. */
-    ok('vòng vẽ duyệt danh sách CỐ ĐỊNH hai mục, không duyệt theo secs',
+    ok('vòng vẽ duyệt danh sách CỐ ĐỊNH các mục, không duyệt theo secs',
         /for \(sv in SECTION_VIEWS\)/.test(provKt) && !/for \(sec in secs\)/.test(provKt));
     ok('mục không dựng được thì ẩn cả tiêu đề lẫn danh sách',
         /setViewVisibility\(sv\.headId, if \(sec == null\)/.test(provKt)
@@ -1137,9 +1122,8 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     const headW = (layXml.match(/android:layout_weight="(27|35|38)"/g) || [])
         .map(w => +/\d+/.exec(w)[0]);
     ok('hàng giá trị có đúng ba cột theo weight', rowW.length === 3, rowW.join(':'));
-    ok('hai hàng tiêu đề dùng ĐÚNG bộ weight ấy',
-        headW.length === 6 && headW.slice(0, 3).join() === rowW.join() &&
-        headW.slice(3).join() === rowW.join(),
+    ok('hàng tiêu đề (nay chỉ một) dùng ĐÚNG bộ weight ấy',
+        headW.length === 3 && headW.join() === rowW.join(),
         `hàng ${rowW.join(':')} · tiêu đề ${headW.join(':')}`);
     // Kotlin tính chiều cao bitmap lưới từ chính những con số của XML.
     const dimens = read('app/src/main/res/values/dimens.xml');
@@ -1158,7 +1142,6 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
     const frame = /<FrameLayout[\s\S]{0,240}?android:layout_weight="(\d+)"/.exec(layXml);
     check('Kotlin biết đúng phần chia của lưới lịch', konst('W_GRID'), frame ? +frame[1] : null);
     check('…của mục Tiết khí', konst('W_JQ'), blockW('ListView', 'jqList'));
-    check('…của mục Lịch âm', konst('W_AM'), blockW('ListView', 'amList'));
 
     /* ── Báo thức nửa đêm phải sống sót qua reboot ── */
     console.log('\nWidget không kẹt ở ngày cũ');
@@ -1198,6 +1181,7 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
             const z = parseFloat(getComputedStyle(document.body).zoom) || 1;
             return ['calJieQi', 'calAmBan'].map(id => {
                 const box = document.getElementById(id);
+                if (!box) return null;        // mục Lịch âm đã rời tab này
                 const thead = box.querySelector('thead');
                 const row = box.querySelector('tbody tr');
                 if (!thead || !row) return null;
@@ -1224,5 +1208,5 @@ const setOpen = (page, which, want) => page.evaluate(([w, v]) => {
 await browser.close();
 server.close();
 console.log(`\n${pass} đạt · ${fail} hỏng`);
-console.log(fail ? '✗ HỎNG' : '✓ Hai mục của tab Lịch đúng, và widget theo kịp ngôn ngữ');
+console.log(fail ? '✗ HỎNG' : '✓ Mục Tiết khí của tab Lịch đúng, và widget theo kịp ngôn ngữ');
 process.exit(fail ? 1 : 0);

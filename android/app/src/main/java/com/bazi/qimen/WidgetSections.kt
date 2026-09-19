@@ -79,41 +79,10 @@ object WidgetSections {
             ))
         }
 
-        val lunarYear = LunarTable.lunarYearOf(ref, tz)
-        val months = if (lunarYear == null) emptyList<LunarTable.Month>()
-                     else LunarTable.monthsOfYear(lunarYear)
-        if (months.isNotEmpty()) {
-            val at = LunarTable.lunarOf(anchorJdn, tz)
-            val sameYear = LunarTable.lunarYearOf(anchorJdn, tz) == lunarYear
-            var active = -1
-            if (at != null && sameYear) {
-                for (i in months.indices) {
-                    if (months[i].month == at.month && months[i].leap == at.leap) {
-                        active = i; break
-                    }
-                }
-            }
-            val leap = if (zh) "闰" else context.getString(R.string.leap)
-            out.add(Sec(
-                AM,
-                arrayOf(
-                    if (zh) "农历月" else context.getString(R.string.col_month),
-                    if (zh) "朔" else context.getString(R.string.col_soc),
-                    if (zh) "望" else context.getString(R.string.col_vong),
-                ),
-                months.map {
-                    arrayOf(
-                        monthLabel(context, it.month, it.leap, zh, leap),
-                        LunarTable.stamp(it.socJdn, it.socMin, tz),
-                        LunarTable.stamp(it.vongJdn, it.vongMin, tz),
-                    )
-                },
-                active,
-                WidgetPrefs.secOpen(context, WidgetPrefs.SEC_AM),
-                Color.parseColor("#EEF1FD"), Color.parseColor("#283593"),
-                Color.parseColor("#3949AB"),
-            ))
-        }
+        // Mục "Lịch âm" đã CHUYỂN sang tab Tra cứu của ứng dụng, và bỏ hẳn khỏi
+        // lịch đã ghim — người dùng chốt: widget chỉ còn lưới lịch và bảng tiết
+        // khí. Khoá SEC_AM đã bỏ theo; hằng số AM còn lại chỉ để một widget bản
+        // cũ chưa kịp vẽ lại không vỡ khi đọc phải khoá mục lạ trong Intent.
         return out
     }
 

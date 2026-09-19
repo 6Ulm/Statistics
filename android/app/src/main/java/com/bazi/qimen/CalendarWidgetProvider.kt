@@ -63,7 +63,7 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             ACTION_REFRESH -> refreshAll(context)
             ACTION_SEC -> {
                 val key = intent.getStringExtra(EXTRA_SEC_KEY)
-                if (key != WidgetPrefs.SEC_JQ && key != WidgetPrefs.SEC_AM) return
+                if (key != WidgetPrefs.SEC_JQ) return
                 WidgetPrefs.toggleSec(context, key)
                 // Gập/mở là trạng thái CHUNG của ứng dụng chứ không của riêng
                 // một widget (tab Lịch đọc cùng khoá ấy), nên vẽ lại tất cả.
@@ -140,7 +140,6 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         val selJdn = WidgetPrefs.selectedJdn(context, id)
         val secs = WidgetSections.build(context, year, month, WidgetPrefs.anchorJdn(context, id))
         val jqOpen = secs.firstOrNull { it.key == WidgetSections.JQ }?.open ?: false
-        val amOpen = secs.firstOrNull { it.key == WidgetSections.AM }?.open ?: false
 
         val views = RemoteViews(context.packageName, R.layout.widget_calendar)
         views.setTextViewText(
@@ -160,7 +159,7 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         }
 
         // lưới lịch — bitmap vẽ vừa đúng khung mà layout_weight chừa cho nó
-        val gridDp = WidgetLayout.gridHeightDp(hDp, jqOpen, amOpen)
+        val gridDp = WidgetLayout.gridHeightDp(hDp, jqOpen)
         views.setImageViewBitmap(
             R.id.widgetImage,
             drawGrid(context, wDp, gridDp, year, month, todayJdn, selJdn)
@@ -220,7 +219,6 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         // Bảo hai factory đọc lại: tháng, ngày đang chọn, ngôn ngữ hay địa điểm
         // đều có thể vừa đổi. Phải gọi SAU updateAppWidget.
         manager.notifyAppWidgetViewDataChanged(id, R.id.jqList)
-        manager.notifyAppWidgetViewDataChanged(id, R.id.amList)
     }
 
     /** Ngày Julius của ô ĐẦU TIÊN trong lưới (thường thuộc tháng trước). */
@@ -279,7 +277,7 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             .putExtra(EXTRA_SEC_KEY, key)
         return PendingIntent.getBroadcast(
             context,
-            id * CODES_PER_WIDGET + if (key == WidgetPrefs.SEC_JQ) 4 else 5,
+            id * CODES_PER_WIDGET + SEC_TOGGLE_CODE,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -487,13 +485,13 @@ class CalendarWidgetProvider : AppWidgetProvider() {
          * nhau cùng nhảy tháng với nhau.
          */
         private const val CODES_PER_WIDGET = 64
+        private const val SEC_TOGGLE_CODE = 4
         private const val CELL_CODE_BASE = 8
 
         private val DOW_IDS = intArrayOf(
             R.id.dow0, R.id.dow1, R.id.dow2, R.id.dow3, R.id.dow4, R.id.dow5, R.id.dow6
         )
         private val JQ_HEAD_IDS = intArrayOf(R.id.jqHead0, R.id.jqHead1, R.id.jqHead2)
-        private val AM_HEAD_IDS = intArrayOf(R.id.amHead0, R.id.amHead1, R.id.amHead2)
 
         /** Mọi id của MỘT mục, để vòng vẽ không phải rẽ nhánh theo khoá. */
         private class SecViews(
@@ -503,7 +501,6 @@ class CalendarWidgetProvider : AppWidgetProvider() {
 
         private val SECTION_VIEWS = listOf(
             SecViews(WidgetSections.JQ, WidgetPrefs.SEC_JQ, R.id.jqHead, JQ_HEAD_IDS, R.id.jqList),
-            SecViews(WidgetSections.AM, WidgetPrefs.SEC_AM, R.id.amHead, AM_HEAD_IDS, R.id.amList),
         )
 
         /** 42 ô của lưới bắt chạm, theo thứ tự đọc (hàng rồi cột). */

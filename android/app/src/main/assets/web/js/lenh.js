@@ -88,6 +88,11 @@
         return (typeof TK_VI !== 'undefined') ? TK_VI[k] : '';
     }
 
+    /** Tô can chi theo ngũ hành. Không có nguhanh.js thì trả về chữ đã thoát. */
+    function nh(s) {
+        return (window.NguHanh) ? window.NguHanh.paint(s) : esc(s);
+    }
+
     function esc(s) {
         return String(s).replace(/[&<>"]/g, function (c) {
             return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
@@ -642,11 +647,13 @@
                 rows += '<tr class="' + (alt ? 'dp-row-alt' : '') + (on ? ' lenh-on' : '') + '"' +
                     (on ? ' id="lenhActive"' : '') + '>';
                 if (j === 0) {
+                    // Chi của tháng tô theo ngũ hành; TÊN TIẾT ("Lập Xuân") thì
+                    // không — nó không phải can chi.
                     rows += '<td class="lenh-mon" rowspan="' + mo.parts.length + '">' +
-                        esc(chiName(mo.chi)) +
+                        nh(chiName(mo.chi)) +
                         ' <span class="lenh-jie">(' + esc(jieName(mo.jie)) + ')</span></td>';
                 }
-                rows += '<td class="c lenh-can">' + esc(canName(p.can)) + '</td>' +
+                rows += '<td class="c lenh-can">' + nh(canName(p.can)) + '</td>' +
                     '<td class="c dp-num lenh-lon">' + (p.to - p.from) + '</td>' +
                     '<td class="c dp-num">' + esc(fmtLocal(p.jdFrom, tzId, Y)) + '</td>' +
                     '<td class="c dp-num lenh-last">' + esc(fmtLocal(p.jdTo, tzId, Y)) + '</td>' +
@@ -737,7 +744,8 @@
             // thừa. pillarText/pillar vẫn tính (đại vận grid dùng riêng của
             // nó, độc lập — xem buildDaiVanBang()), chỉ không hiện dòng này.
             var lệnhLine = esc(t('now')) + (isZH() ? '：' : ': ') +
-                '<b id="lenhNowVal">' + esc(active ? canName(active.part.can) : '—') + '</b>';
+                '<b id="lenhNowVal">' +
+                (active ? nh(canName(active.part.can)) : '—') + '</b>';
             var vanLine = vanText
                 ? ' · ' + esc(t('daiVan')) + (isZH() ? '：' : ': ') +
                   '<b id="lenhDaiVanVal">' + esc(vanText) + '</b>'
@@ -782,20 +790,20 @@
                 var k = hang * 5 + cot;
                 var đv = bang[k];
                 var chứaNămNay = todayY >= đv.years[0].y && todayY <= đv.years[9].y;
-                html += '<div class="dv-card' + (chứaNămNay ? ' dv-current' : '') + '"' +
+                html += '<div class="dv-card" data-dv="' + k + '"' +
                     (chứaNămNay ? ' id="daiVanCurrent"' : '') + '>' +
                     '<div class="dv-card-head">' +
                     '<span class="dv-line1">' + pad2(đv.startM) + '/' + đv.startY +
                     ' - ' + đv.tuoi + (isZH() ? '岁' : 't') + '</span>' +
-                    '<span class="dv-line2">' + esc(canName(đv.can) + (isZH() ? '' : ' ') + chiName(đv.chi)) +
+                    '<span class="dv-line2">' + nh(canName(đv.can) + (isZH() ? '' : ' ') + chiName(đv.chi)) +
                     '</span></div>';
                 for (var i = 0; i < đv.years.length; i++) {
                     var yr = đv.years[i];
                     var lànNămNay = yr.y === todayY;
-                    html += '<div class="dv-row' + (lànNămNay ? ' dv-row-on' : '') + '"' +
+                    html += '<div class="dv-row" data-yr="' + i + '"' +
                         (lànNămNay ? ' id="daiVanYearOn"' : '') + '>' +
                         '<span class="dv-year">' + yr.y + '</span>' +
-                        '<span class="dv-cc">' + esc(canName(yr.cc.can) + (isZH() ? '' : ' ') + chiName(yr.cc.chi)) + '</span>' +
+                        '<span class="dv-cc">' + nh(canName(yr.cc.can) + (isZH() ? '' : ' ') + chiName(yr.cc.chi)) + '</span>' +
                         '</div>';
                 }
                 html += '</div>';
@@ -804,7 +812,59 @@
         }
         html += '</div>';
         box.innerHTML = html;
+
+        // Lá số vừa dựng lại: chọn mặc định là NĂM NAY và đại vận chứa nó —
+        // đúng như trước khi có thao tác chọn tay.
+        selCard = -1; selRow = -1;
+        for (var c = 0; c < bang.length; c++) {
+            for (var r = 0; r < bang[c].years.length; r++) {
+                if (bang[c].years[r].y === todayY) { selCard = c; selRow = r; break; }
+            }
+            if (selCard >= 0) break;
+        }
+        applyDaiVanSel();
     }
+
+    /* ─────────────── Chọn lưu niên ───────────────
+     * Mặc định là năm nay + đại vận chứa nó. Người dùng chạm được:
+     *   · chạm ĐẦU THẺ  → tô thẻ ấy, và KHÔNG lưu niên nào được tô (nền trắng
+     *                     cả mười) — đầu thẻ không nói gì về một năm cụ thể.
+     *   · chạm MỘT LƯU NIÊN → tô cả đầu thẻ lẫn đúng hàng ấy.
+     * Cùng một kiểu tô cho cả hai, chỉ khác phạm vi. */
+    var selCard = -1, selRow = -1;
+
+    function applyDaiVanSel() {
+        var box = document.getElementById('daiVanBody');
+        if (!box) return;
+        var cards = box.querySelectorAll('.dv-card');
+        for (var i = 0; i < cards.length; i++) {
+            var đang = (+cards[i].getAttribute('data-dv') === selCard);
+            cards[i].classList.toggle('dv-current', đang);
+            var rows = cards[i].querySelectorAll('.dv-row');
+            for (var j = 0; j < rows.length; j++) {
+                rows[j].classList.toggle('dv-row-on',
+                    đang && selRow >= 0 && +rows[j].getAttribute('data-yr') === selRow);
+            }
+        }
+    }
+
+    function onDaiVanTap(e) {
+        var box = document.getElementById('daiVanBody');
+        if (!box || !e.target.closest) return;
+        var card = e.target.closest('.dv-card');
+        if (!card || !box.contains(card)) return;
+        var row = e.target.closest('.dv-row');
+        var c = +card.getAttribute('data-dv');
+        if (row && card.contains(row)) {
+            selCard = c; selRow = +row.getAttribute('data-yr');
+        } else {
+            // Chạm đầu thẻ (hoặc chỗ trống trong thẻ): chọn thẻ, bỏ chọn năm.
+            selCard = c; selRow = -1;
+        }
+        applyDaiVanSel();
+    }
+    /** Chỉ dùng cho bộ kiểm thử. */
+    window.__daiVanSel = function () { return { card: selCard, row: selRow }; };
 
     /**
      * Cuộn khối Đại Vận tới đúng thẻ đang sống — 100 năm mà phải tự dò thì
@@ -1164,6 +1224,13 @@
             wrappedToggle.__lenhWrapped = true;
             window.toggleDetailPanel = wrappedToggle;
         }
+    });
+
+    // Uỷ quyền ở khối CHA: #daiVanBody được dựng lại sau mỗi lần vẽ, gắn thẳng
+    // vào từng thẻ thì cứ đổi ngày là mất người nghe.
+    document.addEventListener('DOMContentLoaded', function () {
+        var box = document.getElementById('daiVanBody');
+        if (box) box.addEventListener('click', onDaiVanTap);
     });
 
     window.addEventListener('resize', function () {

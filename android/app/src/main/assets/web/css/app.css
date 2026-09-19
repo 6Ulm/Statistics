@@ -58,7 +58,6 @@
             border-radius: var(--panel-radius);
             background: var(--bg-white, #fff);
             padding: 4px 8px;
-            margin-top: 2px;
         }
 
         /* ── Controls Panel ── */
@@ -289,16 +288,50 @@
         .lang-zh .cell      { aspect-ratio: 1; grid-template-rows: repeat(4, .8fr); }
         .lang-zh .sub-cell  { font-size: clamp(13px, 5vw, 18px); }
         .lang-zh .pos-lt-num { font-size: clamp(13px, 4vw, 17px) !important; }
-        .lang-vi .sub-cell  { font-size: clamp(9px, 2.8vw, 13px); white-space: normal; word-break: break-word; line-height: 1.1; }
-        .lang-vi .pos-mon, .lang-vi .pos-can-thien, .lang-vi .pos-can-dia,
-        .lang-vi .pos-than-thien, .lang-vi .pos-tinh { font-size: clamp(10px, 3.3vw, 15px); }
+        /* ══ Cỡ chữ bàn Kỳ Môn ở TIẾNG VIỆT ══
+           Chọn tử phải là `body:not(.lang-zh)`, KHÔNG phải `.lang-vi`: lớp
+           `lang-vi` không bao giờ được gắn — app.js chỉ bật/tắt `lang-zh`, còn
+           tiếng Việt là trạng thái KHÔNG có lớp nào (xem chú thích đầu
+           index.html). Mọi luật `.lang-vi …` trong tệp này vì thế là mã chết,
+           và bàn tiếng Việt vẫn đang chạy bằng cỡ nền của .sub-cell
+           (clamp 8–10px) — bé hơn hẳn tiếng Trung (13–18px). Đó là lý do chữ
+           can/môn/thần/tinh trông nhỏ.
+
+           Cỡ chốt bằng ĐO, không bằng ước: quét hệ số vw trên bốn bề ngang
+           (320/360/384/412) × ba phái × hai chế độ "Đầy đủ" × bốn lá số cho ra
+           tổ hợp chữ khác nhau, lấy mức cao nhất mà KHÔNG nhãn nào thò khỏi ô
+           lưới của nó, không thò khỏi viền cell, và không hộp chữ nào đè lên
+           hộp chữ khác trong cùng một cell. */
+        body:not(.lang-zh) .sub-cell {
+            font-size: clamp(9px, 2.8vw, 13px);
+            white-space: normal; word-break: break-word; line-height: 1.1;
+        }
+        /* 3,15vw chứ không 3,3vw. Ở 3,3vw không nhãn nào THÒ khỏi ô — phép
+           quét cũ chỉ hỏi chừng ấy — nhưng nhãn dài nhất bị BẺ GIỮA CHỪNG:
+           "Thương" xuống dòng thành "Thươn"/"g" ở cả năm bề ngang, và ở
+           320/360px thì "Nhuế", "Cảnh", "Khai", "Kinh", "Anh", "Tâm" (bản đậm,
+           rộng hơn) cũng vậy. Quét lại bằng `Range.getClientRects().length > 1`
+           trên 5 bề ngang × 4 lá số × 3 phái: 3,3vw → 66 chỗ bẻ, 3,15vw → 0
+           (trừ "Nhuế" ở 320px, nơi sàn 10px của clamp đã chặn, xem dưới). */
+        body:not(.lang-zh) .pos-mon, body:not(.lang-zh) .pos-can-thien,
+        body:not(.lang-zh) .pos-can-dia, body:not(.lang-zh) .pos-than-thien,
+        body:not(.lang-zh) .pos-tinh { font-size: clamp(10px, 3.3vw, 15px); }
+        /* Chú ý: bộ số này chỉ có tác dụng ở chế độ "ĐẦY ĐỦ" — chế độ mặc định
+           là "Cơ bản" và nó có luật riêng, đặc thù hơn (xem body.coban-mode
+           bên dưới). Ở "Đầy đủ" cung là lưới 4×4 nên ô chữ chỉ rộng 24–32px:
+           "Thương" (nhãn dài nhất) cần cỡ 7,5–10px mới nằm gọn một dòng, tức
+           BÉ HƠN cả cỡ đang dùng lẫn cỡ của bản gốc (10,75px ở 384px). Nó vì
+           thế vẫn xuống hai dòng ở chế độ ấy — đúng như bản gốc, và là điều
+           khó tránh với một ô rộng 29px. Không hạ cỡ cả nhóm xuống 2,35vw để
+           chữa: làm thế là mọi nhãn ở chế độ dày đặc này bé hơn cả trước khi
+           sửa, trả giá đắt hơn cái được. */
         /* pos-tu-cuong không scale theo sub-cell của từng ngôn ngữ */
         .lang-zh .pos-tu-cuong,
         .lang-vi .pos-tu-cuong { font-size: 12px !important; }
 
         /* ── Mobile Samsung fix ── */
         @media (max-width: 430px) {
-            .lang-vi .sub-cell { font-size: clamp(9px, 3vw, 14px); }
+            body:not(.lang-zh) .sub-cell { font-size: clamp(9px, 3vw, 14px); }
         }
 
         /* ── Default active border on label ── */
@@ -510,7 +543,11 @@
         /* ── Tứ Trụ Panel ── */
         #tuTruPanel {
             border-collapse: collapse;
-            margin: 2px auto;
+            /* Lề dọc 0: khe giữa các khối do `gap` của <body> lo, một con số
+               cho cả ứng dụng (BASE_GAP trong viewport.js). Hai pixel riêng ở
+               đây cộng vào cả trên lẫn dưới, nên khe trước và sau bảng Bát Tự
+               thành 5px trong khi mọi khe khác là 3px. */
+            margin: 0 auto;
             table-layout: fixed;
             border: 1.5px solid var(--text-dim);
         }
@@ -521,14 +558,69 @@
             font-weight: 500; color: var(--bg-white);
             font-size: 12px; background: gray;
         }
-        #tuTruPanel td.tt-can, #tuTruPanel td.tt-chi { font-size: 12px; font-weight: 500; }
+        /* Tám chữ Bát Tự: IN HOA và ĐẬM — chúng là nội dung chính của cả bảng,
+           mọi hàng khác chỉ là chú giải cho chúng. text-transform chứ không
+           viết hoa sẵn trong JS: chữ Hán không có hoa/thường nên luật này tự
+           không đụng tới tiếng Trung, và mọi phép kiểm đọc textContent vẫn so
+           được với tên can chi gốc. */
+        #tuTruPanel td.tt-can, #tuTruPanel td.tt-chi {
+            font-size: 13px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .01em;
+        }
+        /* Tàng can và phó tinh: mỗi ô là một CHỒNG dọc, mục thứ i của hai hàng
+           thẳng nhau nên đọc dọc xuống là từng cặp "tàng can → thập thần". */
+        #tuTruPanel td.tt-tang, #tuTruPanel td.tt-than {
+            padding: 2px 2px;
+            /* Cả hai hàng canh TRÊN: chi có 1–3 tàng can nên ô cao thấp khác
+               nhau, canh giữa thì mục thứ i của hai hàng lệch nhau và cặp
+               "tàng can → thập thần" không còn đọc dọc xuống được. */
+            vertical-align: top;
+        }
+        #tuTruPanel .tt-sub {
+            display: block; line-height: 1.3;
+            white-space: nowrap;
+        }
+        #tuTruPanel td.tt-tang .tt-sub { font-size: 11px; font-weight: 600; }
+        /* Phó tinh là tên dài nhất của cả bảng ("Thương Quan"), mà cột chỉ rộng
+           một phần tư — co theo bề ngang màn hình, sàn 7,5px vẫn đọc được. */
+        #tuTruPanel td.tt-than .tt-sub {
+            font-size: clamp(7.5px, 2.35vw, 10px);
+            color: var(--text-main, #000);
+        }
         #tuTruPanel td.tt-kv  { font-size: 10px; color: var(--text-main); font-style: italic; }
+        /* Hàng chừa trống: cao đúng một dòng, không hơn. */
+        #tuTruPanel td.tt-spare { font-size: 10px; padding: 3px 4px; }
         #tuTruPanel td.tt-lunar { font-size: 12px; }
         #tuTruPanel th .tt-val { font-weight: 500; font-size: 12px; margin-left: 2px; }
 
         .lang-zh #tuTruPanel th { font-size: 16px; padding: 2px 4px; }
         .lang-zh #tuTruPanel td { font-size: 14px; padding: 2px 4px; }
         .lang-zh #tuTruPanel td.tt-lunar { font-size: 14px; }
+        .lang-zh #tuTruPanel td.tt-tang .tt-sub { font-size: 13px; }
+        .lang-zh #tuTruPanel td.tt-than .tt-sub { font-size: 11px; }
+
+        /* ══ NGŨ HÀNH — màu của can chi ══
+           Người dùng chốt: Kim xám bạc · Hỏa đỏ · Thủy xanh nước biển đậm ·
+           Mộc xanh lá · Thổ nâu. Mọi chữ KHÔNG PHẢI can chi đều màu đen, kể cả
+           nạp âm ("Lộ Bàng Thổ") và thập thần ("Chính Ấn") — tên chúng có chứa
+           chữ của một hành nhưng chúng không phải can chi, và nguhanh.js chỉ
+           tra ĐÚNG một chữ nên không bao giờ bọc nhầm.
+
+           Năm màu này đều đạt tương phản ≥4,5:1 trên nền giấy — bảng Bát Tự là
+           chỗ ĐỌC, không phải chỗ trang trí, nên màu nhạt đi một nấc cho "đẹp"
+           là đổi cái đọc được lấy cái nhìn được. */
+        :root {
+            --nh-kim:  #6e7781;   /* xám bạc */
+            --nh-moc:  #1e7d34;   /* xanh lá */
+            --nh-thuy: #12408f;   /* xanh nước biển đậm */
+            --nh-hoa:  #c62828;   /* đỏ */
+            --nh-tho:  #8a5a2b;   /* nâu */
+        }
+        .nh-kim  { color: var(--nh-kim); }
+        .nh-moc  { color: var(--nh-moc); }
+        .nh-thuy { color: var(--nh-thuy); }
+        .nh-hoa  { color: var(--nh-hoa); }
+        .nh-tho  { color: var(--nh-tho); }
 
         /* ── Chế độ Hiển thị Cơ bản ── */
         body.coban-mode .pos-than-dia,
@@ -558,12 +650,20 @@
 
         /* Coban: tăng font hậu thiên bát quái lên 1 (cả zh lẫn vi) */
         body.coban-mode .pos-que-cung-hau-thien { font-size: clamp(15px, 4vw, 21px) !important;}
-        /* Coban + tiếng Việt: tăng font can/môn/thần/tinh lên 1 */
-        body.coban-mode.lang-vi .pos-mon,
-        body.coban-mode.lang-vi .pos-can-thien,
-        body.coban-mode.lang-vi .pos-can-dia,
-        body.coban-mode.lang-vi .pos-than-thien,
-        body.coban-mode.lang-vi .pos-tinh { font-size: clamp(12.5px, 3.3vw, 17px); }
+        /* Coban + tiếng Việt: to hơn chế độ "Đầy đủ" một nấc — cung 3×3 thay
+           vì 4×4 nên mỗi ô rộng hơn.
+           Sàn hạ 12,5 → 9,5px và hệ số 3,3 → 3vw: đây là bộ số NGUYÊN BẢN, và
+           nó chưa bao giờ chạy cho tiếng Việt (chọn tử `.lang-vi` là mã chết,
+           xem chú thích ở .sub-cell bên trên) nên chưa ai đo nó bao giờ. Bật
+           lên rồi quét mới thấy nhãn dài nhất bị BẺ GIỮA CHỪNG: "Thương" xuống
+           dòng thành "Thươn"/"g" ở cả năm bề ngang. Quét bằng
+           `Range.getClientRects().length > 1` trên 5 bề ngang × 3 lá số × 3
+           phái × 2 chế độ. */
+        body.coban-mode:not(.lang-zh) .pos-mon,
+        body.coban-mode:not(.lang-zh) .pos-can-thien,
+        body.coban-mode:not(.lang-zh) .pos-can-dia,
+        body.coban-mode:not(.lang-zh) .pos-than-thien,
+        body.coban-mode:not(.lang-zh) .pos-tinh { font-size: clamp(9.5px, 3vw, 17px); }
         /* ── Card flip 3D ── */
         #boardFlipScene {
             width: 100%; max-width: var(--max-w);

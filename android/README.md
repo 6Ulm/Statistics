@@ -101,12 +101,16 @@ gốc) và **Lịch** (lịch âm dương).
 * **Hôm nay** có viền đỏ đậm trên nền vàng nhạt — tô đặc màu đỏ thì nổi hơn
   thật, nhưng chữ phải đảo sang trắng và ô hoá thành một mảng đặc, đọc ngày âm
   với can chi khó hơn hẳn.
-* Dưới lưới là **hai mục gập được**: "Tiết khí" (24 mục trong năm) và "Lịch âm"
-  (Sóc/Vọng từng tháng) — xem mục riêng bên dưới. `fitGrid()` chốt chiều cao
-  hàng lịch ở `ROW_MIN` rồi nhường trọn phần dư cho hai mục ấy; mục nào dài hơn
-  chỗ được chia thì tự cuộn trong khung của nó, hàng tiêu đề dính lại.
-* Hai tab ngăn nhau bằng một vạch dọc, tab đang mở có **nền màu nhấn** chứ
-  không chỉ đổi màu chữ.
+* Dưới lưới là **bảng Tiết khí** (24 mục trong năm) — **luôn hiện**, tự cuộn
+  dọc, xem mục riêng bên dưới. `fitGrid()` chốt chiều cao hàng lịch ở `ROW_MIN`
+  rồi nhường **trọn** phần dư cho nó; hàng tiêu đề dính lại khi cuộn.
+* Bấm **tiêu đề "LỊCH THÁNG m/yyyy"** mở **bảng chọn tháng · năm** — cùng kiểu
+  trống quay với ô ngày giờ ở tab Kỳ Môn, chỉ hai cột. Nhảy thẳng tới một tháng
+  bất kỳ thay vì bấm mũi tên ‹ › vài chục lần.
+* Nút **"Ghim lịch ra màn hình chính"** `position: fixed` ngay trên thanh tab,
+  nên nó ở đúng một chỗ dù bảng Tiết khí xin bao nhiêu chiều cao.
+* Bốn tab ngăn nhau bằng vạch dọc, tab đang mở có **nền màu nhấn** chứ không
+  chỉ đổi màu chữ.
 
 Lịch âm được tính theo **UTC+7** như quy ước lịch Việt Nam (bản tiếng Trung
 dùng UTC+8) — đó chính là lý do Tết ta và Tết Tàu thỉnh thoảng lệch một ngày.
@@ -114,227 +118,99 @@ Phải đặt lại mốc này mỗi lần vẽ: `processAll()` để lại múi
 đang chọn trong biến toàn cục của `lunar.js`, nên nếu đang chọn Paris thì
 26/08/2026 hoá ra 15/7 thay vì 14/7.
 
-## Hai mục gập được của tab Lịch
+## Mục Tiết khí của tab Lịch
 
-Dưới lưới lịch là hai mục, mở/đóng **độc lập** nên mở được cả hai cùng lúc;
-trạng thái nhớ qua các lần mở ứng dụng.
+Dưới lưới lịch còn **đúng một** mục: bảng **Tiết khí** — 24 hàng liền của năm,
+ba cột (tên · ngày giờ · **can chi tháng**). Nó **luôn hiện**, không gập lại
+được, và tự cuộn dọc khi dài hơn chỗ được chia.
+
+Trước đây ở đây có **hai** mục gập được — "Tiết khí" và "Lịch âm" (Sóc/Vọng
+từng tháng) — với cả một bộ bất biến để trạng thái gập/mở của mục dưới không
+kéo tiêu đề mục trên nhảy. Cả hai thứ ấy đã đi:
+
+* **Lịch âm chuyển sang tab Tra cứu** (tra theo NĂM người dùng gõ, không theo
+  tháng đang xem), và bỏ hẳn khỏi lịch đã ghim. Tab Lịch và widget nay chỉ còn
+  lưới lịch với bảng tiết khí.
+* **Tiết khí thôi gập**: một mục duy nhất mà gập lại thì nửa dưới tab Lịch
+  trống trơn, còn cái nút gập chỉ tổ giấu mất thứ người ta mở tab ra để xem.
+
+Nhờ vậy `shareSectionHeight()` rút từ một phép chia hai chiều xuống còn ba
+dòng: mục duy nhất lấy trọn ngân sách của `fitGrid()`, kẹp bởi chiều cao tự
+nhiên của bảng.
 
 Thanh tiêu đề **chính là hàng `<thead>`** của bảng: ba tên cột vừa làm tiêu đề
-mục vừa làm tên cột. Trước đây có một nhãn riêng nên "Tiết khí" hiện hai lần —
-một ở tiêu đề, một ở tên cột — mà tên cột lại phải canh tay cho thẳng với giá
-trị. Nay chính bảng lo việc ấy, và gập lại thì `tbody` ẩn đi, còn đúng hàng tiêu
-đề. Đổi lại, `fitGrid` phải trừ chiều cao hàng tiêu đề của những mục ĐANG ĐÓNG
-(mục đang mở thì đã nằm trong phần được chia) — quên là tab Lịch tràn đúng bằng
-tổng hai hàng ấy.
+mục vừa làm tên cột, nên chúng luôn thẳng hàng với giá trị bên dưới mà không
+phải canh tay. Hàng ấy `position: sticky` nên dính lại khi cuộn.
 
-**Tiết khí** — một dãy **24 hàng liền**, ba cột: tên · ngày giờ · **can chi
-tháng**. Trước đây bảng chia đôi thành hai nhóm 12 cho vừa một màn hình; nay có
-thêm cột thứ ba nên xếp thẳng một dãy rồi cho cuộn, đọc theo thứ tự thời gian
-cũng tự nhiên hơn.
+### Nhường chỗ cho bảng
 
-Can chi tháng lấy **từ chính engine** (`lunar.js`), không tự suy từ chỉ số tiết
-khí: can tháng phụ thuộc can năm, mà năm can chi lại đổi ở Lập Xuân — dựng lại
-luật ấy bằng tay là mời thêm một nguồn lệch nữa với tab Kỳ Môn. Mỗi trụ tháng
-phủ đúng **hai** mục liền nhau (tiết mở tháng, rồi khí nằm giữa tháng), nên hai
-hàng lặp cùng một giá trị là đúng chứ không thừa.
+Bốn thay đổi nhỏ, cùng một mục đích — *"giảm grid height của calendar đi 1 chút
+để có thể expand được nhiều hơn tab tiết khí"*:
 
-Hàm nhận thẳng **ngày Julius ở mốc UTC+8**, không nhận chuỗi giờ địa phương.
-Quy ngược chuỗi ấy cần offset đúng của **chính mốc đó**, trong khi offset của
-bảng là của ngày đang chọn — ở nước có DST hai thứ lệch nhau một giờ suốt nửa
-năm, đủ để Lập Xuân rơi về tháng Sửu thay vì mở tháng Dần. Mà can chi tháng vốn
-là đại lượng ở UTC+8, nên đi thẳng.
+| | Trước | Sau | Thu về |
+|---|---|---|---|
+| Đệm dọc ô ngày (`.cal-day`) | 4px / 5px | **2px / 3px** | **4px** mỗi hàng |
+| `line-height` can chi trong ô | 1,22 | **1,15** | **1,7px** mỗi hàng |
+| `ROW_MIN` — SÀN chiều cao một hàng | 52px | **46px** | (sàn, xem dưới) |
+| Đệm dọc hàng `<thead>` mục Tiết khí | 7px | **3px** | **8px** |
+| Cỡ chữ bảng Tiết khí | `clamp(13, 4.05vw, 16)` | **`clamp(12, 3.74vw, 14.8)`** | hàng 25px → **22px** |
+| Cỡ chữ hàng tiêu đề | `clamp(13.5, 4.18vw, 16.5)` | **`clamp(12.5, 3.86vw, 15.2)`** | — |
 
-**Lịch âm** — đúng bảng chi tiết của Âm Bàn pháp ở tab Kỳ Môn (Tháng âm · Sóc ·
-Vọng), dựng lại bằng **cùng những hàm ấy** (`Ephem.monthsAtBasis`,
-`formatPreciseSocLocal`, `formatPreciseVongLocal`) để hai tab không thể lệch —
-`test_cal_sections.mjs` so từng dòng một.
+Phải bớt ở **đệm và `line-height` của ô ngày**, không phải ở `ROW_MIN`: chiều cao
+thật của một hàng lịch do NỘI DUNG ô quyết định (ba dòng: ngày dương + ngày âm,
+can, chi), còn `ROW_MIN` chỉ là **SÀN**. Hạ mỗi sàn thì không đổi gì — đo trước
+khi sửa: sàn 52px mà hàng cao 56px. `fitGrid` cũng ĐO lưới thật chứ không nhân
+`ROW_MIN × số tuần`, nên nó theo kịp ngay.
 
-Giá trị Sóc/Vọng CĂN GIỮA (lớp `.c`, giống hệt tiêu đề) — và cột "Dương lịch"
-của Tiết khí nay cũng vậy. Cột này rộng hơn hẳn nội dung (Sóc/Vọng chỉ chiếm
-non nửa cột, phần dư nhường cho cột Tháng âm hẹp bên trái theo mẹo `width:1%`),
-nên căn GIỮA tiêu đề trong khi giá trị căn TRÁI khiến tiêu đề trông như bị đẩy
-sang phải cả 20-30px so với nơi giá trị thật sự nằm — đo được: tâm chữ "Sóc"
-cách tâm chữ giá trị tới 30px. Cho giá trị cũng căn giữa thì cả hai chia sẻ
-đúng một tâm — không cần đo/canh gì thêm, tự động khớp theo đúng nghĩa hình
-học. Còn dấu mũi gập/mở (▾/▸) của cột
-cuối: trước đây ô TIÊU ĐỀ cuối có lệ riêng "padding-right lớn hơn ô giá trị"
-để chừa chỗ cho dấu mũi — làm tiêu đề và giá trị không còn cùng một hộp nội
-dung, lệch thêm vài px nữa. Bỏ lệ riêng ấy, thu nhỏ dấu mũi (9px, nép sát mép)
-để vừa gọn trong đúng phần đệm chung với ô giá trị ở MỌI bề rộng màn hình
-(kể cả nấc thu gọn dưới 375px) — `test_cal_sections.mjs` đo tâm chữ (không phải
-tâm ô) của tiêu đề so với giá trị, lệch ≤ 1,5px.
+Kết quả trên A51 (412×852, tiếng Việt): hàng lịch **56px → 47px**, lưới
+**338px → 331px**, và bảng Tiết khí từ **8** hàng đọc được lên **14**.
 
-### Vị trí hai tiêu đề CỐ ĐỊNH, bất kể gập hay mở
+Bỏ luôn **vạch dọc đỏ** sát viền trái hàng tiêu đề (`box-shadow: inset 3px 0 0`):
+nền hồng nhạt và màu chữ đã đủ tách hàng tiêu đề khỏi thân bảng, mà vạch thì ăn
+mất 3px của đúng cột hẹp nhất.
 
-Lưới lịch giữ **đúng một chiều cao hàng** (`ROW_MIN`), không đổi theo việc mục
-nào đang mở hay đóng. Bản trước có HAI công thức khác hẳn nhau: "còn mục nào mở
-thì lưới chỉ lấy `ROW_MIN`, phần dư nhường cho mục" so với "không mục nào mở thì
-lưới lấy hết phần dư" (có thể chạm `ROW_MAX`) — hai công thức lệch nhau tới
-20px/hàng, nhân với 5–6 hàng thì cả lưới lẫn hai tiêu đề bên dưới nhảy hơn
-100px mỗi lần bấm gập/mở, dù người dùng chỉ đóng/mở MỘT mục. Nay chỉ còn MỘT
-công thức, luôn chạy: lưới luôn giữ `ROW_MIN`, mọi phần dư luôn "nhường" cho
-mục — không mục nào mở thì phần dư ấy hoá thành một khoảng trống đứng yên dưới
-hai hàng tiêu đề, thay vì kéo lưới phình ra. Đổi lại `fitGrid` phải đo CHIỀU
-CAO CỦA `<thead>` (không phải cả DIV): `<thead>` cao như nhau bất kể `tbody`
-bên trong đang hiện hay ẩn, nên phép trừ này không đổi theo trạng thái gập/mở —
-đo cả DIV (như trước) sẽ khiến "avail" trôi theo mục nào đang mở.
+### Nút Ghim: `position: fixed`
 
-Chia phần dư giữa hai mục thì KHÔNG chia theo tỉ lệ chiều cao thật của những
-mục ĐANG MỞ lúc này (bản trước làm vậy) — phần của Tiết khí sẽ phụ thuộc vào
-việc Lịch âm CÓ đang mở hay không, nên bấm mở Lịch âm là Tiết khí bị bớt lại
-ngay lập tức dù bản thân nó không đổi trạng thái, kéo tiêu đề Lịch âm nhảy
-đúng lúc người dùng vừa chạm vào nó. Nay BẤT ĐỐI XỨNG có chủ đích: Tiết khí
-(đứng trước) luôn được nhắm tới **55% phần dư**, không đổi dù Lịch âm mở hay
-đóng; Lịch âm (đứng sau cùng) lấy hết PHẦN CÒN LẠI sau khi trừ đúng phần Tiết
-khí đang dùng thật. Vì Tiết khí đứng trước Lịch âm nên chiều cao thật của nó
-ảnh hưởng tới vị trí tiêu đề Lịch âm — khoá cứng phần của nó triệt tiêu hẳn
-đường lây; còn Lịch âm không đứng trước ai nên nhường phần dư dôi ra cho nó
-không ảnh hưởng tới bất cứ tiêu đề nào — mở một mình thì nó vẫn chiếm trọn chỗ
-trống, không phải chừa vô cớ (bản test `test_cal_sections.mjs` canh cả hai:
-tiêu đề Tiết khí đứng yên qua đủ 5 tổ hợp gập/mở, và gập/mở CHÍNH Lịch âm không
-tự dịch chuyển tiêu đề của chính nó).
+`#calPinBtn` là khối **cuối** của `#calView`, nên khi bảng Tiết khí xin nhiều
+chiều cao nó dễ bị đẩy xuống dưới mép màn hình. Nay nó `position: fixed`, treo
+cách thanh tab 4px (`bottom: calc(var(--tabbar-h) + 4px)` — `viewport.js` ĐO
+thanh dưới rồi ghi vào biến ấy, nên không phải đoán chiều cao thanh ở từng nấc
+Screen zoom).
 
-### Lấp kín chiều cao trên A51 và S21 FE
+`fitGrid` vẫn phải trừ nó ra khỏi ngân sách, **cộng thêm `PIN_GAP` = 8px**: 4px
+treo và 4px thở. Trừ mỗi chiều cao nút thì bảng ăn lấn đúng 4px ấy — đo được
+chồng 1,6px lên nút.
 
-Hai máy này cao hơn hẳn S21 (852px và 790px so với 740px), và chính chỗ cao
-thêm ấy lại bỏ không: đo trong app (có tính nút "Ghim lịch", thứ chỉ hiện khi
-chạy trên Android) thì tab Lịch chừa **128px trống ở đáy trên A51, 107px trên
-S21 FE**. Hai nguyên nhân, đều nằm trong phép chia chiều cao:
+**Mép cắt hàng cuối.** Bảng dài hơn khung nên hàng cuối luôn bị mép dưới cắt
+ngang. Cắt ở đâu mới là chuyện: tiếng Việt có dấu rơi **xuống dưới** đường cơ
+sở (dấu nặng của "Đại Tuyết"), nên một mép cắt rơi đúng vào đó biến chữ thành
+một chữ khác. `snapCut()` chỉ chấp nhận hai chỗ — **thấy trọn mực** (đo bằng
+`canvas.measureText` với đúng phông đang dùng, không lấy đáy hộp dòng vốn thấp
+hơn đáy mực ~1,4px), hoặc **cắt sâu hơn 72% hộp dòng** (nhìn là biết còn nữa).
+Rơi vào giữa thì hạ trần chiều cao xuống cho tới khi ra khỏi vùng cấm.
 
-**1. Hai hàng tiêu đề bị trừ hai lần.** `fitGrid` trừ chiều cao `<thead>` của
-cả hai mục ra khỏi `avail` để `rowH` không phụ thuộc trạng thái gập/mở (xem
-mục trên) — rồi đem CHÍNH con số đã trừ ấy đi chia cho hai mục. Nhưng thứ
-`shareSectionHeight` đặt là `max-height` của CẢ KHUNG, mà khung thì chứa luôn
-`<thead>`: hai hàng tiêu đề bị tính vào phần trừ một lần rồi lại nằm trong
-phần chia một lần nữa, nên cụm hai mục luôn thấp hơn chỗ nó được phép chiếm
-đúng `jqHead + amHead` = **48px**. Nay cộng lại hai hàng ấy trước khi chia.
+Hai cái bẫy đã sập vào chỗ này, cả hai đều lệch đúng **một pixel**:
 
-**2. Đóng sẵn Lịch âm là bỏ không phần của nó.** Trần của Tiết khí cố định ở
-55% ngân sách và KHÔNG đổi theo việc Lịch âm mở hay đóng — đó là điều kiện để
-tiêu đề Lịch âm không nhảy dưới ngón tay, và không được đụng tới. Hệ quả: phần
-còn lại là của riêng Lịch âm, đóng nó lại thì chẳng ai nhận. Trên máy cao, phần
-ấy là hơn 100px. Nên `decideAmDefault()` tự quyết hộ khi chưa có lựa chọn cũ
-nào: còn đủ chỗ cho hàng tiêu đề cộng ÍT NHẤT MỘT hàng dữ liệu thì mở sẵn cả
-hai mục. Quyết theo CHỖ TRỐNG chứ không theo cú bấm nào, nên không sinh ra cú
-nhảy nào. Chốt xong ghi thẳng vào `qmdj.calSecAm` rồi gọi widget vẽ lại —
-widget gập/mở theo đúng khoá ấy, mà widget thì phải khớp tab Lịch.
+* Khung này là **khung cuộn**. Co nó lại thì trần của `scrollTop` hạ theo, trình
+  duyệt kẹp `scrollTop` về trần mới và cả bảng trôi xuống tới 1px — **sau** khi
+  `snapCut` đã đo xong. Đo trên A51: hàm trả về với mép cắt ở 13,02px (an toàn,
+  ngưỡng 13,52px) rồi người dùng thấy nó ở 14,02px, đúng trong vùng cấm. Nay
+  lùi thêm 1,5px thay vì 0,5px, nuốt trọn cú trôi ấy.
+* `canvas.measureText` có thể chưa trả nổi `fontBoundingBox*` ở lượt chia đầu.
+  Bản trước **nhớ luôn** kết quả hỏng ấy cho cả phiên, khoá chết vào đường lùi
+  "đáy hộp dòng". Nay chỉ nhớ khi đo được, và đường lùi cũng dè dặt hơn
+  (0,92 × chiều cao hộp dòng ≈ đáy mực thật).
 
-Nhân tiện lộ ra một cú nhảy còn sót: trong `render()`, lượt `fitGrid` chạy
-TRƯỚC `renderAmBan()` nên lần vẽ đầu tiên nó chưa thấy hàng tiêu đề Lịch âm và
-`avail` dôi ra đúng 24px — Tiết khí được 224px lúc vừa mở tab rồi tụt còn 208px
-ngay khi người dùng chạm vào Lịch âm, tiêu đề nhảy **16px ngay dưới ngón tay**.
-Nay `render()` chia lại chiều cao LẦN CUỐI, sau khi hai bảng đã dựng xong và
-cột đã ghim.
+**Vệt rò trên đỉnh mục.** Hàng tiêu đề `sticky` nằm TRONG khung cuộn. Trên máy
+có tỉ lệ điểm ảnh lẻ — đúng hai máy đang ngắm: A51 (2,625) và S21 FE (2,75) —
+Chromium chốt vị trí đã "dính" của nó và mép cắt của khung về hai số nguyên
+điểm ảnh khác nhau, nên 1–2px đầu của hàng đang trượt bên dưới ló lên phía TRÊN
+hàng tiêu đề: nhìn ra một vệt chữ cụt mờ mờ ngay dưới viền trên của mục. Không
+phải lỗi bố cục — `getBoundingClientRect` nói `<th>` nằm đúng mép khung — nên
+đẩy `top`, dày viền hay bỏ bo góc đều không chữa được (đã thử đủ). Cách chữa:
+dán một dải đục đúng màu tiêu đề lên đỉnh mục bằng `.cal-sec::after`, phủ cả
+viền rồi tự vẽ lại viền ấy, và `pointer-events: none`.
 
-Kết quả (đo bằng Chromium, ép hiện nút Ghim để giống lúc chạy trong app, cả
-tiếng Việt lẫn tiếng Trung):
-
-| Máy | Trước | Sau |
-|---|---|---|
-| S21 FE 393×790 @2,75x | thừa 107px | thừa **2,4px** |
-| A51 412×852 @2,625x | thừa 128px | thừa **2,4px** |
-
-Chỗ thừa còn lại là phần đệm chống tràn của `GRID_CHROME` cộng mấy pixel làm
-tròn (9px ở vòng này, 2,4px sau khi `fitGrid` ĐO phần khung thay vì cộng tay —
-xem "Chữ to hơn, đáy khít hơn" bên dưới), cộng tối đa 3px nữa ở những cấu hình
-phải hạ mục để mép cắt không ăn mất dấu.
-Tab Kỳ Môn vốn đã khít sẵn (hở 0,1px) và không đụng tới. `test_cal_sections.mjs`
-canh cả ba điều: không tràn xuống dưới thanh tab, không còn dải trống (≤16px),
-và quét trọn 12 tháng của một năm — kể cả tháng 6 hàng, lúc lưới cao thêm trọn
-một hàng — trên cả hai máy.
-
-### Soi kỹ toàn bộ giao diện — năm lỗi nữa
-
-Quét tĩnh (9 cỡ máy × 2 thứ tiếng × 2 tab) rồi bấm thật (đổi 90 lượt tháng,
-chọn ngày, gập/mở đủ tổ hợp, đổi tiếng, xoay máy, mở cả bốn hộp chọn, quét
-1900–2101) lôi ra thêm năm chỗ:
-
-**1. Bảng hai mục phình ra khi trang bị phóng.** `syncSectionColumns()` đo bề
-rộng cột bằng `getBoundingClientRect` — px ĐÃ phóng — rồi ghi vào `style.width`
-— px CHƯA phóng. Điện thoại có `zoom = 1` nên không lộ ra; trên tablet 768px
-(`zoom` 1,28) ba cột cộng lại thành 512px nhét vào khung 398px, bảng phình
-thành 656px và cột cuối (Can chi / Vọng) bị đẩy hẳn ra ngoài — phải kéo ngang
-114px mới đọc được. Nay chia cho `zoom` đúng như mọi phép đo khác trong tệp.
-
-**2. Mục đã đóng vẫn choán chỗ mà bị tính là 0.** `shareSectionHeight()` cho
-Lịch âm lấy trọn phần còn lại khi Tiết khí đóng, trong khi Tiết khí đóng vẫn
-choán đúng hàng tiêu đề của nó — đóng Tiết khí mà mở Lịch âm là cụm hai mục
-thò 17px xuống dưới thanh tab. Nay mỗi mục luôn được trừ sẵn phần tối thiểu
-(hàng tiêu đề) của mục kia, và trừ VÔ ĐIỀU KIỆN — trừ có điều kiện là để
-trạng thái mục này quyết chiều cao mục kia, đúng cái vòng lây phải cắt.
-
-**3. Ngân sách chiều cao bịa ra chỗ không có.** Công thức cũ kê phần còn lại
-lên `SEC_MIN` (96px) ngay cả khi thật ra chỉ còn 51px, nên trên máy 360×640
-nội dung tràn 14px xuống dưới thanh tab. `SEC_MIN` là MONG MUỐN ("mục mở ra
-thấp quá thì vô dụng"), không phải chỗ có thật: nay khai đúng chỗ còn lại, và
-sàn `SEC_MIN` chỉ áp ở chỗ chia, có kẹp theo chỗ có thật.
-
-**4. Tỉ lệ phóng tab Lịch không xác định.** `viewport.js` tính tỉ lệ từ chiều
-cao nội dung, mà chiều cao ấy do `fitGrid()` chia ra cho vừa MỌI tỉ lệ — hai
-cơ chế cùng kéo một sợi dây, nên mọi tỉ lệ trong [0,95; 1] đều tự nhất quán và
-app dừng ở đâu là tuỳ thứ tự chạy: cùng một máy, cùng một tháng, hai lần mở ra
-hai cỡ chữ (đo được 0,976 rồi 1,000). Nay ở tab Lịch chỉ lấy tỉ lệ theo BỀ
-NGANG — thứ không co giãn — rồi để vòng hạ dần lo nốt máy quá thấp;
-`calendar.js` mở thêm `window.__calFit()` để `viewport.js` bảo nó chia lại
-trước mỗi lần đo.
-
-**5. Ô chạm hai mũi tên đổi tháng quá bé.** Chữ ‹ › chỉ cao 20px nên ô chạm
-cũng chỉ 26×20 — chưa tới nửa mức Android khuyên (48dp), mà đây lại là chỗ bấm
-nhiều nhất tab Lịch. Nay đệm ra đúng bằng phần đệm sẵn có của `#calHead` rồi
-kéo lại bằng lề âm: ô chạm 38×36, còn thanh tiêu đề không cao thêm pixel nào.
-
-Kèm hai chỗ nhỏ: `<body>` không còn đặt sẵn lớp `lang-zh` (mặc định nay là
-tiếng Việt, để sẵn lớp ấy thì khung hình ĐẦU TIÊN vẽ bằng cỡ chữ tiếng Trung
-rồi mới nhảy về), và nút **Back** của Android ở tab Lịch nay quay về tab Kỳ Môn
-— tab mở lên đầu tiên — thay vì thoát thẳng ra màn hình chính.
-
-### Lưới lịch LUÔN 6 hàng
-
-Tháng dương có 4, 5 hay 6 hàng tuỳ mùng 1 rơi vào thứ mấy (tháng 2/2026 gọn
-đúng 4 hàng, tháng 11/2026 cần 6). Điền cho tròn tuần thì lưới cao thấp theo
-từng tháng, kéo CẢ HAI tiêu đề bên dưới nhảy **58px** (4→5 hàng) tới **116px**
-(4→6 hàng) mỗi lần bấm ‹ ›. Lịch đã ghim ngoài màn hình chính thì vốn LUÔN vẽ
-6 hàng (`GRID_WEEKS` trong `CalendarWidgetProvider.kt`, vì 42 ô bắt chạm là cố
-định), nên hai bên còn hiện khác nhau ở những tháng ngắn.
-
-Nay tab Lịch cũng luôn 42 ô. Trả giá bằng một hàng ngày mờ thừa ở vài tháng và
-58px chỗ của hai mục; đổi lại bố cục đứng yên quanh năm và tab khớp widget
-từng ô một.
-
-Mất 58px ấy làm ngưỡng mở sẵn Lịch âm phải đo lại cho đúng: lấy `SEC_MIN`
-(96px) làm ngưỡng thì trên S21 FE — nơi phần của Lịch âm là 88px, thừa sức
-chứa vài hàng — nó bị đóng lại một cách vô lý và 71px đáy màn hình bỏ trống.
-Nay ngưỡng ĐO trên chính bảng đang có: hàng tiêu đề cộng **một** hàng dữ liệu,
-lấy chiều cao hàng thật của chính bảng ấy (hàng tiếng Trung cao hơn tiếng Việt
-vài pixel, nên một con số px chốt cứng sẽ xử khác nhau ở hai thứ tiếng).
-
-Chỗ thừa ở đáy tab Lịch sau tất cả (đo trong app, cả hai thứ tiếng):
-
-| Máy | Thừa | Lịch âm |
-|---|---|---|
-| 360×640 | 2,5–5,4px | mở sẵn (1 hàng) |
-| S21 360×740 | 2,4–5,4px | mở sẵn (3–4 hàng) |
-| S21 FE 393×790 | 2,4–2,5px | mở sẵn (4–5 hàng) |
-| A51 412×852 | 2,4px | mở sẵn (5–6 hàng) |
-| tablet 768×1024 | 11–12px | mở sẵn |
-
-Máy quá thấp (320×520) và màn hình ngang (800×360) vẫn phải cuộn — `MIN_SCALE`
-0,95 là cố ý ("thà cuộn còn hơn chữ li ti") — nhưng cuộn tới đáy là thấy hết,
-không có gì kẹt dưới thanh tab.
-
-### Vệt chữ rò trên đỉnh mục khi đang cuộn
-
-Hàng tiêu đề là `<th>` `position: sticky` NẰM TRONG khung cuộn. Trên máy có tỉ
-lệ điểm ảnh **lẻ** — đúng hai máy đang ngắm: A51 (2,625) và S21 FE (2,75) —
-Chromium chốt vị trí đã "dính" của `<th>` và mép cắt của khung cuộn về hai số
-nguyên điểm ảnh khác nhau, nên 1–2px đầu của hàng đang trượt bên dưới ló lên
-phía TRÊN hàng tiêu đề: nhìn ra một vệt chữ cụt mờ mờ ngay dưới viền trên của
-mục. Không phải lỗi bố cục — `getBoundingClientRect` nói `<th>` nằm đúng mép
-khung (369px, trùng khít) — nên đẩy `top`, dày viền hay bỏ bo góc đều không
-chữa được (đã thử đủ). Cách chữa: dán một dải đục cao 4px đúng màu tiêu đề lên
-đỉnh mục bằng `.cal-sec::after`. Dải nằm trên `.cal-sec` chứ KHÔNG phải trên
-khung cuộn nên không bị chính khung ấy cắt mất; thụt vào 1px để viền của mục
-vẫn hiện nguyên, và `pointer-events: none` để bấm vào vẫn gập/mở được.
 
 ## Widget theo kịp ngôn ngữ
 
@@ -455,21 +331,23 @@ tư, nên chỗ dự phòng chỉ còn lấy được từ ô "Đầy đủ": d�
 và khe trong còn 2–3px. Phông trên máy thật (Samsung) rộng hơn phông ở máy
 dựng, mà cái tràn ấy thì cắt mất chữ "Đầy đủ".
 
-## Không để hở đáy màn Kỳ Môn
+## Phần chiều cao dôi ra: xuống đáy, không vào khe
 
 Tỉ lệ phóng của `viewport.js` bị chặn bởi **bề ngang**: trên S21 FE nó đã kịch
 1,0 vì rộng, trong khi chiều cao còn dôi 39px (A51: 82px) nằm chết ngay trên
 thanh dưới. Bàn Kỳ Môn là lưới vuông nên không cao thêm được nếu không rộng
-thêm, vậy chỗ duy nhất nhận được phần dôi ấy là **khe giữa các bảng**: sau khi
-chốt tỉ lệ, phần thừa được chia đều vào các khe, kẹp trần ở 21px (không có trần
-thì trên máy cao các bảng rời rạc hẳn ra, xấu hơn cả khoảng hở).
+thêm.
 
-Kết quả: S21, S21 FE và S21 Ultra khít đáy (hở ≤ 0,3px), A51 còn 10px.
+Bản trước rót phần dôi ấy vào **khe giữa các bảng** (trần 28px) để lấp cho kín
+màn hình. Người dùng chốt ngược lại: *"giảm tối đa vertical space giữa các boxes
+(nhưng vẫn có 1 chút space nhỏ), có thể thừa 1 space rộng ở dưới cùng cũng ko
+sao."* Ở 30px một khe thì bốn bảng của tab Kỳ Môn trông như bốn thứ rời rạc chứ
+không phải một màn hình.
 
-Từ khi thanh dưới nới theo chiều cao màn hình (mục kế tiếp), phần dôi ấy trên
-A51 và S21 FE đi thẳng vào **vùng chạm** thay vì vào khe: đo lại trên A51 thì
-khe tụt từ 21px kịch trần về 3px cơ bản, các bảng xít lại thành một khối thay
-vì rời rạc — thanh dưới dày lên mà màn hình lại gọn hơn trước.
+Phép rót đã bỏ hẳn. Khe luôn **3px** (`BASE_GAP`), ở mọi tab, mọi máy; phần dôi
+dồn hết xuống đáy — 106px trên A51, 71px trên S21 FE. `test_shared_bar.mjs` nay
+canh đúng điều ấy: mọi khe ≤ 6px, vẫn ≥ 1px (không dính sát nhau), và vẫn không
+tràn dọc; dải trống ở đáy bao nhiêu cũng được.
 
 ## Ngón tay, không chỉ con chữ (A51 · S21 FE)
 
@@ -481,12 +359,11 @@ cho mọi chỗ bấm và **34px** cho thanh dưới trên máy dọc đủ cao.
 | Chỗ bấm | Trước | Sau | Cách làm |
 |---|---|---|---|
 | Thanh dưới (3 tab + 2 ô dùng chung) | 29px | **34–38px** | `--dock-row-h` theo chiều cao màn |
-| `#calTitle` — về tháng hiện tại | 16px | **36px** | đệm + lề âm |
+| `#calTitle` — mở bảng chọn tháng | 16px | **36px** | đệm + lề âm |
 | `#cobanToggleWrap` — ô "Đầy đủ" | 17px | **32px** | `align-self: stretch` |
-| `.cal-sec-head` — gập/mở hai mục | 26–29px | **32–35px** | đệm dọc ô `<th>` |
 | `.drum-cancel` / `.drum-ok` | 26×22px | **46×40px** | đệm + lề âm |
 | `#calPinBtn` — ghim widget | 28px | **36px** | đệm dọc |
-| `#lenhHead` — gập/mở Lệnh năm | 31px | **33px** | đệm + bớt lề trên |
+| Bốn hàng tiêu đề tab Tra cứu | 31–37,5px | **34px chẵn** | một luật chung + `min-height` |
 | `#locManualToggle` — nhập toạ độ | 29px | **33px** | đệm dọc |
 
 Trừ thanh dưới, mọi mục còn lại nới bằng **đệm rồi kéo lề âm lại đúng chừng
@@ -510,8 +387,9 @@ Samsung (đổi `densityDpi`, nên một máy cho ra ba bề rộng CSS) nhân h
 | bốn cấu hình nấc zoom lớn nhất | 29px | 29px | không đổi |
 
 8/12 cấu hình được ô to hơn, 4/12 giữ nguyên — **không máy nào trả bằng cỡ
-chữ**. Giá phải trả nằm ở hai mục gập của tab Lịch: A51 mất ~10px mỗi mục
-(Tiết khí 201→191px), tức chừng hai phần ba một hàng bảng.
+chữ**. Giá phải trả từng nằm ở hai mục gập của tab Lịch (A51 mất ~10px mỗi mục);
+nay hàng `<thead>` của Tiết khí **không còn là chỗ bấm** nên nó trả lại chừng ấy
+và hơn thế (đệm dọc 7px → 3px).
 
 Hai điều đáng lưu ý, cả hai đều là **kết quả đo chứ không phải chọn cho tròn**:
 
@@ -542,8 +420,8 @@ nào cũng đẹp:
   cú vuốt là kéo bánh xe hay cuộn trang, và nó đoán ngay từ frame đầu — trước
   khi `touchmove` đầu tiên kịp gọi `preventDefault`. Vuốt nhanh một cái là mất
   hẳn cử chỉ vào tay trình duyệt, bánh xe đứng im.
-* **`overscroll-behavior: contain` trên bốn khung cuộn** (hai mục tab Lịch,
-  danh sách 34.006 thành phố, bảng chọn, bảng chi tiết). Không có nó, cuộn hết
+* **`overscroll-behavior: contain` trên các khung cuộn** (mục Tiết khí của tab
+  Lịch, danh sách 34.006 thành phố, bảng chọn, bảng chi tiết). Không có nó, cuộn hết
   danh sách rồi mà còn đà thì Android đẩy tiếp cú vuốt sang trang phía sau:
   bảng chọn đứng yên mà nội dung sau lưng nó trôi đi.
 * **Tắt mảng sáng mặc định của WebView** (`-webkit-tap-highlight-color`). Mảng
@@ -693,22 +571,24 @@ Kéo theo ba chỗ:
   thì `window.scrollY` phải tăng, và phần dôi ra phải **cuộn tới được** (thay
   vì cấm dôi ra).
 
-## Tab Tra cứu — ba bảng tra theo năm
+## Tab Tra cứu — bốn bảng tra theo năm
 
-Tab thứ tư, gom về một chỗ ba bảng vốn nằm rải rác và vốn chỉ tra được theo
-ngày giờ đang nhập:
+Tab thứ tư, gom về một chỗ bốn bảng vốn nằm rải rác và vốn chỉ tra được theo
+ngày giờ (hoặc tháng) đang xem:
 
 | Bảng | Trước ở đâu | Hiện được khi nào |
 |---|---|---|
 | Trí Nhuận pháp | cuối tab Kỳ Môn | chỉ khi đang chọn **đúng phái** Trí Nhuận |
 | Sách Bổ pháp | cuối tab Kỳ Môn | chỉ khi đang chọn **đúng phái** Sách Bổ |
 | Lệnh năm | cuối tab Bát Tự | luôn, nhưng chỉ cho **năm sinh** trong lá số |
+| Lịch âm (Sóc · Vọng) | mục thứ hai của tab Lịch | chỉ cho **tháng đang xem** trên lưới |
 
-Nay cả ba tra theo **một năm người dùng tự chọn**, độc lập với lá số đang xem.
-Chọn năm ở ô bên trái; ba bảng hiện ra, mở sẵn, gập/mở độc lập, và cả trang
-cuộn bình thường. Bảng Lệnh năm có thêm **ô chọn bộ số riêng** — đang xem lá số
-theo Uyên Hải mà muốn tra thử bảng Tam Mệnh của một năm khác thì không phải đụng
-vào lá số.
+Nay cả bốn tra theo **một năm người dùng tự chọn**, độc lập với lá số đang xem.
+Chọn năm ở ô bên trái; bốn hàng tiêu đề hiện ra **đóng sẵn**, bấm vào là bung,
+bấm lần nữa là gập, và khi bung quá một màn hình thì **cả trang** cuộn (không
+khung cuộn con nào nuốt cú vuốt). Bảng Lệnh năm có thêm **ô chọn bộ số riêng** —
+đang xem lá số theo Uyên Hải mà muốn tra thử bảng Tam Mệnh của một năm khác thì
+không phải đụng vào lá số.
 
 Bảng chi tiết **Âm Bàn pháp bỏ hẳn**, không chuyển đi đâu cả. Tab Kỳ Môn vì thế
 không còn bảng chi tiết nào.
@@ -742,14 +622,46 @@ nào để mà đang cầm lệnh, và tô một hàng là nói dối rằng nó
 một mốc **giữa** năm (15/06 12:00). Đưa 01/01 thì mốc ấy còn thuộc năm trước
 theo tiết khí, và bảng hiện ra là bảng của năm liền trước.
 
-### Mở sẵn sau khi chọn năm
+### Đóng sẵn, bấm là bung
 
-Ba bảng mang theo trạng thái **đóng sẵn** từ chỗ cũ, vốn hợp lý ở đó: chúng là
-chi tiết *phụ* của một màn hình đã có nội dung chính. Ở tab này thì ngược hẳn —
-chúng **là** nội dung, và người dùng vừa chọn một năm chính là để xem chúng.
-Nên `openAll()` bung cả ba ngay sau khi chọn năm (và một lần khi mở tab với năm
-nhớ từ phiên trước), rồi tôn trọng trạng thái người dùng tự đặt: đổi ngôn ngữ
-hay đổi địa điểm không bung lại.
+Đã thử cho `openAll()` bung cả ba ngay sau khi chọn năm, với lý lẽ "chúng **là**
+nội dung của tab này". Bung hết bốn mục ra là một trang cao **1843px** trên A51:
+muốn tới mục thứ tư phải cuộn qua ba bảng dài. Nay **đóng sẵn**, đúng như người
+dùng chốt: *"hiển thị cả 3 tab của 3 bảng… click vào thì expand hoặc hide. khi
+expand nhiều vượt quá màn hình thì cho phép scroll toàn bộ màn hình."*
+
+Đóng hết thì cả tab lọt gọn một màn hình — bốn hàng tiêu đề, không phải cuộn.
+Đổi năm **không** tự bung lại mục người dùng đã gập: nội dung được dựng lại ngay
+(tiêu đề và số hàng đổi theo năm mới) nhưng trạng thái gập là lựa chọn của người
+dùng, không phải của phép vẽ.
+
+### Một hình khối cho cả bốn hàng tiêu đề
+
+Bốn mục đến từ **ba** nơi khác nhau, và mang theo ba kiểu tiêu đề khác nhau:
+
+| | Trước | Sau |
+|---|---|---|
+| Trí Nhuận · Sách Bổ | `.dp-header` — đệm 8/12px, chữ 13px nửa đậm, **viết thường**, cao 37,5px | như dưới |
+| Lệnh năm | `#lenhHead` — đệm 6px, chữ 13–15px đậm, viết hoa, cao 34px | như dưới |
+| Lịch âm | bản sao của `#lenhHead` | như dưới |
+| **Chung** | — | đệm 5/10px · `clamp(12,5px, 3,6vw, 14,5px)` · đậm · **viết hoa** · nền `--bg-white` · **cao đúng 34px** |
+
+Xếp chồng lên nhau thì ba kiểu ấy lộ ngay. Gom về **một** luật trong
+`tracuu.css`, không sửa ba tệp gốc — `.dp-header` vẫn là kiểu chung của ứng dụng
+ở những chỗ khác.
+
+Ba chi tiết phải chốt tường minh, vì mỗi cái từng làm lệch một hàng:
+
+* `line-height: 1.35`. `.dp-panel` khai `1.7` và `.dp-title` thừa kế xuống, nên
+  hai hàng đầu cao 37,5px trong khi hai hàng dưới cao 34px.
+* `min-height: 34px`. Ở tư thế **ngang** (866×412) đệm 6px chỉ cho ra 31,8px —
+  dưới mức 32px mà `test_a51_s21fe.mjs` chốt cho vùng chạm.
+* `margin-top: 3px` nhắc lại cho `#lenhHead`/`#tcAmHead`. Luật gom ở trên dùng
+  `margin: 0` với **hai** id nên đặc thù hơn luật khe `#traCuuView > * + *` —
+  không nhắc lại thì hai mục cuối dính sát mục trên chúng.
+
+Tiêu đề cắt bằng `…` chứ không đẩy dấu mũi ra khỏi hàng: "BẢNG CHI TIẾT - TRÍ
+NHUẬN PHÁP" là chuỗi dài nhất, ~30 chữ.
 
 ### Bốn tab thì hàng dùng chung phải chia lại
 
@@ -761,13 +673,188 @@ Nhãn tab cũng phải co: bốn tab thì mỗi tab chỉ còn một phần tư 
 mà "TRA CỨU" in hoa đậm ở 14,5px không vừa. Nay `clamp(11,5px, 3,4vw, 14,5px)` —
 đo trên bốn bề ngang (320/360/384/412px) không nhãn nào bị cắt.
 
-### Trần khe nới lên 28px
+### Khe dọc: một con số, 3px, ở mọi tab
 
-Tab Kỳ Môn mất bảng Âm Bàn (~44px), nên phần dôi tăng đúng ngần ấy mà số **khe**
-lại giảm đi một (5 khối → 4 khe). Ở trần cũ 24px, A51 852px chạm trần rồi vẫn
-còn **16,3px** nằm chết ngay trên thanh dưới — đúng cái khoảng hở mà cả cơ chế
-"rót phần thừa vào khe" sinh ra để xoá. 28px hấp thụ trọn (4 khe × 4,1px).
-S21 FE (19,3px) và S21 (17,6px) chưa chạm trần nên không đổi gì.
+`viewport.js` từng **rót phần chiều cao dôi ra vào chính các khe** giữa các
+bảng, trần 28px, để tab Kỳ Môn lấp trọn màn hình thay vì để một dải trống nằm
+chết trên thanh dưới. Người dùng chốt ngược lại: *"trong mỗi tab kỳ môn, lịch,
+bát tự, tra cứu, giảm tối đa vertical space giữa các boxes (nhưng vẫn có 1 chút
+space nhỏ), có thể thừa 1 space rộng ở dưới cùng cũng ko sao."*
+
+Phép rót ấy đã bỏ hẳn. Khe luôn là `BASE_GAP` = 3px, phần dôi dồn hết xuống đáy.
+Đo lại cả bốn tab trên ba máy (khe giữa các khối, px):
+
+| | Trước | Sau |
+|---|---|---|
+| Kỳ Môn · A51 852px | 30 · 30 · 30 · 28 | **3 · 3 · 3 · 3** |
+| Kỳ Môn · S21 FE 790px | 21,3 · 21,3 · 21,3 · 19,3 | **3 · 3 · 3 · 3** |
+| Bát Tự | 5 · 5 | **3 · 3** |
+| Lịch (lưới → Tiết khí) | 6 | **3** |
+| Tra cứu | 3 · 3 · 0 · 0 | **3 · 3 · 3 · 3** |
+
+Hai lề riêng phải gỡ theo, bằng không chúng cộng thêm vào `gap`: `#tuTruPanel`
+có `margin: 2px auto` (khe trước và sau bảng Bát Tự thành 5px) và `#tuTruLegend`
+có `margin-top: 2px`.
+
+Phần dôi ở đáy sau khi bỏ phép rót: 106px (A51) / 71px (S21 FE) ở tab Kỳ Môn —
+bàn Kỳ Môn là lưới **vuông**, đã chiếm trọn bề ngang nên không cao thêm được
+nữa; đó chính là "space rộng ở dưới cùng" mà người dùng nói không sao.
+
+## Can chi tô theo ngũ hành
+
+Mọi chữ **can chi** trong ứng dụng đều mang màu của hành nó thuộc về; mọi chữ
+**không phải** can chi đều màu đen. Người dùng chốt: *"TẤT CẢ các chữ CAN CHI có
+màu tương ứng với ngũ hành… TẤT CẢ các chữ KO PHẢI CAN CHI thì đều màu đen. Còn
+bất kể can chi ở đâu đều có màu tương ứng ngũ hành."*
+
+| Hành | Màu | Mã |
+|---|---|---|
+| Kim | xám bạc | `#6e7781` |
+| Mộc | xanh lá | `#1e7d34` |
+| Thuỷ | xanh nước biển đậm | `#12408f` |
+| Hoả | đỏ | `#c62828` |
+| Thổ | nâu | `#8a5a2b` |
+
+`js/nguhanh.js` là **nguồn duy nhất** của phép tô: `window.NguHanh.paint(s)` cắt
+chuỗi theo khoảng trắng rồi theo từng chữ (tiếng Trung không có khoảng trắng),
+bọc mỗi can/chi nhận ra được vào `<span class="nh nh-{hành}">` và **để nguyên**
+phần còn lại — phần ấy thừa kế màu đen của khối chứa nó. Cùng một hàm phục vụ
+bảng Bát Tự, bảng Đại Vận, dòng "Lệnh:", và nhận cả chữ Việt lẫn chữ Hán.
+
+Nạp âm **không** được tô: "Lộ Bàng Thổ" có chữ "Thổ" nhưng nó là tên nạp âm,
+không phải một can hay một chi. `hanhOf('Lộ Bàng Thổ')` trả `null`.
+
+### Ba hàng mới — CHỈ ở tab Bát Tự
+
+Bảng `#tuTruPanel` được **dùng chung** giữa tab Kỳ Môn và tab Bát Tự (cùng một
+phần tử DOM, không nhân bản — xem "Tab Lệnh"). Ở tab Bát Tự nó có thêm ba hàng:
+
+1. **Tàng can** — thiên can ẩn trong mỗi địa chi, xếp dọc theo bản khí · trung
+   khí · dư khí. Là **can** nên tô màu.
+2. **Phó tinh (thập thần)** — thập thần của từng tàng can, xét theo **nhật chủ**
+   (can ngày). Xếp dọc đúng thứ tự hàng trên, nên đọc dọc xuống là từng cặp
+   "tàng can → thập thần". **Không** tô: thập thần không phải can chi, dù tên có
+   chứa chữ của một hành ("Thiên Tài", "Chính Ấn").
+3. Một hàng **để trống**, chừa sẵn chỗ cho một tầng thông tin sẽ thêm sau. Vẫn
+   phải đủ 4 ô: bảng dùng `border-collapse`, thiếu ô thì viền cột của hàng này
+   hụt và cả bảng lệch một vạch.
+
+Tám chữ Bát Tự ở hàng can và hàng chi **in hoa và đậm** — chúng là nội dung
+chính, mọi hàng khác chỉ là chú giải cho chúng. Dùng `text-transform` chứ không
+viết hoa sẵn trong JS: chữ Hán không có hoa/thường nên luật này tự không đụng
+tới tiếng Trung, và mọi phép kiểm đọc `textContent` vẫn so được với tên can chi
+gốc.
+
+**Hộp Bát Tự ở tab Kỳ Môn không đổi một pixel nào.** Người dùng chốt rõ: *"the 3
+new rows only appear in the bazi box in the bazi tab, nothing changes in the bazi
+box of kỳ môn tab."* Cùng một phần tử DOM thì phải tắt bằng CSS:
+
+```css
+.tt-bazi-only { display: none; }
+body.view-lenh .tt-bazi-only { display: table-row; }
+body:not(.view-lenh) #tuTruPanel td.tt-can,
+body:not(.view-lenh) #tuTruPanel td.tt-chi {
+    font-size: 12px; font-weight: 500; text-transform: none;
+}
+body:not(.view-lenh) #tuTruPanel .nh { color: var(--text-main, #000); }
+```
+
+Đo lại bằng Chromium với một lá số thật (12/05/1990 14:30): tab Kỳ Môn hiện đúng
+3 hàng thân bảng, chữ 12px/500/không hoa, **tất cả** `.nh` đều `rgb(0,0,0)`, bảng
+cao 109px — y như trước khi thêm. Tab Bát Tự hiện 7 hàng, chữ 13px/700/in hoa, và
+các `.nh` mang đúng năm màu.
+
+Việc này cũng chữa một lỗi bố cục: ba hàng mới làm hộp dùng chung cao thêm và
+đẩy tab Kỳ Môn **tràn 2px** trên S21 Ultra.
+
+### Phép kiểm
+
+`test_lenh.mjs` không so `innerText` của cả bảng giữa hai tab nữa (nay chúng
+khác nhau — đó là **chủ đích**). Thay bằng ba khẳng định mạnh hơn: các hàng
+**dùng chung** phải in ra y hệt nhau; tab Kỳ Môn có **0** hàng `.tt-bazi-only`
+hiện ra; tab Bát Tự có đủ **3**.
+
+Bảng Đại Vận thì tách đôi phép canh "đơn sắc" cũ: mỗi `<span.nh>` phải mang đúng
+màu của hành ghi trong lớp của nó, còn **mọi thứ khác** vẫn phải `R=G=B`. Chỉ
+xét viền khi `border-width > 0` — `border-color` mặc định là `currentColor`, nên
+một `<span>` không viền vẫn khai đúng màu chữ của nó và phép canh sẽ bắt nhầm
+chính màu ngũ hành.
+
+## Chọn lưu niên trong cột Đại Vận
+
+Chạm **tiêu đề** một cột đại vận: cả thẻ được tô, và **cả 10 hàng lưu niên nền
+trắng** — chúng không được chọn. Chạm **một hàng lưu niên**: cả tiêu đề của thẻ
+ấy **và** hàng ấy cùng được tô. Lá số mới lập thì mặc định tô **năm hiện tại** và
+đại vận chứa nó, như trước.
+
+Trạng thái là hai số: `selCard` (chỉ số thẻ) và `selRow` (năm, hoặc `-1` = chỉ
+chọn thẻ). Thẻ mang `data-dv`, hàng mang `data-yr`; một người nghe `click` duy
+nhất trên `#daiVanBody` lo cả hai, nên bảng dựng lại bao nhiêu lần cũng không mất
+người nghe.
+
+Nền `.dv-current` từng là `#999` chữ trắng. Không dùng được nữa: chữ trắng trên
+xám nuốt mất năm màu ngũ hành. Nay nền sáng `#e2e2e2` với viền `2px solid #555` —
+nổi bằng **viền** thay vì bằng độ tương phản của chữ.
+
+Chỉ **tiêu đề** in đậm (gồm cả năm `yyyy` và tuổi); các hàng lưu niên `font-weight:
+400`. Hàng đang chọn nổi bằng nền `#dcdcdc`, không bằng độ đậm.
+
+## Bảng chọn tháng · năm ở tab Lịch
+
+Bấm tiêu đề "LỊCH THÁNG m/yyyy" mở **đúng cái trống quay** của ô ngày giờ ở tab
+Kỳ Môn, chỉ hai cột (Tháng · Năm). Dựng một trống thứ hai thì hai bên sớm muộn
+lệch nhau về cỡ ô, quán tính và cách bắt chạm — nên `openMonthPicker(y, m, fn)`
+**ẩn ba cột thừa** của chính trống ấy (ngày · giờ · phút, cùng vạch ngăn và ô
+đệm) rồi đổi nơi nhận kết quả.
+
+Chế độ được trả về đầy đủ **ngay khi đóng**, kể cả khi người dùng bấm "Hủy": lần
+mở sau có thể là ô ngày giờ ở tab Kỳ Môn, mà ba cột kia còn đang ẩn.
+
+Tiêu đề đổi từ "LỊCH ÂM THÁNG m/yyyy" thành **"LỊCH THÁNG m/yyyy"** — lưới hiện
+cả dương lẫn âm, gọi nó là "lịch âm" là gọi thiếu.
+
+Lối tắt "về tháng hiện tại" (chạm tiêu đề) mất đi, nhưng bảng chọn luôn mở ở
+đúng tháng đang xem và hai mũi tên ‹ › vẫn ở đó — đổi lại là nhảy thẳng tới một
+tháng bất kỳ trong 1900–2100 thay vì bấm mũi tên vài chục lần.
+
+## Bàn Kỳ Môn: chữ to hơn cho tiếng Việt
+
+Người dùng xin tăng cỡ chữ can · môn · thần · tinh trên bàn Kỳ Môn ở **tiếng
+Việt**, miễn không tràn và không đè lên nhau hay lên viền.
+
+Lỗi tìm ra khi làm: 15 luật CSS trong `app.css` gắn vào `.lang-vi`, mà lớp ấy
+**không bao giờ** được thêm vào `<body>` — `app.js` chỉ bật/tắt `lang-zh`. Cả 15
+luật là **mã chết**, và bàn tiếng Việt vẫn chạy ở 10px của luật chung. Đã đổi
+sang `body:not(.lang-zh)`.
+
+Quét cỡ chữ trên A51 (412px): 3,45vw là mép an toàn, 3,6vw tràn ô 19,6px.
+
+### …và một lỗi mà phép quét ấy bỏ lọt
+
+Phép quét trên chỉ hỏi "nhãn có THÒ khỏi ô không". `.sub-cell` khai
+`word-break: break-word`, nên nhãn không vừa cột thì trình duyệt **bẻ đôi chữ**
+chứ không tràn — `scrollWidth` bằng `clientWidth`, không đè lên nhãn nào, mọi
+phép canh đều xanh, mà trên máy thật "Thương" hiện ra thành **"Thươn" / "g"**.
+
+Hỏi đúng thứ nó làm: Range của một chữ **không có khoảng trắng** mà trải trên
+hơn một dòng là đã bị bẻ. Quét lại trên 5 bề ngang × 3 lá số × 3 phái × 2 chế
+độ:
+
+| Chế độ | Cỡ | Kết quả |
+|---|---|---|
+| **Cơ bản** (cung 3×3, mặc định) | `clamp(12.5px, 3.3vw, 17px)` | 16 chỗ bẻ |
+| **Cơ bản** | **`clamp(9.5px, 3vw, 17px)`** | **0** |
+| **Đầy đủ** (4×4) | `clamp(10px, 3.3vw, 15px)` | "Thương" bẻ ở mọi bề ngang |
+
+Chế độ "Đầy đủ" **không chữa được bằng cỡ chữ**: cung là lưới 4×4 nên ô chữ chỉ
+rộng **24–32px**, mà "Thương" cần cỡ **7,5–10px** mới nằm gọn một dòng — bé hơn
+cả cỡ của bản gốc (10,75px ở 384px, tức nó vốn đã xuống hai dòng ở đó từ trước).
+Hạ cỡ cả nhóm xuống 2,35vw để chữa thì mọi nhãn ở chế độ dày đặc này bé hơn cả
+trước khi sửa: trả giá đắt hơn cái được. Nên giữ nguyên bộ số gốc ở chế độ ấy và
+chỉ canh KHÔNG TRÀN.
+
+`test_a51_s21fe.mjs` giữ phép quét này làm phép canh thường trực, canh chặt ở
+chế độ mặc định và canh tràn ở chế độ "Đầy đủ".
 
 ## Bộ số: viết tắt ở ô, tên đầy đủ ở bảng chọn
 
@@ -947,8 +1034,8 @@ cấp chiều cao. Cũng vì thế mà không được "sửa" `snapCut` để n
 sâu: ở khung cao bình thường, một hàng hiện dở dang dưới đáy là **dấu hiệu còn
 cuộn được**, không phải lỗi.
 
-Xoay ngang thì hai mục chỉ còn hàng tiêu đề (lưới lịch 6 tuần ăn gần hết 412px)
-— nhưng trang **cuộn được** 117px nên vẫn với tới. Đó là chỗ đã đo, không phải
+Xoay ngang thì mục Tiết khí chỉ còn hàng tiêu đề (lưới lịch 6 tuần ăn gần hết
+412px) — nhưng trang **cuộn được** nên vẫn với tới. Đó là chỗ đã đo, không phải
 chỗ đoán.
 
 ### Khung bảng phải tự mở quyền cuộn
@@ -1725,9 +1812,9 @@ Ghim riêng **lịch âm** ra màn hình chính, không cần mở ứng dụng.
 Lịch, bấm **📌 Ghim lịch ra màn hình chính** (Android 8 trở lên; launcher cũ thì
 nhấn giữ màn hình chính → Tiện ích → "Lịch âm").
 
-**Widget DÙNG ĐƯỢC, không chỉ để nhìn.** Hai mục CUỘN được bằng ngón tay, và
-chạm vào một ngày là CHỌN ngày ấy ngay trên màn hình chính: ô được viền màu
-nhấn, hai mục tô lại hàng ứng với ngày đó rồi cuộn tới hàng ấy. Không chỗ nào
+**Widget DÙNG ĐƯỢC, không chỉ để nhìn.** Bảng tiết khí CUỘN được bằng ngón tay,
+và chạm vào một ngày là CHỌN ngày ấy ngay trên màn hình chính: ô được viền màu
+nhấn, bảng tô lại hàng ứng với ngày đó rồi cuộn tới hàng ấy. Không chỗ nào
 trong widget mở ứng dụng nữa — mở bằng biểu tượng như mọi ứng dụng khác. Trước
 đây chạm vào lưới là nhảy thẳng vào tab Lịch, nên không thể vừa chạm vừa ở lại
 màn hình chính.
@@ -1737,14 +1824,18 @@ cũng vậy (về tháng này và bỏ chọn).
 
 Widget có **đúng thiết kế của tab Lịch** — cùng màu, cùng cách sắp chữ, cùng
 kiểu đánh dấu hôm nay — chỉ bỏ thanh tab và nút ghim. Nội dung gồm lưới lịch rồi
-**cả hai mục gập được**: "Tiết khí" (Tiết Khí · Dương lịch · Can chi) và "Lịch
-âm" (Tháng âm · Sóc · Vọng).
+**một mục**: "Tiết khí" (Tiết Khí · Dương lịch · Can chi).
 
-**Gập/mở theo đúng ứng dụng.** Hai mục ấy trong tab Lịch nhớ trạng thái vào
-`qmdj.calSecJq` / `qmdj.calSecAm`; widget đọc chính hai khoá đó, nên đóng mục
-nào trong ứng dụng là widget đóng đúng mục ấy, mở cũng vậy. `toggleSection`
-gọi luôn `pokeWidget()` sau khi ghi khoá — chỉ ghi không thôi thì widget còn
-hiện trạng thái cũ tới tận nửa đêm.
+Mục "Lịch âm" (Tháng âm · Sóc · Vọng) đã **bỏ hẳn** khỏi widget cùng lúc với tab
+Lịch — nó chuyển sang tab Tra cứu, nơi tra được **năm bất kỳ** thay vì chỉ tháng
+đang xem. `W_JQ` nhận luôn phần trọng số của nó (26 → 42) và `gridHeightDp()`
+chỉ còn trừ **một** hàng tiêu đề mục.
+
+**Gập/mở: chuyện của riêng widget.** Bảng tiết khí trong TAB LỊCH nay luôn mở,
+không gập được (xem "Mục Tiết khí của tab Lịch"). Ngoài widget thì vẫn gập được
+— màn hình chính chật, giấu bảng đi cho lưới lịch rộng ra là việc có lý ở đó —
+nên `qmdj.calSecJq` vẫn sống, chỉ khác là nay **chỉ WidgetPrefs đọc và ghi nó**,
+ứng dụng không đụng tới nữa.
 
 Hai mũi tên **‹ ›** lùi/tiến tháng, chạm tiêu đề thì về tháng hiện tại; tháng
 đang xem được nhớ riêng cho **từng widget** (`qmdj_widget` / `w<id>.offset`), nên
@@ -1778,9 +1869,9 @@ bao nhiêu để vẽ bitmap cho vừa (`scaleType="fitXY"` nên lệch một ch
 kéo giãn). Những con số ấy để ở `WidgetLayout.kt` và `values/dimens.xml`;
 `test_cal_sections.mjs` đọc cả hai bên và canh khớp nhau.
 
-Ba cột của hai mục chia bằng `layout_weight` **27:35:38**, dùng chung cho hàng
-tiêu đề lẫn hàng giá trị và cho cả hai mục — đó là thứ giữ "Dương lịch" thẳng
-hàng với "Sóc" và "Can chi" thẳng hàng với "Vọng", không phải đo gì. Đổi lại,
+Ba cột chia bằng `layout_weight` **27:35:38**, dùng chung cho hàng tiêu đề lẫn
+hàng giá trị — đó là thứ giữ tên cột thẳng hàng với giá trị bên dưới, không phải
+đo gì. Đổi lại,
 cột không tự nới theo chữ, nên cỡ chữ co theo bề ngang widget
 (`WidgetLayout.rowTextSp`): ở cỡ sàn 250dp mà người dùng tự bóp tay, cột giữa
 chỉ còn ~87dp trong khi "21-12-2025 22:03" cần ~92dp — thà chữ nhỏ hơn một chút
@@ -1803,7 +1894,8 @@ lệch với phần còn lại của ứng dụng), mọi mốc mùng 1 và mọ
 (92 KB + 85 KB); Kotlin chỉ tìm nhị phân. Can chi ngày suy thẳng từ số ngày
 Julius.
 
-Hai bảng ấy mang thêm ba cột để dựng được đúng hai mục của tab Lịch:
+Hai bảng ấy mang thêm ba cột để dựng được đúng những bảng mà ứng dụng in ra
+(mục Tiết khí của widget, và bảng Lịch âm nay ở tab Tra cứu):
 
 * **Can chi THÁNG** của từng tiết khí (`jieqi.txt`, cột 4, chỉ số 0–59). Hỏi
   thẳng `getEightChar().getMonth()` chứ không suy từ chỉ số tiết khí: can tháng
@@ -1839,17 +1931,20 @@ theo múi giờ" — suy như vậy còn lệch ~0,35% số tháng và ~1% nhãn
 UTC+7. Bảng đóng sẵn vẫn giữ làm đường lùi (đúng tuyệt đối ở UTC+7, và vẫn hơn
 hẳn cách cũ là chốt cứng mùng 1, vốn lệch tới 16% ở UTC+2).
 
-### Cỡ chữ hai mục: thôi dùng ké cỡ của bảng phụ
+### Cỡ chữ: thôi dùng ké cỡ của bảng phụ
 
-Hai mục của tab Lịch dựng lại trên `.dp-table` của bảng Sách Bổ pháp ở tab Kỳ
-Môn, nên thừa hưởng luôn cỡ chữ của nó: **12px** cho bảng và **11px** cho
-`.dp-num` — tức mọi mốc ngày giờ. Nhưng hai chỗ ấy khác nhau về việc: bảng phụ
+Hai mục của tab Lịch (lúc ấy còn hai) dựng lại trên `.dp-table` của bảng Sách Bổ
+pháp ở tab Kỳ Môn, nên thừa hưởng luôn cỡ chữ của nó: **12px** cho bảng và
+**11px** cho `.dp-num` — tức mọi mốc ngày giờ. Nhưng hai chỗ ấy khác nhau về việc: bảng phụ
 tab Kỳ Môn để liếc qua, còn đây là chỗ người dùng ĐỌC SỐ (giờ giao tiết, giờ
 Sóc/Vọng). Ở 11px thì "22-07-2026 19:13" phải nhíu mắt mới đọc được.
 
-Nay hai mục có cỡ chữ riêng: **13,5px** cho bảng, **13px** cho mốc ngày giờ,
-**14px** cho hàng tiêu đề (máy hẹp dưới 375px: 12 / 11,5 / 12,5). Đổi lại mỗi
-mục hiện được ít hơn khoảng một hàng — `fitGrid` vẫn chia đúng vì nó ĐO chiều
+Nay chúng có cỡ chữ riêng, co theo bề ngang: `clamp(12px, 3,74vw, 14,8px)` cho
+bảng lẫn mốc ngày giờ, `clamp(12,5px, 3,86vw, 15,2px)` cho hàng tiêu đề. (Vòng
+đầu chốt 13,5 / 13 / 14px; vòng sau nâng lên 16 / 16 / 16,5px rồi người dùng xin
+*"giảm fontsize của chữ trong tab tiết khí 1 chút"* nên hạ một nấc về con số
+hiện tại — tỉ lệ 4,18/4,05 giữa tiêu đề và thân giữ nguyên.) Đổi lại mỗi mục
+hiện được ít hơn khoảng một hàng — `fitGrid` vẫn chia đúng vì nó ĐO chiều
 cao thật chứ không đoán, và phép quét lại cho thấy không chỗ nào cắt chữ, không
 chỗ nào phải kéo ngang, đáy vẫn thừa đúng 9px trên cả hai máy đích. (Vòng sau
 còn nâng tiếp — xem "Chữ to hơn, đáy khít hơn".)
@@ -1969,11 +2064,15 @@ Hai chi tiết khiến nó CHẠY ĐÚNG, mà bản đầu tiên thiếu cả ha
    các hàng bắt đầu" từ `max-height` trừ viền trừ hàng tiêu đề, mà chuỗi ấy
    còn dính `box-sizing`, `thead` sticky và phép làm tròn nửa pixel — chạy ra
    vẫn lệch 0,5–1px, tức vẫn rơi vào đúng dải nguy hiểm ở 3/10 cấu hình. Đặt
-   chiều cao xong thì mọi thứ đã nằm trên trang, hỏi thẳng là xong; hạ chiều
-   cao không làm các hàng nhúc nhích (chúng nằm trong phần cuộn) nên một lượt
-   là đủ.
+   chiều cao xong thì mọi thứ đã nằm trên trang, hỏi thẳng là xong.
 
-`test_cal_sections.mjs` canh cả 10 cấu hình (4 máy × 2 thứ tiếng × 2 mục).
+   **Một lượt KHÔNG đủ**, dù hạ chiều cao không làm các hàng nhúc nhích. Khung
+   này là khung CUỘN: hạ trần của nó thì trần `scrollTop` hạ theo và trình duyệt
+   kẹp `scrollTop` về trần mới — cả bảng trôi xuống tới 1px, **sau** khi phép đo
+   đã xong. Nay lùi thêm 1,5px (thay vì 0,5px) để nuốt trọn cú trôi ấy, và vòng
+   lặp đo lại sau mỗi nhát, tối đa 4 vòng.
+
+`test_cal_sections.mjs` canh cả 8 cấu hình (4 máy × 2 thứ tiếng).
 
 Hộp dòng chữ chỉ hỏi được qua `Range.getBoundingClientRect()` — mà jsdom (nền
 của `test_app.mjs`) có `Range` nhưng KHÔNG có hàm ấy, nên lượt đầu cả tab Lịch
@@ -2032,26 +2131,29 @@ chi tiết** (Trí Nhuận / Sách Bổ / Âm Bàn). Mã gác chúng sau điều
 "Bảng chi tiết - Âm Bàn pháp"). Đổi sang tiếng Trung là mất hẳn một tính năng
 mà không có dấu hiệu gì.
 
-### Gập/mở hai mục ngay trên widget
+### Gập/mở ngay trên widget
 
 Triệu chứng người dùng gặp: trong lịch đã ghim, mục **Tiết khí không mở ra
 được**, chỉ có Lịch âm là mở sẵn.
 
 Widget vốn chỉ **soi** trạng thái của ứng dụng: nó đọc `qmdj.calSecJq` và
 `qmdj.calSecAm` rồi vẽ theo, không có chỗ nào bấm được để lật. Ai lỡ gập Tiết
-khí trong tab Lịch thì ngoài màn hình chính đành chịu — mà hai hàng tiêu đề
-trông y hệt trong ứng dụng, nơi bấm vào là gập/mở được, nên chẳng có gì gợi ý
-rằng ở đây chúng chỉ để nhìn.
+khí trong tab Lịch thì ngoài màn hình chính đành chịu — mà hàng tiêu đề trông y
+hệt trong ứng dụng, nơi bấm vào là gập/mở được, nên chẳng có gì gợi ý rằng ở đây
+nó chỉ để nhìn.
 
-Nay hàng tiêu đề của mỗi mục là một `PendingIntent`: bấm là lật đúng khoá mà
-tab Lịch đọc, rồi vẽ lại **mọi** widget — trạng thái này là của chung, không
-phải của riêng một widget. Cột đầu thêm dấu `▾`/`▸` cho biết bấm được (cột đầu
-là cột căn trái duy nhất, thêm vào đấy không đẩy hai cột kia lệch tâm).
+Nay hàng tiêu đề của mục là một `PendingIntent`: bấm là lật khoá rồi vẽ lại
+**mọi** widget — trạng thái này là của chung, không phải của riêng một widget.
+Cột đầu thêm dấu `▾`/`▸` cho biết bấm được (cột đầu là cột căn trái duy nhất,
+thêm vào đấy không đẩy hai cột kia lệch tâm).
 
-Kèm chiều ngược lại: trang web chỉ đọc hai khoá ấy MỘT LẦN lúc nạp, nên bấm ở
-widget rồi quay lại ứng dụng thì tab Lịch vẫn hiện trạng thái cũ — và cú bấm
-tiếp theo trong ứng dụng sẽ lật từ trạng thái sai ấy. `MainActivity.onResume()`
-nay gọi `window.__calSyncSections()` để trang đọc lại.
+**Về sau hai bên tách hẳn ra.** Tab Lịch nay LUÔN mở mục Tiết khí, không gập
+được nữa, còn widget thì vẫn gập được — màn hình chính chật, giấu bảng đi cho
+lưới lịch rộng ra là việc có lý ở đó. Nên `qmdj.calSecJq` từ khoá DÙNG CHUNG
+thành khoá của riêng widget: chỉ `WidgetPrefs` đọc và ghi nó.
+`window.__calSyncSections()` (gọi từ `MainActivity.onResume()`) vì thế không
+còn gì để đồng bộ — nó ở lại chỉ để chia lại chiều cao khi người dùng quay về
+sau khi đổi cỡ chữ hệ thống.
 
 Và một lỗi nữa lòi ra khi soi chỗ này: `WidgetSections.build()` **bỏ hẳn** một
 mục nếu năm đang xem thiếu dữ liệu trong bảng tra (ví dụ lật tới mép bảng, nơi
@@ -2596,6 +2698,7 @@ android/
 │       ├── css/calendar.css         MỚI — thanh dưới (tab + hàng dùng chung)
 │       │                            + lịch âm dương
 │       ├── css/lenh.css             MỚI — tab Lệnh (nhân nguyên tư lệnh)
+│       ├── css/tracuu.css           MỚI — tab Tra cứu (bốn bảng tra theo năm)
 │       ├── js/astro_table.js        MỚI — mốc tiết khí/Sóc/Vọng từ JPL DE423
 │       ├── js/lunar.js              thư viện lịch âm của 6tail — ĐÃ SỬA: ba chỗ
 │       │                            nối tra astro_table.js (xem NOTICE.md)
@@ -2606,6 +2709,8 @@ android/
 │       ├── js/viewport.js           MỚI — vừa khít mọi kích thước màn hình
 │       ├── js/calendar.js           MỚI — tab Lịch: lưới, tiết khí, ghim widget
 │       ├── js/lenh.js               MỚI — tab Lệnh: bảng phân dã theo hoàng kinh
+│       ├── js/tracuu.js             MỚI — tab Tra cứu: bốn bảng tra theo năm
+│       ├── js/nguhanh.js            MỚI — nguồn DUY NHẤT tô can chi theo ngũ hành
 │       └── data/cities.txt          34.006 thành phố + múi giờ IANA
 └── tools/                           bộ sinh dữ liệu và kiểm thử
     └── almanac/                     MỚI — oracle Python sinh astro_table.js

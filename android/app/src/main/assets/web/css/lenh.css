@@ -18,6 +18,29 @@ body.view-lenh > *:not(.controls):not(#tuTruPanel):not(#lenhView):not(#bottomDoc
 }
 body.view-lenh #lenhView { display: flex; flex-direction: column; gap: 0; }
 
+/* Ba hàng thêm vào bảng Bát Tự (tàng can · phó tinh · hàng chừa trống) CHỈ
+   hiện ở tab này.
+
+   Bảng Bát Tự là MỘT phần tử dùng chung với tab Kỳ Môn (xem #tuTruPanel trong
+   index.html), nên ba hàng ấy cũng xuất hiện bên kia — và tab Kỳ Môn thì vốn
+   đã khít từng pixel: đo trên S21 Ultra (384×794) thấy khối thông tin dưới bàn
+   thò 2px xuống dưới thanh tab ngay khi thêm chúng vào. Chúng là chi tiết của
+   lá số Bát Tự, không phải của bàn Kỳ Môn, nên chỗ của chúng là ở đây.
+
+   Và KHÔNG CHỈ ba hàng: bảng Bát Tự ở tab Kỳ Môn phải giữ nguyên HỆT như cũ —
+   không màu ngũ hành, không in hoa, không đậm. Màu và kiểu chữ do CSS đặt, mà
+   phần tử thì dùng chung, nên phải trả chúng về mặc định ở ngoài tab này (JS
+   vẫn bọc <span class="nh …"> như thường; ở đây chỉ vô hiệu hoá màu). */
+.tt-bazi-only { display: none; }
+body.view-lenh .tt-bazi-only { display: table-row; }
+
+body:not(.view-lenh) #tuTruPanel td.tt-can,
+body:not(.view-lenh) #tuTruPanel td.tt-chi {
+    font-size: 12px; font-weight: 500;
+    text-transform: none; letter-spacing: normal;
+}
+body:not(.view-lenh) #tuTruPanel .nh { color: var(--text-main, #000); }
+
 /* Ô phái và ô "Đầy đủ" là chuyện của riêng Kỳ Môn (chọn pháp bày bàn, bật
    tắt chữ phụ trên bàn) — ở tab Lệnh không có bàn nào để bày. Ẩn đi rồi trả
    trần bề rộng cho ô ngày giờ: trần 50% tồn tại để KHE giữa nó và ô phái rơi
@@ -328,9 +351,13 @@ table.lenh-tb tr.lenh-on td {
     padding: 3px 1px;
     line-height: 1.25;
 }
+/* Dòng "11/1997 - 7t": ĐẬM như dòng can chi dưới nó. Cả đầu thẻ là một đơn vị
+   — năm, tuổi và can chi cùng nói "đại vận này là cái nào" — nên đậm cả cụm,
+   còn mười lưu niên bên dưới thì để chữ thường (xem .dv-row). */
 .dv-card-head .dv-line1 {
     display: block;
     font-size: clamp(8.5px, 2.3vw, 10px);
+    font-weight: 700;
     color: var(--text-dim, #666);
     white-space: nowrap;
 }
@@ -341,11 +368,20 @@ table.lenh-tb tr.lenh-on td {
     white-space: nowrap;
 }
 
-/* Đại vận ĐANG SỐNG (chứa năm nay): nền đậm hơn — chỉ đen/trắng/ghi, không
-   màu, nhưng vẫn phải nổi rõ giữa 10 ô giống hệt nhau về hình dạng. */
-.dv-card.dv-current { border-color: #888; border-width: 1.5px; }
-.dv-card.dv-current .dv-card-head { background: #999; color: #fff; }
-.dv-card.dv-current .dv-card-head .dv-line1 { color: #eee; }
+/* Đại vận ĐANG SỐNG (chứa năm nay): phải nổi rõ giữa 10 ô giống hệt nhau về
+   hình dạng.
+
+   Bản trước tô nền #999 và ĐẢO CHỮ sang trắng. Nay can chi được tô theo ngũ
+   hành (xem nguhanh.js), mà năm màu ấy chọn cho nền GIẤY — đặt lên nền ghi
+   đậm thì xanh nước biển #12408f gần như đen, còn nâu #8a5a2b thì lẫn hẳn.
+   Nên giữ nền SÁNG và chuyển phần "nổi rõ" sang viền dày + vạch đáy đậm: màu
+   ngũ hành đọc được y như chín thẻ kia, mà thẻ vẫn nhận ra ngay. */
+.dv-card.dv-current { border-color: #555; border-width: 2px; }
+.dv-card.dv-current .dv-card-head {
+    background: #e2e2e2;
+    border-bottom: 2px solid #555;
+}
+.dv-card.dv-current .dv-card-head .dv-line1 { color: #444; }
 
 /* Năm và can chi CẠNH NHAU một dòng — đúng ảnh mẫu ("1952  Nhâm Thìn").
    tabular-nums để cột năm thẳng hàng theo chiều dọc, dễ dò. */
@@ -377,14 +413,22 @@ table.lenh-tb tr.lenh-on td {
     line-height: 1.25;
 }
 .dv-row .dv-year { color: var(--text-main, #000); }
-.dv-row .dv-cc   { font-weight: 600; }
+/* KHÔNG đậm. Chỉ đầu thẻ được đậm; mười lưu niên là danh sách để dò, đậm cả
+   mười thì chẳng còn gì nổi lên so với gì. */
+.dv-row .dv-cc   { font-weight: 400; }
 
-/* Lưu niên NĂM NAY: cùng cách bảng Lệnh tô hàng đang cầm lệnh — đậm chữ và
-   đổi nền, không đổi màu chữ. */
+/* ── Lưu niên ĐANG CHỌN ──
+   Mặc định là năm nay; chạm vào một hàng khác thì hàng ấy được chọn (xem
+   onDaiVanTap trong lenh.js). Chỉ đổi NỀN, không đậm chữ: đậm là dấu hiệu
+   dành riêng cho đầu thẻ. */
 .dv-row.dv-row-on {
     background: #dcdcdc !important;
-    font-weight: 700;
 }
+/* Chạm được thì phải có phản hồi — mảng sáng mặc định của WebView đã tắt. */
+.dv-row { cursor: pointer; }
+.dv-row:active { background: #eee; }
+.dv-card-head { cursor: pointer; }
+.dv-card-head:active { filter: brightness(.95); }
 
 /* Máy rất hẹp (≤360px): 5 cột chỉ còn ~64px — bóp đệm/khe trước, đừng bóp
    chữ xuống dưới sàn clamp() (cùng luật máy hẹp mà bảng Lệnh năm áp dụng). */

@@ -1,7 +1,7 @@
 /* ════════════════════════════════════════════════════════════════════
-   tracuu.js — tab "Tra cứu": ba bảng tra theo NĂM
+   tracuu.js — tab "Tra cứu": bốn bảng tra theo NĂM
 
-   Gom về một chỗ ba bảng vốn nằm rải rác và vốn chỉ tra được theo ngày giờ
+   Gom về một chỗ bốn bảng vốn nằm rải rác và vốn chỉ tra được theo ngày giờ
    đang nhập:
 
      · Trí Nhuận pháp  — trước ở tab Kỳ Môn, và chỉ hiện khi đang chọn đúng
@@ -21,7 +21,7 @@
      window.__lenhShared       (lenh.js) → bảng Lệnh năm + danh sách bộ số
      window.toggleDetailPanel  (app.js)  → gập/mở, chung với mọi bảng khác
 
-   Ba bảng đã được CHUYỂN HẲN sang đây trong index.html chứ không nhân bản,
+   Bốn bảng đã được CHUYỂN HẲN sang đây trong index.html chứ không nhân bản,
    nên mọi id (#trn-tbody, #sb-tbody, #lenhBody…) vẫn là duy nhất trên trang
    và mấy hàm trên chạy y nguyên, không phải sửa một dòng nào. Sửa cột, sửa
    cách tô hàng, sửa định dạng ngày giờ ở chỗ cũ là tab này đổi theo — đúng
@@ -43,7 +43,7 @@
     var T = {
         pickYear:  { vi: 'Chọn năm',        zh: '选择年份' },
         yearPh:    { vi: 'Chọn năm…',       zh: '选择年份…' },
-        hint:      { vi: 'Chọn một năm để xem ba bảng tra.',
+        hint:      { vi: 'Chọn một năm để xem bốn bảng tra.',
                      zh: '选择一个年份以查看三张查询表。' },
         tabTraCuu: { vi: 'Tra cứu',         zh: '查询' },
     };
@@ -70,8 +70,6 @@
 
     /* ─────────────── Vẽ ─────────────── */
 
-    var đãMởLầnĐầu = false;
-
     function render() {
         if (!document.body.classList.contains('view-tracuu')) return;
         var wrap = document.getElementById('traCuuView');
@@ -85,11 +83,7 @@
         renderTriNhuan();
         renderSachBo();
         renderLenh();
-
-        // Mở tab lần đầu với năm nhớ từ phiên trước: cũng bung sẵn, đúng như
-        // khi vừa chọn năm. Chỉ MỘT lần — sau đó tôn trọng trạng thái người
-        // dùng tự đặt.
-        if (!đãMởLầnĐầu) { đãMởLầnĐầu = true; openAll(); }
+        renderAmLich();
     }
 
     /**
@@ -145,6 +139,37 @@
         }
     }
 
+    /**
+     * Bảng LỊCH ÂM (Sóc · Vọng 12 tháng) của năm đã chọn.
+     *
+     * Dựng bởi calendar.js (window.__calShared.amBanTableHtml) — đúng hàm mà
+     * tab Lịch từng dùng, nên hai bên không thể lệch. Khác một điểm: ở tab Lịch
+     * nó bám THÁNG ÂM đang xem trên lưới và tô đậm hàng ấy; ở đây tra một NĂM
+     * bất kỳ nên KHÔNG tô hàng nào (activeMon = 0), cùng lý lẽ với ba bảng kia.
+     *
+     * Lưu ý về NĂM: bảng liệt kê 12 tháng của một năm ÂM lịch, còn ô chọn ở
+     * trên là năm DƯƠNG. Hai thứ lệch nhau chừng một tháng rưỡi, nhưng dùng
+     * thẳng năm dương làm năm âm là đúng quy ước của chính tab Lịch (nó gọi
+     * Ephem.monthsAtBasis với năm âm suy từ ngày đang xem, mà 10/12 tháng của
+     * năm âm N nằm trong năm dương N).
+     */
+    function renderAmLich() {
+        var box = document.getElementById('tcAmBody');
+        var head = document.getElementById('tcAmTitle');
+        var sh = window.__calShared;
+        if (!box) return;
+        if (!sh) { box.innerHTML = ''; return; }
+        var loc = locInfo();
+        if (!loc) { box.innerHTML = ''; return; }
+        try {
+            box.innerHTML = sh.amBanTableHtml(year, loc.tz, loc.tzId, 0);
+            if (head) head.textContent = sh.amTitle().toUpperCase() + ' ' + year;
+        } catch (e) {
+            box.innerHTML = '';
+            console.warn('tracuu: Lịch âm', e);
+        }
+    }
+
     /** Toạ độ + múi giờ của địa điểm đang chọn ở hàng dùng chung dưới đáy. */
     function locInfo() {
         if (typeof getDOM !== 'function' || typeof countryData === 'undefined') return null;
@@ -175,40 +200,12 @@
         if (el) el.textContent = r ? r.label : '—';
     }
 
-    /**
-     * Mở cả ba bảng.
-     *
-     * Ba bảng mang theo trạng thái ĐÓNG SẴN từ chỗ cũ (.dp-body và #lenhSec
-     * đều display:none), vốn hợp lý ở đó: chúng là chi tiết PHỤ của một màn
-     * hình đã có nội dung chính. Ở tab này thì ngược hẳn — chúng LÀ nội dung,
-     * và người dùng vừa chọn một năm chính là để xem chúng. Chọn năm xong mà
-     * nhận được ba cái tiêu đề đóng im thì phải bấm thêm ba lần nữa.
-     *
-     * Chỉ gọi khi người dùng vừa CHỌN NĂM, không gọi ở mỗi lần vẽ lại: đổi
-     * ngôn ngữ hay đổi địa điểm mà ba bảng tự bung ra là giật mất trạng thái
-     * người dùng đã tự đóng.
-     */
-    function openAll() {
-        [['trinhuanBody', 'trinhuanChevron'],
-         ['sachboBody',   'sachboChevron'],
-         ['lenhSec',      'lenhHeadChevron']].forEach(function (pair) {
-            var body = document.getElementById(pair[0]);
-            var chev = document.getElementById(pair[1]);
-            if (!body) return;
-            body.style.display = 'block';
-            if (chev) chev.style.transform = 'rotate(180deg)';
-        });
-        var head = document.getElementById('lenhHead');
-        if (head) head.classList.add('lenh-open');
-    }
-
     function setYear(y) {
         y = parseInt(y, 10);
         if (!isFinite(y)) return;
         year = Math.min(Y_MAX, Math.max(Y_MIN, y));
         store(K_YEAR, String(year));
         render();
-        openAll();
         if (typeof window.__fitScreen === 'function') setTimeout(window.__fitScreen, 60);
     }
 
@@ -250,9 +247,14 @@
         if (tab) tab.querySelector('.tab-lbl').textContent = t('tabTraCuu');
         var hint = document.getElementById('tcHint');
         if (hint) hint.textContent = t('hint');
+        var amT = document.getElementById('tcAmTitle');
+        if (amT && window.__calShared) {
+            amT.textContent = window.__calShared.amTitle().toUpperCase() +
+                (year === null ? '' : ' ' + year);
+        }
         showYear();
         showRule();
-        // Đổi ngôn ngữ thì ba bảng phải vẽ lại: tên tiết khí, tên can chi và
+        // Đổi ngôn ngữ thì cả bốn bảng phải vẽ lại: tên tiết khí, can chi và
         // tiêu đề bảng đều theo ngôn ngữ.
         if (document.body.classList.contains('view-tracuu') && year !== null) render();
     }
@@ -261,6 +263,10 @@
 
     /* Chỉ dùng cho bộ kiểm thử. */
     window.__tracuuYear = function (y) { if (y !== undefined) setYear(y); return year; };
+    window.__tracuuAmHtml = function () {
+        var b = document.getElementById('tcAmBody');
+        return b ? b.innerHTML : '';
+    };
     window.__tracuuRule = function (k) { if (k) setRule(k); var r = currentRule(); return r && r.key; };
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -284,6 +290,26 @@
             else wrap.appendChild(h);
         }
         refreshLabels();
+
+        // Mục Lịch âm nối liền khung bảng khi mở, rời ra khi đóng — cùng hình
+        // dạng với #lenhHead ngay trên nó, nên cũng phải gắn/gỡ lớp .lenh-open.
+        // toggleDetailPanel() của app.js không biết gì về chuyện ấy: bọc nó ở
+        // đây, đúng cách lenh.js đã bọc cho khoá 'lenh'.
+        if (typeof window.toggleDetailPanel === 'function' && !window.toggleDetailPanel.__tcamWrapped) {
+            var origToggle = window.toggleDetailPanel;
+            var wrappedToggle = function (which) {
+                var r = origToggle.apply(this, arguments);
+                if (which === 'tcam') {
+                    var sec = document.getElementById('tcAmSec');
+                    var head = document.getElementById('tcAmHead');
+                    var open = sec && getComputedStyle(sec).display !== 'none';
+                    if (head) head.classList.toggle('lenh-open', !!open);
+                }
+                return r;
+            };
+            wrappedToggle.__tcamWrapped = true;
+            window.toggleDetailPanel = wrappedToggle;
+        }
 
         // Đổi địa điểm thì hai bảng tiết khí phải vẽ lại (mốc giờ địa phương
         // đổi theo), y như cách calendar.js và lenh.js móc vào processAll().

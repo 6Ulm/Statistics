@@ -24,19 +24,16 @@
     var MIN_SCALE = 0.95;
     // Không phóng quá to trên máy tính bảng / điện thoại gập.
     var MAX_SCALE = 1.6;
-    // Khoảng cách giữa các bảng khi chưa chia gì thêm — đúng như bản web gốc.
-    var BASE_GAP = 3;
-    // Trần của khe sau khi rót phần thừa vào. Không có trần thì trên máy cao
-    // (A51: dôi 82px cho 4 khe) các bảng rời rạc hẳn ra, xấu hơn cả khoảng hở.
+    // Khoảng cách giữa các bảng — MỘT con số, ở mọi tab, mọi máy.
     //
-    // 28 chứ không 24 từ khi bảng chi tiết Âm Bàn pháp bị gỡ khỏi tab Kỳ Môn:
-    // tab ấy mất một khối cao ~44px, nên phần dôi tăng đúng ngần ấy mà số KHE
-    // lại giảm đi một (5 khối → 4 khe). Ở trần 24px, A51 852px chạm trần rồi
-    // vẫn còn thừa 16,3px nằm chết ngay trên thanh dưới — đúng cái khoảng hở
-    // mà cả cơ chế này sinh ra để xoá. 28px hấp thụ trọn 16,3px ấy (4 khe ×
-    // 4,1px) mà vẫn còn là một khe, không phải một quãng trống.
-    // S21 FE (19,3px) và S21 (17,6px) chưa chạm trần nên không đổi gì.
-    var GAP_MAX = 28;
+    // Bản trước còn rót phần chiều cao dôi ra vào chính các khe này (trần
+    // GAP_MAX = 28px), để tab Kỳ Môn lấp trọn màn hình thay vì để một dải
+    // trống nằm chết trên thanh dưới. Người dùng chốt ngược lại: "trong mỗi
+    // tab kỳ môn, lịch, bát tự, tra cứu, giảm tối đa vertical space giữa các
+    // boxes (nhưng vẫn có 1 chút space nhỏ), có thể thừa 1 space rộng ở dưới
+    // cùng cũng ko sao". Nên phép rót ấy đã bỏ hẳn: khe luôn là BASE_GAP, phần
+    // dôi dồn hết xuống đáy.
+    var BASE_GAP = 3;
 
     var lastW = 0, lastH = 0, timer = null;
 
@@ -146,34 +143,11 @@
         // dôi ra vài pixel (đo trên tablet: 9px, đủ để hiện thanh cuộn).
         if (elastic && scale <= MIN_SCALE) fitTab();
 
-        // ── Rót phần thừa chiều cao vào các khe ──
-        // Phóng to bị CHẶN BỞI BỀ NGANG: trên S21 FE tỉ lệ đã kịch 1,0 vì rộng,
-        // trong khi chiều cao còn dôi 39px (A51: 82px) nằm chết ở đáy màn hình
-        // ngay trên thanh dưới. Bàn Kỳ Môn là lưới vuông nên không cao thêm
-        // được nếu không rộng thêm, vậy chỗ duy nhất nhận được phần dôi ấy là
-        // khe giữa các bảng.
-        //
-        // Tab Lệnh (Bát Tự) BỎ QUA bước này: lý luận trên chỉ đúng cho bàn Kỳ
-        // Môn (lưới vuông, cỡ CỐ ĐỊNH, không thể cao thêm) — Đại Vận ở tab
-        // Lệnh thì NGƯỢC LẠI, cao tuỳ nội dung của chính nó, không có "chỗ
-        // dôi" nào cần lấp bằng khe cho vừa khít một màn hình. Người dùng
-        // phản ánh đúng khe này (.controls → #tuTruPanel → #lenhView) từng bị
-        // bơm gần kịch trần GAP_MAX (đo được 21.5px, so với BASE_GAP 3px),
-        // nhìn thừa hẳn.
-        var kids = [];
-        for (var g = 0; g < body.children.length; g++) {
-            var el = body.children[g];
-            var cs = getComputedStyle(el);
-            if (cs.display !== 'none' && cs.position !== 'fixed') kids.push(el);
-        }
-        if (kids.length > 1 && !body.classList.contains('view-lenh')) {
-            var used = body.getBoundingClientRect().height;
-            var spare = (availH - used) / (parseFloat(body.style.zoom) || 1);
-            if (spare > 1) {
-                var gap = Math.min(GAP_MAX, BASE_GAP + spare / (kids.length - 1));
-                body.style.gap = gap.toFixed(1) + 'px';
-            }
-        }
+        // Khe giữa các bảng KHÔNG nhận phần chiều cao dôi ra nữa (xem BASE_GAP
+        // ở đầu tệp): mọi tab đều giữ đúng một khe nhỏ, phần dôi nằm ở đáy.
+        // Đặt lại tường minh vì apply() có thể chạy nhiều lần trong một phiên
+        // và bản cũ từng ghi một con số lớn vào style.gap.
+        body.style.gap = BASE_GAP + 'px';
 
         lastW = availW;
         lastH = availH;

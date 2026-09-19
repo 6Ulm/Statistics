@@ -81,14 +81,15 @@ for (const city of PICK) {
 
     const rows = await page.evaluate(({ city, DATES }) => {
         document.getElementById('country').value = city;
-        // Bảng Sóc/Vọng nay CHỈ còn ở mục "Lịch âm" của tab Lịch: bảng chi tiết
-        // Âm Bàn pháp ở tab Kỳ Môn đã bỏ hẳn. Mở sẵn mục ấy rồi đọc từ đó —
-        // cùng một dãy số, chỉ khác chỗ hiện.
-        window.showTab('cal');
-        const secAm = document.getElementById('calSecAm');
-        if (secAm && !secAm.classList.contains('cal-sec-open')) {
-            secAm.querySelector('.cal-sec-head').click();
-        }
+        // Bảng Sóc/Vọng nay ở mục "Lịch âm" của tab TRA CỨU: bảng chi tiết Âm
+        // Bàn pháp ở tab Kỳ Môn đã bỏ hẳn, và mục Lịch âm cũng đã rời tab Lịch.
+        // Cùng một dãy số (cùng hàm __calShared.amBanTableHtml dựng ra), chỉ
+        // khác chỗ hiện — và ở đây nó tra theo NĂM ÂM người dùng gõ, không theo
+        // tháng đang xem, nên mỗi ca phải đặt năm rồi mới đọc.
+        const mởLịchÂm = () => {
+            const sec = document.getElementById('tcAmSec');
+            if (sec && getComputedStyle(sec).display === 'none') window.toggleDetailPanel('tcam');
+        };
         const out = [];
         for (const [y, m, d] of DATES) {
             getDOM('inYear').value = y;
@@ -97,21 +98,30 @@ for (const city of PICK) {
             getDOM('solarHour').value = 12;
             getDOM('solarMinute').value = 0;
             processAll();
-            // Mục "Lịch âm" liệt kê 12 tháng của năm mà tab Lịch ĐANG XEM,
-            // không phải của ngày trong lá số — hai thứ độc lập nhau. Phải lái
-            // lịch tới đúng tháng ấy, bằng không mọi ca đều đọc ra dãy Sóc của
-            // tháng mặc định (đo được: cả 6 ca cùng trả về 11-09-2026 05:27).
-            if (window.__calGoto) window.__calGoto(y, m, d);
+            // Ngày âm của chính ngày dương này: "dd - mm - yyyy", tháng nhuận
+            // viết "mm (Nhuận)". Cả ba mảnh đều cần — NĂM âm để lái bảng tra,
+            // THÁNG và cờ nhuận để chọn đúng dòng.
             const lunar = (getDOM('out-lunar-table')?.innerText || '').trim();
-            const lmon = parseInt((lunar.split('-')[1] || '').trim(), 10);
-            // Mục "Lịch âm" của tab Lịch: Tháng | Sóc | Vọng — lấy đúng dòng
-            // đang tô đậm, hoặc dò theo số tháng âm nếu không có dòng nào tô.
-            // processAll() ở trên đã kéo tab Lịch vẽ lại (calendar.js bọc nó).
-            // #calAmActive nằm trên ô <td> đầu dòng, không phải trên <tr>.
-            const trs = [...document.querySelectorAll('#calAmBan tbody tr')];
-            const act = document.getElementById('calAmActive');
-            const tr = (act && act.closest('tr')) ||
-                       trs.find(t => new RegExp(`Tháng ${lmon}$`).test(t.cells[0].textContent.trim()));
+            const mảnh = lunar.split('-').map(x => x.trim());
+            const lmon = parseInt(mảnh[1], 10);
+            const lleap = /Nhuận|闰/.test(mảnh[1] || '');
+            const lyear = parseInt(mảnh[2], 10);
+            // Bảng Lịch âm ở tab Tra cứu liệt kê 12–13 tháng của NĂM ÂM được
+            // gõ vào ô năm — phải đặt đúng năm ấy, bằng không mọi ca đều đọc
+            // ra dãy Sóc của năm mặc định.
+            window.showTab('tracuu');
+            window.__tracuuYear(lyear);
+            mởLịchÂm();
+            // Tháng | Sóc | Vọng. Tra một năm bất kỳ thì KHÔNG dòng nào được
+            // tô "đang hiệu lực" (activeMon = 0), nên dò theo nhãn tháng — và
+            // phải phân biệt "Tháng 3" với "Tháng 3 (Nhuận)", hai dòng khác
+            // hẳn nhau trong cùng một năm.
+            const trs = [...document.querySelectorAll('#tcAmBody tbody tr')];
+            const tr = trs.find(t => {
+                const nh = t.cells[0].textContent.trim();
+                const n = parseInt((/\d+/.exec(nh) || [])[0], 10);
+                return n === lmon && /Nhuận|闰/.test(nh) === lleap;
+            });
             const soc = tr ? tr.cells[1].textContent.trim() : '';
             const vong = tr ? tr.cells[2].textContent.trim() : '';
             // Mốc mùng 1 mong đợi, tính ĐỘC LẬP từ giờ Sóc đang hiện:

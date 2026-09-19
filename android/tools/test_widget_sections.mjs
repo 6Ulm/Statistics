@@ -1,6 +1,6 @@
 /**
- * Hai mục của tab Lịch — "Tiết khí" và "Lịch âm" — phải hiện ĐÚNG NHỮNG DÒNG
- * ẤY trên widget màn hình chính.
+ * Hai bảng tra cứu — "Tiết khí" (tab Lịch, cũng là mục duy nhất của widget) và
+ * "Lịch âm" (nay ở tab Tra cứu) — phải khớp từng ô với ĐƯỜNG TRA CỦA WIDGET.
  *
  *   node test_widget_sections.mjs
  *
@@ -157,24 +157,41 @@ for (const tzId of ['Asia/Ho_Chi_Minh', 'Europe/Paris', 'America/New_York']) {
     await page.waitForTimeout(900);
     await page.click('#tabCal');
     await page.waitForTimeout(900);
+    // Mục Tiết khí: mục DUY NHẤT còn lại ở tab Lịch (và ở widget).
     await page.evaluate(() => {
-        for (const id of ['calSecJq', 'calSecAm']) {
-            const s = document.getElementById(id);
-            if (!s.classList.contains('cal-sec-open')) s.querySelector('.cal-sec-head').click();
-        }
+        const s = document.getElementById('calSecJq');
+        if (s && !s.classList.contains('cal-sec-open')) s.querySelector('.cal-sec-head').click();
     });
     await page.waitForTimeout(700);
 
-    const app = await page.evaluate(() => {
+    const jqAndDay = await page.evaluate(() => {
         const rows = sel => [...document.querySelectorAll(sel)]
             .map(tr => [...tr.cells].map(c => c.textContent.trim()));
         const now = new Date();
         return {
             jq: rows('#calJqBody tr'),
-            am: rows('#calAmBan tbody tr'),
             today: [now.getFullYear(), now.getMonth() + 1, now.getDate()],
         };
     });
+
+    // Bảng Lịch âm đã CHUYỂN sang tab Tra cứu và bỏ hẳn khỏi widget — nhưng nó
+    // vẫn đọc CÙNG hai tệp assets mà LunarTable.kt tra, nên vẫn phải khớp từng
+    // ô với đường tra ấy. Ở đó bảng tra theo NĂM người dùng gõ, không theo
+    // tháng đang xem, nên phải đặt năm tường minh.
+    await page.click('#tabTraCuu');
+    await page.waitForTimeout(600);
+    await page.evaluate(y => window.__tracuuYear(y), jqAndDay.today[0]);
+    await page.waitForTimeout(700);
+    await page.evaluate(() => {
+        const sec = document.getElementById('tcAmSec');
+        if (sec && getComputedStyle(sec).display === 'none') window.toggleDetailPanel('tcam');
+    });
+    await page.waitForTimeout(600);
+    const app = {
+        ...jqAndDay,
+        am: await page.evaluate(() => [...document.querySelectorAll('#tcAmBody tbody tr')]
+            .map(tr => [...tr.cells].map(c => c.textContent.trim()))),
+    };
 
     console.log(`\n${tzId}`);
     const ref = jdnOf(app.today[0], app.today[1], app.today[2]);
@@ -191,7 +208,7 @@ for (const tzId of ['Asia/Ho_Chi_Minh', 'Europe/Paris', 'America/New_York']) {
     ok('…mốc Dương lịch khớp từng dòng', !badDate, badDate);
     ok('…CAN CHI THÁNG khớp từng dòng (cột mới)', !badGz, badGz);
 
-    // Năm âm mà tab đang hiện: suy từ chính nhãn tháng đầu bảng của ứng dụng.
+    // Năm âm mà bảng đang hiện: suy từ chính nhãn tháng đầu bảng của ứng dụng.
     let wAm = null;
     for (let y = app.today[0] - 1; y <= app.today[0] + 1 && !wAm; y++) {
         const cand = widgetMonths(y, tzId);

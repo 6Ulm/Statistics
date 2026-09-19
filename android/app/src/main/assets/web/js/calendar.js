@@ -16,7 +16,7 @@
     var T = {
         tabQmdj:  { vi: 'Kỳ Môn',     zh: '奇门' },
         tabCal:   { vi: 'Lịch',       zh: '日历' },
-        title:    { vi: 'LỊCH ÂM THÁNG', zh: '农历' },
+        title:    { vi: 'LỊCH THÁNG',    zh: '农历' },
         dows:     { vi: ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'C.Nhật'],
                     zh: ['一', '二', '三', '四', '五', '六', '日'] },
         today:    { vi: 'Hôm nay',    zh: '今天' },
@@ -83,9 +83,14 @@
     // SÀN chiều cao một hàng lịch — `min-height`, không phải chiều cao chốt.
     // Ô ngày chứa ba dòng (số ngày + ngày âm, can, chi); ba dòng ấy cần hơn thì
     // hàng tự cao thêm, và fitGrid ĐO lưới thật chứ không nhân ROW_MIN × số
-    // tuần. Chỗ thừa của màn hình cao đổ vào hai mục, không kéo hàng lịch cao
-    // ra nữa.
-    var ROW_MIN = 52;
+    // tuần. Chỗ thừa của màn hình cao đổ vào mục Tiết khí, không kéo hàng lịch
+    // cao ra nữa.
+    //
+    // 46 chứ không 52: người dùng xin "giảm grid height của calendar đi 1 chút
+    // để có thể expand được nhiều hơn tab tiết khí". Sáu hàng × 6px = 36px
+    // chảy thẳng sang bảng Tiết khí — chừng hai hàng rưỡi ở cỡ chữ mới. Đây
+    // vẫn chỉ là SÀN: ô nào cần ba dòng cao hơn thì tự cao thêm, không cắt chữ.
+    var ROW_MIN = 46;
     /** Mục đang mở không bao giờ thấp hơn chừng này — thấp quá thì vô dụng. */
     var SEC_MIN = 96;
 
@@ -131,12 +136,19 @@
 
     /** Khoá kho tuỳ chọn: bảng tháng âm cho widget (xem publishLunarCache). */
     var K_LUNAR_CACHE = 'qmdj.lunarCache';
-    /** Hai mục gập được của tab Lịch — mở/đóng độc lập, nhớ qua các lần mở app. */
-    var K_SEC_JQ = 'qmdj.calSecJq';
-    var K_SEC_AM = 'qmdj.calSecAm';
+    /*
+     * KHÔNG còn khoá gập/mở nào ở đây.
+     *
+     * Mục Tiết khí của tab Lịch nay LUÔN MỞ (người dùng chốt "ô tiết khí từ giờ
+     * ko hide nữa mà luôn hiển thị"), nên tệp này không đọc cũng không ghi
+     * `qmdj.calSecJq` nữa. Khoá ấy vẫn sống, nhưng là chuyện của riêng LỊCH ĐÃ
+     * GHIM: widget nhỏ, giấu bảng đi cho lưới lịch rộng ra là việc có lý ở đó,
+     * và WidgetPrefs tự đọc tự ghi lấy (xem WidgetSupport.kt).
+     */
     /** Ngôn ngữ đang chọn, để widget vẽ đúng thứ tiếng (xem LunarTable.langOf). */
     var K_LANG = 'qmdj.lang';
-    var openJq = true, openAm = false;
+    /** Mục Tiết khí ở tab Lịch: LUÔN MỞ, không có đường nào lật lại. */
+    var openJq = true;
 
     var viewY, viewM;          // tháng đang xem (dương lịch)
     var selected = null;       // {y,m,d}
@@ -286,7 +298,6 @@
         clearLunarBasis();
         lastWeeks = cells.length / 7;
         fitGrid(lastWeeks);
-        renderAmBan();
         // Hai bảng vừa dựng lại từ đầu: ghim lại bề rộng cột dùng chung, rồi
         // đặt lại trần kẹp của mục đang đóng — không thì mục đóng bung ra đủ
         // 24 hàng sau mỗi lần vẽ. Đúng thứ tự này: kẹp chiều cao đo <thead>,
@@ -324,6 +335,11 @@
         // rồi đẩy nút xuống dưới, nằm khuất sau thanh tab cố định.
         var pin = document.getElementById('calPinBtn');
         if (!grid || !head || !dow) return;
+        // Nút Ghim nay là `position: fixed`, treo cách thanh dưới 4px (xem
+        // #calPinBtn trong calendar.css). Trừ CHIỀU CAO của nó thôi thì bảng
+        // Tiết khí ăn lấn đúng 4px ấy cộng phần chừa mắt — đo được chồng 1,6px
+        // lên nút. PIN_GAP trả lại 4px treo + 4px thở.
+        var PIN_GAP = 8;
 
         var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
         var h = function (el) { return el ? el.getBoundingClientRect().height / zoom : 0; };
@@ -357,8 +373,9 @@
 
         // Phần còn lại là của HAI KHUNG MỤC (kể cả hàng tiêu đề nằm trong
         // chúng) cộng khe giữa hai mục.
+        var pinH = vis(pin);
         var budget = window.innerHeight / zoom
-            - h(head) - gridH - h(bar) - vis(pin)
+            - h(head) - gridH - h(bar) - (pinH ? pinH + PIN_GAP : 0)
             - chrome.outer - chrome.secGap - GRID_CHROME;
         budget = Math.max(0, Math.floor(budget));
 
@@ -369,59 +386,8 @@
      * Chừng nào người dùng chưa tự bấm: quyết hộ xem có mở sẵn Lịch âm hay
      * không, theo chỗ trống thật của máy.
      *
-     * Trần của Tiết khí là JQ_SHARE phần trăm ngân sách và KHÔNG đổi theo việc
-     * Lịch âm mở hay đóng (xem shareSectionHeight) — nên phần còn lại là phần
-     * dành riêng cho Lịch âm, đóng nó lại thì phần ấy bỏ không. Trên máy cao
-     * (A51 852px, S21 FE 790px) phần bỏ không ấy trên 100px, thành một dải
-     * trống thấy rõ dưới hàng tiêu đề "Tháng âm"; ngay cả trên 360×640 nó cũng
-     * là 66px. Còn đủ chỗ cho lấy một hàng đọc được thì mở, dải trống ấy hết.
-     *
-     * "Dùng được" ĐO trên chính bảng đang có, không phải một con số chọn bừa:
-     * hàng tiêu đề cộng AM_OPEN_ROWS hàng dữ liệu, lấy chiều cao hàng thật của
-     * bảng Lịch âm. Lấy SEC_MIN (96px) làm ngưỡng thì trên S21 FE — nơi phần
-     * của Lịch âm là 88px, thừa sức chứa ba hàng — nó bị đóng lại một cách vô
-     * lý và 71px đáy màn hình bỏ trống.
-     *
-     * Hai ngưỡng KHÁC NHAU, vì chừa rộng tay mà mở thì dễ tính:
-     *
-     *   AM_KEEP_ROWS — chỗ shareSectionHeight chừa lại cho Lịch âm khi chia
-     *     với Tiết khí. HAI hàng, không phải ba: hàng bảng tiếng Trung cao hơn
-     *     tiếng Việt vài pixel, nên ngưỡng ba hàng khiến CÙNG MỘT MÁY xử khác
-     *     nhau ở hai ngôn ngữ (S21 FE: 9px thừa so với 85px).
-     *
-     *   AM_OPEN_ROWS — ngưỡng mở sẵn. MỘT hàng, vì mở hay đóng KHÔNG đổi chỗ
-     *     Tiết khí được cấp (xem shareSectionHeight): đóng lại thì phần của
-     *     Lịch âm bỏ không, thành dải trống ở đáy. Trên 360×640 phần ấy chỉ đủ
-     *     một hàng rưỡi; một hàng đọc được cộng thanh cuộn vẫn hơn hẳn 66px
-     *     trống trơn, nên chừng nào còn đủ MỘT hàng thì cứ mở.
-     *
-     * Chốt xong thì GHI vào kho tuỳ chọn chứ không giữ riêng trong bộ nhớ:
-     * widget gập/mở theo đúng khoá này, mà widget thì phải khớp với tab Lịch.
+     * (Khối quyết định mở sẵn Lịch âm đã bỏ: mục ấy không còn ở tab này.)
      */
-    var AM_KEEP_ROWS = 2;
-    var AM_OPEN_ROWS = 1;
-    /**
-     * Trạng thái gập/mở của Lịch âm còn đang do máy tự quyết (chưa ai bấm).
-     *
-     * Quyết đi quyết lại chứ KHÔNG chốt một lần: chỗ trống còn đổi sau lượt
-     * dựng đầu tiên — nút "Ghim lịch" chỉ hiện khi có cầu nối Android và hiện
-     * muộn hơn lượt fitGrid đầu, lấy mất 32px; tháng 6 hàng thì lưới cao thêm
-     * một hàng. Chốt một lần trên con số cũ là mở sẵn Lịch âm rồi lượt sau cấp
-     * thật lại không đủ. Hai đầu vào của quyết định (chỗ trống, chiều cao hàng)
-     * đều không phụ thuộc vào chính trạng thái ấy, nên quyết lại không sinh ra
-     * vòng lật qua lật lại.
-     */
-    var amAuto = false;
-    /**
-     * Bảng Lịch âm đã dựng xong ÍT NHẤT MỘT LẦN chưa.
-     *
-     * fitGrid chạy hai lượt mỗi lần vẽ, và lượt ĐẦU đi trước renderAmBan() —
-     * lúc ấy chiều cao hàng tiêu đề, chiều cao hàng và do đó cả phần chia cho
-     * Lịch âm đều là số của lần vẽ trước. Chốt mặc định trên những con số ấy
-     * thì trên máy thấp ra "đủ chỗ" rồi lượt sau cấp thật lại không đủ lấy một
-     * hàng: mục mở ra mà chỉ thấy đúng hàng tiêu đề.
-     */
-    var amRendered = false;
     /**
      * Số đo MỘT hàng dữ liệu, đo trên chính bảng đang có (hàng tiếng Trung cao
      * hơn tiếng Việt vài pixel, nên không chốt cứng con số nào):
@@ -476,15 +442,24 @@
                             xuống: mt.actualBoundingBoxDescent || 0 };
                 }
             } catch (e) {}
-            inkCache[font] = ink;
+            // CHỈ nhớ khi đo được. Nhớ cả kết quả hỏng thì một lần đo sớm —
+            // phông chưa nạp xong, canvas chưa trả nổi fontBoundingBox* —
+            // khoá chết cả phiên vào đường lùi "đáy HỘP DÒNG", vốn thấp hơn
+            // đáy mực thật chừng 1,4px. Ngần ấy đủ để snapCut tưởng mép cắt
+            // còn an toàn trong khi nó đang xén ngang dấu nặng của "Đại Tuyết".
+            if (ink) inkCache[font] = ink;
         }
-        var dưới = (t.bottom - r.top) / zoom;
+        // Không đo được bằng canvas (phông chưa nạp xong ở lượt chia đầu tiên,
+        // hoặc trình duyệt không trả fontBoundingBox*) thì ƯỚC LƯỢNG DÈ DẶT,
+        // đừng lấy thẳng đáy HỘP DÒNG: hộp dòng nằm thấp hơn nét thấp nhất của
+        // chữ chừng 1,4px, và ngần ấy đủ để snapCut tưởng mép cắt còn an toàn
+        // trong khi nó đang xén ngang dấu nặng. Hệ số 0,92 đưa con số ước lượng
+        // về đúng chỗ đo được khi canvas chạy (19,42 → 18,02 so với 18,0 đo
+        // thật trên A51), và sai số còn lại luôn nghiêng về phía CẮT SỚM.
+        var đáyHộp = (t.bottom - r.top) / zoom;
+        var dưới = trên + (đáyHộp - trên) * 0.92;
         if (ink) dưới = trên + (lineH - ink.lên) / 2 + ink.cơsở + ink.xuống;
         return { h: r.height / zoom, trên: trên, dưới: dưới };
-    }
-    function amRowHeight() {
-        var m = rowMetrics(document.getElementById('calAmBan'));
-        return m ? m.h : 0;
     }
 
     /**
@@ -532,31 +507,39 @@
         var cao = box.height / zoom;
         if (!m || !m.h) return cao;
         var cs = getComputedStyle(el);
-        var cắt = (box.bottom - (parseFloat(cs.borderBottomWidth) || 0)) / zoom;
+        var an = m.trên + (m.dưới - m.trên) * CUT_SAFE;
         var rows = el.querySelectorAll('tbody tr');
-        for (var i = 0; i < rows.length; i++) {
-            var q = rows[i].getBoundingClientRect();
-            if (q.top / zoom >= cắt - 0.5 || q.bottom / zoom <= cắt + 0.5) continue;
-            var hiện = cắt - q.top / zoom;         // hàng cuối hiện được bấy nhiêu
+        // LẶP tới khi mép cắt ra khỏi vùng cấm, chứ không sửa một nhát rồi thôi.
+        // Một nhát đủ KHI hộp co đúng bằng số pixel vừa trừ — nhưng tab Lịch
+        // chia lại chiều cao nhiều lượt (lúc vẽ, lúc hiện nút Ghim, lúc đổi
+        // ngôn ngữ), và lượt sau có thể ghi đè maxHeight rồi dừng lại đúng
+        // trong vùng cấm. Đo lại sau mỗi nhát thì kết quả không còn phụ thuộc
+        // vào lượt nào chạy sau cùng. Trần 4 vòng: mỗi vòng lùi ít nhất 0,5px
+        // nên không thể quẩn, mà 4 vòng thì thừa sức ra khỏi một hàng.
+        for (var lần = 0; lần < 4; lần++) {
+            var cắt = (el.getBoundingClientRect().bottom
+                       - (parseFloat(cs.borderBottomWidth) || 0)) / zoom;
+            var hiện = null;                       // hàng cuối hiện được bấy nhiêu
+            for (var i = 0; i < rows.length; i++) {
+                var q = rows[i].getBoundingClientRect();
+                if (q.top / zoom >= cắt - 0.5 || q.bottom / zoom <= cắt + 0.5) continue;
+                hiện = cắt - q.top / zoom;
+                break;
+            }
+            if (hiện === null) return cao;         // không hàng nào bị cắt ngang
             if (hiện >= m.dưới) return cao;        // thấy trọn chữ, kể cả dấu
-            var an = m.trên + (m.dưới - m.trên) * CUT_SAFE;
             if (hiện <= an) return cao;            // đã cắt sâu vào thân chữ
-            cao = Math.max(0, cao - (hiện - an) - 0.5);
+            // Lùi thêm 1,5px chứ không phải 0,5px. Hộp này là KHUNG CUỘN, và
+            // co nó lại thì trần của scrollTop hạ theo — trình duyệt kẹp
+            // scrollTop về trần mới, và cả bảng bên trong trôi xuống tới một
+            // pixel SAU khi snapCut đã đo xong. Đo trên A51: snapCut trả về với
+            // mép cắt ở 13,02px (an toàn, ngưỡng 13,52px) rồi người dùng thấy
+            // nó ở 14,02px — đúng trong vùng cấm. 1,5px nuốt trọn cú trôi ấy mà
+            // vẫn chưa ăn sang hàng kế.
+            cao = Math.max(0, cao - (hiện - an) - 1.5);
             el.style.maxHeight = cao + 'px';
-            return cao;
         }
         return cao;
-    }
-    function decideAmDefault(amRoom, amHeadH, measured) {
-        if (!amAuto || !measured) return;
-        var rowH = amRowHeight();
-        if (!rowH) return;                      // bảng chưa dựng: quyết lần sau
-        var want = amRoom >= amHeadH + AM_OPEN_ROWS * rowH;
-        if (want === openAm) return;
-        openAm = want;
-        prefSet(K_SEC_AM, want ? '1' : '0');
-        applySections();
-        pokeWidget();
     }
 
     /**
@@ -638,8 +621,7 @@
             '<thead><tr class="cal-sec-head">' +
             '<th>' + t('colTk') + '</th>' +
             '<th class="c">' + t('colDate') + '</th>' +
-            '<th class="c cal-jq-last">' + t('colGz') +
-            '<span class="cal-sec-chev"></span></th>' +
+            '<th class="c cal-jq-last">' + t('colGz') + '</th>' +
             '</tr></thead><tbody id="calJqBody">' + rows + '</tbody></table>';
         setTimeout(scrollToActiveJieQi, 40);
         return true;
@@ -735,57 +717,53 @@
      * Mục "Lịch âm": đúng bảng của Âm Bàn pháp ở tab Kỳ Môn (Tháng âm · Sóc ·
      * Vọng), dựng lại tại đây từ CÙNG những hàm ấy để hai tab không thể lệch.
      */
-    function renderAmBan() {
-        var box = document.getElementById('calAmBan');
-        if (!box) return;
+    /**
+     * HTML bảng LỊCH ÂM (Tháng âm · Sóc · Vọng) của một năm âm lịch.
+     *
+     * Bảng này đã CHUYỂN sang tab Tra cứu (xem #tcAmSec trong index.html) — tab
+     * Lịch và lịch đã ghim nay chỉ còn lưới lịch và bảng tiết khí. Nhưng hàm
+     * dựng thì ở lại đây, vì nó dùng chung mọi thứ của tệp này (Ephem,
+     * formatPreciseSocLocal, COLGROUP, lớp CSS .cal-jq). Lộ ra qua
+     * window.__calShared để js/tracuu.js gọi — MỘT nguồn duy nhất, sửa ở đây
+     * là tab Tra cứu đổi theo.
+     *
+     * @param {number}  lunarYear  Năm âm lịch cần liệt kê.
+     * @param {number}  tz         Lệch múi giờ (giờ) để quy điểm Sóc về địa phương.
+     * @param {string}  tzId       Mã múi giờ IANA.
+     * @param {number}  activeMon  Tháng cần tô đậm (âm thì là tháng nhuận), 0 =
+     *                             không tô mục nào — tra một năm bất kỳ thì
+     *                             không có "tháng đang xem" nào cả.
+     */
+    function amBanTableHtml(lunarYear, tz, tzId, activeMon) {
         if (typeof Ephem === 'undefined' || typeof Solar === 'undefined' ||
             typeof formatPreciseSocLocal !== 'function' ||
-            typeof formatPreciseVongLocal !== 'function') { box.innerHTML = ''; return; }
-        try {
-            var sel = selected || { y: viewY, m: viewM, d: 1 };
-            var info = countryData[getDOM('country').value];
-            if (!info || !info.tzId) { box.innerHTML = ''; return; }
-            var tz = getTimezoneOffset(info.tzId, new Date(sel.y, sel.m - 1, sel.d, 12));
-
-            // Tháng âm của ngày đang chọn, để tô đậm đúng hàng.
-            var ctx = buildCtx(sel.y, sel.m);
-            var cur = ctx ? ziFromCtx(ctx, jdnOfDate(sel.y, sel.m, sel.d)) : null;
-            var curYear = cur ? cur.year : sel.y;
-            var curMonth = cur ? (cur.leap ? -cur.month : cur.month) : 0;
-
-            var months = Ephem.monthsAtBasis(curYear, tz);
-            var rows = '';
-            for (var i = 0; i < months.length; i++) {
-                var mo = months[i];
-                var moNum = mo.leap ? -mo.month : mo.month;
-                var socSolar = Solar.fromJulianDay(mo.jd);
-                var on = (moNum === curMonth);
-                var label = (isZH() ? mo.month + '月' : 'Tháng ' + mo.month) +
-                    (mo.leap ? ' (' + t('leap') + ')' : '');
-                // Sóc/Vọng CĂN GIỮA (lớp "c"), khớp tiêu đề đã căn giữa — khác cột
-                // "Dương lịch" của Tiết khí, vốn căn trái nên vẫn để nguyên.
-                rows += '<tr' + (i % 2 === 0 ? ' class="dp-row-alt"' : '') + '>' +
-                    '<td class="cal-jq-name' + (on ? ' cal-jq-on' : '') + '"' +
-                    (on ? ' id="calAmActive"' : '') + '>' + esc(label) + '</td>' +
-                    '<td class="dp-num cal-jq-date c' + (on ? ' cal-jq-on' : '') + '">' +
-                    esc(formatPreciseSocLocal(socSolar, info.tzId)) + '</td>' +
-                    '<td class="dp-num cal-jq-date c cal-jq-last' + (on ? ' cal-jq-on' : '') + '">' +
-                    esc(formatPreciseVongLocal(socSolar, info.tzId)) + '</td>' +
-                    '</tr>';
-            }
-            box.innerHTML =
-                '<table class="dp-table cal-jq">' + COLGROUP +
-                '<thead><tr class="cal-sec-head">' +
-                '<th>' + t('colMonth') + '</th>' +
-                '<th class="c">' + t('colSoc') + '</th>' +
-                '<th class="c cal-jq-last">' + t('colVong') +
-                '<span class="cal-sec-chev"></span></th>' +
-                '</tr></thead><tbody>' + rows + '</tbody></table>';
-            amRendered = true;
-        } catch (e) {
-            console.warn('calAmBan:', e);
-            box.innerHTML = '';
+            typeof formatPreciseVongLocal !== 'function') return '';
+        var months = Ephem.monthsAtBasis(lunarYear, tz);
+        var rows = '';
+        for (var i = 0; i < months.length; i++) {
+            var mo = months[i];
+            var moNum = mo.leap ? -mo.month : mo.month;
+            var socSolar = Solar.fromJulianDay(mo.jd);
+            var on = (activeMon !== 0 && moNum === activeMon);
+            var label = (isZH() ? mo.month + '月' : 'Tháng ' + mo.month) +
+                (mo.leap ? ' (' + t('leap') + ')' : '');
+            // Sóc/Vọng CĂN GIỮA (lớp "c"), khớp tiêu đề đã căn giữa — khác cột
+            // "Dương lịch" của Tiết khí, vốn căn trái nên vẫn để nguyên.
+            rows += '<tr' + (i % 2 === 0 ? ' class="dp-row-alt"' : '') + '>' +
+                '<td class="cal-jq-name' + (on ? ' cal-jq-on' : '') + '"' +
+                (on ? ' id="calAmActive"' : '') + '>' + esc(label) + '</td>' +
+                '<td class="dp-num cal-jq-date c' + (on ? ' cal-jq-on' : '') + '">' +
+                esc(formatPreciseSocLocal(socSolar, tzId)) + '</td>' +
+                '<td class="dp-num cal-jq-date c cal-jq-last' + (on ? ' cal-jq-on' : '') + '">' +
+                esc(formatPreciseVongLocal(socSolar, tzId)) + '</td>' +
+                '</tr>';
         }
+        return '<table class="dp-table cal-jq">' + COLGROUP +
+            '<thead><tr class="cal-sec-head">' +
+            '<th>' + t('colMonth') + '</th>' +
+            '<th class="c">' + t('colSoc') + '</th>' +
+            '<th class="c cal-jq-last">' + t('colVong') + '</th>' +
+            '</tr></thead><tbody>' + rows + '</tbody></table>';
     }
 
     /** Bảng 24 dòng phải cuộn; đưa tiết khí đang hiệu lực vào giữa khung nhìn. */
@@ -901,136 +879,46 @@
         return used >= headH + m.h ? used : headH;
     }
 
-    /** Áp trạng thái mở/đóng lên DOM (không chia lại chiều cao). */
+    /**
+     * Áp trạng thái lên DOM (không chia lại chiều cao).
+     *
+     * Chỉ còn MỘT mục và nó LUÔN MỞ, nên hàm này rút lại thành một việc: gắn
+     * lớp .cal-sec-open để CSS vẽ thanh tiêu đề liền khối với thân. Giữ lớp ấy
+     * (thay vì xoá hẳn khỏi CSS) vì .cal-sec:not(.cal-sec-open) vẫn là chỗ khoá
+     * cuộn dọc của mục đóng — mai này mục nào quay lại gập được thì luật cũ còn
+     * nguyên, không phải dựng lại.
+     */
     function applySections() {
-        var pairs = [['calSecJq', openJq], ['calSecAm', openAm]];
-        for (var i = 0; i < pairs.length; i++) {
-            var sec = document.getElementById(pairs[i][0]);
-            if (!sec) continue;
-            sec.classList.toggle('cal-sec-open', pairs[i][1]);
-            var chev = sec.querySelector('.cal-sec-chev');
-            if (chev) chev.textContent = pairs[i][1] ? '▾' : '▸';
-            // Mục đã đóng: kẹp khung xuống đúng hàng tiêu đề. Bảng vẫn còn ĐỦ
-            // tbody (xem calendar.css) để bề rộng ba cột không đổi khi gập/mở;
-            // phần thừa bị cắt khuất. Trả khung về đầu trước khi kẹp, không thì
-            // vị trí cuộn cũ còn đó và lúc mở lại bảng không ở đầu bảng.
-            var body = sec.querySelector('.cal-sec-body');
-            if (body && !pairs[i][1]) {
-                body.scrollTop = 0;
-                var capped = headOnlyHeight(body);
-                body.style.maxHeight = capped ? capped + 'px' : '';
-            }
-        }
-    }
-
-    function toggleSection(which) {
-        if (which === 'jq') { openJq = !openJq; prefSet(K_SEC_JQ, openJq ? '1' : '0'); }
-        // Người dùng đã tự bấm thì thôi tự quyết — kể cả khi họ bấm đúng cái
-        // trạng thái máy vừa chọn hộ.
-        else                { openAm = !openAm; amAuto = false; prefSet(K_SEC_AM, openAm ? '1' : '0'); }
-        // Widget gập/mở hai mục THEO ĐÚNG hai khoá này, nên ghi khoá xong phải
-        // bảo nó vẽ lại — không thì lịch đã ghim còn hiện trạng thái cũ cho tới
-        // nửa đêm. Chỉ gọi vẽ lại, KHÔNG công bố bảng tháng: bảng ấy không đổi
-        // vì một cú bấm gập/mở, và việc công bố là của lúc mở ứng dụng.
-        pokeWidget();
-        applySections();
-        fitGrid(lastWeeks);
-        if (which === 'jq' && openJq) setTimeout(scrollToActiveJieQi, 40);
+        var sec = document.getElementById('calSecJq');
+        if (sec) sec.classList.add('cal-sec-open');
     }
 
     /**
-     * Trần chiều cao của Tiết khí LUÔN CỐ ĐỊNH — `JQ_SHARE` phần trăm của
-     * `avail`, không đổi dù Lịch âm có đang mở hay không. Lịch âm thì lấy hết
-     * PHẦN CÒN LẠI sau khi trừ đúng phần Tiết khí đang dùng thật.
+     * Cấp chiều cao cho mục Tiết khí — mục DUY NHẤT còn lại ở tab này.
      *
-     * Bất đối xứng CÓ CHỦ ĐÍCH — không phải chia đều "cho công bằng":
+     * Bản trước là một phép chia hai chiều giữa Tiết khí và Lịch âm, với cả
+     * một bộ bất biến để trạng thái gập/mở của mục dưới không kéo tiêu đề của
+     * mục trên nhảy. Lịch âm đã sang tab Tra cứu và Tiết khí thì không gập
+     * được nữa, nên tất cả chỗ ấy tan biến: một mục, lấy trọn ngân sách.
      *
-     * Tiết khí đứng TRƯỚC Lịch âm trong trang, nên chiều cao THẬT của nó ảnh
-     * hưởng tới vị trí tiêu đề của Lịch âm; còn Lịch âm đứng SAU CÙNG, chiều
-     * cao của nó không ảnh hưởng tới bất cứ tiêu đề nào khác. Nếu chia theo tỉ
-     * lệ `nat/sum` giữa các mục ĐANG MỞ (như bản trước), phần của Tiết khí sẽ
-     * phụ thuộc vào việc Lịch âm CÓ đang mở hay không — bấm mở Lịch âm là Tiết
-     * khí bị bớt lại NGAY LẬP TỨC dù bản thân nó không đổi trạng thái, kéo
-     * tiêu đề Lịch âm nhảy đúng lúc người dùng vừa chạm vào nó. Khoá cứng phần
-     * của Tiết khí thì triệt tiêu hẳn đường lây đó; nhường phần dư dôi ra cho
-     * Lịch âm (mục cuối, không ai đứng sau nó) thì được ngay cái lợi cũ —
-     * mở một mình thì Lịch âm vẫn chiếm trọn chỗ trống, không phải chừa vô cớ.
+     * Còn giữ đúng hai phép canh cũ, vì chúng nói về MỘT bảng chứ không về hai:
+     *   • noPartialRow — thà chỉ hiện hàng tiêu đề còn hơn hiện nửa hàng đầu.
+     *   • snapCut      — hàng cuối bị mép dưới cắt thì cắt ở chỗ không xén vào
+     *                    thân chữ (dấu tiếng Việt nằm cả trên lẫn dưới).
      */
-    var JQ_SHARE = 0.55;
     function shareSectionHeight(avail) {
         var zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
-        var natOf = function (id) {
-            var tb = document.querySelector('#' + id + ' table');
-            return tb ? Math.ceil(tb.getBoundingClientRect().height / zoom) + 2 : SEC_MIN;
-        };
         var jqEl = document.getElementById('calJieQi');
-        var amEl = document.getElementById('calAmBan');
-        // Chỗ TỐI THIỂU mỗi mục chiếm: đúng hàng tiêu đề của nó. Đo thẳng
-        // <thead> nên con số này KHÔNG đổi theo việc mục đang mở hay đóng —
-        // điều kiện sống còn của cả mục này (xem khối ghi chú bên trên).
-        var jqMin = jqEl ? headOnlyHeight(jqEl) : 0;
-        var amMin = amEl ? headOnlyHeight(amEl) : 0;
-
-        // Tiết khí không bao giờ được lấn sang chỗ hàng tiêu đề của Lịch âm —
-        // mục đóng vẫn choán đúng chừng ấy. Bỏ qua thì đóng Tiết khí mà mở
-        // Lịch âm là cụm hai mục thò 17px xuống dưới thanh tab (đo trên
-        // S21 FE), còn trên máy thấp thì tràn ngay cả ở trạng thái mặc định.
-        // Trừ `amMin` LUÔN LUÔN, chứ không phải "khi Lịch âm đang đóng": trừ
-        // có điều kiện là để trạng thái của Lịch âm quyết chiều cao Tiết khí,
-        // đúng cái vòng lây mà cả hàm này sinh ra để cắt đứt.
-        var jqRoom = Math.max(jqMin, avail - amMin);
-
-        // Chỗ Lịch âm phải được CHỪA LẠI, dù nó đang mở hay đóng — lại là để
-        // giữ đúng cái bất biến trên: trạng thái của Lịch âm không được quyết
-        // chiều cao Tiết khí. Chừa hàng tiêu đề cộng AM_KEEP_ROWS hàng — rộng
-        // hơn ngưỡng decideAmDefault lấy làm "dùng được", nên một khi Lịch âm
-        // mở — tự quyết hay người dùng bấm — nó chắc chắn có hàng thật.
-        // Thiếu chỗ này thì sàn SEC_MIN của Tiết khí vét sạch phần còn lại: đo
-        // trên 360×640 (có nút Ghim lịch) Lịch âm mở ra mà cao đúng 28px, chỉ
-        // thấy mỗi hàng tiêu đề — y như một cái nút bấm không ăn.
-        //
-        // Nhưng không bao giờ chừa quá NỬA phần thân chung: máy thấp tới mức
-        // cả hai mục đều chật thì hai mục cùng ngắn, chứ không phải Tiết khí
-        // co về đúng hàng tiêu đề để Lịch âm đủ hai hàng.
-        var pool = Math.max(0, avail - jqMin - amMin);
-        var amNeed = amMin + AM_KEEP_ROWS * amRowHeight();
-        var amKeep = Math.min(amNeed, amMin + Math.floor(pool / 2));
-
-        var jqUsed;
-        if (openJq) {
-            // Sàn SEC_MIN kẹp theo chỗ CÓ THẬT: máy thấp thì thà mục ngắn còn
-            // hơn đẩy cả cụm xuống dưới thanh tab.
-            var jqCap = Math.max(Math.min(SEC_MIN, jqRoom), Math.floor(jqRoom * JQ_SHARE));
-            jqCap = Math.min(jqCap, Math.max(jqMin, Math.floor(avail - amKeep)));
-            jqUsed = Math.min(natOf('calJieQi'), jqCap);
-            if (jqEl) {
-                jqUsed = noPartialRow(jqEl, jqUsed, jqMin);
-                jqEl.style.maxHeight = jqUsed + 'px';
-                // Hạ TRƯỚC khi chia phần cho Lịch âm: vài pixel Tiết khí nhả
-                // ra phải chảy sang Lịch âm, chứ không thành khe trống.
-                jqUsed = snapCut(jqEl);
-            }
-        } else {
-            jqUsed = jqMin;
-        }
-        // Chốt mặc định của Lịch âm Ở ĐÂY, nơi biết CHỖ THẬT nó sẽ được cấp.
-        // Trước đây chốt trong fitGrid bằng `budget − budget × JQ_SHARE`, mà đó
-        // chỉ là phần theo tỉ lệ: trên máy thấp, sàn SEC_MIN kê phần của Tiết
-        // khí lên cao hơn tỉ lệ ấy, nên Lịch âm được cấp ÍT hơn con số đem ra
-        // quyết định — đo trên 360×640: mở sẵn rồi mà không đủ chỗ cho một
-        // hàng nào.
-        var amRoom = Math.max(0, avail - jqUsed);
-        decideAmDefault(amRoom, amMin, amRendered);
-
-        if (openAm) {
-            var amCap = Math.max(amMin, amRoom);
-            amCap = Math.min(natOf('calAmBan'), amCap);
-            if (amEl) {
-                amCap = noPartialRow(amEl, amCap, amMin);
-                amEl.style.maxHeight = amCap + 'px';
-                snapCut(amEl);
-            }
-        }
+        if (!jqEl) return;
+        var tb = jqEl.querySelector('table');
+        // Cao tự nhiên của cả bảng: không cấp quá thế, bằng không khung thừa
+        // ra một dải trắng dưới hàng cuối.
+        var nat = tb ? Math.ceil(tb.getBoundingClientRect().height / zoom) + 2 : SEC_MIN;
+        var min = headOnlyHeight(jqEl);
+        var cap = Math.max(min, Math.min(nat, avail));
+        cap = noPartialRow(jqEl, cap, min);
+        jqEl.style.maxHeight = cap + 'px';
+        snapCut(jqEl);
     }
 
     /**
@@ -1066,13 +954,41 @@
         // Việt 20px, nên chỗ dừng tự do rơi giữa hàng ở thứ tiếng này mà lại
         // đúng mép ở thứ tiếng kia — cùng một máy, hai kiểu.
         var rows = body.querySelectorAll('tbody tr');
+        // KẸP trước khi nắn, không phải sau. `want` thường vượt quá trần cuộn
+        // (bảng 24 hàng, khung nay hiện được 13–14 hàng nên hàng đang hiệu lực
+        // hay nằm gần cuối); giao cho trình duyệt kẹp thì nó kẹp về đúng
+        // `scrollHeight − clientHeight`, một con số KHÔNG rơi vào mép hàng nào
+        // — và hàng trên cùng lại bị cắt ngang dưới tiêu đề, đúng cái phép nắn
+        // này sinh ra để tránh (đo trên S21 FE: lệch 15px).
+        var trần = Math.max(0, body.scrollHeight - body.clientHeight);
+        if (want > trần) want = trần;
+        if (want < 0) want = 0;
         var best = want, bestD = Infinity;
         for (var i = 0; i < rows.length; i++) {
             var top = yOf(rows[i]) - headH;      // scrollTop để hàng này nằm sát tiêu đề
+            if (top < 0 || top > trần + 0.5) continue;   // ngoài tầm cuộn được
             var d = Math.abs(top - want);
             if (d < bestD) { bestD = d; best = top; }
         }
         body.scrollTop = Math.max(0, Math.round(best));
+
+        // Cuộn xong mới biết hàng nào đang bị MÉP DƯỚI cắt ngang, nên snapCut
+        // phải chạy LẠI ở đây: lượt trong fitGrid chạy trước cú cuộn này (một
+        // setTimeout ở cuối renderJieQi) nên nó canh trên một chỗ cuộn khác.
+        // Hạ chiều cao có thể kéo scrollTop tụt theo (trần cuộn hạ), nên nắn
+        // lại một lượt nữa; hai lượt là hội tụ, vì lượt hai không còn gì để hạ.
+        for (var lần = 0; lần < 2; lần++) {
+            snapCut(body);
+            var trần2 = Math.max(0, body.scrollHeight - body.clientHeight);
+            if (body.scrollTop <= trần2 + 0.5) break;
+            var w2 = Math.min(best, trần2), b2 = w2, d2 = Infinity;
+            for (var j = 0; j < rows.length; j++) {
+                var t2 = yOf(rows[j]) - headH;
+                if (t2 < 0 || t2 > trần2 + 0.5) continue;
+                if (Math.abs(t2 - w2) < d2) { d2 = Math.abs(t2 - w2); b2 = t2; }
+            }
+            body.scrollTop = Math.max(0, Math.round(b2));
+        }
     }
 
 
@@ -1140,17 +1056,15 @@
      * sai ấy, thành ra hai bên cãi nhau. MainActivity.onResume() gọi hàm này.
      */
     window.__calSyncSections = function () {
-        var sj = prefGet(K_SEC_JQ), sa = prefGet(K_SEC_AM);
-        var nj = (sj === '0' || sj === '1') ? sj === '1' : openJq;
-        var na = (sa === '0' || sa === '1') ? sa === '1' : openAm;
-        if (nj === openJq && na === openAm) return;
-        openJq = nj; openAm = na;
-        // Đã có lựa chọn rõ ràng rồi thì đừng để fitGrid tự quyết lại nữa.
-        amAuto = false;
+        // Tab Lịch không còn trạng thái gập/mở nào để đồng bộ: mục Tiết khí
+        // luôn mở, dù ngoài widget người dùng có gập mục của nó hay không.
+        // Vẫn giữ hàm (MainActivity.onResume gọi nó) và vẫn canh lại chiều cao:
+        // quay lại ứng dụng sau khi đổi cỡ chữ hệ thống thì phép chia phải làm
+        // lại, bằng không bảng giữ chiều cao của cỡ chữ cũ.
         applySections();
         if (document.body.classList.contains('view-cal')) {
             fitGrid(lastWeeks);
-            if (openJq) setTimeout(scrollToActiveJieQi, 40);
+            setTimeout(scrollToActiveJieQi, 40);
         }
     };
 
@@ -1177,6 +1091,13 @@
         if (!btn || !native || typeof native.pinCalendarWidget !== 'function') return;
 
         btn.style.display = 'block';
+        // Nút vừa hiện ra là ngân sách chiều cao của bảng Tiết khí hụt đi đúng
+        // chiều cao nút (xem PIN_GAP trong fitGrid). Không chia lại ngay thì
+        // bảng giữ chiều cao tính khi CHƯA có nút và hàng cuối bị mép dưới xén
+        // ngang thân chữ — phép canh "mép cắt không ăn mất dấu" bắt đúng ca ấy.
+        // requestAnimationFrame: đợi trình duyệt tính xong bố cục mới rồi mới
+        // đo, bằng không lại đo trúng con số của lúc nút còn ẩn.
+        requestAnimationFrame(function () { fitGrid(lastWeeks); });
         btn.addEventListener('click', function () {
             // Hệ thống tự hiện hộp thoại xác nhận; không kèm dòng ghi chú nào.
             try { native.pinCalendarWidget(); } catch (e) {}
@@ -1200,6 +1121,15 @@
             try { window.__lenhRefreshLabels(); } catch (e) {}
         }
     }
+    /* ─────────────── Cho tab Tra cứu ───────────────
+     * Bảng Lịch âm đã chuyển sang đó, nhưng hàm dựng ở lại đây vì nó dùng
+     * chung mọi thứ của tệp này. Một nguồn duy nhất cho cả hai. */
+    window.__calShared = {
+        amBanTableHtml: amBanTableHtml,
+        /** Nhãn tiêu đề mục, theo ngôn ngữ đang chọn. */
+        amTitle: function () { return t('secAm'); },
+    };
+
     window.__calRefreshLabels = refreshLabels;
 
     /**
@@ -1312,13 +1242,9 @@
         viewM = now.getMonth() + 1;
         selected = { y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate() };
 
-        // Trạng thái gập: Tiết khí luôn mở sẵn. Lịch âm thì tuỳ máy — chưa có
-        // lựa chọn cũ thì để fitGrid() chốt một lần theo chỗ trống đo được
-        // (xem decideAmDefault); có rồi thì nghe người dùng.
-        var sj = prefGet(K_SEC_JQ), sa = prefGet(K_SEC_AM);
-        if (sj === '0' || sj === '1') openJq = sj === '1';
-        if (sa === '0' || sa === '1') openAm = sa === '1';
-        else amAuto = true;
+        // Mục Tiết khí luôn mở — không đọc khoá cũ nữa. Ai từng gập nó lại
+        // (khoá còn ghi "0" từ bản trước, hoặc vừa gập ở lịch đã ghim) thì mở
+        // ứng dụng ra vẫn thấy bảng, đúng như người dùng chốt.
         applySections();
 
         // Công bố ngay từ lúc MỞ ỨNG DỤNG — widget phải đúng kể cả khi người
@@ -1331,15 +1257,6 @@
             try { publishLang(); } catch (e) {}
         }, 600);
 
-        // Uỷ quyền: hàng tiêu đề nằm trong bảng, mà bảng thì dựng lại mỗi lần
-        // vẽ — gắn thẳng vào nó thì cứ đổi tháng là mất người nghe.
-        document.getElementById('calSections').addEventListener('click', function (e) {
-            var head = e.target.closest ? e.target.closest('.cal-sec-head') : null;
-            if (!head) return;
-            var sec = head.closest('.cal-sec');
-            if (sec) toggleSection(sec.id === 'calSecJq' ? 'jq' : 'am');
-        });
-
         for (var ti = 0; ti < TABS.length; ti++) {
             (function (key) {
                 var el = document.getElementById(TABS[ti].tab);
@@ -1348,11 +1265,20 @@
         }
         document.getElementById('calPrev').addEventListener('click', function () { shiftMonth(-1); });
         document.getElementById('calNext').addEventListener('click', function () { shiftMonth(1); });
+        // Bấm tiêu đề: mở bảng chọn THÁNG · NĂM, cùng kiểu trống quay với ô
+        // ngày giờ ở tab Kỳ Môn (app.js dựng, xem openMonthPicker). Lối tắt
+        // "về tháng hiện tại" không mất: bảng luôn mở ở đúng tháng đang xem và
+        // hai mũi tên ‹ › vẫn ở đó, còn chỗ bấm này nay làm được việc lớn hơn
+        // hẳn — nhảy thẳng tới một tháng bất kỳ thay vì bấm mũi tên vài chục
+        // lần.
         document.getElementById('calTitle').addEventListener('click', function () {
-            var n = new Date();
-            viewY = n.getFullYear(); viewM = n.getMonth() + 1;
-            selected = { y: viewY, m: viewM, d: n.getDate() };
-            render();
+            if (typeof window.openMonthPicker !== 'function') return;
+            window.openMonthPicker(viewY, viewM, function (y, m) {
+                viewY = y; viewM = m;
+                // Không tự chọn ngày nào trong tháng mới: người dùng đang tra
+                // một tháng, chưa nói gì tới ngày. Lá số ở tab kia vẫn nguyên.
+                render();
+            });
         });
         document.getElementById('calGrid').addEventListener('click', function (e) {
             var cell = e.target.closest ? e.target.closest('.cal-day') : null;
@@ -1369,6 +1295,20 @@
         });
 
         setupPinButton();
+
+        // Chia lại chiều cao MỘT LẦN NỮA khi phông đã nạp xong.
+        //
+        // Lượt chia đầu chạy trên phông dự phòng của hệ thống; phông thật
+        // (Noto Serif CJK…) về sau đổi chiều cao hàng đi vài phần mười pixel,
+        // đủ để mép dưới của khung rơi vào giữa thân chữ hàng cuối — đo trên
+        // A51: "Đại Tuyết" hiện 14,02px trong khi ngưỡng an toàn là 13,5px.
+        // snapCut chữa được ngay, nhưng nó chỉ chạy trong fitGrid, mà fitGrid
+        // thì không có lý do nào để chạy lại sau khi phông về. Đây là lý do ấy.
+        if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+            document.fonts.ready.then(function () {
+                if (document.body.classList.contains('view-cal')) fitGrid(lastWeeks);
+            }).catch(function () {});
+        }
         refreshLabels();
 
         // Đổi ngôn ngữ thì vẽ lại nhãn tab và lưới lịch.

@@ -85,10 +85,15 @@ const TAPS = [
     ['#cobanToggleWrap',  'qmdj'], ['.dp-header',        'qmdj'],
     ['#calPrev',          'cal'],  ['#calNext',          'cal'],
     ['#calTitle',         'cal'],  ['#calPinBtn',        'cal'],
-    ['.cal-sec-head',     'cal'],
+    // `.cal-sec-head` KHÔNG còn ở đây: mục Tiết khí luôn mở, hàng <thead> của
+    // nó nay chỉ là tên cột chứ không phải nút gập/mở, nên nó được thấp lại
+    // (đúng ý "giảm height header của box tiết khí") và không còn là chỗ bấm.
     ['#lenhGenderBtn',    'lenh'], ['#lenhRuleBtn',      'lenh'],
     ['#tcYearBtn',      'tracuu'], ['#tcRuleBtn',      'tracuu'],
-    ['#lenhHead',       'tracuu'],
+    // Bốn hàng tiêu đề của tab Tra cứu dùng CHUNG một hình khối (xem
+    // tracuu.css) — canh cả bốn, không chỉ một.
+    ['#trinhuanHeader', 'tracuu'], ['#sachboHeader',   'tracuu'],
+    ['#lenhHead',       'tracuu'], ['#tcAmHead',       'tracuu'],
 ];
 
 let đạt = 0, hỏng = 0;
@@ -446,10 +451,18 @@ for (const d of [{ m: 'A51', w: 412, h: 866, dpr: 2.625 }, { m: 'S21 FE', w: 384
     ok(`${d.m}: có lề thật với mép trái`, canh.min >= 2, `${canh.min}px`);
     ok(`${d.m}: không hàng nào thò khỏi hộp nội dung`, canh.thò <= 0.5, `${canh.thò}px ở "${canh.ví}"`);
 
-    // Bảng Lệnh năm nay ở tab TRA CỨU, và mở sẵn sau khi chọn năm. Vuốt NGAY
-    // TRÊN bảng — cả trang phải nhúc nhích.
+    // Bảng Lệnh năm nay ở tab TRA CỨU, và ĐÓNG SẴN (bốn mục đều vậy — bấm mới
+    // bung). Bung ra rồi vuốt NGAY TRÊN bảng — cả trang phải nhúc nhích.
     await page.evaluate(() => { window.__tracuuYear(2026); window.showTab('tracuu'); });
     await page.waitForTimeout(1100);
+    await page.evaluate(() => {
+        for (const [h, b] of [['trinhuanHeader', 'trinhuanBody'], ['sachboHeader', 'sachboBody'],
+                              ['lenhHead', 'lenhSec'], ['tcAmHead', 'tcAmSec']]) {
+            const body = document.getElementById(b), head = document.getElementById(h);
+            if (body && head && getComputedStyle(body).display === 'none') head.click();
+        }
+    });
+    await page.waitForTimeout(900);
     const k = await page.evaluate(() => {
         const b = document.getElementById('lenhBody');
         const t = b.querySelector('table');
@@ -485,6 +498,84 @@ for (const d of [{ m: 'A51', w: 412, h: 866, dpr: 2.625 }, { m: 'S21 FE', w: 384
     const sy = await page.evaluate(() => Math.round(window.scrollY));
     ok(`${d.m}: vuốt trên bảng thì CẢ TRANG cuộn (không kẹt ở ô con)`, sy > 0, `scrollY ${sy}`);
     await ctx.close();
+}
+
+/* ── Bàn Kỳ Môn tiếng Việt: KHÔNG nhãn nào bị bẻ giữa chừng ──
+   `.sub-cell` khai `word-break: break-word`, nên nhãn không vừa cột thì trình
+   duyệt bẻ ĐÔI CHỮ chứ không tràn: "Thương" xuống dòng thành "Thươn" / "g".
+   Mọi phép canh cũ đều bỏ lọt — nhãn KHÔNG thò khỏi ô, `scrollWidth` bằng
+   `clientWidth`, không đè lên nhãn nào. Phải hỏi đúng thứ nó làm: Range của
+   một chữ KHÔNG có khoảng trắng mà trải trên hơn một dòng là đã bị bẻ.
+
+   Lỗi này lọt vào cùng lúc với việc sửa chọn tử `.lang-vi` (vốn là mã chết)
+   thành `body:not(.lang-zh)`: bộ cỡ chữ nguyên bản 12,5–17px chưa bao giờ chạy
+   cho tiếng Việt nên chưa ai đo nó. */
+console.log('\nBàn Kỳ Môn tiếng Việt: không nhãn nào bị bẻ giữa chừng');
+{
+    const CA = [[1990, 5, 12, 14, 30], [2026, 9, 18, 21, 0], [1984, 2, 4, 3, 15]];
+    for (const d of [{ m: 'A51', w: 412, h: 866, dpr: 2.625 },
+                     { m: 'S21 FE', w: 384, h: 784, dpr: 2.8125 },
+                     { m: 'zoom lớn', w: 360, h: 752, dpr: 3.0 }]) {
+        const ctx = await browser.newContext({ viewport: { width: d.w, height: d.h },
+            deviceScaleFactor: d.dpr, isMobile: true, hasTouch: true });
+        await ctx.addInitScript(() => { try { localStorage.setItem('defaultLang', 'vi'); } catch (e) {} });
+        const page = await ctx.newPage();
+        await page.goto(base, { waitUntil: 'networkidle' });
+        await page.waitForTimeout(1100);
+        const xấu = new Set();
+        // Hai chế độ dùng hai bộ cỡ chữ KHÁC NHAU nên quét cả hai, nhưng canh
+        // KHÁC nhau:
+        //   · "Cơ bản" (cung 3×3, MẶC ĐỊNH) — không nhãn nào được bẻ đôi.
+        //   · "Đầy đủ" (4×4) — ô chữ chỉ rộng 24–32px, "Thương" cần cỡ 7,5–10px
+        //     mới nằm gọn một dòng, bé hơn cả cỡ của bản gốc. Nó xuống hai dòng
+        //     ở đó từ trước tới nay; chỉ canh KHÔNG TRÀN (xem chú thích cỡ chữ
+        //     trong app.css).
+        for (const đủ of [false, true]) {
+            await page.evaluate(v => {
+                const c = document.getElementById('cobanToggle');
+                if (c && c.checked !== v) { c.checked = v; c.dispatchEvent(new Event('change', { bubbles: true })); }
+                document.getElementById('mainBody').classList.toggle('coban-mode', !v);
+                window.__bỏQuaBẻ = v;      // "Đầy đủ": chỉ canh tràn
+            }, đủ);
+            for (const [y, mo, dd, h, mi] of CA) {
+                for (const ph of ['trinhuan', 'sachbo', 'amban']) {
+                    await page.evaluate(([y, mo, dd, h, mi, ph]) => {
+                        const set = (id, v) => {
+                            const e = document.getElementById(id); if (!e) return;
+                            e.value = String(v); e.dispatchEvent(new Event('change', { bubbles: true }));
+                        };
+                        set('inYear', y); set('inMonth', mo); set('inDay', dd);
+                        set('solarHour', h); set('solarMinute', mi);
+                        const ms = document.getElementById('method');
+                        if (ms) { ms.value = ph; ms.dispatchEvent(new Event('change', { bubbles: true })); }
+                        window.processAll();
+                    }, [y, mo, dd, h, mi, ph]);
+                    await page.waitForTimeout(180);
+                    for (const b of await page.evaluate(() => {
+                        const out = [];
+                        const w = document.createTreeWalker(document.getElementById('board'), NodeFilter.SHOW_TEXT);
+                        let n;
+                        while ((n = w.nextNode())) {
+                            const t = (n.nodeValue || '').trim();
+                            if (!t || /\s/.test(t)) continue;
+                            const el = n.parentElement;
+                            if (!el.closest('.sub-cell') || getComputedStyle(el).display === 'none') continue;
+                            const rg = document.createRange(); rg.selectNodeContents(n);
+                            if (rg.getClientRects().length > 1 && !window.__bỏQuaBẻ) out.push('bẻ "' + t + '"');
+                        }
+                        for (const e of document.querySelectorAll('#board .sub-cell')) {
+                            if (getComputedStyle(e).display === 'none') continue;
+                            if (e.scrollWidth > e.clientWidth + 1) out.push('tràn "' + e.textContent.trim() + '"');
+                        }
+                        return out;
+                    })) xấu.add(`${đủ ? 'Đầy đủ' : 'Cơ bản'} ${b}`);
+                }
+            }
+        }
+        ok(`${d.m} ${d.w}px: không nhãn nào bị bẻ hay tràn`, xấu.size === 0,
+            [...xấu].slice(0, 5).join(' | '));
+        await ctx.close();
+    }
 }
 
 await browser.close();

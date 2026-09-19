@@ -25,10 +25,9 @@ object WidgetLayout {
     const val ROW_DP = 20
     const val CORNER_PAD_DP = 6
 
-    /** Phần chia chiều cao giữa lưới lịch và thân hai mục. */
+    /** Phần chia chiều cao giữa lưới lịch và thân mục Tiết khí. */
     const val W_GRID = 58
-    const val W_JQ = 26
-    const val W_AM = 16
+    const val W_JQ = 42
 
     /** Phần chia bề ngang ba cột — dùng chung cho hàng tiêu đề lẫn hàng giá trị. */
     const val COL0 = 27
@@ -61,12 +60,15 @@ object WidgetLayout {
      * mục nào đang đóng thì ListView của nó là GONE, và LinearLayout KHÔNG tính
      * phần của View đã GONE — chỗ ấy chia lại cho những view còn lại.
      */
-    fun gridHeightDp(totalDp: Int, jqOpen: Boolean, amOpen: Boolean): Float {
-        val fixed = HEADER_DP + DOW_DP + 2 * SEC_HEAD_DP + CORNER_PAD_DP
+    /**
+     * Mục "Lịch âm" đã bỏ hẳn khỏi lịch đã ghim (chuyển sang tab Tra cứu của
+     * ứng dụng), nên chỉ còn MỘT hàng tiêu đề mục và một trọng số để chia.
+     */
+    fun gridHeightDp(totalDp: Int, jqOpen: Boolean): Float {
+        val fixed = HEADER_DP + DOW_DP + SEC_HEAD_DP + CORNER_PAD_DP
         val avail = (totalDp - fixed).coerceAtLeast(60).toFloat()
         var sum = W_GRID
         if (jqOpen) sum += W_JQ
-        if (amOpen) sum += W_AM
         return avail * W_GRID / sum
     }
 }
@@ -80,7 +82,6 @@ object WidgetLayout {
  */
 object WidgetPrefs {
     const val SEC_JQ = "qmdj.calSecJq"
-    const val SEC_AM = "qmdj.calSecAm"
 
     fun widget(context: Context): SharedPreferences =
         context.getSharedPreferences("qmdj_widget", Context.MODE_PRIVATE)
@@ -135,9 +136,12 @@ object WidgetPrefs {
 
     fun isZh(context: Context): Boolean = LunarTable.langOf(context) == "zh"
 
+    /**
+     * Widget chỉ còn mục Tiết khí, và nó mặc định MỞ — đúng như calendar.js,
+     * vốn chỉ coi là đóng khi khoá được ghi tường minh "0".
+     */
     fun secOpen(context: Context, key: String): Boolean =
-        if (key == SEC_JQ) app(context).getString(SEC_JQ, null) != "0"
-        else app(context).getString(SEC_AM, null) == "1"
+        app(context).getString(key, null) != "0"
 
     /**
      * Lật gập/mở một mục rồi ghi lại NGAY vào đúng khoá mà tab Lịch đọc.

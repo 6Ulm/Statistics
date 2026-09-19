@@ -347,57 +347,11 @@
         android:id="@+id/jqList"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="26"
+        android:layout_weight="42"
         android:background="#FFFFFF"
         android:divider="#EEEEEE"
         android:dividerHeight="1px"
         android:scrollbars="none" />
 
-    <!-- Mục "Lịch âm": hàng tiêu đề là View thật, thân là ListView nên CUỘN
-         được bằng ngón tay. Ba cột dùng layout_weight 27:35:38 — ĐÚNG bộ số
-         của widget_sec_row.xml và của mục kia, nên "Dương lịch" thẳng hàng với
-         "Sóc" và "Can chi" thẳng hàng với "Vọng" mà không phải đo gì. -->
-    <LinearLayout
-        android:id="@+id/amHead"
-        android:layout_width="match_parent"
-        android:layout_height="@dimen/widget_sec_head"
-        android:orientation="horizontal"
-        android:background="#EEF1FD">
-
-        <FrameLayout android:layout_width="3dp" android:layout_height="match_parent"
-            android:background="#3949AB" />
-
-        <TextView android:id="@+id/amHead0"
-            android:text="@string/col_month"
-            android:layout_width="0dp" android:layout_height="match_parent"
-            android:layout_weight="27" android:gravity="center_vertical"
-            android:paddingStart="5dp" android:paddingLeft="5dp"
-            android:singleLine="true" android:ellipsize="end"
-            android:textSize="11.5sp" android:textStyle="bold" />
-
-        <TextView android:id="@+id/amHead1"
-            android:text="@string/col_soc"
-            android:layout_width="0dp" android:layout_height="match_parent"
-            android:layout_weight="35" android:gravity="center"
-            android:singleLine="true" android:ellipsize="end"
-            android:textSize="11.5sp" android:textStyle="bold" />
-
-        <TextView android:id="@+id/amHead2"
-            android:text="@string/col_vong"
-            android:layout_width="0dp" android:layout_height="match_parent"
-            android:layout_weight="38" android:gravity="center"
-            android:singleLine="true" android:ellipsize="end"
-            android:textSize="11.5sp" android:textStyle="bold" />
-    </LinearLayout>
-
-    <ListView
-        android:id="@+id/amList"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="16"
-        android:background="#FFFFFF"
-        android:divider="#EEEEEE"
-        android:dividerHeight="1px"
-        android:scrollbars="none" />
 
 </LinearLayout>

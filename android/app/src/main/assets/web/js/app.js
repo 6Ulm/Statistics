@@ -38,6 +38,7 @@ const _panelIds = {
     trinhuan: { bodyId: 'trinhuanBody', chevId: 'trinhuanChevron' },
     sachbo:   { bodyId: 'sachboBody',   chevId: 'sachboChevron'   },
     lenh:     { bodyId: 'lenhSec',      chevId: 'lenhHeadChevron' },
+    tcam:     { bodyId: 'tcAmSec',      chevId: 'tcAmChevron'     },
 };
 window.toggleDetailPanel = function(which) {
     const cfg  = _panelIds[which];
@@ -467,10 +468,47 @@ function getDisplayChi(c) {
 function updateTuTru(yPillar, mPillar, dPillar, hPillar) {
     const cans = [yPillar[0], mPillar[0], dPillar[0], hPillar[0]];
     const chis = [yPillar[yPillar.length-1], mPillar[mPillar.length-1], dPillar[dPillar.length-1], hPillar[hPillar.length-1]];
-    ['ttCanNam','ttCanThang','ttCanNgay','ttCanGio'].forEach((id,i) =>
-        getDOM(id).textContent = getDisplayCan(cans[i]));
-    ['ttChiNam','ttChiThang','ttChiNgay','ttChiGio'].forEach((id,i) =>
-        getDOM(id).textContent = getDisplayChi(chis[i]));
+    const canTxt = cans.map(getDisplayCan);
+    const chiTxt = chis.map(getDisplayChi);
+
+    // Can và chi tô theo NGŨ HÀNH (nguhanh.js) — dùng innerHTML vì mỗi chữ là
+    // một <span> màu riêng. Chữ nào tra không ra can chi thì NguHanh.paint()
+    // để nguyên, nên nó thừa hưởng màu đen của ô.
+    const NH = window.NguHanh;
+    ['ttCanNam','ttCanThang','ttCanNgay','ttCanGio'].forEach((id,i) => {
+        if (NH) NH.paintInto(getDOM(id), canTxt[i]);
+        else getDOM(id).textContent = canTxt[i];
+    });
+    ['ttChiNam','ttChiThang','ttChiNgay','ttChiGio'].forEach((id,i) => {
+        if (NH) NH.paintInto(getDOM(id), chiTxt[i]);
+        else getDOM(id).textContent = chiTxt[i];
+    });
+
+    // ── Tàng can + phó tinh ──
+    // Nhật chủ là can NGÀY — mọi thập thần đều xét theo nó, nên trụ ngày tự
+    // soi vào chính mình và luôn ra "Tỷ Kiên" ở tàng can trùng nhật chủ.
+    if (NH) {
+        const zh = currentLang === 'zh';
+        const nhậtChủ = canTxt[2];
+        const ids = ['Nam','Thang','Ngay','Gio'];
+        ids.forEach((k, i) => {
+            const tàng = NH.tangCanOf(chiTxt[i], zh);
+            const tangEl = getDOM('ttTang' + k), thanEl = getDOM('ttThan' + k);
+            if (tangEl) {
+                tangEl.innerHTML = tàng.length
+                    ? tàng.map(c => '<span class="tt-sub">' + NH.paint(c) + '</span>').join('')
+                    : '—';
+            }
+            if (thanEl) {
+                // KHÔNG tô màu: thập thần không phải can chi.
+                thanEl.innerHTML = tàng.length
+                    ? tàng.map(c => '<span class="tt-sub">' +
+                        NH.esc(NH.thapThanOf(nhậtChủ, c, zh)) + '</span>').join('')
+                    : '—';
+            }
+        });
+    }
+
     getDOM('tuTruPanel').style.display = 'table';
     getDOM('tuTruLegend').style.display = 'block';
 }
@@ -2438,6 +2476,7 @@ function processAll() {
     };
 
     window.openDatePicker = function() {
+        setMode(null);
         jumpTo('day',    (parseInt(getDOM('inDay').value)    ||1) - 1);
         jumpTo('month',  (parseInt(getDOM('inMonth').value)  ||1) - 1);
         jumpTo('year',   (parseInt(getDOM('inYear').value)   ||2026) - 1900);
@@ -2446,8 +2485,61 @@ function processAll() {
         getDOM('drumOverlay').classList.add('open');
     };
 
+    /* ── Chế độ THÁNG · NĂM ──
+       Tab Lịch cần đúng cái trống quay này nhưng chỉ hai cột: bấm tiêu đề
+       "Lịch tháng 9/2026" là nhảy tới một tháng bất kỳ. Dựng một trống thứ hai
+       thì hai bên sớm muộn lệch nhau về cỡ ô, quán tính, cách bắt chạm — nên ẩn
+       ba cột thừa của chính trống này rồi đổi nơi nhận kết quả.
+       `pick` khác null là đang ở chế độ ấy. */
+    let pick = null;
+    const MODE_HIDE = ['day', 'hour', 'minute'];
+    function setMode(fn) {
+        pick = fn;
+        const on = !!fn;
+        for (const col of MODE_HIDE) {
+            for (const id of ['drumCol_' + col, 'lblDrum' + col[0].toUpperCase() + col.slice(1)]) {
+                const el = getDOM(id);
+                if (el) el.style.display = on ? 'none' : '';
+            }
+        }
+        // Vạch ngăn giữa cụm ngày-tháng-năm và cụm giờ-phút: bỏ cụm giờ đi thì
+        // vạch treo lơ lửng ở mép phải.
+        const div = document.querySelector('#drumOverlay .drum-divider');
+        if (div) div.style.display = on ? 'none' : '';
+        const spacer = document.querySelector('#drumOverlay .drum-col-labels > div[style]');
+        if (spacer) spacer.style.display = on ? 'none' : '';
+        const title = getDOM('drumTitleLbl');
+        if (title) {
+            const zh = getDOM('mainBody').classList.contains('lang-zh');
+            title.textContent = on ? (zh ? '月份' : 'Tháng')
+                                   : (zh ? '时间' : 'Thời gian');
+        }
+    }
+
+    /**
+     * Mở trống quay ở chế độ THÁNG · NĂM.
+     *
+     * @param {number}   y   Năm đang xem (1900–2100).
+     * @param {number}   m   Tháng đang xem (1–12).
+     * @param {function} fn  Gọi lại với (năm, tháng) khi người dùng bấm "Chọn".
+     */
+    window.openMonthPicker = function (y, m, fn) {
+        setMode(fn || function () {});
+        jumpTo('month', (parseInt(m, 10) || 1) - 1);
+        jumpTo('year',  (parseInt(y, 10) || 2026) - 1900);
+        getDOM('drumOverlay').classList.add('open');
+    };
+
     function closePicker(confirm) {
         getDOM('drumOverlay').classList.remove('open');
+        const fn = pick;
+        if (fn) {
+            // Trả lại chế độ đầy đủ NGAY, kể cả khi người dùng bấm Hủy: lần mở
+            // sau có thể là ô ngày giờ ở tab Kỳ Môn, mà ba cột kia còn đang ẩn.
+            setMode(null);
+            if (confirm) fn(1900 + tmp.year, tmp.month + 1);
+            return;
+        }
         if (confirm) {
             getDOM('inDay').value      = tmp.day    + 1;
             getDOM('inMonth').value    = tmp.month  + 1;
@@ -2475,7 +2567,7 @@ function processAll() {
             const labels = {
                 drumCancelBtn: zh ? '取消' : 'Hủy',
                 drumOkBtn:     zh ? '选择' : 'Chọn',
-                drumTitleLbl:  zh ? '时间' : 'Thời gian',
+                drumTitleLbl:  pick ? (zh ? '月份' : 'Tháng') : (zh ? '时间' : 'Thời gian'),
                 lblDrumDay:    zh ? '日'   : 'Ngày',
                 lblDrumMonth:  zh ? '月'   : 'Tháng',
                 lblDrumYear:   zh ? '年'   : 'Năm',

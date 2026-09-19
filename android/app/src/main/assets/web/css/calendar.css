@@ -225,9 +225,9 @@ body.view-cal #calView { display: block; }
     font-size: 13.5px; font-weight: 700; letter-spacing: .01em;
     white-space: nowrap;               /* tiêu đề phải nằm gọn một dòng */
     overflow: hidden; text-overflow: ellipsis;
-    cursor: pointer; user-select: none;   /* chạm vào là về tháng hiện tại */
-    /* Cùng mẹo với .cal-nav ngay dưới, cùng lý do. Đây là lối tắt DUY NHẤT để
-       về tháng hiện tại sau khi đã lật đi vài tháng, mà chữ thì chỉ cao 16px —
+    cursor: pointer; user-select: none;   /* chạm vào là mở bảng chọn tháng */
+    /* Cùng mẹo với .cal-nav ngay dưới, cùng lý do. Đây là lối DUY NHẤT để nhảy
+       thẳng tới một tháng bất kỳ (bảng chọn tháng · năm), mà chữ thì cao 16px —
        vùng chạm 16px là thấp hơn cả mức tối thiểu 24px của WCAG 2.5.8, trên
        một affordance vốn đã không nhìn ra được (không có viền, không có biểu
        tượng). Đệm dọc 10px rồi kéo lề âm lại đúng chừng ấy: hộp LỀ vẫn cao
@@ -285,8 +285,13 @@ body.view-cal #calView { display: block; }
 /* Chiều cao đặt trên MỌI ô, không riêng ô có ngày — nếu không, ô trống đầu
    tháng co lại và hàng đầu thấp hơn hẳn các hàng sau. */
 .cal-cell { min-height: var(--cal-row-h, 52px); }
+/* Đệm dọc 2/3px chứ không 4/5px: chiều cao thật của một hàng lịch là do NỘI
+   DUNG ô quyết định (ba dòng), không phải do --cal-row-h — nó chỉ là SÀN. Muốn
+   "giảm grid height của calendar đi 1 chút" thì phải bớt ở đây và ở line-height
+   của can chi ngay dưới. Hai chỗ cộng lại: ~5,7px mỗi hàng, tức ~34px cho cả
+   lưới 6 hàng, và chừng ấy chảy thẳng sang bảng Tiết khí. */
 .cal-day {
-    padding: 4px 4px 5px;
+    padding: 2px 4px 3px;
     cursor: pointer;
     display: flex; flex-direction: column;
 }
@@ -319,7 +324,7 @@ body.view-cal #calView { display: block; }
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     font-size: 12.5px; color: #555;
-    line-height: 1.22;
+    line-height: 1.15;
 }
 .cal-gz span { white-space: nowrap; }
 
@@ -349,12 +354,15 @@ body.view-cal #calView { display: block; }
 /* ── Hai mục gập được: Tiết khí, rồi Lịch âm ──
    Mở/đóng ĐỘC LẬP nên có thể mở cả hai cùng lúc; chiều cao do fitGrid chia,
    mục nào không đủ chỗ thì tự cuộn dọc trong khung của nó. */
-#calSections { margin-top: 6px; }
-.cal-sec + .cal-sec { margin-top: 5px; }
-/* Hàng <thead> đóng luôn vai tiêu đề mục: bấm vào là gập/mở, và vì nó nằm
-   trong chính bảng nên tên cột luôn thẳng hàng với giá trị bên dưới. */
-.cal-sec-head { cursor: pointer; user-select: none; }
-.cal-sec-head:active th { filter: brightness(.96); }
+/* Khe 3px — cùng con số với mọi khe khác trong ứng dụng (BASE_GAP của
+   viewport.js): "giảm tối đa vertical space giữa các boxes". */
+#calSections { margin-top: 3px; }
+/* Hàng <thead> là tiêu đề mục kiêm tên cột: vì nó nằm trong chính bảng nên tên
+   cột luôn thẳng hàng với giá trị bên dưới.
+   KHÔNG còn bấm được: mục Tiết khí nay LUÔN MỞ (người dùng chốt "ô tiết khí từ
+   giờ ko hide nữa mà luôn hiển thị, cho phép scroll up down"). Bỏ luôn con trỏ
+   tay và hiệu ứng nhấn — chúng hứa một cú bấm không còn tồn tại. */
+.cal-sec-head { user-select: none; }
 /* Co theo bề ngang, không chốt cứng rồi rẽ nhánh ở một mốc @media: ba cột chia
    bằng bề rộng ĐO ĐƯỢC của chữ, nên "cỡ lớn nhất còn vừa" tăng dần theo bề
    ngang máy — đo được (tiếng Việt, chữ dài hơn tiếng Trung nên nó mới là bên
@@ -362,8 +370,11 @@ body.view-cal #calView { display: block; }
    cứng thì hoặc cụt chữ ở máy hẹp hoặc chữ bé vô cớ ở máy rộng; hệ số vw dưới
    đây bám sát đường ấy mà vẫn chừa ~3% phòng khi phông máy thật (Samsung) rộng
    hơn phông ở máy đo. 4,18 = 4,05 × 16,5/16, để hai cỡ giữ đúng tỉ lệ. */
+/* Hạ một nấc so với bản trước (13,5–16,5px): người dùng xin "giảm fontsize của
+   chữ trong tab tiết khí 1 chút". Giữ nguyên tỉ lệ 4,18/4,05 giữa tiêu đề và
+   thân để hai cỡ vẫn ăn khớp nhau. */
 table.cal-jq thead tr.cal-sec-head th {
-    font-size: clamp(13.5px, 4.18vw, 16.5px); font-weight: 700;
+    font-size: clamp(12.5px, 3.86vw, 15.2px); font-weight: 700;
 }
 /* Dấu mũi nằm nép bên phải ô cuối, không đẩy chữ lệch khỏi tâm cột. */
 /* KHÔNG đặt position ở đây. `position: sticky` (khai ở .cal-jq thead th) đã là
@@ -377,10 +388,6 @@ table.cal-jq thead tr.cal-sec-head th {
    .cal-jq-last đã có (10px thường, 7px màn hẹp) — chừa dư thì khỏi cần lớp
    này nữa, ô tiêu đề và ô giá trị dùng chung một con số ở mọi bề rộng màn hình.
 */
-.cal-sec-chev {
-    position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
-    font-size: 9px; font-weight: 400;
-}
 /* Gập lại thì chỉ còn hàng tiêu đề — nhưng KHÔNG được ẩn tbody.
    `display: none` gỡ hẳn 24 hàng khỏi phép chia bề rộng cột của bảng: lúc ấy
    chỉ còn ba ô tiêu đề tự chia nhau 100% bề ngang, nên bấm gập/mở là ba cột
@@ -397,21 +404,14 @@ table.cal-jq thead tr.cal-sec-head th {
    theo đỏ của đầu lịch (#d32f2f), Lịch âm theo chàm. Mỗi mục tô cả chữ, dấu
    mũi, nền nhạt và một vạch dọc bên trái, chứ không chỉ đổi màu chữ — nền và
    vạch còn nhận ra được khi mục đã gập lại. */
+/* Không còn vạch dọc đỏ sát viền trái (người dùng xin bỏ): nền hồng nhạt và
+   màu chữ đã đủ tách hàng tiêu đề khỏi thân bảng, mà vạch thì ăn mất 3px của
+   cột đầu — đúng cột hẹp nhất. */
 #calSecJq .cal-sec-head th {
     background: #fdeeee; color: #b71c1c;
     border-bottom-color: #f0c4c4;
 }
-#calSecJq .cal-sec-head th:first-child { box-shadow: inset 3px 0 0 #d32f2f; }
-#calSecJq .cal-sec-chev { color: #d32f2f; }
 #calSecJq .cal-sec-body { border-color: #f0c4c4; }
-
-#calSecAm .cal-sec-head th {
-    background: #eef1fd; color: #283593;
-    border-bottom-color: #c4cbf0;
-}
-#calSecAm .cal-sec-head th:first-child { box-shadow: inset 3px 0 0 #3949ab; }
-#calSecAm .cal-sec-chev { color: #3949ab; }
-#calSecAm .cal-sec-body { border-color: #c4cbf0; }
 /* Vá vệt rò trên đỉnh mục khi bảng đang cuộn.
    Hàng tiêu đề là <th> `position: sticky` NẰM TRONG khung cuộn. Trên máy có
    tỉ lệ điểm ảnh LẺ — đúng hai máy đang ngắm: A51 (2.625) và S21 FE (2.75) —
@@ -443,10 +443,12 @@ table.cal-jq thead tr.cal-sec-head th {
     background-clip: padding-box;
 }
 #calSecJq::after { background: #fdeeee; border-color: #f0c4c4; }
-#calSecAm::after { background: #eef1fd; border-color: #c4cbf0; }
 
-/* Mục đang mở: nối liền thanh tiêu đề với thân, thành một khối. */
-.cal-sec-open .cal-sec-head { border-radius: 6px 6px 0 0; border-bottom: none; }
+/* Thanh tiêu đề nối liền thân, thành một khối. Chỉ cho mục của TAB LỊCH:
+   #lenhSec và #tcAmSec ở tab Tra cứu cũng là .cal-sec và cũng chứa một hàng
+   .cal-sec-head, nhưng chúng đã có hàng tiêu đề RIÊNG bên ngoài (#lenhHead,
+   #tcAmHead) lo phần nối khối ấy. */
+#calSecJq .cal-sec-head { border-radius: 6px 6px 0 0; border-bottom: none; }
 .cal-sec-body {
     overflow: auto;
     /* Hai mục này là khung cuộn NHỎ nằm trong tab Lịch, mà tab Lịch thì được
@@ -471,8 +473,8 @@ table.cal-jq thead tr.cal-sec-head th {
    "22-07-2026 19:13" bé tới mức phải nhíu mắt. Đổi lại mỗi mục hiện được ít
    hơn một hàng — fitGrid vẫn chia đúng vì nó ĐO chiều cao thật, không đoán. */
 table.cal-jq { width: 100%; border-collapse: separate; border-spacing: 0;
-    font-size: clamp(13px, 4.05vw, 16px); }
-table.cal-jq .dp-num { font-size: clamp(13px, 4.05vw, 16px); }
+    font-size: clamp(12px, 3.74vw, 14.8px); }
+table.cal-jq .dp-num { font-size: clamp(12px, 3.74vw, 14.8px); }
 /* Đệm 2px chứ không phải 3: đúng 12 hàng nên vừa trọn màn hình S21 (740px)
    thay vì cụt mất hàng cuối — rẻ hơn nhiều so với bóp thấp hàng lịch. */
 table.cal-jq td {
@@ -481,16 +483,14 @@ table.cal-jq td {
 }
 table.cal-jq thead th {
     position: sticky; top: 0; z-index: 1;
-    /* Hàng <thead> này VỪA là tên cột VỪA là nút gập/mở của cả mục (xem
-       .cal-sec-head bên trên) — chỗ bấm chính của nửa dưới tab Lịch. Đệm dọc
-       4px cho hàng cao 26–29px ở tiếng Việt, dưới mức 32px đã chốt; 7px đưa
-       nó lên 32–35px ở cả hai ngôn ngữ và mọi nấc Screen zoom.
-       Chỉ nới đệm DỌC: đệm ngang là thứ ba cột đang chia nhau từng pixel một
+    /* Hàng <thead> nay CHỈ là tên cột — mục không gập được nữa, nên nó thôi
+       phải cao 32px cho đủ vùng chạm. Hạ về 3px: hàng tiêu đề thấp đi chừng
+       8px và chừng ấy pixel chảy thẳng vào thân bảng, đúng ý "giảm height
+       header của box tiết khí".
+       Chỉ đụng đệm DỌC: đệm ngang là thứ ba cột đang chia nhau từng pixel một
        (xem .cal-jq-last và @media 375px bên dưới), đụng vào là bảng cuộn
-       ngang trên máy hẹp.
-       Giá phải trả là 6px mỗi mục, lấy từ chính thân mục — fitGrid() ĐO hàng
-       tiêu đề chứ không đoán, nên nó tự trừ. */
-    padding: 7px 6px 7px;
+       ngang trên máy hẹp. */
+    padding: 3px 6px;
     background: var(--bg-white, #fff);
     border-bottom: 1.5px solid var(--border-color, #ddd);
 }
@@ -544,13 +544,25 @@ table.cal-jq .cal-jq-on {
 }
 
 /* ── Ghim widget lịch ra màn hình chính ── */
+/* GHIM CỐ ĐỊNH ngay trên thanh tab, không trôi theo trang.
+   Bảng Tiết khí nay luôn mở và tự cuộn, nên nút này — vốn là khối CUỐI của
+   #calView — dễ bị đẩy xuống dưới mép màn hình lúc bảng xin nhiều chỗ. Đưa nó
+   ra `fixed` ngay trên #bottomDock thì nó luôn ở đúng một chỗ, đúng ý "box
+   Ghim lịch thì luôn fixed vị trí ở ngay trên tab kỳ môn, lịch, bát tự, tra
+   cứu". `bottom` bám --tabbar-h (viewport.js ĐO thanh dưới rồi ghi vào), nên
+   không phải đoán chiều cao thanh ở từng nấc Screen zoom.
+   Bề ngang bám đúng khung nội dung: căn giữa bằng transform để khớp
+   `max-width` của #calView trên máy rộng. */
 #calPinBtn {
     display: none;                 /* chỉ hiện khi chạy trong app Android */
-    width: 100%; margin-top: 4px;
-    /* 5px cho vùng chạm cao 28px. Đây là NÚT cuối trang, ngay trên thanh dưới:
-       bấm hụt là trúng tab ở dưới và nhảy sang màn hình khác. 9px đưa nó lên
-       36px, ngang với một hàng của thanh dưới. fitGrid() ĐO nút này chứ không
-       đoán, nên 8px thêm vào chỉ dịch ngân sách của hai mục gập đúng 8px. */
+    position: fixed;
+    left: 50%; transform: translateX(-50%);
+    bottom: calc(var(--tabbar-h, 0px) + 4px);
+    z-index: 1400;                 /* dưới #bottomDock (1500), trên nội dung */
+    width: calc(100% - 12px); max-width: var(--max-w, 400px);
+    /* 5px cho vùng chạm cao 28px. Đây là NÚT ngay trên thanh dưới: bấm hụt là
+       trúng tab ở dưới và nhảy sang màn hình khác. 9px đưa nó lên 36px, ngang
+       với một hàng của thanh dưới. fitGrid() ĐO nút này chứ không đoán. */
     padding: 9px 5px;
     border: var(--border-accent, 1.5px solid #007bff);
     border-radius: 6px;
