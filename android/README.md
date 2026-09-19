@@ -94,8 +94,10 @@ Vài chỗ phải để ý:
 Thanh tab đáy màn hình có hai mục: **Kỳ Môn** (bàn Kỳ Môn, đúng như bản web
 gốc) và **Lịch** (lịch âm dương).
 
-* Mỗi ô ghi ngày dương (to), ngày âm (nhỏ, mùng 1 kèm tháng) và can chi —
-  **can một dòng, chi một dòng** ở mọi ngày, không phụ thuộc độ dài tên.
+* Mỗi ô ghi ngày dương (to), ngày âm (nhỏ, mùng 1 kèm tháng) và can chi. Tiếng
+  Việt: **can một dòng, chi một dòng** ở mọi ngày, không phụ thuộc độ dài tên.
+  Tiếng Trung: **cả can lẫn chi CHUNG một dòng** ("甲子") — xem mục riêng bên
+  dưới.
 * Ô trống đầu/cuối lưới được điền bằng ngày của **tháng trước / tháng sau**, tô
   mờ; chạm vào là nhảy sang tháng đó.
 * **Hôm nay** có viền đỏ đậm trên nền vàng nhạt — tô đặc màu đỏ thì nổi hơn
@@ -2341,21 +2343,58 @@ Lưới lịch là một khối **cố định**, không đổi khi lật tháng
 
 Bố cục đo trên ba máy đích (`node tools/test_widget_layout.mjs`):
 
-| Máy · cỡ widget | Khung lưới | Ô lịch | Số ngày | Can chi | Khe dọc | Hàng mục hiện |
-|---|---|---|---|---|---|---|
-| S21 · 4×5 (330×440dp) | 211dp | 35,2dp | 11,6dp | tắt | — | 8 |
-| S21 · 4×6 (330×530dp) | 263dp | 43,9dp | 14,5dp | có | 4,1dp | 10 |
-| S21 FE · 4×5 (360×450dp) | 217dp | 36,2dp | 11,9dp | tắt | — | 8 |
-| S21 FE · 4×6 (360×545dp) | 272dp | 45,3dp | 15,0dp | có | 4,7dp | 10 |
-| A51 · 4×5 (380×460dp) | 223dp | 37,1dp | 12,3dp | tắt | — | 8 |
-| A51 · 4×6 (380×560dp) | 281dp | 46,8dp | 15,4dp | có | 4,7dp | 10 |
+| Máy · cỡ widget | Khung lưới | Ô lịch | Số ngày | Can chi Việt | Can chi Trung | Khe dọc V / T | Hàng mục hiện |
+|---|---|---|---|---|---|---|---|
+| S21 · 4×5 (330×440dp) | 211dp | 35,2dp | 11,6dp | tắt | 9,8dp × 1 dòng | — / 5,5dp | 8 |
+| S21 · 4×6 (330×530dp) | 263dp | 43,9dp | 14,5dp | 9,2dp × 2 dòng | 12,3dp × 1 dòng | 4,1 / 6,9dp | 10 |
+| S21 FE · 4×5 (360×450dp) | 217dp | 36,2dp | 11,9dp | tắt | 10,1dp × 1 dòng | — / 5,5dp | 8 |
+| S21 FE · 4×6 (360×545dp) | 272dp | 45,3dp | 15,0dp | 9,5dp × 2 dòng | 12,7dp × 1 dòng | 4,7 / 7,1dp | 10 |
+| A51 · 4×5 (380×460dp) | 223dp | 37,1dp | 12,3dp | tắt | 10,4dp × 1 dòng | — / 5,9dp | 8 |
+| A51 · 4×6 (380×560dp) | 281dp | 46,8dp | 15,4dp | 9,8dp × 2 dòng | 13,1dp × 1 dòng | 4,7 / 7,2dp | 10 |
 
 "Khe dọc" là cả ba khoảng trống trong ô — chúng bằng nhau theo dựng. Tiếng Trung
-đo riêng và ra 4,3–7,2dp ở cùng dải ấy, can chi bật/tắt trùng khít tiếng Việt.
+đo riêng (can chi một dòng, chữ to hơn) và ra 5,5–10,6dp ở cùng dải ấy, kể cả ở
+ba cỡ 4×5 mà bản tiếng Việt phải tắt can chi.
 
 Số hàng hiện là số hàng NHÌN THẤY của mục; mục vẫn giữ đủ 24 hàng và cuộn. Ở cỡ
-4×5 ô lịch chưa đủ cao cho can chi nên nó tự tắt — đúng ngưỡng cũ, chỉ khác là
-nay lưới luôn 6 hàng nên ngưỡng ấy không còn nhảy theo tháng.
+4×5 ô lịch chưa đủ cao cho can chi TIẾNG VIỆT (hai dòng) nên nó tự tắt — đúng
+ngưỡng cũ, chỉ khác là nay lưới luôn 6 hàng nên ngưỡng ấy không còn nhảy theo
+tháng. Bản tiếng Trung một dòng thì vẫn đủ chỗ, nên ở đúng cỡ ấy vẫn hiện.
+
+### Can chi trong ô lịch: hai dòng ở tiếng Việt, MỘT dòng ở tiếng Trung
+
+"甲子" chỉ hai chữ vuông, rộng đúng 2 × cỡ chữ — nằm gọn một dòng trong ô rộng
+35–55dp, và đó cũng là cách bảng can chi vốn viết (`LunarTable.ganZhi60`: tiếng
+Trung viết liền, tiếng Việt cách một dấu cách). Tiếng Việt thì không có cửa:
+"Nhâm Thân" một dòng cần gần gấp đôi bề ngang ô, nên hoặc tràn hoặc phải hạ cỡ
+chữ xuống quá nửa. (Để chuỗi tự xuống dòng cũng không xong — "Đinh Mùi" gãy đôi
+còn "Kỷ Dậu" nằm một dòng, nhìn so le.)
+
+Một cơ chế, hai chỗ:
+
+* **Trong ứng dụng** — `.cal-gz` vẫn là hai `<span>`, chỉ đổi `flex-direction`
+  từ `column` sang `row` dưới `.lang-zh`. Markup không đổi nên mọi phép kiểm
+  đọc `textContent` vẫn chạy nguyên. Bớt một dòng thì hàng lịch tiếng Trung
+  thấp từ **51,3px xuống 46px** (chạm sàn `ROW_MIN`), và `fitGrid()` trả thẳng
+  6 × 5,3px ấy cho bảng Tiết khí: thân bảng nở **237 → 267px** (S21),
+  **279 → 305px** (S21 FE), **333 → 361px** (A51). Số HÀNG nhìn thấy gần như
+  không đổi (10,5 · 11,5 · 13,9) vì hàng bảng tiếng Trung vốn cao hơn hàng
+  tiếng Việt (22 vs 20px) — chỗ dôi ra đi vào chiều cao hàng, không vào số
+  hàng. Chỗ trống trong ô thì dùng để nâng cỡ chữ can chi **12,5 → 15px**,
+  bằng đúng số ngày ngay trên nó.
+* **Trong lịch đã ghim** — `drawGrid()` vẽ một `drawText(can + chi)` thay vì
+  hai. Ô widget CAO CỐ ĐỊNH (chia bằng `layout_weight`, không co theo nội
+  dung), nên chỗ dôi ra ở đây không trả cho ai được: dùng hết vào cỡ chữ, tỉ lệ
+  **0,21 → 0,28** chiều cao ô và trần **11 → 14dp**. Kết quả 9,8–14,0dp thay vì
+  9,2–11,0dp. Thêm lưới an toàn `cellW * 0,42` cho bề ngang — hai chữ khi ấy
+  chiếm nhiều nhất 84% bề ngang ô.
+
+**Ngưỡng bật can chi vì thế KHÁC nhau theo thứ tiếng**, và đó là ý đồ: một dòng
+cần ít chỗ hơn hẳn hai dòng, nên tiếng Trung bật từ ô ≈ 32,1dp còn tiếng Việt
+từ ô ≈ 42,9dp. Cụ thể: widget **4×5** (ô 35–37dp) trước phải bỏ trống can chi
+thì nay bản tiếng Trung hiện được. `test_widget_layout` vì thế canh chiều một
+phía — tiếng Trung chỉ có thể hiện can chi ở NHIỀU cỡ hơn tiếng Việt, không bao
+giờ ít hơn — chứ không canh hai bên bằng nhau.
 
 ### Ô lịch: ba dòng chia đều chỗ trống, đo bằng vùng MỰC
 
@@ -2388,10 +2427,12 @@ cao, không ô nào nhảy theo chữ của riêng nó. Tiếng Trung có chuỗ
 (`GZ_INK_ZH`), lấy thẳng từ `LunarTable.CAN`/`CHI` để khỏi có hai bản danh sách.
 
 Rồi chia phần dôi thành **ba khoảng bằng nhau** — trên số ngày, giữa số ngày và
-can chi, dưới chi:
+can chi, dưới can chi (ba khe cho HAI khối chữ, không phải theo số dòng: tiếng
+Trung một dòng thì khối can chi mỏng đi, chứ số khe không đổi):
 
 ```kotlin
-val slack = cellH - topLineH - gzH * 2 - gzLead
+val gzBlockH = if (gzOneLine) gzH else gzH * 2 + gzLead
+val slack = cellH - topLineH - gzBlockH
 val pad = slack / 3f
 ```
 

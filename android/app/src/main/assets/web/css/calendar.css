@@ -316,9 +316,14 @@ body.view-cal #calView { display: block; }
     font-size: 10.5px; color: #6b6b6b;
     line-height: 1.2; white-space: nowrap;
 }
-/* Can một dòng, chi một dòng — cố định cho MỌI ngày, không phụ thuộc độ dài.
-   Căn giữa phần còn lại của ô: hàng cao lên thì can chi vẫn nằm cân, không bị
-   dồn xuống đáy để hở một mảng trống ở giữa. */
+/* TIẾNG VIỆT: can một dòng, chi một dòng — cố định cho MỌI ngày, không phụ
+   thuộc độ dài. Căn giữa phần còn lại của ô: hàng cao lên thì can chi vẫn nằm
+   cân, không bị dồn xuống đáy để hở một mảng trống ở giữa.
+
+   Hai dòng là BẮT BUỘC ở tiếng Việt, không phải lựa chọn: "Nhâm Thân" nằm một
+   dòng cần gần gấp đôi bề ngang ô (ô rộng ~47px trên S21), nên hoặc tràn hoặc
+   phải hạ cỡ chữ xuống quá nửa. Để chuỗi tự xuống dòng cũng không xong — "Đinh
+   Mùi" gãy đôi còn "Kỷ Dậu" nằm một dòng, nhìn so le. */
 .cal-gz {
     flex: 1;
     display: flex; flex-direction: column;
@@ -327,6 +332,19 @@ body.view-cal #calView { display: block; }
     line-height: 1.15;
 }
 .cal-gz span { white-space: nowrap; }
+
+/* TIẾNG TRUNG: can chi chỉ hai chữ vuông nên nằm CHUNG một dòng — "甲子", đúng
+   cách bảng can chi vốn viết (xem LunarTable.ganZhi60: tiếng Trung viết liền,
+   tiếng Việt cách một dấu cách). Hai chữ rộng 2 × cỡ chữ, tức ~30px ở cỡ dưới
+   đây, thừa chỗ trong ô 47px hẹp nhất.
+   Bớt được một dòng thì ô còn chỗ: cỡ chữ lên 15px (từ 12,5px) cho cân với số
+   ngày 15px ngay trên, và hàng lịch vẫn thấp hơn hàng tiếng Việt — phần thấp
+   đi ấy fitGrid trả thẳng cho bảng Tiết khí. */
+.lang-zh .cal-gz {
+    flex-direction: row;
+    font-size: 15px;
+    line-height: 1.2;
+}
 
 /* Hôm nay: viền đỏ đậm + nền sáng khác hẳn các ngày còn lại. Tô đặc màu đỏ
    như trước thì nổi thật, nhưng chữ phải đảo sang trắng và ô trông như một

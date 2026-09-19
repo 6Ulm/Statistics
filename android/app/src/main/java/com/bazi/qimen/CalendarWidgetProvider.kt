@@ -312,7 +312,21 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         // tay (ô 23,6dp, nơi can chi vốn đã tắt nên không tranh chỗ với ai).
         val dayPx = minOf(cellH * 0.33f, dp(context, 17f)).coerceAtLeast(dp(context, 8.5f))
         val lunPx = minOf(cellH * 0.27f, dp(context, 11.5f))
-        val gzPx = minOf(cellH * 0.21f, dp(context, 11f))
+        // Can chi: HAI dòng ở tiếng Việt, MỘT dòng ở tiếng Trung.
+        //
+        // "甲子" chỉ hai chữ vuông, rộng đúng 2 × cỡ chữ — nằm gọn một dòng
+        // trong ô rộng 35–55dp, và đó cũng là cách bảng can chi vốn viết (xem
+        // LunarTable.ganZhi60: tiếng Trung viết liền, tiếng Việt cách một dấu
+        // cách). Tiếng Việt thì không có cửa: "Nhâm Thân" một dòng cần gần gấp
+        // đôi bề ngang ô.
+        //
+        // Bớt một dòng thì chỗ trống dôi ra, nên tiếng Trung lấy tỉ lệ CHỮ TO
+        // hơn (0,28 thay 0,21; trần 14dp thay 11dp) — để ô khỏi trống hoác chứ
+        // không phải để chữ to cho vui. Còn `cellW * 0.42f` là lưới an toàn bề
+        // ngang: hai chữ khi ấy chiếm nhiều nhất 84% bề ngang ô.
+        val gzOneLine = zh
+        val gzPx = if (gzOneLine) minOf(cellH * 0.28f, dp(context, 14f), cellW * 0.42f)
+                   else minOf(cellH * 0.21f, dp(context, 11f))
 
         // Vùng MỰC thật của từng dòng, hỏi thẳng phông đang vẽ thay vì đoán
         // bằng tỉ lệ: getTextBounds trả về hộp bao của CHUỖI đưa vào, nên đưa
@@ -340,17 +354,21 @@ class CalendarWidgetProvider : AppWidgetProvider() {
         paint.getTextBounds(gzProbe, 0, gzProbe.length, ink)
         val gzTop = ink.top.toFloat()
         val gzH = ink.height().toFloat()
-        val gzLead = gzPx * 0.06f   // can và chi là MỘT khối: khe hẹp
+        val gzLead = if (gzOneLine) 0f else gzPx * 0.06f   // can và chi là MỘT khối: khe hẹp
 
         // Chia phần dôi thành BA khoảng bằng nhau — trên số ngày, giữa số ngày
-        // và can chi, dưới chi. Cân đối theo đúng nghĩa đen, và cả ba khoảng
-        // cùng lớn lên khi ô cao lên.
-        val slack = cellH - topLineH - gzH * 2 - gzLead
+        // và can chi, dưới can chi. Cân đối theo đúng nghĩa đen, và cả ba khoảng
+        // cùng lớn lên khi ô cao lên. Ba khoảng cho HAI khối chữ, không phải cho
+        // số dòng: tiếng Trung một dòng can chi thì khối ấy mỏng đi, chứ số khe
+        // không đổi.
+        val gzBlockH = if (gzOneLine) gzH else gzH * 2 + gzLead
+        val slack = cellH - topLineH - gzBlockH
         val pad = slack / 3f
         // Can chi chỉ hiện khi (a) còn đọc được và (b) ba khoảng thở đủ rộng.
-        // Mốc 9dp giữ đúng ngưỡng cũ: 0,21 × ô = 9dp rơi vào ô ≈ 42,9dp, y hệt
-        // chỗ mà công thức cũ bật can chi — không widget nào đang có can chi bị
-        // mất, cũng không widget nào tự dưng mọc thêm.
+        // Mốc 9dp ở tiếng Việt giữ đúng ngưỡng cũ: 0,21 × ô = 9dp rơi vào ô
+        // ≈ 42,9dp, y hệt chỗ mà công thức cũ bật can chi. Tiếng Trung tỉ lệ
+        // 0,28 nên chạm mốc ấy sớm hơn (ô ≈ 32,1dp) — ĐÚNG Ý: một dòng thì cần
+        // ít chỗ hơn hẳn, widget 4×5 vốn phải bỏ trống can chi nay hiện được.
         val showGanZhi = gzPx >= dp(context, 9f) && pad >= dp(context, 2f)
 
         val startJdn = firstCellJdn(year, month)
@@ -428,13 +446,17 @@ class CalendarWidgetProvider : AppWidgetProvider() {
                 paint.textSize = gzPx
                 paint.color = if (isToday) Color.parseColor("#7A4A1C") else dim
                 if (isToday) paint.typeface = Typeface.DEFAULT_BOLD
-                // Can chi là một KHỐI hai dòng sát nhau, treo dưới dòng số ngày
-                // đúng một khoảng `pad` — cùng khoảng đã chừa trên đỉnh ô và
-                // dưới đáy ô, nên ba khe bằng nhau. Mực của chi vì thế kết ở
-                // `cellH − pad`, không còn đụng vạch đáy.
+                // Khối can chi treo dưới dòng số ngày đúng một khoảng `pad` —
+                // cùng khoảng đã chừa trên đỉnh ô và dưới đáy ô, nên ba khe bằng
+                // nhau. Mực của dòng cuối vì thế kết ở `cellH − pad`, không còn
+                // đụng vạch đáy.
                 val base1 = y + pad + topLineH + pad - gzTop
-                c.drawText(can, x + cellW / 2f, base1, paint)
-                c.drawText(chi, x + cellW / 2f, base1 + gzH + gzLead, paint)
+                if (gzOneLine) {
+                    c.drawText(can + chi, x + cellW / 2f, base1, paint)
+                } else {
+                    c.drawText(can, x + cellW / 2f, base1, paint)
+                    c.drawText(chi, x + cellW / 2f, base1 + gzH + gzLead, paint)
+                }
                 paint.typeface = Typeface.DEFAULT
             }
         }

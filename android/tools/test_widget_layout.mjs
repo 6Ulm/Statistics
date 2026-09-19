@@ -226,16 +226,32 @@ for (const dev of DEVICES) {
         const Z = zh[i];
         if (!Z) { bad(`${tag}: không dựng được widget tiếng Trung`); }
         else {
-            const khung = ['gridDp', 'cellH', 'dayPx', 'gzPx']
+            // KHUNG lưới và SỐ NGÀY phải giống nhau (cùng layout_weight, cùng
+            // tỉ lệ). `gzPx` thì KHÔNG: tiếng Trung viết can chi MỘT dòng nên
+            // lấy tỉ lệ chữ to hơn — xem drawGrid().
+            const khung = ['gridDp', 'cellH', 'dayPx']
                 .every(k => Math.abs(L[k] - Z[k]) < 0.01);
             if (!khung) {
                 bad(`${tag}: tiếng Trung cho lưới khác tiếng Việt `
                     + `(ô ${Z.cellH.toFixed(1)} vs ${L.cellH.toFixed(1)}dp, `
                     + `chữ ${Z.dayPx.toFixed(1)} vs ${L.dayPx.toFixed(1)}dp)`);
             } else ok();
-            if (Z.showGanZhi !== L.showGanZhi) {
-                bad(`${tag}: can chi ${Z.showGanZhi ? 'hiện' : 'tắt'} ở tiếng Trung `
-                    + `mà ${L.showGanZhi ? 'hiện' : 'tắt'} ở tiếng Việt`);
+            // Số DÒNG can chi: Trung một, Việt hai. Đây mới là thứ phân biệt
+            // hai bản, nên canh thẳng chứ không suy ra từ cỡ chữ.
+            if (Z.gzOneLine !== true || L.gzOneLine !== false) {
+                bad(`${tag}: số dòng can chi sai — Trung ${Z.gzOneLine ? 1 : 2} dòng, `
+                    + `Việt ${L.gzOneLine ? 1 : 2} dòng`);
+            } else ok();
+            // Một dòng tốn ít chỗ hơn hai, nên tiếng Trung chỉ có thể hiện can
+            // chi ở NHIỀU cỡ widget hơn tiếng Việt, không bao giờ ít hơn.
+            if (L.showGanZhi && !Z.showGanZhi) {
+                bad(`${tag}: can chi tắt ở tiếng Trung mà hiện ở tiếng Việt `
+                    + `— một dòng lẽ ra tốn ít chỗ hơn hai dòng`);
+            } else ok();
+            // Hai chữ vuông không được rộng quá ô.
+            if (Z.showGanZhi && Z.gzPx * 2 > Z.cellW * 0.9) {
+                bad(`${tag}: can chi tiếng Trung rộng ${(Z.gzPx * 2).toFixed(1)}dp `
+                    + `trong ô rộng ${Z.cellW.toFixed(1)}dp`);
             } else ok();
             const zPads = Z.showGanZhi ? [Z.padTop, Z.padMid, Z.padBot] : [Z.padTop, Z.padBot];
             const zMỏng = Math.min(...zPads);
@@ -254,7 +270,10 @@ for (const dev of DEVICES) {
         }
 
         console.log(`  ${tag}: lưới ${L.gridDp.toFixed(0)}dp · ô ${L.cellH.toFixed(1)}dp`
-            + ` · số ngày ${L.dayPx.toFixed(1)}dp · can chi ${L.showGanZhi ? 'có' : 'tắt'}`
+            + ` · số ngày ${L.dayPx.toFixed(1)}dp`
+            + ` · can chi ${L.showGanZhi ? 'có ' + L.gzPx.toFixed(1) + 'dp×2 dòng' : 'tắt'}`
+            + ` / 中 ${zh[i] ? (zh[i].showGanZhi
+                ? 'có ' + zh[i].gzPx.toFixed(1) + 'dp×1 dòng' : 'tắt') : '—'}`
             + ` · hàng hiện ${L.jqSeen}`
             + ` · khe ${L.padTop.toFixed(1)}/${L.padMid.toFixed(1)}/${L.padBot.toFixed(1)}dp`
             + ` (中 ${zh[i] ? zh[i].padTop.toFixed(1) + '/' + zh[i].padMid.toFixed(1)

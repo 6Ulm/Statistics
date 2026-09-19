@@ -698,6 +698,8 @@ const setOpen = (page, which, want) => page.evaluate(() => {});
    lại đúng mép ở thứ tiếng kia — cùng một máy, hai kiểu. */
 {
     console.log('\nMục Tiết khí dừng đúng mép hàng');
+    /** Chiều cao ô lịch theo thứ tiếng — bớt một dòng thì hàng phải thấp đi. */
+    const caoÔ = { vi: null, zh: null };
     for (const lang of ['vi', 'zh']) {
         const ctx = await browser.newContext({ viewport: { width: 412, height: 852 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
         const page = await ctx.newPage();
@@ -730,9 +732,51 @@ const setOpen = (page, which, want) => page.evaluate(() => {});
         ok(`${lang}: mục Tiết khí có tự cuộn tới hàng đang hiệu lực`, m.daCuon);
         ok(`${lang}: hàng đầu không bị cắt ngang dưới tiêu đề`,
             m.lech !== null && Math.abs(m.lech) < 1.5, `lệch ${m.lech}px`);
+
+        // Can chi trong ô lịch: tiếng Trung MỘT dòng ("甲子" chỉ hai chữ
+        // vuông), tiếng Việt HAI dòng ("Nhâm Thân" một dòng thì tràn ô).
+        // Đo bằng vị trí THẬT của hai <span> — cùng mép trên là một dòng —
+        // chứ không đọc luật CSS, vì luật có thể bị luật khác đè.
+        const gz = await page.evaluate(() => {
+            let motDong = 0, haiDong = 0, tran = 0, rongNhat = 0;
+            const ô = [...document.querySelectorAll('.cal-day')];
+            for (const c of ô) {
+                const sp = [...c.querySelectorAll('.cal-gz span')];
+                if (sp.length !== 2) continue;
+                const a = sp[0].getBoundingClientRect(), b = sp[1].getBoundingClientRect();
+                if (Math.abs(a.top - b.top) < 0.5) motDong++; else haiDong++;
+                const cb = c.getBoundingClientRect();
+                if (a.left < cb.left - 0.5 || b.right > cb.right + 0.5) tran++;
+                rongNhat = Math.max(rongNhat, b.right - a.left);
+            }
+            return { sốÔ: ô.length, motDong, haiDong, tran, rongNhat: +rongNhat.toFixed(1),
+                     rộngÔ: +ô[0].getBoundingClientRect().width.toFixed(1),
+                     caoÔ: +ô[0].getBoundingClientRect().height.toFixed(1) };
+        });
+        if (lang === 'zh') {
+            ok('zh: can chi nằm CHUNG một dòng ở mọi ô',
+                gz.motDong === gz.sốÔ && gz.haiDong === 0,
+                `${gz.motDong}/${gz.sốÔ} ô một dòng`);
+            ok('zh: hai chữ can chi không tràn khỏi ô',
+                gz.tran === 0 && gz.rongNhat <= gz.rộngÔ,
+                `rộng nhất ${gz.rongNhat}px trong ô ${gz.rộngÔ}px, ${gz.tran} ô tràn`);
+            caoÔ.zh = gz.caoÔ;
+        } else {
+            ok('vi: can chi vẫn tách HAI dòng ở mọi ô',
+                gz.haiDong === gz.sốÔ && gz.motDong === 0,
+                `${gz.haiDong}/${gz.sốÔ} ô hai dòng`);
+            caoÔ.vi = gz.caoÔ;
+        }
+
         ok(`${lang}: không lỗi JS`, errs.length === 0, errs.join('; '));
         await ctx.close();
     }
+    // Bớt một dòng thì hàng lịch tiếng Trung phải THẤP hơn hàng tiếng Việt —
+    // và chính phần thấp đi ấy là thứ fitGrid trả cho bảng Tiết khí. Nếu hai
+    // bên bằng nhau thì việc gộp một dòng chẳng đổi được gì.
+    ok('zh: hàng lịch thấp hơn tiếng Việt (chỗ dôi trả cho Tiết khí)',
+        caoÔ.zh !== null && caoÔ.vi !== null && caoÔ.zh < caoÔ.vi - 1,
+        `zh ${caoÔ.zh}px vs vi ${caoÔ.vi}px`);
 }
 
 /* ── 3f. Nút Back của Android ──
