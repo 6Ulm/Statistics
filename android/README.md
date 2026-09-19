@@ -761,7 +761,11 @@ phần tử DOM, không nhân bản — xem "Tab Lệnh"). Ở tab Bát Tự nó
    hàng lệch nhau ngay từ mục thứ hai — "Bính" và "Kiếp" không rộng bằng nhau.
    Đo trên 3 máy × 2 thứ tiếng × 4 lá số: lệch tâm **0 chỗ**, cắt chữ **0 chỗ**,
    quá một dòng **0 chỗ**.
-3. Một hàng **để trống**, chừa sẵn chỗ cho một tầng thông tin sẽ thêm sau. Vẫn
+3. **Thần sát** — nay mới có **Không Vong**; dịch mã, hoa cái, đào hoa, quý
+   nhân sẽ nối thêm vào đúng ô ấy, nên ô dựng sẵn dạng DANH SÁCH (mỗi thần sát
+   một `.tt-ts-item` xếp dọc) chứ không phải một mẩu chữ. Xem mục ngay dưới.
+   Trụ nào không dính thần sát nào thì ô để **trống** chứ không phải dấu "—":
+   hàng này thưa, mà bốn dấu gạch nằm chình ình thì trông như bảng lỗi. Vẫn
    phải đủ 4 ô: bảng dùng `border-collapse`, thiếu ô thì viền cột của hàng này
    hụt và cả bảng lệch một vạch.
 
@@ -770,6 +774,57 @@ chính, mọi hàng khác chỉ là chú giải cho chúng. Dùng `text-transfor
 viết hoa sẵn trong JS: chữ Hán không có hoa/thường nên luật này tự không đụng
 tới tiếng Trung, và mọi phép kiểm đọc `textContent` vẫn so được với tên can chi
 gốc.
+
+### Thần sát: Không Vong
+
+Lục thập hoa giáp chia làm **sáu tuần**, mỗi tuần mười trụ mở đầu bằng can Giáp.
+Mười trụ ấy chỉ dùng hết 10 trong 12 chi, nên mỗi tuần luôn có **đúng hai chi**
+không trụ nào chạm tới — ấy là *không vong* của cả tuần.
+
+`NguHanh.tuanKhongOf(can, chi)` **tính** chứ không tra bảng 60 dòng: lùi `can`
+bước từ chi của trụ là ra chi của trụ Giáp mở tuần (can Giáp ở chỉ số 0), rồi
+hai chi ngay sau mười chi của tuần là hai chi thiếu. `app.js` vẫn giữ bảng
+`hoaGiapToKhongVong` chép đủ 60 dòng cho bàn Kỳ Môn; `test_thansat.mjs` đối
+chiếu hàm tính với bảng ấy **từng dòng một**, nên hai nguồn không thể lệch nhau
+âm thầm.
+
+**Luật điền — KHÔNG đối xứng giữa bốn trụ.** Chỉ hai trụ được làm *mốc*:
+
+* không vong của **trụ ngày**, soi vào chi của trụ năm / tháng / giờ;
+* không vong của **trụ năm**, soi vào chi của trụ ngày / tháng / giờ.
+
+Trụ tháng và trụ giờ chỉ là chỗ **bị soi**, không tự làm mốc. Mốc cũng không
+soi vào chính nó — mà đó là nói rõ ý chứ không phải chặn một trường hợp có
+thật: mười trụ của một tuần dùng mười chi khác hẳn hai chi không vong, nên một
+trụ không bao giờ rơi vào tuần không của chính nó.
+
+Hai mốc có thể cùng chỉ vào một trụ, nên ô dùng **cờ bật/tắt** chứ không cộng
+dồn — bằng không cột ấy ghi "Không Vong" hai lần.
+
+Hai lá số người dùng cho, và cách chúng ra kết quả:
+
+| Lá số | Bốn trụ | Không vong trụ ngày | Không vong trụ năm | Cột được đánh dấu |
+|---|---|---|---|---|
+| 16/7/1991 giờ Thân | Tân Mùi · Ất Mùi · Đinh Hợi · Mậu Thân | Đinh Hợi → **Ngọ Mùi** → trúng năm (Mùi) và tháng (Mùi) | Tân Mùi → **Tuất Hợi** → trúng ngày (Hợi) | năm · tháng · ngày |
+| 8/8/1996 giờ Dậu | Bính Tý · Bính Thân · Đinh Sửu · Kỷ Dậu | Đinh Sửu → **Thân Dậu** → trúng tháng (Thân) và giờ (Dậu) | Bính Tý → **Thân Dậu** → trúng tháng và giờ | tháng · giờ |
+
+Trụ nào dính thì ô **chi** của nó thêm một **vòng tròn rỗng** ở góc trên bên
+phải — cùng hình với dấu không vong trên bàn Kỳ Môn (`.kv-mark`), vì cùng một
+khái niệm thì nên cùng một hình. Nhỏ hơn bản bàn Kỳ Môn (9px so với 12px): ô
+chi ở đây chỉ cao chừng 20px, để nguyên 12px là vòng tròn lấn hẳn vào chữ. Nó
+`position: absolute` nên **đè** lên góc ô chứ không chiếm chỗ — hàng chi không
+cao thêm một pixel nào.
+
+Hàng thần sát và vòng tròn đều **chỉ hiện ở tab Bát Tự** (`.tt-bazi-only` và
+`body:not(.view-lenh)`). Hộp Bát Tự của tab Kỳ Môn gọn hơn hẳn — không tàng
+can, không phó tinh, không thần sát — nên một vòng tròn lẻ ở đó là câu bỏ lửng.
+
+Phép thử: `node tools/test_thansat.mjs` (58 phép canh). Ngoài hai lá số trên,
+nó **quét 48 lá số** rải từ 1930 đến 2025: với mỗi lá, kỳ vọng được dựng LẠI
+tại chính phép thử từ bốn trụ đọc trên màn hình, rồi so với ô thần sát. Kèm một
+phép canh rằng mẫu quét thật sự **phân biệt được** luật đúng với luật "lấy cả
+bốn trụ làm mốc" (≥ 5 lá số cho kết quả khác nhau) — không thì phép quét chỉ là
+canh suông.
 
 ### Bọc `<span>` làm mất chữ đậm
 

@@ -124,14 +124,19 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
             <td id="ttKVNgay"  class="tt-kv">—</td>
             <td id="ttKVGio"   class="tt-kv">—</td>
         </tr>
-        <!-- Hàng để TRỐNG, chừa sẵn chỗ cho một tầng thông tin sẽ thêm sau.
-             Vẫn phải có 4 ô: bảng dùng border-collapse, thiếu ô thì viền cột
-             của hàng này hụt và cả bảng lệch một vạch. -->
-        <tr id="ttSpareRow" class="tt-bazi-only">
-            <td class="tt-spare">&nbsp;</td>
-            <td class="tt-spare">&nbsp;</td>
-            <td class="tt-spare">&nbsp;</td>
-            <td class="tt-spare">&nbsp;</td>
+        <!-- THẦN SÁT của từng trụ — mỗi thần sát một dòng trong ô, xếp dọc.
+             Nay mới có Không Vong; dịch mã, hoa cái, đào hoa, quý nhân sẽ nối
+             thêm vào đúng ô này, nên ô dựng sẵn dạng DANH SÁCH chứ không phải
+             một mẩu chữ.
+             Trụ nào không dính thần sát nào thì ô để trống (&nbsp;, không phải
+             dấu "—"): hàng này thưa, mà bốn dấu gạch nằm chình ình thì trông
+             như bảng lỗi. Vẫn phải đủ 4 ô — bảng dùng border-collapse, thiếu ô
+             thì viền cột của hàng này hụt và cả bảng lệch một vạch. -->
+        <tr id="ttThanSatRow" class="tt-bazi-only">
+            <td id="ttTSNam"   class="tt-ts">&nbsp;</td>
+            <td id="ttTSThang" class="tt-ts">&nbsp;</td>
+            <td id="ttTSNgay"  class="tt-ts">&nbsp;</td>
+            <td id="ttTSGio"   class="tt-ts">&nbsp;</td>
         </tr>
         <tr id="ttLunarRow">
             <td colspan="4" style="color:var(--text-main,#333); padding:4px 6px; text-align:center;" class="tt-lunar">

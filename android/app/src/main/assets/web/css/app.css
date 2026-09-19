@@ -604,8 +604,40 @@
             color: var(--text-main, #000);
         }
         #tuTruPanel td.tt-kv  { font-size: 10px; color: var(--text-main); font-style: italic; }
-        /* Hàng chừa trống: cao đúng một dòng, không hơn. */
-        #tuTruPanel td.tt-spare { font-size: 10px; padding: 3px 4px; }
+        /* Hàng THẦN SÁT: mỗi thần sát MỘT DÒNG trong ô, xếp dọc — hàng sẽ còn
+           dày thêm (dịch mã, hoa cái, đào hoa, quý nhân), nên ô phải là danh
+           sách chứ không phải một mẩu chữ. Trụ không dính thần sát nào thì ô
+           trống, và hàng vẫn cao đúng một dòng nhờ &nbsp;.
+           Cỡ chữ theo bề ngang màn hình: "Không Vong" là mười chữ cái trong
+           một cột rộng chừng 96px trên A51, mà tới đây còn "Đào Hoa",
+           "Quý Nhân" nối xuống. */
+        #tuTruPanel td.tt-ts {
+            font-size: clamp(7.5px, 2.35vw, 10px);
+            color: var(--text-main, #000);
+            padding: 3px 3px; line-height: 1.25;
+        }
+        #tuTruPanel .tt-ts-item { display: block; white-space: nowrap; }
+
+        /* Dấu KHÔNG VONG trên ô chi: vòng tròn rỗng ở góc trên bên phải, cùng
+           hình với dấu không vong trên bàn Kỳ Môn (.kv-mark ở khối Marks phía
+           trên) — cùng một khái niệm thì nên cùng một hình.
+           Nhỏ hơn bản bàn Kỳ Môn (12px): ô chi ở đây chỉ cao chừng 20px, để
+           nguyên 12px là vòng tròn lấn hẳn vào chữ.
+           `position: absolute` nên ô chi phải là mốc định vị — xem td.tt-chi
+           ngay dưới. Vòng nằm ĐÈ lên góc ô chứ không chiếm chỗ, nên hàng chi
+           không cao thêm một pixel nào. */
+        #tuTruPanel td.tt-chi { position: relative; }
+        #tuTruPanel .tt-kv-ring {
+            position: absolute; top: 1.5px; right: 2px;
+            width: 9px; height: 9px;
+            border: 1px solid var(--text-main, #000);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        /* Chỉ hiện ở tab Bát Tự, đi cùng hàng thần sát (.tt-bazi-only). Hộp
+           Bát Tự của tab Kỳ Môn gọn hơn hẳn — không tàng can, không phó tinh,
+           không thần sát — nên một vòng tròn lẻ ở đó là câu bỏ lửng. */
+        body:not(.view-lenh) #tuTruPanel .tt-kv-ring { display: none; }
         #tuTruPanel td.tt-lunar { font-size: 12px; }
         #tuTruPanel th .tt-val { font-weight: 500; font-size: 12px; margin-left: 2px; }
 

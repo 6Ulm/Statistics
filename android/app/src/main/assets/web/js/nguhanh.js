@@ -173,6 +173,45 @@
         return out;
     }
 
+    /* ─────────────── THẦN SÁT ───────────────
+     *
+     * Tên hiện của từng thần sát, hai thứ tiếng. Hàng thần sát trong hộp Bát
+     * Tự sẽ còn dày thêm (dịch mã, hoa cái, đào hoa, quý nhân…), nên để chung
+     * một bảng ngay từ đầu — thêm một thần sát là thêm một dòng ở đây chứ
+     * không phải rải chữ vào app.js.
+     */
+    var THAN_SAT = {
+        khongVong: { vi: 'Không Vong', zh: '空亡' },
+    };
+    function thanSatTen(key, zh) {
+        var t = THAN_SAT[key];
+        return t ? (zh ? t.zh : t.vi) : '';
+    }
+
+    /**
+     * Hai chi KHÔNG VONG (tuần không) của một trụ can chi.
+     *
+     * Lục thập hoa giáp chia làm sáu TUẦN, mỗi tuần mười trụ mở đầu bằng can
+     * Giáp. Mười trụ ấy chỉ dùng hết 10 trong 12 chi, nên mỗi tuần luôn có
+     * ĐÚNG HAI chi không trụ nào chạm tới — ấy là không vong của cả tuần.
+     *
+     * TÍNH chứ không tra bảng 60 dòng: lùi `can` bước từ chi của trụ là ra chi
+     * của trụ Giáp mở tuần (vì can Giáp ở chỉ số 0), rồi hai chi ngay sau mười
+     * chi của tuần là hai chi thiếu. Bảng `hoaGiapToKhongVong` trong app.js
+     * (dùng cho bàn Kỳ Môn) chép sẵn đủ 60 dòng; test_thansat đối chiếu hàm
+     * này với bảng ấy từng dòng một, nên hai nguồn không thể lệch nhau âm thầm.
+     *
+     * @param {string} can  Một chữ can, tiếng Việt hoặc tiếng Trung.
+     * @param {string} chi  Một chữ chi, tiếng Việt hoặc tiếng Trung.
+     * @returns {number[]}  Hai CHỈ SỐ chi (0–11), hoặc [] nếu tra không ra.
+     */
+    function tuanKhongOf(can, chi) {
+        var g = canOf(can), z = chiOf(chi);
+        if (g < 0 || z < 0) return [];
+        var đầuTuần = ((z - g) % 12 + 12) % 12;
+        return [(đầuTuần + 10) % 12, (đầuTuần + 11) % 12];
+    }
+
     function span(txt, hanh) {
         return '<span class="nh nh-' + hanh + '">' + esc(txt) + '</span>';
     }
@@ -194,6 +233,8 @@
         canOf: canOf, chiOf: chiOf,
         tangCanOf: tangCanOf,
         thapThanOf: thapThanOf,
+        tuanKhongOf: tuanKhongOf,
+        thanSatTen: thanSatTen,
         paint: paint, paintInto: paintInto, esc: esc,
         CAN_VI: CAN_VI, CAN_ZH: CAN_ZH, CHI_VI: CHI_VI, CHI_ZH: CHI_ZH,
     };

@@ -518,8 +518,76 @@ function updateTuTru(yPillar, mPillar, dPillar, hPillar) {
         });
     }
 
+    // ── Thần sát ──
+    if (NH) updateThanSat(canTxt, chiTxt);
+
     getDOM('tuTruPanel').style.display = 'table';
     getDOM('tuTruLegend').style.display = 'block';
+}
+
+/**
+ * Hàng THẦN SÁT dưới hộp Bát Tự, và vòng tròn đánh dấu trên chi của trụ dính.
+ *
+ * Nay mới có KHÔNG VONG. Luật người dùng chốt, và nó KHÔNG đối xứng giữa bốn
+ * trụ — chỉ hai trụ được làm MỐC:
+ *
+ *   · không vong của TRỤ NGÀY, soi vào chi của trụ năm / tháng / giờ;
+ *   · không vong của TRỤ NĂM, soi vào chi của trụ ngày / tháng / giờ.
+ *
+ * Trụ tháng và trụ giờ chỉ là chỗ BỊ soi, không tự làm mốc. Và mốc không soi
+ * vào chính nó: trụ ngày không bao giờ nằm trong tuần không của chính trụ ngày
+ * (mười trụ của một tuần dùng mười chi khác hẳn hai chi không vong), nên bỏ
+ * chính nó ra là nói rõ ý chứ không phải chặn một trường hợp có thật.
+ *
+ * Hai mốc có thể cùng chỉ vào một trụ (8/8/1996 giờ Dậu: cả trụ năm Bính Tý
+ * lẫn trụ ngày Đinh Sửu đều có không vong Thân Dậu, cùng bắt trúng tháng Thân
+ * và giờ Dậu) — khi ấy ô vẫn chỉ ghi MỘT chữ "Không Vong", nên dùng cờ bật/tắt
+ * cho từng trụ chứ không cộng dồn.
+ *
+ * @param {string[]} canTxt  Bốn can theo ngôn ngữ đang hiện (năm·tháng·ngày·giờ).
+ * @param {string[]} chiTxt  Bốn chi, cùng thứ tự.
+ */
+function updateThanSat(canTxt, chiTxt) {
+    const NH = window.NguHanh;
+    const zh = currentLang === 'zh';
+    const ids = ['Nam', 'Thang', 'Ngay', 'Gio'];
+    const NĂM = 0, NGÀY = 2;
+
+    // Cờ "trụ này có không vong" cho từng cột.
+    const kv = [false, false, false, false];
+    for (const mốc of [NGÀY, NĂM]) {
+        const khong = NH.tuanKhongOf(canTxt[mốc], chiTxt[mốc]);
+        if (!khong.length) continue;
+        for (let i = 0; i < 4; i++) {
+            if (i === mốc) continue;
+            if (khong.indexOf(NH.chiOf(chiTxt[i])) >= 0) kv[i] = true;
+        }
+    }
+
+    ids.forEach((k, i) => {
+        // Danh sách thần sát của trụ — nay một, mai còn thêm.
+        const tên = [];
+        if (kv[i]) tên.push(NH.thanSatTen('khongVong', zh));
+        const ô = getDOM('ttTS' + k);
+        if (ô) {
+            ô.innerHTML = tên.length
+                ? tên.map(t => '<span class="tt-ts-item">' + NH.esc(t) + '</span>').join('')
+                : '&nbsp;';
+        }
+
+        // Vòng tròn ở góc ô CHI — cùng hình với dấu không vong trên bàn Kỳ
+        // Môn (vòng rỗng, viền mảnh). Gắn SAU khi NguHanh.paintInto() đã ghi
+        // innerHTML của ô, nếu không nó bị xoá ngay.
+        const ôChi = getDOM('ttChi' + k);
+        if (!ôChi) return;
+        const cũ = ôChi.querySelector('.tt-kv-ring');
+        if (cũ) cũ.remove();
+        if (kv[i]) {
+            const ring = document.createElement('i');
+            ring.className = 'tt-kv-ring';
+            ôChi.appendChild(ring);
+        }
+    });
 }
 
 function selectMethod(val) {
