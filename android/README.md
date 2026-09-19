@@ -928,7 +928,6 @@ chế độ mặc định và canh tràn ở chế độ "Đầy đủ".
 |---|---|---|
 | `yhzp` | UHTB | Uyên Hải Tử Bình |
 | `smth` | TMTH | Tam Mệnh Thông Hội |
-| `zpzq` | TBCT | Tử Bình Chân Thuyên |
 
 Ô chọn chỉ rộng một phần tư hàng — "Tam Mệnh Thông Hội" vào đó là bị "…" nuốt
 còn "Tam M…". Bảng chọn thì có cả chiều ngang, mà "UHTB" thì không ai đoán ra là
@@ -950,7 +949,7 @@ Mỗi tháng khí (từ TIẾT này tới TIẾT sau) không do một can duy nh
 tháng tàng 2–3 can, và chúng thay nhau cầm lệnh theo thứ tự dư khí → trung khí
 → bản khí. Tháng Dần chẳng hạn: Mậu, rồi Bính, rồi Giáp.
 
-### Ba bộ số, ba cuốn sách
+### Hai bộ số, hai cuốn sách
 
 Cổ thư không thống nhất phần chia này, và chênh nhau không phải vài phút mà là
 cả tuần. Tháng Dần: bản thông hành chia **7·7·16** (Mậu tới ngày 7, Bính tới
@@ -971,7 +970,6 @@ và nhớ lựa chọn qua lần mở sau (`qmdj.lenhRule`).
 |---|---|---|---|---|---|
 | Uyên Hải Tử Bình *(mặc định)* | 7·7·16 | 10·20 | Ất 9 · **Quý** 3 · Mậu 18 | 7·7·16 | bản thông hành |
 | Tam Mệnh Thông Hội | 5·5·20 | 7·23 | Ất 7 · **Nhâm** 5 · Mậu 18 | 5·5·20 | mộ khố lấy can DƯƠNG |
-| Tử Bình Chân Thuyên | 7·7·16 | 10·20 | Ất 9 · **Quý** 3 · Mậu 18 | 10·3·17 | chỉ khác tháng Thân |
 
 Xuất xứ, và mức tin cậy của từng bộ — khác nhau, nên nói thẳng:
 
@@ -979,19 +977,34 @@ Xuất xứ, và mức tin cậy của từng bộ — khác nhau, nên nói th�
   sáu bản độc lập. Nguyên văn nằm ngay trong khối ghi chú trên bảng ở
   `lenh.js`, và `test_lenh.mjs` ĐỌC chữ Hán ấy rồi so với bảng bên dưới — sửa
   một bên mà quên bên kia là đỏ. ("艮土"/"坤土" đều là Mậu.)
-* **Tử Bình Chân Thuyên** — chép thẳng từ 「十二月令人元司令分野表」 trong
-  《子平真诠评注》, cũng canh bằng nguyên văn như trên. Chỉ khác bản thông hành ở
-  **đúng một tháng**: Thân 10·3·17 thay vì 7·7·16 ("戊己土十日，壬水三日，庚金
-  十七日").
 * **Uyên Hải Tử Bình** — là **bản thông hành** mà giới mệnh lý ngày nay quy cho
   hệ Uyên Hải, và cũng đúng bộ số trong ảnh mẫu người dùng gửi (nên nó là mặc
   định). Bản 《渊海子平》 tìm được chỉ có bài 「论天地干支暗藏总诀」 chia theo
   nửa tháng, không phải bảng ba đoạn này — chỗ quy cho ấy là **theo tập quán**,
   không phải một dòng đọc được trong sách.
 
-Cả ba bộ đều phải qua cùng bộ phép canh: mỗi tháng cộng đủ 30, các đoạn nối
+Cả hai bộ đều phải qua cùng bộ phép canh: mỗi tháng cộng đủ 30, các đoạn nối
 liền không hở không chồng, đoạn cuối là bản khí của chi, mốc mở tháng trùng
 khít bảng tiết khí, và chi của tháng lệnh trùng trụ tháng ở mọi múi giờ.
+
+#### Đã bỏ: Tử Bình Chân Thuyên
+
+Bộ thứ ba (`zpzq`, TBCT) từng có mặt, lấy từ bảng 「十二月令人元司令分野表」
+trong 《子平真诠评注》 — Thân 10·3·17, còn 11 tháng kia trùng khít bản thông
+hành. **Người dùng chốt bỏ: "nó không có cơ sở."** Và chỗ đứng của nó đúng là
+mỏng nhất trong ba bộ:
+
+* bảng ấy nằm ở bản **评注** — lời chú của 徐乐吾 — chứ không phải chính văn
+  《子平真诠》 của 沈孝瞻;
+* dòng 申月 của chính bảng ấy chép "**戊己土**十日", gộp hai can vào một đoạn,
+  tức tự nó cũng không nói rõ can nào cầm lệnh (chỗ ấy phải tự chọn Mậu vì chi
+  Thân tàng Mậu) — mà 申 lại đúng là tháng DUY NHẤT bộ này khác bản thông hành.
+
+Bỏ đi không mất bộ số nào thật sự riêng, mà bảng chọn bớt được một dòng. Máy
+nào đang lưu khoá `'zpzq'` thì `ruleByKey()` không tìm thấy và trả về `RULES[0]`
+— tự về bản thông hành, không cần dọn dữ liệu. `test_lenh.mjs` canh cả ba
+điều: bảng `FEN_ZPZQ` đã xoá, `RULES` không còn dòng ấy, và khoá cũ rơi đúng
+về UHTB ở cả hai ô bộ số (tab Bát Tự và tab Tra cứu).
 
 ### Đo bằng ĐỘ hoàng kinh, không phải số ngày
 
@@ -1048,7 +1061,7 @@ cùng `#country` và cùng `currentLang`; `lenh.js` bọc `processAll()` đúng 
 
 Cấu trúc theo đúng ảnh mẫu: **Tháng · Can · Số độ · Vào lệnh · Hết lệnh**,
 12 tháng từ Sửu (Tiểu Hàn, tháng 1) tới Tý (Đại Tuyết, tháng 12) — tức 12 TIẾT
-rơi vào năm dương lịch đang chọn. Bản thông hành và Tử Bình Chân Thuyên ra 33
+rơi vào năm dương lịch đang chọn. Bản thông hành ra 33
 đoạn; Tam Mệnh Thông Hội ra 32, vì bốn tháng tứ chính (Mão Ngọ Dậu Tý) chỉ chia
 hai đoạn. Ô tháng gộp 2–3 hàng.
 
@@ -1476,9 +1489,10 @@ Hai đổi riêng, cùng một chỗ:
 * Tiêu đề bảng chọn (`T.pickRule`) rút từ "Chọn quy tắc" còn **"Quy tắc"** —
   ngắn hơn, và khớp cách đặt tên "Giới tính" (không phải "Chọn giới tính") của
   ô mới bên cạnh.
-* **Chỉ tiếng Việt**: tên ba sách trong `RULES[].vi` đổi từ tên đầy đủ thành
+* **Chỉ tiếng Việt**: tên sách trong `RULES[].vi` đổi từ tên đầy đủ thành
   chữ đầu viết tắt — **UHTB** (Uyên Hải Tử Bình), **TMTH** (Tam Mệnh Thông
-  Hội), **TBCT** (Tử Bình Chân Thuyên). Lý do là chỗ: ô Quy tắc bị đẩy từ nửa
+  Hội); lúc ấy còn bộ thứ ba **TBCT**, nay đã bỏ (xem "Đã bỏ: Tử Bình Chân
+  Thuyên" ở trên). Lý do là chỗ: ô Quy tắc bị đẩy từ nửa
   hàng (50%) xuống một phần tư hàng (25%) để nhường chỗ cho ô Giới tính, và
   "Tam Mệnh Thông Hội" không lọt nổi ở cỡ chữ đọc được trên máy 360px. Áp dụng
   cho **cả** ô đóng lẫn danh sách trong bảng chọn — người dùng "replace ALL".
@@ -2302,20 +2316,24 @@ Lịch. Mở mục thì nó tự cuộn tới hàng đang hiệu lực
 (`RemoteViews.setScrollPosition`), đúng như tab Lịch cuộn tới tiết khí của ngày
 đang chọn.
 
-Chiều cao chia bằng `layout_weight`: lưới lịch **58**, mục Tiết khí **26**, mục
-Lịch âm **16**, sau khi trừ các khối cố định (tiêu đề 32dp, hàng thứ 16dp, hai
-hàng tiêu đề mục 20dp, đệm đáy 6dp). Mục nào đang ĐÓNG thì `ListView` của nó là
-`GONE`, mà `LinearLayout` không tính phần của View đã `GONE` — chỗ ấy tự chia
-lại cho lưới và mục còn lại. `WidgetLayout.gridHeightDp` dựng lại đúng luật ấy
-để biết vẽ bitmap lưới cao bao nhiêu.
+Chiều cao chia bằng `layout_weight`: lưới lịch **58**, mục Tiết khí **42**, sau
+khi trừ các khối cố định (tiêu đề 32dp, hàng thứ 16dp, một hàng tiêu đề mục
+22dp, đệm đáy 6dp). Mục Tiết khí không gập được nữa; nó chỉ VẮNG khi bảng tra
+thiếu dữ liệu cho năm đang xem, và khi ấy `ListView` là `GONE` — mà
+`LinearLayout` không tính phần của View đã `GONE`, nên chỗ ấy tự về cho lưới.
+`WidgetLayout.gridHeightDp` dựng lại đúng luật ấy để biết vẽ bitmap lưới cao
+bao nhiêu.
 
 Lưới lịch là một khối **cố định**, không đổi khi lật tháng:
 
 * Luôn **6 hàng** (`GRID_WEEKS`) — số hàng của tháng dài nhất — nên chiều cao ô
   không nhảy khi bấm ‹ ›, và lưới bắt chạm 6×7 trong XML lúc nào cũng đè đúng ô.
 * **Cỡ chữ chặn theo dp tuyệt đối** (số ngày ≤ 17dp, ngày âm ≤ 11,5dp, can chi
-  ≤ 11dp): thả trôi theo chiều cao widget thì widget cao một chút là chữ phình,
-  widget thấp là chữ bé không đọc nổi. Can chi tự tắt khi ô không đủ cao.
+  ≤ 11dp, và số ngày có sàn 8,5dp): thả trôi theo chiều cao widget thì widget
+  cao một chút là chữ phình, widget thấp là chữ bé không đọc nổi. Can chi tự tắt
+  khi ô không đủ cao.
+* **Ba dòng chia đều chỗ trống**, đo bằng vùng MỰC chứ không bằng cỡ chữ — xem
+  mục ngay dưới.
 * **Đệm đáy 6dp** (`widget_corner_pad`) chừa cho góc bo mà Android 12 trở lên tự
   áp cho mọi widget: hàng cuối của `ListView` chạm sát mép thì bị cung tròn gặm
   mất chữ. Trước đây khoản này tính bằng lượng giác trong Kotlin vì bảng nằm
@@ -2323,18 +2341,78 @@ Lưới lịch là một khối **cố định**, không đổi khi lật tháng
 
 Bố cục đo trên ba máy đích (`node tools/test_widget_layout.mjs`):
 
-| Máy · cỡ widget | Khung lưới | Ô lịch | Số ngày | Can chi | Hàng mục hiện |
-|---|---|---|---|---|---|
-| S21 · 4×5 (330×440dp) | 239dp | 39,8dp | 14,3dp | tắt | 6 |
-| S21 · 4×6 (330×530dp) | 301dp | 50,2dp | **17,0dp** | có | 8 |
-| S21 FE · 4×5 (360×450dp) | 246dp | 41,0dp | 14,7dp | tắt | 6 |
-| S21 FE · 4×6 (360×545dp) | 311dp | 51,9dp | **17,0dp** | có | 8 |
-| A51 · 4×5 (380×460dp) | 253dp | 42,1dp | 15,2dp | tắt | 6 |
-| A51 · 4×6 (380×560dp) | 322dp | 53,7dp | **17,0dp** | có | 8 |
+| Máy · cỡ widget | Khung lưới | Ô lịch | Số ngày | Can chi | Khe dọc | Hàng mục hiện |
+|---|---|---|---|---|---|---|
+| S21 · 4×5 (330×440dp) | 211dp | 35,2dp | 11,6dp | tắt | — | 8 |
+| S21 · 4×6 (330×530dp) | 263dp | 43,9dp | 14,5dp | có | 4,1dp | 10 |
+| S21 FE · 4×5 (360×450dp) | 217dp | 36,2dp | 11,9dp | tắt | — | 8 |
+| S21 FE · 4×6 (360×545dp) | 272dp | 45,3dp | 15,0dp | có | 4,7dp | 10 |
+| A51 · 4×5 (380×460dp) | 223dp | 37,1dp | 12,3dp | tắt | — | 8 |
+| A51 · 4×6 (380×560dp) | 281dp | 46,8dp | 15,4dp | có | 4,7dp | 10 |
 
-Số hàng hiện là số hàng NHÌN THẤY của mục đang mở; mục vẫn giữ đủ 24 hàng và
-cuộn. Ở cỡ 4×5 ô lịch chưa đủ cao cho can chi nên nó tự tắt — đúng luật cũ, chỉ
-khác là nay lưới luôn 6 hàng nên ngưỡng ấy không còn nhảy theo tháng.
+"Khe dọc" là cả ba khoảng trống trong ô — chúng bằng nhau theo dựng. Tiếng Trung
+đo riêng và ra 4,3–7,2dp ở cùng dải ấy, can chi bật/tắt trùng khít tiếng Việt.
+
+Số hàng hiện là số hàng NHÌN THẤY của mục; mục vẫn giữ đủ 24 hàng và cuộn. Ở cỡ
+4×5 ô lịch chưa đủ cao cho can chi nên nó tự tắt — đúng ngưỡng cũ, chỉ khác là
+nay lưới luôn 6 hàng nên ngưỡng ấy không còn nhảy theo tháng.
+
+### Ô lịch: ba dòng chia đều chỗ trống, đo bằng vùng MỰC
+
+Người dùng chỉ ra hai chỗ trong lịch đã ghim: **can dính sát số dương lịch** ở
+trên, **chi dính sát vạch đáy ô** ở dưới. Đo lại thì còn tệ hơn mô tả — ở ba cỡ
+widget 4×6 (ô 43,9 · 45,3 · 46,8dp), khe giữa số ngày và can là **−1,73 · −1,11
+· −1,10dp**: âm, tức hai vùng mực CHỒNG LÊN NHAU; còn khe từ chi tới vạch đáy là
+**0,45 · 1,02 · 1,40dp**. Trong khi đó khe TRÊN số ngày thừa tới 7,5–8,0dp. Cả
+khối chữ bị dồn xuống đáy.
+
+Gốc rễ: bản cũ chia chỗ theo **cỡ chữ** (`0,36 + 2×0,25 = 0,86` chiều cao ô,
+nghe như còn dư 14%), nhưng chỗ chữ thật sự chiếm là **vùng mực** — mà vùng mực
+một dòng còn rộng hơn cỡ chữ của nó: dấu mũ chồng dấu sắc của "Ất" đội lên trên
+đường trên, dấu nặng của "Tỵ" thò xuống dưới đường cơ sở. Đo trên phông thật thì
+một dòng can chi chiếm **1,06–1,14 lần** cỡ chữ, nên ba dòng ăn hơn 100% chiều
+cao ô. `dayBase = dayPx + 3dp` lại là một con số CHẾT, không biết gì về vùng mực
+ấy.
+
+Bản mới hỏi thẳng phông:
+
+```kotlin
+paint.getTextBounds(GZ_INK_VI, 0, GZ_INK_VI.length, ink)   // TRỌN bộ can chi
+```
+
+Chuỗi dò là **trọn bộ 10 can + 12 chi** chứ không phải một chữ tiêu biểu: "Ất"
+cao nhất, "Tỵ"/"Ngọ"/"Mậu" thấp nhất, mà không chữ nào vừa cao nhất vừa thấp
+nhất — dò bằng một chữ là hộp hụt đúng phần thò ra của chữ khác, tức đúng cái
+lỗi đang chữa. Hộp ấy đo MỘT LẦN cho cả lưới nên ô nào cũng đặt chữ ở cùng độ
+cao, không ô nào nhảy theo chữ của riêng nó. Tiếng Trung có chuỗi dò riêng
+(`GZ_INK_ZH`), lấy thẳng từ `LunarTable.CAN`/`CHI` để khỏi có hai bản danh sách.
+
+Rồi chia phần dôi thành **ba khoảng bằng nhau** — trên số ngày, giữa số ngày và
+can chi, dưới chi:
+
+```kotlin
+val slack = cellH - topLineH - gzH * 2 - gzLead
+val pad = slack / 3f
+```
+
+`topLineH` là HỢP vùng mực của số dương lịch và ngày âm (hai chữ ấy chung một
+đường cơ sở, mà gạch chéo trong "1/9" thò xuống dưới nó còn chữ số thì không).
+`gzLead` chỉ 0,06 lần cỡ chữ: can và chi là MỘT khối, không phải hai dòng rời —
+bản cũ để 1,28 lần nên ô càng cao hai chữ càng dạt xa nhau.
+
+Để ba khe ấy có chỗ, hai tỉ lệ cỡ chữ phải hạ: số ngày **0,36 → 0,33**, can chi
+**0,25 → 0,21**. Kết quả: ba khe 4,1–6,9dp (tiếng Việt) và 4,3–7,2dp (tiếng
+Trung), đều nhau ở mọi cỡ.
+
+**Ngưỡng bật can chi không đổi**: `gzPx ≥ 9dp` ⇔ ô ≥ 42,9dp, đúng chỗ mà công
+thức cũ bật — không widget nào đang có can chi bị mất, cũng không widget nào tự
+dưng mọc thêm. Ô không có can chi thì dòng số ngày **canh giữa** ô thay vì dính
+lên đỉnh.
+
+*Tăng chiều cao lưới KHÔNG chữa được lỗi này* — đã thử tính: cỡ chữ tỉ lệ thuận
+với chiều cao ô, nên nới `W_GRID` 58 → 62 (ô 43,9 → 46,9dp) chỉ đưa khe từ 4,1
+lên ~4,4dp, đổi lại mất một hàng Tiết khí. Thứ phải sửa là cách CHIA chỗ, không
+phải lượng chỗ. Nên `W_GRID` giữ nguyên 58.
 
 Ba máy chỉ khác nhau ở bề ngang màn hình (360 · 393 · 412dp) và mật độ
 (3 · 2,75 · 2,625). Bố cục tính hết theo dp và theo `layout_weight`, nên **không
@@ -2349,7 +2427,8 @@ widget cao thêm không làm chữ to hơn nữa. Chỉ A51 (nửa bảng ~190dp
 trần 12dp. Muốn phá trần ấy thì phải đổi cách hiện mốc ngày giờ, mà như thế lại
 lệch với bảng ở tab Lịch.
 
-Sàn 250dp (`minResizeWidth`, phải tự tay bóp mới có) cho chữ 7,8dp. Không nâng
+Sàn 250dp (`minResizeWidth`, phải tự tay bóp mới có) cho chữ 8,5dp (sàn cứng của
+số ngày). Không nâng
 sàn ấy bằng manifest được: `minWidth` quá 250dp thì công thức ô của Android đòi
 5 cột, widget hết đặt được lên lưới 4 cột của One UI.
 
@@ -2370,18 +2449,21 @@ node tools/test_widget_layout.mjs
 
 Nó dựng `widget_preview.html` ở đúng cấu hình S21 (360dp @3x), S21 FE (393dp
 @2,75x) và A51 (412dp @2,625x), quét dải cỡ widget mà lưới One UI dựng ra, rồi
-canh năm điều: giá trị
+canh: giá trị
 không tràn qua vách ngăn, chữ không nhỏ dưới ngưỡng đọc được, hàng cuối nằm trên
-cung góc bo mà cũng không hở thừa quá 4dp, lưới lịch không bị bảng nuốt, và
+cung góc bo mà cũng không hở thừa quá 4dp, lưới lịch không bị bảng nuốt,
+**ba khe dọc trong ô lịch đều nhau và không khe nào mỏng dưới 2dp**, và
 **bảng không đổi khi lật tháng** —
 tháng 4, 5 và 6 hàng lịch phải cho ra cùng một khung, cùng cỡ chữ, cùng vị trí
-cột. Phông của Chromium rộng hơn Roboto nên cỡ chữ đo được là phía an toàn: trên
+cột. Mỗi điều canh **hai lần, tiếng Việt và tiếng Trung**: can chi chữ vuông có
+vùng mực khác chữ Việt có dấu, nên khe dọc phải đo lại chứ không suy ra được —
+và đổi ngôn ngữ mà lưới đổi hình thì cũng là lỗi. Phông của Chromium rộng hơn Roboto nên cỡ chữ đo được là phía an toàn: trên
 máy thật chữ chỉ có thể to hơn con số ấy.
 
 Xem trước widget mà không cần dựng APK:
 
 ```bash
-node tools/shot_widget.mjs         # ảnh widget ở 4 kích thước
+node tools/shot_widget.mjs         # ảnh widget: tháng này, tháng khác, tiếng Trung
 ```
 
 `tools/widget_preview.html` vẽ lại y hệt `drawBody()` bằng Canvas của trình

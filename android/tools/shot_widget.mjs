@@ -37,9 +37,12 @@ const page = await ctx.newPage();
 page.on('pageerror', e => console.error('lỗi trang:', e.message));
 
 // Không còn trạng thái gập/mở nào để xem trước: mục Tiết khí LUÔN HIỆN (và vẫn
-// cuộn được), mục Lịch âm đã bỏ hẳn khỏi lịch đã ghim. Chỉ còn hai lượt: tháng
-// này và một tháng khác, để thấy lưới không đổi cỡ khi lật tháng.
-for (const [q, name] of [['', 'thangnay'], ['?month=2026-9', 'thangkhac']]) {
+// cuộn được), mục Lịch âm đã bỏ hẳn khỏi lịch đã ghim. Còn ba lượt: tháng này,
+// một tháng khác (để thấy lưới không đổi cỡ khi lật tháng), và bản TIẾNG TRUNG
+// — can chi chữ vuông có vùng mực khác chữ Việt có dấu, mà chính vùng mực ấy
+// quyết định chỗ đứng của can chi trong ô, nên phải nhìn được cả hai.
+for (const [q, name] of [['', 'thangnay'], ['?month=2026-9', 'thangkhac'],
+                         ['?lang=zh', 'tiengtrung']]) {
     await page.goto(base + q, { waitUntil: 'networkidle' });
     await page.waitForSelector('body[data-ready="1"]');
     await page.screenshot({ path: path.join(OUT, `widget-${name}.png`), fullPage: true });

@@ -38,6 +38,8 @@ const CAN = ZH ? ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸']
                : ['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'];
 const CHI = ZH ? ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥']
                : ['Tý','Sửu','Dần','Mão','Thìn','Tỵ','Ngọ','Mùi','Thân','Dậu','Tuất','Hợi'];
+/** Chuỗi dò vùng mực của can chi — GZ_INK_VI/GZ_INK_ZH bên Kotlin. */
+const GZ_INK = CAN.join('') + CHI.join('');
 const TIET_KHI = ZH
   ? ['冬至','小寒','大寒','立春','雨水','惊蛰','春分','清明','谷雨','立夏','小满','芒种',
      '夏至','小暑','大暑','立秋','处暑','白露','秋分','寒露','霜降','立冬','小雪','大雪']
@@ -226,10 +228,28 @@ function drawGrid(canvas, wDp, hDp, density, year, month, todayJdn, selJdn) {
     const cellW = w / 7, cellH = h / GRID_WEEKS;
     c.fillStyle = '#FDECEF'; c.fillRect(0, 0, w, h);
 
-    const dayPx = Math.min(cellH * 0.36, dp(17));
+    const dayPx = Math.max(dp(8.5), Math.min(cellH * 0.33, dp(17)));
     const lunPx = Math.min(cellH * 0.27, dp(11.5));
-    const gzPx = Math.min(cellH * 0.25, dp(11));
-    const showGanZhi = cellH >= dayPx + gzPx * 2 + dp(6);
+    const gzPx = Math.min(cellH * 0.21, dp(11));
+
+    /* Vùng MỰC của một chuỗi — getTextBounds() bên Kotlin. Canvas trả về hai
+       khoảng cách DƯƠNG tính từ đường cơ sở, nên đảo dấu phần trên cho khớp
+       Rect.top (âm) của Android. */
+    const inkOf = (font, probe) => {
+        c.font = font;
+        const m = c.measureText(probe);
+        return { top: -m.actualBoundingBoxAscent, bottom: m.actualBoundingBoxDescent };
+    };
+    const dayInk = inkOf('bold ' + dayPx + 'px sans-serif', '0123456789');
+    const lunInk = inkOf(lunPx + 'px sans-serif', '0123456789/');
+    const lineTop = Math.min(dayInk.top, lunInk.top);
+    const topLineH = Math.max(dayInk.bottom, lunInk.bottom) - lineTop;
+
+    const gzInk = inkOf('bold ' + gzPx + 'px sans-serif', GZ_INK);
+    const gzTop = gzInk.top, gzH = gzInk.bottom - gzInk.top;
+    const gzLead = gzPx * 0.06;
+    const pad = (cellH - topLineH - gzH * 2 - gzLead) / 3;
+    const showGanZhi = gzPx >= dp(9) && pad >= dp(2);
 
     const startJdn = firstCellJdn(year, month);
     for (let idx = 0; idx < GRID_WEEKS * 7; idx++) {
@@ -257,7 +277,8 @@ function drawGrid(canvas, wDp, hDp, density, year, month, todayJdn, selJdn) {
         c.textAlign = 'left'; c.textBaseline = 'alphabetic';
         c.font = 'bold ' + dayPx + 'px sans-serif';
         c.fillStyle = fg;
-        const dayBase = y + dayPx + dp(3);
+        const dayTop = showGanZhi ? pad : (cellH - topLineH) / 2;
+        const dayBase = y + dayTop - lineTop;
         c.fillText(String(cd), x + cellW * 0.09, dayBase);
 
         c.textAlign = 'right';
@@ -272,11 +293,9 @@ function drawGrid(canvas, wDp, hDp, density, year, month, todayJdn, selJdn) {
             c.textAlign = 'center';
             c.font = (isToday ? 'bold ' : '') + gzPx + 'px sans-serif';
             c.fillStyle = isToday ? '#7A4A1C' : dim;
-            const rest = cellH - (dayBase - y);
-            const lineGap = gzPx * 1.28;
-            const top = dayBase + (rest - (lineGap + gzPx)) / 2;
-            c.fillText(can, x + cellW / 2, top + gzPx * 0.75);
-            c.fillText(chi, x + cellW / 2, top + gzPx * 0.75 + lineGap);
+            const base1 = y + pad + topLineH + pad - gzTop;
+            c.fillText(can, x + cellW / 2, base1);
+            c.fillText(chi, x + cellW / 2, base1 + gzH + gzLead);
         }
     }
 
@@ -286,7 +305,15 @@ function drawGrid(canvas, wDp, hDp, density, year, month, todayJdn, selJdn) {
         const y = cellH * r;
         c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke();
     }
-    return { cellW, cellH, dayPx, lunPx, gzPx, showGanZhi };
+    return {
+        cellW, cellH, dayPx, lunPx, gzPx, showGanZhi,
+        // Ba khe theo chiều dọc, để test_widget_layout canh chúng bằng nhau và
+        // đủ rộng: trên số ngày, giữa số ngày và can chi, dưới chi.
+        padTop: showGanZhi ? pad : (cellH - topLineH) / 2,
+        padMid: showGanZhi ? pad : 0,
+        padBot: showGanZhi ? cellH - (pad * 2 + topLineH + gzH * 2 + gzLead)
+                           : (cellH - topLineH) / 2,
+    };
 }
 
 /** Một hàng của ListView — widget_sec_row.xml. */
@@ -414,6 +441,9 @@ function buildWidget(host, wDp, hDp, density, year, month, todayJdn, selJdn) {
         wDp, hDp, density, gridDp,
         cellH: g.cellH / density, dayPx: g.dayPx / density, gzPx: g.gzPx / density,
         showGanZhi: g.showGanZhi,
+        // Ba khe dọc trong ô lịch (dp) — phép canh "số ngày và can chi đứng
+        // cân đối" đọc thẳng ba con số này.
+        padTop: g.padTop / density, padMid: g.padMid / density, padBot: g.padBot / density,
         jqOpen,
         jqRows: jq ? jq.rows.length : 0,
         jqSeen: seen('jq'),

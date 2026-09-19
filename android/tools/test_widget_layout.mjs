@@ -90,6 +90,15 @@ const MIN_ROWS_SEEN = 2;
  * chỉnh lại bộ weight trong widget_calendar.xml và widget_sec_row.xml.
  */
 const MAX_SPILL_PX = 2;
+/**
+ * Khe dọc tối thiểu trong ô lịch (dp): trên số ngày, giữa số ngày và can chi,
+ * dưới chi. Người dùng bắt được đúng hai chỗ này ở bản trước — "can quá sát số
+ * lịch dương, chi quá sát vạch đáy" — nên nay canh THẲNG ba con số ấy thay vì
+ * chỉ canh cỡ chữ. Bản cũ cho ra 0,4dp và 0,5dp, tức chữ gần như chạm nhau.
+ */
+const MIN_CELL_PAD_DP = 2;
+/** Ba khe phải BẰNG NHAU (chia đều phần dôi), sai số cho phép vì làm tròn pixel. */
+const PAD_EVEN_DP = 0.75;
 
 const MIME = { '.html': 'text/html', '.txt': 'text/plain', '.js': 'text/javascript' };
 const server = http.createServer((req, res) => {
@@ -120,14 +129,23 @@ for (const dev of DEVICES) {
     page.on('pageerror', e => { bad(`lỗi trang: ${e.message}`); });
 
     const sizesParam = dev.sizes.map(([w, h]) => `${w}x${h}`).join(',');
-    /** layout[month][i] — số đo của cỡ widget thứ i ở tháng ấy. */
-    const byMonth = {};
-    for (const m of MONTHS) {
-        await page.goto(`${base}?today=${TODAY}&month=${m}&density=${dev.density}&sizes=${sizesParam}`,
+    const đo = async (m, lang) => {
+        await page.goto(`${base}?today=${TODAY}&month=${m}&density=${dev.density}`
+            + `&sizes=${sizesParam}` + (lang ? `&lang=${lang}` : ''),
             { waitUntil: 'networkidle' });
         await page.waitForSelector('body[data-ready="1"]');
-        byMonth[m] = await page.evaluate(() => window.__wlayout);
-    }
+        return page.evaluate(() => window.__wlayout);
+    };
+    /** layout[month][i] — số đo của cỡ widget thứ i ở tháng ấy. */
+    const byMonth = {};
+    for (const m of MONTHS) byMonth[m] = await đo(m, null);
+    /**
+     * Cùng widget ấy nhưng TIẾNG TRUNG. Can chi tiếng Trung là chữ vuông, vùng
+     * mực khác hẳn chữ Việt có dấu, nên ba khe dọc phải đo lại chứ không suy ra
+     * được từ bản tiếng Việt. Một tháng là đủ: khung lưới không phụ thuộc tháng
+     * (chính phép canh 6 bên dưới canh điều đó).
+     */
+    const zh = await đo(MONTHS[0], 'zh');
 
     dev.sizes.forEach(([wDp, hDp, floorNote], i) => {
         const L = byMonth[MONTHS[0]][i];
@@ -176,9 +194,71 @@ for (const dev of DEVICES) {
             } else ok();
         }
 
+        // 7. Số ngày và can chi đứng CÂN ĐỐI trong ô: ba khe dọc đều nhau và
+        //    không khe nào mỏng tới mức chữ dính vào nhau hay dính vạch lưới.
+        //    Chỉ xét ô có can chi — ô không có thì dòng số ngày canh giữa, và
+        //    padMid không có nghĩa gì.
+        if (L.showGanZhi) {
+            const pads = [L.padTop, L.padMid, L.padBot];
+            const mỏng = Math.min(...pads);
+            if (mỏng < MIN_CELL_PAD_DP) {
+                bad(`${tag}: khe dọc trong ô chỉ ${mỏng.toFixed(2)}dp `
+                    + `(trên ${L.padTop.toFixed(2)} · giữa ${L.padMid.toFixed(2)} `
+                    + `· dưới ${L.padBot.toFixed(2)})`);
+            } else ok();
+            const lệch = Math.max(...pads) - mỏng;
+            if (lệch > PAD_EVEN_DP) {
+                bad(`${tag}: ba khe dọc không đều, lệch ${lệch.toFixed(2)}dp `
+                    + `(trên ${L.padTop.toFixed(2)} · giữa ${L.padMid.toFixed(2)} `
+                    + `· dưới ${L.padBot.toFixed(2)})`);
+            } else ok();
+        } else {
+            // Không can chi thì dòng số ngày phải canh GIỮA ô, không dính đỉnh.
+            const lệch = Math.abs(L.padTop - L.padBot);
+            if (lệch > PAD_EVEN_DP) {
+                bad(`${tag}: ô không có can chi mà số ngày lệch tâm ${lệch.toFixed(2)}dp`);
+            } else ok();
+        }
+
+        // 8. TIẾNG TRUNG phải đứng được y hệt: cùng khung lưới, cùng cỡ chữ,
+        //    can chi bật/tắt giống nhau, và ba khe dọc cũng đủ rộng. Đổi ngôn
+        //    ngữ mà lưới đổi hình là lỗi — hai mặt của cùng một widget.
+        const Z = zh[i];
+        if (!Z) { bad(`${tag}: không dựng được widget tiếng Trung`); }
+        else {
+            const khung = ['gridDp', 'cellH', 'dayPx', 'gzPx']
+                .every(k => Math.abs(L[k] - Z[k]) < 0.01);
+            if (!khung) {
+                bad(`${tag}: tiếng Trung cho lưới khác tiếng Việt `
+                    + `(ô ${Z.cellH.toFixed(1)} vs ${L.cellH.toFixed(1)}dp, `
+                    + `chữ ${Z.dayPx.toFixed(1)} vs ${L.dayPx.toFixed(1)}dp)`);
+            } else ok();
+            if (Z.showGanZhi !== L.showGanZhi) {
+                bad(`${tag}: can chi ${Z.showGanZhi ? 'hiện' : 'tắt'} ở tiếng Trung `
+                    + `mà ${L.showGanZhi ? 'hiện' : 'tắt'} ở tiếng Việt`);
+            } else ok();
+            const zPads = Z.showGanZhi ? [Z.padTop, Z.padMid, Z.padBot] : [Z.padTop, Z.padBot];
+            const zMỏng = Math.min(...zPads);
+            if (zMỏng < MIN_CELL_PAD_DP) {
+                bad(`${tag}: khe dọc tiếng Trung chỉ ${zMỏng.toFixed(2)}dp `
+                    + `(trên ${Z.padTop.toFixed(2)} · giữa ${Z.padMid.toFixed(2)} `
+                    + `· dưới ${Z.padBot.toFixed(2)})`);
+            } else ok();
+            if (Math.max(...zPads) - zMỏng > PAD_EVEN_DP) {
+                bad(`${tag}: ba khe dọc tiếng Trung không đều `
+                    + `(${Z.padTop.toFixed(2)}/${Z.padMid.toFixed(2)}/${Z.padBot.toFixed(2)}dp)`);
+            } else ok();
+            if (Z.spill > MAX_SPILL_PX) {
+                bad(`${tag}: tiếng Trung — "${Z.spillText}" bị cắt ${Z.spill.toFixed(1)}px`);
+            } else ok();
+        }
+
         console.log(`  ${tag}: lưới ${L.gridDp.toFixed(0)}dp · ô ${L.cellH.toFixed(1)}dp`
             + ` · số ngày ${L.dayPx.toFixed(1)}dp · can chi ${L.showGanZhi ? 'có' : 'tắt'}`
             + ` · hàng hiện ${L.jqSeen}`
+            + ` · khe ${L.padTop.toFixed(1)}/${L.padMid.toFixed(1)}/${L.padBot.toFixed(1)}dp`
+            + ` (中 ${zh[i] ? zh[i].padTop.toFixed(1) + '/' + zh[i].padMid.toFixed(1)
+                + '/' + zh[i].padBot.toFixed(1) : '—'})`
             + ` · cắt chữ ${L.spill.toFixed(1)}px · lưới ${(share * 100).toFixed(0)}%`);
     });
     await ctx.close();

@@ -11,6 +11,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
@@ -297,10 +298,60 @@ class CalendarWidgetProvider : AppWidgetProvider() {
 
         // Cỡ chữ chặn theo dp tuyệt đối: thả trôi theo chiều cao widget thì
         // widget cao một chút là chữ phình, widget thấp là chữ bé không đọc nổi.
-        val dayPx = minOf(cellH * 0.36f, dp(context, 17f))
+        //
+        // Ba tỉ lệ này phải CỘNG LẠI CÒN CHỖ TRỐNG. Bản trước lấy 0,36 + 2×0,25
+        // = 0,86 chiều cao ô cho ba dòng chữ, nghe thì còn dư 14% — nhưng 0,86
+        // ấy là CỠ chữ, còn chỗ chữ thật sự chiếm là vùng MỰC, mà vùng mực của
+        // một dòng còn rộng hơn cỡ chữ (dấu mũ của "Ất" đội lên trên, dấu nặng
+        // của "Tỵ" thò xuống dưới). Ba dòng vì thế ăn hơn 100% chiều cao ô: can
+        // dính sát số ngày ở trên (đo A51 widget 380×560: hở 0,4dp) và chi dính
+        // sát vạch đáy ở dưới (hở 0,5dp) — đúng hai chỗ người dùng chỉ ra.
+        //
+        // Hạ số ngày 0,36 → 0,33 và can chi 0,25 → 0,21 là vừa đủ để ba dòng có
+        // khoảng thở thật. Sàn 8,5dp cho số ngày giữ nguyên chữ ở widget bị bóp
+        // tay (ô 23,6dp, nơi can chi vốn đã tắt nên không tranh chỗ với ai).
+        val dayPx = minOf(cellH * 0.33f, dp(context, 17f)).coerceAtLeast(dp(context, 8.5f))
         val lunPx = minOf(cellH * 0.27f, dp(context, 11.5f))
-        val gzPx = minOf(cellH * 0.25f, dp(context, 11f))
-        val showGanZhi = cellH >= dayPx + gzPx * 2 + dp(context, 6f)
+        val gzPx = minOf(cellH * 0.21f, dp(context, 11f))
+
+        // Vùng MỰC thật của từng dòng, hỏi thẳng phông đang vẽ thay vì đoán
+        // bằng tỉ lệ: getTextBounds trả về hộp bao của CHUỖI đưa vào, nên đưa
+        // trọn bộ chữ có thể xuất hiện thì hộp ấy đúng cho MỌI ô — không ô nào
+        // nhảy lên nhảy xuống theo chữ của riêng nó.
+        val ink = Rect()
+        paint.typeface = Typeface.DEFAULT_BOLD
+        paint.textSize = dayPx
+        paint.getTextBounds(DIGITS, 0, DIGITS.length, ink)
+        var lineTop = ink.top.toFloat()
+        var lineBot = ink.bottom.toFloat()
+        // Ngày âm dùng chung ĐƯỜNG CƠ SỞ với số ngày, nên hộp của dòng trên là
+        // HỢP của hai: gạch chéo trong "1/9" thò xuống dưới đường cơ sở, mà chữ
+        // số thì không.
+        paint.typeface = Typeface.DEFAULT
+        paint.textSize = lunPx
+        paint.getTextBounds(LUNAR_INK, 0, LUNAR_INK.length, ink)
+        lineTop = minOf(lineTop, ink.top.toFloat())
+        lineBot = maxOf(lineBot, ink.bottom.toFloat())
+        val topLineH = lineBot - lineTop
+
+        val gzProbe = if (zh) GZ_INK_ZH else GZ_INK_VI
+        paint.typeface = Typeface.DEFAULT_BOLD   // ngày hôm nay in đậm, rộng hơn
+        paint.textSize = gzPx
+        paint.getTextBounds(gzProbe, 0, gzProbe.length, ink)
+        val gzTop = ink.top.toFloat()
+        val gzH = ink.height().toFloat()
+        val gzLead = gzPx * 0.06f   // can và chi là MỘT khối: khe hẹp
+
+        // Chia phần dôi thành BA khoảng bằng nhau — trên số ngày, giữa số ngày
+        // và can chi, dưới chi. Cân đối theo đúng nghĩa đen, và cả ba khoảng
+        // cùng lớn lên khi ô cao lên.
+        val slack = cellH - topLineH - gzH * 2 - gzLead
+        val pad = slack / 3f
+        // Can chi chỉ hiện khi (a) còn đọc được và (b) ba khoảng thở đủ rộng.
+        // Mốc 9dp giữ đúng ngưỡng cũ: 0,21 × ô = 9dp rơi vào ô ≈ 42,9dp, y hệt
+        // chỗ mà công thức cũ bật can chi — không widget nào đang có can chi bị
+        // mất, cũng không widget nào tự dưng mọc thêm.
+        val showGanZhi = gzPx >= dp(context, 9f) && pad >= dp(context, 2f)
 
         val startJdn = firstCellJdn(year, month)
         for (idx in 0 until GRID_WEEKS * 7) {
@@ -353,7 +404,10 @@ class CalendarWidgetProvider : AppWidgetProvider() {
             paint.textAlign = Paint.Align.LEFT
             paint.textSize = dayPx
             paint.color = fg
-            val dayBase = y + dayPx + dp(context, 3f)
+            // Mực của dòng trên bắt đầu đúng ở `pad`. Không can chi thì dòng ấy
+            // đứng một mình, nên canh GIỮA ô thay vì dính lên đỉnh.
+            val dayTop = if (showGanZhi) pad else (cellH - topLineH) / 2f
+            val dayBase = y + dayTop - lineTop
             c.drawText(cd.toString(), x + cellW * 0.09f, dayBase, paint)
 
             val lunar = LunarTable.lunarOf(jdn, tz)
@@ -374,17 +428,13 @@ class CalendarWidgetProvider : AppWidgetProvider() {
                 paint.textSize = gzPx
                 paint.color = if (isToday) Color.parseColor("#7A4A1C") else dim
                 if (isToday) paint.typeface = Typeface.DEFAULT_BOLD
-                // Can chi là một KHỐI hai dòng sát nhau, đặt cân giữa phần còn
-                // lại của ô — đúng như `.cal-gz` trong tab Lịch (flex, căn giữa,
-                // line-height 1,25). Đặt theo tỉ lệ 40%/84% của phần còn lại thì
-                // ô càng cao hai chữ càng dạt xa nhau: ở widget 4×5 khoảng cách
-                // giãn ra hơn gấp đôi cỡ chữ.
-                val rest = cellH - (dayBase - y)
-                val lineGap = gzPx * 1.28f
-                val top = dayBase + (rest - (lineGap + gzPx)) / 2f
-                val base1 = top + gzPx * 0.75f
+                // Can chi là một KHỐI hai dòng sát nhau, treo dưới dòng số ngày
+                // đúng một khoảng `pad` — cùng khoảng đã chừa trên đỉnh ô và
+                // dưới đáy ô, nên ba khe bằng nhau. Mực của chi vì thế kết ở
+                // `cellH − pad`, không còn đụng vạch đáy.
+                val base1 = y + pad + topLineH + pad - gzTop
                 c.drawText(can, x + cellW / 2f, base1, paint)
-                c.drawText(chi, x + cellW / 2f, base1 + lineGap, paint)
+                c.drawText(chi, x + cellW / 2f, base1 + gzH + gzLead, paint)
                 paint.typeface = Typeface.DEFAULT
             }
         }
@@ -445,6 +495,25 @@ class CalendarWidgetProvider : AppWidgetProvider() {
          * lật tháng.
          */
         private const val GRID_WEEKS = 6
+
+        /**
+         * Chuỗi DÒ vùng mực cho drawGrid() — đưa trọn bộ chữ có thể xuất hiện
+         * vào một lần `getTextBounds` thì hộp bao trả về đúng cho MỌI ô, nên ô
+         * nào cũng đặt chữ ở cùng một độ cao.
+         *
+         * Phải là TRỌN BỘ chứ không phải một chữ tiêu biểu: "Ất" đội hai dấu
+         * chồng nhau nên cao nhất, "Tỵ"/"Ngọ"/"Mậu" có dấu dưới nên thấp nhất,
+         * mà không chữ nào vừa cao nhất vừa thấp nhất. Dò bằng một chữ là hộp
+         * hụt đúng phần thò ra của chữ khác — tức đúng cái lỗi đang chữa.
+         *
+         * Lấy thẳng từ LunarTable để khỏi có hai bản danh sách: thêm/sửa tên
+         * can chi ở đó là chỗ này theo ngay.
+         */
+        private val GZ_INK_VI = LunarTable.CAN.joinToString("") + LunarTable.CHI.joinToString("")
+        private val GZ_INK_ZH = LunarTable.CAN_ZH.joinToString("") + LunarTable.CHI_ZH.joinToString("")
+        private const val DIGITS = "0123456789"
+        /** Ngày âm: chữ số, và gạch chéo của "1/9" (nó thò xuống dưới đường cơ sở). */
+        private const val LUNAR_INK = "0123456789/"
 
         /**
          * Mỗi widget chiếm ngần này requestCode: 1–3 cho ‹ › và tiêu đề, rồi 42

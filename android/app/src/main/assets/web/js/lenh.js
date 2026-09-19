@@ -19,7 +19,7 @@
    Đo bằng độ thì hết hẳn: 7° + 7° + 16° = 30° = đúng khoảng cách hai tiết,
    theo định nghĩa. Ảnh mẫu người dùng gửi cũng ghi cột "Hoàng kinh" chứ không
    ghi số ngày. (Cột ấy nay hiện SỐ ĐỘ của từng đoạn — 7 · 7 · 16 — chứ không
-   hiện khoảng 285~294°: bộ số mới là thứ phân biệt ba sách bên dưới.)
+   hiện khoảng 285~294°: bộ số mới là thứ phân biệt hai sách bên dưới.)
 
    MỘT NGUỒN DUY NHẤT VỚI BẢNG TIẾT KHÍ.
 
@@ -33,7 +33,7 @@
    chính lunar.js. Hai nguồn lệch nhau ≤ 2 giây tại các mốc dùng chung (đo
    trên cả năm 2026), tức không bao giờ đủ để đổi con số phút hiện ra.
 
-   BA BỘ SỐ, BA CUỐN SÁCH — chọn bằng ô bên cạnh ô ngày giờ.
+   HAI BỘ SỐ, HAI CUỐN SÁCH — chọn bằng ô bên cạnh ô ngày giờ.
 
    Cổ thư không thống nhất phần chia này, và chênh nhau không phải vài phút
    mà là cả tuần. Tháng Dần: 渊海 chia 7·7·16 (Mậu tới ngày 7, Bính tới ngày
@@ -45,18 +45,30 @@
      sinh 10/02 (≈6 ngày sau):  渊海 → Mậu,  三命通会 → Bính
      sinh 16/02 (≈12 ngày sau): 渊海 → Bính, 三命通会 → Giáp
 
-   Không có cách nào "trung hoà" ba bộ số ấy thành một; chỉ có cách nói rõ
+   Không có cách nào "trung hoà" hai bộ số ấy thành một; chỉ có cách nói rõ
    đang dùng bộ nào.
 
    Xuất xứ từng bộ (xem RULES bên dưới, mỗi bộ kèm nguyên văn chữ Hán):
 
-     • 三命通会 và 子平真诠 chép THẲNG từ nguyên văn, đối chiếu nhiều bản độc
-       lập; cả 12 tháng của cả hai bộ đều cộng đúng 30.
+     • 三命通会 chép THẲNG từ nguyên văn 卷二「论人元司事」, đối chiếu nhiều
+       bản độc lập; cả 12 tháng đều cộng đúng 30.
      • 渊海子平 là BẢN THÔNG HÀNH mà giới mệnh lý ngày nay quy cho hệ Uyên
        Hải — cũng đúng bộ số trong ảnh mẫu người dùng gửi. Bản 渊海子平 tìm
        được chỉ có bài "论天地干支暗藏总诀" chia theo nửa tháng, không phải
        bảng ba đoạn này, nên chỗ quy cho ấy là theo tập quán chứ không phải
        một dòng đọc được trong sách.
+
+   ĐÃ BỎ 子平真诠 (Tử Bình Chân Thuyên) — người dùng chốt: "nó không có cơ
+   sở". Chỗ đứng của nó vốn mỏng nhất trong ba bộ: bảng
+   「十二月令人元司令分野表」 nằm ở bản 评注 — LỜI CHÚ của 徐乐吾 — chứ không
+   phải chính văn 子平真诠 của 沈孝瞻; và dòng 申月 của chính bảng ấy chép
+   "戊己土十日", gộp hai can vào một đoạn, tức nó cũng không nói rõ can nào
+   cầm lệnh (chỗ ấy phải TỰ CHỌN Mậu vì chi Thân tàng Mậu). Trừ tháng Thân
+   (10·3·17) thì 11 tháng còn lại trùng khít bản thông hành, nên bỏ đi không
+   mất bộ số nào thật sự riêng, mà bảng chọn bớt được một dòng.
+
+   Khoá đã lưu là 'zpzq' KHÔNG cần dọn: ruleByKey() không tìm thấy thì trả về
+   bộ đầu (渊海), nên máy nào đang chọn bộ ấy sẽ tự về bản thông hành.
    ════════════════════════════════════════════════════════════════════ */
 (function () {
     'use strict';
@@ -147,7 +159,7 @@
      * "艮土" và "坤土" đều là MẬU (hai quẻ ấy thuộc thổ, và chi Dần/Thân tàng
      * Mậu chứ không tàng Kỷ). Nét riêng dễ nhận của bộ này: bốn tháng mộ khố
      * (Thìn Mùi Tuất Sửu) lấy can DƯƠNG làm trung khí — Thìn dùng Nhâm chứ
-     * không Quý, Mùi dùng Giáp chứ không Ất — ngược hẳn hai bộ kia.
+     * không Quý, Mùi dùng Giáp chứ không Ất — ngược hẳn bản thông hành.
      */
     var FEN_SMTH = {
         1:  [[9, 7], [6, 5], [5, 18]],    // Sửu:  Quý 7 · Canh 5 · Kỷ 18
@@ -164,47 +176,13 @@
         23: [[8, 7], [9, 23]],            // Tý:   Nhâm 7 · Quý 23
     };
 
-    /**
-     * 子平真诠评注, bảng 「十二月令人元司令分野表」, nguyên văn:
-     *
-     *   寅月立春后戊土七日，丙火七日，甲木十六日
-     *   卯月惊蛰后甲木十日，乙木二十日
-     *   辰月清明后乙木九日，癸水三日，戊土十八日
-     *   巳月立夏后戊土五日，庚金九日，丙火十六日
-     *   午月芒种后丙火十日，己土九日，丁火十一日
-     *   未月小暑后丁火九日，乙木三日，己土十八日
-     *   申月立秋后戊己土十日，壬水三日，庚金十七日
-     *   酉月白露后庚金十日，辛金二十日
-     *   戌月寒露后辛金九日，丁火三日，戊土十八日
-     *   亥月立冬后戊土七日，甲木五日，壬水十八日
-     *   子月大雪后壬水十日，癸水二十日
-     *   丑月小寒后癸水九日，辛金三日，己土十八日
-     *
-     * Chỉ khác bản thông hành ở ĐÚNG MỘT tháng — tháng Thân: 10·3·17 thay vì
-     * 7·7·16. ("戊己土" gộp làm một đoạn; lấy MẬU vì chi Thân tàng Mậu.)
-     */
-    var FEN_ZPZQ = {
-        1:  [[9, 9], [7, 3], [5, 18]],    // Sửu:  Quý 9 · Tân 3 · Kỷ 18
-        3:  [[4, 7], [2, 7], [0, 16]],    // Dần:  Mậu 7 · Bính 7 · Giáp 16
-        5:  [[0, 10], [1, 20]],           // Mão:  Giáp 10 · Ất 20
-        7:  [[1, 9], [9, 3], [4, 18]],    // Thìn: Ất 9 · Quý 3 · Mậu 18
-        9:  [[4, 5], [6, 9], [2, 16]],    // Tỵ:   Mậu 5 · Canh 9 · Bính 16
-        11: [[2, 10], [5, 9], [3, 11]],   // Ngọ:  Bính 10 · Kỷ 9 · Đinh 11
-        13: [[3, 9], [1, 3], [5, 18]],    // Mùi:  Đinh 9 · Ất 3 · Kỷ 18
-        15: [[4, 10], [8, 3], [6, 17]],   // Thân: Mậu 10 · Nhâm 3 · Canh 17
-        17: [[6, 10], [7, 20]],           // Dậu:  Canh 10 · Tân 20
-        19: [[7, 9], [3, 3], [4, 18]],    // Tuất: Tân 9 · Đinh 3 · Mậu 18
-        21: [[4, 7], [0, 5], [8, 18]],    // Hợi:  Mậu 7 · Giáp 5 · Nhâm 18
-        23: [[8, 10], [9, 20]],           // Tý:   Nhâm 10 · Quý 20
-    };
-
-    /** Thứ tự trong ô chọn: theo niên đại sách (Tống → Minh → Thanh). */
-    // Tên tiếng Việt là CHỮ ĐẦU viết tắt (UHTB/TMTH/TBCT), không phải tên
+    /** Thứ tự trong ô chọn: theo niên đại sách (Tống → Minh). */
+    // Tên tiếng Việt là CHỮ ĐẦU viết tắt (UHTB/TMTH), không phải tên
     // đầy đủ — ô hiện có 25% bề ngang hàng (một phần tư bảng Bát Tự), tên đầy
     // đủ dài nhất "Tam Mệnh Thông Hội" không lọt nổi ở cỡ chữ đọc được trên
     // máy 360px. Tên đầy đủ vẫn còn NGUYÊN VĂN trong README và trong khối ghi
     // chú xuất xứ ở đầu tệp — chữ viết tắt chỉ là CÁCH HIỆN, không đổi việc gì
-    // khác. Tiếng Trung không rút gọn: 渊海子平/三命通会/子平真诠 vốn đã ngắn.
+    // khác. Tiếng Trung không rút gọn: 渊海子平/三命通会 vốn đã ngắn.
     /* `vi` là VIẾT TẮT, `viFull` là tên đầy đủ — hai chỗ dùng hai bản khác
        nhau, cố ý:
          · Ô chọn ngoài tab Bát Tự dùng bản TẮT. Ô ấy chỉ rộng một phần tư
@@ -217,7 +195,6 @@
     var RULES = [
         { key: 'yhzp', fen: FEN_YHZP, vi: 'UHTB', viFull: 'Uyên Hải Tử Bình', zh: '渊海子平' },
         { key: 'smth', fen: FEN_SMTH, vi: 'TMTH', viFull: 'Tam Mệnh Thông Hội', zh: '三命通会' },
-        { key: 'zpzq', fen: FEN_ZPZQ, vi: 'TBCT', viFull: 'Tử Bình Chân Thuyên', zh: '子平真诠' },
     ];
     var K_RULE = 'qmdj.lenhRule';
     var rule = RULES[0];
@@ -305,9 +282,9 @@
      * kết ở đó, vì buildYear() chốt cứng đoạn cuối bằng `termJd(n0 + 2)`).
      *
      * Hai mốc này KHÔNG phụ thuộc bộ số đang chọn: `n0` tính một lần cho mỗi
-     * tháng, trước khi chia theo `rule.fen` — ba sách chỉ khác nhau ở chỗ
+     * tháng, trước khi chia theo `rule.fen` — hai sách chỉ khác nhau ở chỗ
      * CHIA nhỏ 30° ấy ra sao, không khác ở chỗ 30° ấy bắt đầu/kết thúc khi
-     * nào. Tuổi nhập đại vận vì thế giống nhau ở cả ba sách, dù can cầm lệnh
+     * nào. Tuổi nhập đại vận vì thế giống nhau ở cả hai sách, dù can cầm lệnh
      * (Mậu/Bính/Giáp…) có thể khác nhau.
      */
     function monthBounds(month) {

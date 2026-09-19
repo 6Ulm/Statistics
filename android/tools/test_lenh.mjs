@@ -75,7 +75,6 @@ function readTable(name) {
 const TABLES = {
     yhzp: { ten: 'Uyên Hải Tử Bình', fen: readTable('FEN_YHZP') },
     smth: { ten: 'Tam Mệnh Thông Hội', fen: readTable('FEN_SMTH') },
-    zpzq: { ten: 'Tử Bình Chân Thuyên', fen: readTable('FEN_ZPZQ') },
 };
 const CHI_OF_JIE = { 1: 1, 3: 2, 5: 3, 7: 4, 9: 5, 11: 6, 13: 7, 15: 8, 17: 9, 19: 10, 21: 11, 23: 0 };
 const JIE_ORDER = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23];
@@ -199,8 +198,8 @@ console.log('\nBa bộ số khớp nguyên văn chữ Hán chép trong lenh.js')
     };
     // Nguyên văn xếp theo tháng GIÊNG trở đi (寅→丑); bảng thì xếp từ Sửu.
     const THEO_SACH = [3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 1];
-    for (const [key, ten] of [['smth', 'Tam Mệnh Thông Hội'], ['zpzq', 'Tử Bình Chân Thuyên']]) {
-        const doc = quote(key === 'smth' ? 'FEN_SMTH' : 'FEN_ZPZQ');
+    for (const [key, ten] of [['smth', 'Tam Mệnh Thông Hội']]) {
+        const doc = quote('FEN_SMTH');
         // Mỗi cặp "can + số + 日" trong nguyên văn, theo đúng thứ tự xuất hiện.
         const seg = [];
         for (const g of doc.matchAll(
@@ -250,15 +249,21 @@ console.log('\nBộ Uyên Hải đối chiếu ảnh mẫu (2026, UTC+8)');
     check('hai đoạn tháng Tý', độ.slice(31, 33).join(' · '), 'Nhâm 10 · Quý 20');
 }
 
-/* ── 2c. Ba bộ phải THỰC SỰ khác nhau ──
+/* ── 2c. Hai bộ phải THỰC SỰ khác nhau ──
  * Bằng không ô chọn chỉ là cái nút không làm gì.
+ *
+ * Tử Bình Chân Thuyên ĐÃ BỎ (xem khối ghi chú đầu js/lenh.js) — canh luôn
+ * rằng nó đi hẳn, cả bảng phân dã lẫn dòng trong RULES: bỏ nửa vời thì ô chọn
+ * vẫn hiện một sách mà bảng phân dã của nó không còn, và người dùng bấm vào là
+ * ra bộ số của sách khác mà không hay.
  */
-console.log('\nBa bộ số khác nhau thật');
+console.log('\nHai bộ số khác nhau thật');
 {
     const j = k => JSON.stringify(TABLES[k].fen);
     ok('Uyên Hải ≠ Tam Mệnh', j('yhzp') !== j('smth'));
-    ok('Uyên Hải ≠ Tử Bình Chân Thuyên', j('yhzp') !== j('zpzq'));
-    ok('Tam Mệnh ≠ Tử Bình Chân Thuyên', j('smth') !== j('zpzq'));
+    ok('bảng FEN_ZPZQ đã xoá khỏi lenh.js', readTable('FEN_ZPZQ') === null);
+    ok('RULES không còn dòng zpzq', !/key:\s*'zpzq'/.test(SRC));
+    ok('không còn nhãn TBCT nào trong mã', !/\bTBCT\b/.test(SRC));
     // Nét riêng của Tam Mệnh: bốn tháng mộ khố lấy can DƯƠNG làm trung khí.
     const trung = k => [7, 13, 19, 1].map(x => CAN[TABLES[k].fen[x][1][0]]).join(',');
     // Sửu là mộ khố KIM, nên can dương của nó là Canh (bản thông hành dùng Tân).
@@ -495,20 +500,20 @@ console.log('\nÔ chọn bộ số: cùng hàng với ô ngày giờ, và đổi
     check('mặc định là bản thông hành, viết tắt UHTB', hàng.nhãn, 'UHTB');
     check('mặc định Giới tính là Nam', hàng.nhãnGiới, 'Nam');
 
-    // Bảng chọn có đúng ba sách, tiêu đề rút gọn còn "Quy tắc".
+    // Bảng chọn có đúng hai sách, tiêu đề rút gọn còn "Quy tắc".
     await page.click('#lenhRuleBtn');
     await page.waitForTimeout(400);
     check('tiêu đề bảng chọn là "Quy tắc" (không phải "Chọn quy tắc")',
         await page.textContent('#optTitle'), 'Quy tắc');
     const opts = await page.$$eval('#optList .opt-row',
         els => els.map(e => e.getAttribute('data-value')));
-    check('bảng chọn có đúng ba sách', opts.join(','), 'yhzp,smth,zpzq');
+    check('bảng chọn có đúng hai sách', opts.join(','), 'yhzp,smth');
     const optLabels = await page.$$eval('#optList .opt-name', els => els.map(e => e.textContent.trim()));
     // BẢNG CHỌN dùng tên ĐẦY ĐỦ, Ô NGOÀI dùng viết tắt — hai chỗ, hai bản.
     // "UHTB" thì không ai đoán ra là sách nào nếu chưa quen, mà ô ngoài chỉ
     // rộng một phần tư hàng nên tên đầy đủ vào đó là bị "…" nuốt.
     check('bảng chọn hiện TÊN ĐẦY ĐỦ', optLabels.join(','),
-        'Uyên Hải Tử Bình,Tam Mệnh Thông Hội,Tử Bình Chân Thuyên');
+        'Uyên Hải Tử Bình,Tam Mệnh Thông Hội');
 
     await page.click('.opt-row[data-value="smth"]');
     await page.waitForTimeout(900);
@@ -562,9 +567,9 @@ console.log('\nÔ chọn bộ số: cùng hàng với ô ngày giờ, và đổi
     check('ô bộ số của Tra cứu hiện viết tắt', await page.textContent('#tcRuleText'), 'TMTH');
 
     // Ô bộ số của hai tab ĐỘC LẬP: đổi ở Tra cứu không kéo theo tab Bát Tự.
-    await page.evaluate(() => window.__tracuuRule('zpzq'));
+    await page.evaluate(() => window.__tracuuRule('yhzp'));
     await page.waitForTimeout(600);
-    check('đổi bộ số ở Tra cứu…', await page.textContent('#tcRuleText'), 'TBCT');
+    check('đổi bộ số ở Tra cứu…', await page.textContent('#tcRuleText'), 'UHTB');
     check('…không đụng tới bộ số của tab Bát Tự',
         await page.textContent('#lenhRuleText'), 'TMTH');
     await page.click('#tabLenh');
@@ -575,6 +580,18 @@ console.log('\nÔ chọn bộ số: cùng hàng với ô ngày giờ, và đổi
     await page.evaluate(() => window.setLang('zh'));
     await page.waitForTimeout(800);
     check('tên sách sang tiếng Trung', await page.textContent('#lenhRuleText'), '三命通会');
+    // BẢNG CHỌN tiếng Trung cũng phải còn ĐÚNG HAI sách: bỏ một bộ mà chỉ dọn
+    // phía tiếng Việt thì người dùng tiếng Trung vẫn bấm được vào 子平真诠.
+    await page.click('#lenhRuleBtn');
+    await page.waitForTimeout(400);
+    check('bảng chọn tiếng Trung còn đúng hai sách',
+        (await page.$$eval('#optList .opt-row', els => els.map(e => e.getAttribute('data-value')))).join(','),
+        'yhzp,smth');
+    check('tên sách tiếng Trung KHÔNG viết tắt',
+        (await page.$$eval('#optList .opt-name', els => els.map(e => e.textContent.trim()))).join(','),
+        '渊海子平,三命通会');
+    await page.evaluate(() => window.closeOptionPicker());
+    await page.waitForTimeout(300);
     await page.evaluate(() => window.setLang('vi'));
     await page.waitForTimeout(600);
 
@@ -599,6 +616,23 @@ console.log('\nÔ chọn bộ số: cùng hàng với ô ngày giờ, và đổi
     await page.click('#tabLenh');
     await page.waitForTimeout(900);
     check('mở lại vẫn nhớ Giới tính đã chọn', await page.textContent('#lenhGenderText'), 'Nữ');
+
+    // ── Máy đang chọn bộ số ĐÃ BỎ: phải tự về bản thông hành, không treo.
+    // Người dùng nào từng chọn Tử Bình Chân Thuyên thì khoá 'zpzq' còn nằm
+    // trong localStorage sau khi cập nhật — ruleByKey() không tìm thấy thì
+    // trả RULES[0], nên chỉ cần canh rằng đường ấy thật sự chạy (cả ở tab Bát
+    // Tự lẫn tab Tra cứu, hai ô bộ số độc lập nhau).
+    await page.evaluate(() => {
+        localStorage.setItem('qmdj.lenhRule', 'zpzq');
+        localStorage.setItem('qmdj.tracuuRule', 'zpzq');
+    });
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(1000);
+    await page.click('#tabLenh');
+    await page.waitForTimeout(900);
+    check('khoá cũ "zpzq" rơi về bản thông hành', await page.textContent('#lenhRuleText'), 'UHTB');
+    check('__lenhRule("zpzq") cũng trả về yhzp',
+        await page.evaluate(() => window.__lenhRule('zpzq')), 'yhzp');
 
     ok('không lỗi JS', errs.length === 0, errs.join('; '));
     await ctx.close();
@@ -953,10 +987,10 @@ console.log('\nTuổi nhập đại vận: chiều thuận/nghịch chéo Giới
         `(lệch ${doc.dv && ((doc.dv.mb.end - doc.nextJie) * 86400).toFixed(2)}s)`);
 
     // ── Nội bộ: thuận + nghịch từ CÙNG một khoảnh khắc phải cộng lại đúng
-    // bằng bề rộng cả tháng (mb.end − mb.start) — và giống nhau ở cả BA
+    // bằng bề rộng cả tháng (mb.end − mb.start) — và giống nhau ở cả HAI
     // sách, vì n0 (mốc mở/đóng tháng) không phụ thuộc bộ số.
     let mbTheoSách = null;
-    for (const rk of ['yhzp', 'smth', 'zpzq']) {
+    for (const rk of ['yhzp', 'smth']) {
         await page.evaluate(k => window.__lenhRule(k), rk);
         await page.evaluate(() => window.__lenhGender('nam'));
         await page.waitForTimeout(300);
