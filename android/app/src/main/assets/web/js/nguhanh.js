@@ -53,17 +53,30 @@
     var KHAC = { moc: 'tho', tho: 'thuy', thuy: 'hoa', hoa: 'kim', kim: 'moc' };
 
     /* Thập thần, theo quan hệ với NHẬT CHỦ (can ngày) và cùng/khác âm dương. */
+    /**
+     * Mười thần, kèm dạng VIẾT TẮT tiếng Việt.
+     *
+     * `viTat` là bộ chữ người dùng chốt — một chữ cho chín thần, riêng Thiên
+     * Tài phải "T.Tài" để khỏi lẫn với Chính Tài ("Tài"). Dùng ở hàng phó tinh
+     * của hộp Bát Tự: ở đó ba thần phải nằm CHUNG MỘT DÒNG và mỗi thần chỉ
+     * được một phần ba bề ngang cột, tên đầy đủ ("Thương Quan") không có cửa.
+     *
+     * "Thất Sát" và "Thiên Quan" là hai tên của cùng một thần; người dùng gọi
+     * nó bằng tên sau, nên tắt thành "Sát".
+     *
+     * Tiếng Trung vốn đã hai chữ, không cần tắt.
+     */
     var THAN = {
-        tyKien:    { vi: 'Tỷ Kiên',   zh: '比肩' },
-        kiepTai:   { vi: 'Kiếp Tài',  zh: '劫財' },
-        thucThan:  { vi: 'Thực Thần', zh: '食神' },
-        thuongQuan:{ vi: 'Thương Quan', zh: '傷官' },
-        thienTai:  { vi: 'Thiên Tài', zh: '偏財' },
-        chinhTai:  { vi: 'Chính Tài', zh: '正財' },
-        thatSat:   { vi: 'Thất Sát',  zh: '七殺' },
-        chinhQuan: { vi: 'Chính Quan', zh: '正官' },
-        thienAn:   { vi: 'Thiên Ấn',  zh: '偏印' },
-        chinhAn:   { vi: 'Chính Ấn',  zh: '正印' },
+        tyKien:    { vi: 'Tỷ Kiên',     viTat: 'Tỷ',     zh: '比肩' },
+        kiepTai:   { vi: 'Kiếp Tài',    viTat: 'Kiếp',   zh: '劫財' },
+        thucThan:  { vi: 'Thực Thần',   viTat: 'Thực',   zh: '食神' },
+        thuongQuan:{ vi: 'Thương Quan', viTat: 'Thương', zh: '傷官' },
+        thienTai:  { vi: 'Thiên Tài',   viTat: 'T.Tài',  zh: '偏財' },
+        chinhTai:  { vi: 'Chính Tài',   viTat: 'Tài',    zh: '正財' },
+        thatSat:   { vi: 'Thất Sát',    viTat: 'Sát',    zh: '七殺' },
+        chinhQuan: { vi: 'Chính Quan',  viTat: 'Quan',   zh: '正官' },
+        thienAn:   { vi: 'Thiên Ấn',    viTat: 'Kiêu',   zh: '偏印' },
+        chinhAn:   { vi: 'Chính Ấn',    viTat: 'Ấn',     zh: '正印' },
     };
 
     /* ─────────────── Tra cứu ─────────────── */
@@ -104,7 +117,11 @@
      * Thập thần của can `target` khi nhật chủ là `dayMaster`.
      * Trả về tên theo ngôn ngữ, hoặc '' nếu một trong hai không phải can.
      */
-    function thapThanOf(dayMaster, target, zh) {
+    /**
+     * @param {boolean} [ngắn]  Lấy dạng viết tắt tiếng Việt (xem THAN.viTat).
+     *                          Không ảnh hưởng tiếng Trung.
+     */
+    function thapThanOf(dayMaster, target, zh, ngắn) {
         var d = canOf(dayMaster), t = canOf(target);
         if (d < 0 || t < 0) return '';
         var hd = CAN_HANH[d], ht = CAN_HANH[t];
@@ -116,7 +133,7 @@
         else if (KHAC[hd] === ht) key = cùngÂmDương ? 'thienTai' : 'chinhTai';
         else if (KHAC[ht] === hd) key = cùngÂmDương ? 'thatSat'  : 'chinhQuan';
         else                      key = cùngÂmDương ? 'thienAn'  : 'chinhAn';
-        return zh ? THAN[key].zh : THAN[key].vi;
+        return zh ? THAN[key].zh : (ngắn ? THAN[key].viTat : THAN[key].vi);
     }
 
     /* ─────────────── Tô màu ─────────────── */

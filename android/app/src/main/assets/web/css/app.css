@@ -567,22 +567,38 @@
             font-size: 13px; font-weight: 700;
             text-transform: uppercase; letter-spacing: .01em;
         }
-        /* Tàng can và phó tinh: mỗi ô là một CHỒNG dọc, mục thứ i của hai hàng
-           thẳng nhau nên đọc dọc xuống là từng cặp "tàng can → thập thần". */
+        /* Tàng can và phó tinh: mỗi ô là MỘT DÒNG NGANG, n mục chia đều bề
+           ngang cột. Mục thứ i của hai hàng vì thế rơi đúng vào cùng một
+           khoảng — đọc dọc xuống là từng cặp "tàng can → thập thần".
+
+           Chia ĐỀU (`flex: 1 1 0`) chứ không để chúng co theo nội dung: "Bính"
+           và "Kiếp" không rộng bằng nhau, căn theo nội dung là hai hàng lệch
+           nhau ngay từ mục thứ hai. */
         #tuTruPanel td.tt-tang, #tuTruPanel td.tt-than {
-            padding: 2px 2px;
-            /* Cả hai hàng canh TRÊN: chi có 1–3 tàng can nên ô cao thấp khác
-               nhau, canh giữa thì mục thứ i của hai hàng lệch nhau và cặp
-               "tàng can → thập thần" không còn đọc dọc xuống được. */
-            vertical-align: top;
+            padding: 2px 1px;
+            vertical-align: middle;
+        }
+        #tuTruPanel .tt-line {
+            display: flex; width: 100%;
+            align-items: baseline; justify-content: center;
         }
         #tuTruPanel .tt-sub {
-            display: block; line-height: 1.3;
+            flex: 1 1 0; min-width: 0;
+            text-align: center; line-height: 1.25;
             white-space: nowrap;
         }
-        #tuTruPanel td.tt-tang .tt-sub { font-size: 11px; font-weight: 600; }
-        /* Phó tinh là tên dài nhất của cả bảng ("Thương Quan"), mà cột chỉ rộng
-           một phần tư — co theo bề ngang màn hình, sàn 7,5px vẫn đọc được. */
+        /* Tàng can KHÔNG đậm. Chỉ tám chữ Bát Tự được đậm — chúng là nội dung
+           chính, còn tàng can là chú giải cho chúng; đậm cả hai thì không còn
+           gì nổi hơn gì.
+           (Trước khi chữa lỗi `*{font-weight:400}` ở dưới, luật 600 khai ở đây
+           chưa bao giờ tới được chữ nên hàng này vốn vẫn hiện ở 400 — nay ghi
+           đúng con số nó thật sự cần.) */
+        #tuTruPanel td.tt-tang .tt-sub {
+            font-size: clamp(8px, 2.5vw, 11px); font-weight: 400;
+        }
+        /* Dạng viết tắt nên chuỗi dài nhất chỉ còn "Thương"/"T.Tài" (xem
+           THAN.viTat trong nguhanh.js) — nhưng ba mục chia nhau một cột rộng
+           chừng 96px, nên vẫn phải co theo bề ngang màn hình. */
         #tuTruPanel td.tt-than .tt-sub {
             font-size: clamp(7.5px, 2.35vw, 10px);
             color: var(--text-main, #000);
@@ -596,8 +612,10 @@
         .lang-zh #tuTruPanel th { font-size: 16px; padding: 2px 4px; }
         .lang-zh #tuTruPanel td { font-size: 14px; padding: 2px 4px; }
         .lang-zh #tuTruPanel td.tt-lunar { font-size: 14px; }
-        .lang-zh #tuTruPanel td.tt-tang .tt-sub { font-size: 13px; }
-        .lang-zh #tuTruPanel td.tt-than .tt-sub { font-size: 11px; }
+        /* Tiếng Trung: mỗi thần hai chữ, ba thần chung một dòng nên phải bé
+           hơn hẳn bản dọc cũ (13/11px). */
+        .lang-zh #tuTruPanel td.tt-tang .tt-sub { font-size: clamp(9px, 2.8vw, 12px); }
+        .lang-zh #tuTruPanel td.tt-than .tt-sub { font-size: clamp(7.5px, 2.35vw, 10px); }
 
         /* ══ NGŨ HÀNH — màu của can chi ══
            Người dùng chốt: Kim xám bạc · Hỏa đỏ · Thủy xanh nước biển đậm ·
@@ -616,6 +634,19 @@
             --nh-hoa:  #c62828;   /* đỏ */
             --nh-tho:  #8a5a2b;   /* nâu */
         }
+        /* Bọc <span> KHÔNG được làm nhạt chữ.
+           Bộ reset ở đầu tệp đặt `*, ::before, ::after { font-weight: 400 }`,
+           mà `*` khớp CẢ span.nh — nên `font-weight: 700` đặt trên <td> dừng
+           lại ở ô, không bao giờ tới được chữ: tám chữ Bát Tự hiện IN HOA mà
+           KHÔNG đậm, đúng như người dùng phản ánh. Đo thật: <td> 700, <span>
+           bên trong 400.
+           Trả span về `inherit` cho nó TRONG SUỐT, đúng như một nút văn bản
+           trần — thứ nó thay thế. Nhờ vậy một luật chữa cả hai đầu: hộp Bát Tự
+           đậm 700 như đã khai, còn hộp Kỳ Môn về đúng 500 của bản gốc (ở đó
+           span cũng đang bị reset kéo xuống 400, tức nhạt hơn bản gốc một nấc
+           mà không ai để ý). */
+        #tuTruPanel .nh { font-weight: inherit; }
+
         .nh-kim  { color: var(--nh-kim); }
         .nh-moc  { color: var(--nh-moc); }
         .nh-thuy { color: var(--nh-thuy); }

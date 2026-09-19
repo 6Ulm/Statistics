@@ -494,16 +494,25 @@ function updateTuTru(yPillar, mPillar, dPillar, hPillar) {
         ids.forEach((k, i) => {
             const tàng = NH.tangCanOf(chiTxt[i], zh);
             const tangEl = getDOM('ttTang' + k), thanEl = getDOM('ttThan' + k);
+            // Cả hai hàng dựng CÙNG MỘT khung: một .tt-line bọc đúng ngần ấy
+            // .tt-sub. Mỗi .tt-sub lấy `flex: 1 1 0` nên n mục chia đều bề
+            // ngang cột — mục thứ i của hàng tàng can và của hàng phó tinh vì
+            // thế rơi đúng vào cùng một khoảng, đọc dọc xuống là từng cặp
+            // "tàng can → thập thần". Căn theo nội dung thì hai hàng lệch
+            // nhau ngay, vì "Bính" và "Kiếp" không rộng bằng nhau.
+            const dòng = html => '<span class="tt-line">' + html + '</span>';
             if (tangEl) {
                 tangEl.innerHTML = tàng.length
-                    ? tàng.map(c => '<span class="tt-sub">' + NH.paint(c) + '</span>').join('')
+                    ? dòng(tàng.map(c => '<span class="tt-sub">' + NH.paint(c) + '</span>').join(''))
                     : '—';
             }
             if (thanEl) {
                 // KHÔNG tô màu: thập thần không phải can chi.
+                // Dạng VIẾT TẮT: ba thần chung một dòng thì mỗi thần chỉ được
+                // một phần ba cột, "Thương Quan" không có cửa nằm gọn.
                 thanEl.innerHTML = tàng.length
-                    ? tàng.map(c => '<span class="tt-sub">' +
-                        NH.esc(NH.thapThanOf(nhậtChủ, c, zh)) + '</span>').join('')
+                    ? dòng(tàng.map(c => '<span class="tt-sub">' +
+                        NH.esc(NH.thapThanOf(nhậtChủ, c, zh, true)) + '</span>').join(''))
                     : '—';
             }
         });

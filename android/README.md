@@ -729,12 +729,36 @@ không phải một can hay một chi. `hanhOf('Lộ Bàng Thổ')` trả `null`
 Bảng `#tuTruPanel` được **dùng chung** giữa tab Kỳ Môn và tab Bát Tự (cùng một
 phần tử DOM, không nhân bản — xem "Tab Lệnh"). Ở tab Bát Tự nó có thêm ba hàng:
 
-1. **Tàng can** — thiên can ẩn trong mỗi địa chi, xếp dọc theo bản khí · trung
-   khí · dư khí. Là **can** nên tô màu.
+1. **Tàng can** — thiên can ẩn trong mỗi địa chi, xếp NGANG theo bản khí ·
+   trung khí · dư khí. Là **can** nên tô màu.
 2. **Phó tinh (thập thần)** — thập thần của từng tàng can, xét theo **nhật chủ**
-   (can ngày). Xếp dọc đúng thứ tự hàng trên, nên đọc dọc xuống là từng cặp
-   "tàng can → thập thần". **Không** tô: thập thần không phải can chi, dù tên có
-   chứa chữ của một hành ("Thiên Tài", "Chính Ấn").
+   (can ngày), cũng xếp NGANG. **Không** tô: thập thần không phải can chi, dù
+   tên có chứa chữ của một hành ("Thiên Tài", "Chính Ấn").
+
+   Viết **TẮT**, một chữ cho chín thần:
+
+   | Đầy đủ | Tắt | | Đầy đủ | Tắt |
+   |---|---|---|---|---|
+   | Tỷ Kiên | Tỷ | | Chính Tài | Tài |
+   | Kiếp Tài | Kiếp | | Thiên Tài | **T.Tài** |
+   | Thực Thần | Thực | | Chính Quan | Quan |
+   | Thương Quan | Thương | | Thất Sát (Thiên Quan) | Sát |
+   | Chính Ấn | Ấn | | Thiên Ấn | Kiêu |
+
+   Riêng Thiên Tài phải "T.Tài" để khỏi lẫn với Chính Tài. Tiếng Trung vốn đã
+   hai chữ nên không tắt.
+
+   **Vì sao phải tắt:** ba thần nằm CHUNG MỘT DÒNG thì mỗi thần chỉ được một
+   phần ba cột — cột rộng chừng 96px trên A51, tức 32px một mục. "Thương Quan"
+   không có cửa nằm gọn ở đó.
+
+   **Thẳng cột với tàng can.** Hai hàng dựng cùng một khung: một `.tt-line` bọc
+   đúng ngần ấy `.tt-sub`, mỗi `.tt-sub` lấy `flex: 1 1 0` nên n mục chia ĐỀU bề
+   ngang cột. Mục thứ i của hai hàng vì thế rơi đúng cùng một khoảng, đọc dọc
+   xuống là từng cặp "tàng can → thập thần". Để chúng co theo nội dung thì hai
+   hàng lệch nhau ngay từ mục thứ hai — "Bính" và "Kiếp" không rộng bằng nhau.
+   Đo trên 3 máy × 2 thứ tiếng × 4 lá số: lệch tâm **0 chỗ**, cắt chữ **0 chỗ**,
+   quá một dòng **0 chỗ**.
 3. Một hàng **để trống**, chừa sẵn chỗ cho một tầng thông tin sẽ thêm sau. Vẫn
    phải đủ 4 ô: bảng dùng `border-collapse`, thiếu ô thì viền cột của hàng này
    hụt và cả bảng lệch một vạch.
@@ -744,6 +768,45 @@ chính, mọi hàng khác chỉ là chú giải cho chúng. Dùng `text-transfor
 viết hoa sẵn trong JS: chữ Hán không có hoa/thường nên luật này tự không đụng
 tới tiếng Trung, và mọi phép kiểm đọc `textContent` vẫn so được với tên can chi
 gốc.
+
+### Bọc `<span>` làm mất chữ đậm
+
+In hoa thì được, **đậm thì không** — người dùng phản ánh, và đo ra ngay: `<td>`
+khai `font-weight: 700`, nhưng `<span class="nh">` bên trong lại là **400**.
+
+Thủ phạm là bộ reset ở đầu `app.css`:
+
+```css
+*, ::before, ::after { font-weight: 400; }
+```
+
+`*` khớp CẢ `span.nh`, và luật trên phần tử luôn thắng giá trị thừa kế — nên
+`700` dừng lại ở ô, không bao giờ tới được chữ. Trước khi có `NguHanh.paint()`,
+chữ nằm trần trong `<td>` nên không có gì chắn; bọc nó vào `<span>` là dựng lên
+đúng chỗ cho bộ reset chen vào.
+
+Chữa bằng cách trả span về **trong suốt**, đúng như nút văn bản mà nó thay thế:
+
+```css
+#tuTruPanel .nh { font-weight: inherit; }
+```
+
+Một luật chữa cả hai đầu: hộp Bát Tự đậm 700 như đã khai, còn hộp Kỳ Môn về
+đúng **500** của bản gốc — ở đó span cũng đang bị reset kéo xuống 400, tức nhạt
+hơn bản gốc một nấc mà không ai để ý.
+
+Kèm một hệ quả phải dọn: luật `600` khai cho `.tt-tang .tt-sub` cũng chưa bao
+giờ tới được chữ, nên hàng tàng can vốn vẫn hiện ở 400; sửa xong thì nó **đậm
+lên theo**. Người dùng chốt *"chỉ bold đúng 8 chữ của bát tự, ko bold can tàng
+chi"* — tàng can là chú giải cho tám chữ ấy, đậm cả hai thì không còn gì nổi
+hơn gì. Nên hạ luật ấy về `400`, tức ghi đúng con số hàng này thật sự cần.
+
+Đo lại trên cả hai tab:
+
+| | Bát Tự | Kỳ Môn |
+|---|---|---|
+| 8 chữ can chi | **700** | 500 (như bản gốc) |
+| Tàng can · phó tinh · nạp âm | 400 | 400 |
 
 **Hộp Bát Tự ở tab Kỳ Môn không đổi một pixel nào.** Người dùng chốt rõ: *"the 3
 new rows only appear in the bazi box in the bazi tab, nothing changes in the bazi
