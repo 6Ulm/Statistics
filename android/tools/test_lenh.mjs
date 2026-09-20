@@ -912,7 +912,10 @@ console.log('\nTuổi nhập đại vận: chiều thuận/nghịch chéo Giới
     // đầu năm dương lịch.
     for (const [y, idx, ten] of [[2024, 0, 'Giáp (dương)'], [2025, 1, 'Ất (âm)'], [2026, 2, 'Bính (dương)']]) {
         await setBirth(y, 6, 15, 12, 0);
-        const got = await page.evaluate(() => window.__yearGanIdx);
+        // Can năm đọc từ CHÍNH nguồn mà tab Bát Tự dùng — Core.chart(). (Trước
+        // đây đọc `window.__yearGanIdx` mà app.js gán mỗi lần vẽ; cửa ngầm ấy
+        // đã bỏ khi gom phép tính về core.js.)
+        const got = await page.evaluate(() => Core.chart(Core.input()).gan[0]);
         check(`can năm ${y} đúng là ${ten}`, got, idx);
     }
 
@@ -952,23 +955,19 @@ console.log('\nTuổi nhập đại vận: chiều thuận/nghịch chéo Giới
     // kinh điển của lỗi múi giờ, không phải sai số thiên văn).
     await setBirth(2026, 9, 17, 21, 0);
     const doc = await page.evaluate(() => {
-        const inp = {
-            y: parseInt(document.getElementById('inYear').value, 10),
-            m: parseInt(document.getElementById('inMonth').value, 10),
-            d: parseInt(document.getElementById('inDay').value, 10),
-            h: parseInt(document.getElementById('solarHour').value, 10),
-            mi: parseInt(document.getElementById('solarMinute').value, 10),
-        };
-        const info = countryData[document.getElementById('country').value];
-        const tz = getTimezoneOffset(info.tzId, new Date(inp.y, inp.m - 1, inp.d, inp.h || 12));
-        const bj = window._readInputBJ(inp.y, inp.m, inp.d, inp.h, inp.mi, tz);
+        // Giờ Bắc Kinh của thời điểm sinh lấy từ CHÍNH nguồn mà tab Bát Tự
+        // dùng — Core.chart(). (Trước đây gọi window._readInputBJ của app.js;
+        // hàm ấy đã chuyển vào core.js khi gom phép tính về một chỗ.)
+        const inp = Core.input();
+        const tz = inp.tz;
+        const solarBJ = Core.chart(inp).solarBJ;
         const dv = window.__lenhDaiVan();
-        ShouXingUtil.setTzOffsetHours(8);
-        const lunar = bj.solarBJ.getLunar();
+        Ephem.setBasis(8);
+        const lunar = solarBJ.getLunar();
         const prevJie = lunar.getPrevJie(false).getSolar().getJulianDay();
         const nextJie = lunar.getNextJie(false).getSolar().getJulianDay();
-        ShouXingUtil.setTzOffsetHours(tz);  // trả lại đúng múi giờ hiển thị,
-                                             // cho các bước sau của bài kiểm.
+        Ephem.setBasis(tz);  // trả lại đúng múi giờ hiển thị,
+                             // cho các bước sau của bài kiểm.
         return { prevJie, nextJie, dv };
     });
     // Dung sai 3 giây, không phải 0: getPrevJie/getNextJie ở đây là MỘT
@@ -1045,12 +1044,12 @@ console.log('\nTuổi nhập đại vận: chiều thuận/nghịch chéo Giới
         return {
             hiện: document.getElementById('lenhDaiVanVal').textContent,
             dv, ngàyBắtĐầu,
-            // Không còn <div id="lenhDaiVan"> riêng — "Nhập vận: " giờ là một
-            // text node NẰM CHUNG dòng với "Lệnh: " trong #lenhNow, ngay
-            // trước <b id="lenhDaiVanVal">; tách dấu phân cách " · " ra để
-            // còn lại đúng nhãn.
-            nhãn: document.getElementById('lenhDaiVanVal').previousSibling.textContent
-                .replace(/^\s*·\s*/, '').trim(),
+            // #lenhNow nay dùng CHÍNH khung của hộp thông tin tab Kỳ Môn:
+            // mỗi mẩu là một .info-pair gồm <span class="lbl"> rồi tới giá
+            // trị. Nhãn vì thế đọc từ .lbl của đúng ô ấy, không còn là text
+            // node đứng trước <b> như bản một dòng.
+            nhãn: document.getElementById('lenhDaiVanVal')
+                .closest('.info-pair').querySelector('.lbl').textContent.trim(),
         };
     });
     const wantAge = [
@@ -1066,11 +1065,14 @@ console.log('\nTuổi nhập đại vận: chiều thuận/nghịch chéo Giới
     await page.evaluate(() => window.setLang('zh'));
     await page.waitForTimeout(700);
     const zh = await page.evaluate(() => ({
-        nhãn: document.getElementById('lenhDaiVanVal').previousSibling.textContent
-            .replace(/^\s*·\s*/, '').trim(),
+        nhãn: document.getElementById('lenhDaiVanVal')
+            .closest('.info-pair').querySelector('.lbl').textContent.trim(),
         hiện: document.getElementById('lenhDaiVanVal').textContent,
     }));
-    check('nhãn tiếng Trung là "起运："', zh.nhãn, '起运：');
+    // Dấu hai chấm NỬA, không phải dấu toàn: hộp này nay dùng đúng bộ nhãn
+    // của hộp thông tin tab Kỳ Môn, mà uiDict bên ấy viết ':' ở cả hai thứ
+    // tiếng. Một thông tin, một cách viết.
+    check('nhãn tiếng Trung là "起运:"', zh.nhãn, '起运:');
     ok('đơn vị tiếng Trung dùng 岁/个月/天, không lẫn chữ Việt',
         /^[0-9岁个月天]+ · \d{2}\/\d{2}\/\d{4}$/.test(zh.hiện), zh.hiện);
     ok('ngày bắt đầu KHÔNG đổi theo ngôn ngữ', zh.hiện.endsWith(chk.hiện.split('· ')[1]),

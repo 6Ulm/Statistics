@@ -1729,6 +1729,152 @@ là đổi cả kết quả Kỳ Môn ở nơi lệch khỏi UTC+8:
 nơi khác thì miễn cho các trường phụ thuộc ngày âm, và chỉ miễn cho bàn Kỳ Môn
 **khi chính cục đã khác** — cục giống mà bàn khác vẫn là hồi quy.
 
+## Hộp Lệnh: thêm Chính Ngọ và Tiết khí, đúng khuôn hộp Kỳ Môn
+
+Hộp trên cùng tab Bát Tự nay bày **bốn** mẩu thay vì hai, xếp hai dòng × hai ô:
+
+```
+司令: 丁            起运: 3岁6天 · 22/07/1994
+正午时间: 12:05 (GMT+0)   节气: 小暑 07-07-1991 14:53
+```
+
+Nó **mượn thẳng khung CSS** của hộp thông tin tab Kỳ Môn — `.info-line-nowrap >
+.info-pair > .lbl + .val-norm`, kể cả bộ lớp chia bề ngang (`.info-pair-f1`,
+`.info-pair-f14`, `.info-pair-chinhngo`) — chứ không dựng một bộ nhãn na ná.
+Mượn lớp thì hai hộp không thể trôi khỏi nhau khi một bên đổi. Cùng lý do, dấu
+hai chấm đổi sang dấu **nửa** (`:`) ở cả hai thứ tiếng, đúng như `uiDict` bên
+`app.js` viết — trước đây hộp này dùng dấu toàn (`：`) cho tiếng Trung, đẹp hơn
+theo lối chữ vuông nhưng khác hộp kia.
+
+Ô nhãn ngắn nhường bề ngang cho ô nhãn dài (`f1` / `f14`): chia đôi thì mốc tiết
+khí bị `…` nuốt mất phút trên máy 360px.
+
+Cả hai giá trị lấy từ **cùng `Core.chart()`** mà bốn trụ ngay dưới đang dùng, nên
+ba mẩu trên một màn hình không thể cãi nhau — `test_core.mjs` canh thẳng điều
+đó: chuỗi ở hộp Lệnh phải bằng **từng ký tự** chuỗi ở hộp Kỳ Môn.
+
+## Rà tiếng Trung trên cả bốn tab
+
+Chữ vuông và chữ Latin hỏng theo hai kiểu khác nhau, nên một bộ số vừa vặn ở
+tiếng Việt không nói gì về tiếng Trung:
+
+* chữ Hán **không có chỗ ngắt từ** — trình duyệt bẻ được giữa hai chữ bất kỳ,
+  nên nhãn không tràn mà lặng lẽ xuống dòng, đẩy cả khối cao thêm;
+* ngược lại một chữ Hán rộng bằng hai chữ Latin, nên nhãn ngắn hơn về *số chữ*
+  lại có thể rộng hơn về pixel (`值使` ngắn hơn "Trực Sử", nhưng `正午时间:` dài
+  hơn "Chính Ngọ:");
+* phông CJK có vùng mực cao hơn phông Latin cùng cỡ.
+
+`tools/test_zh_ui.mjs` quét **3 máy × 6 cảnh** (Kỳ Môn hai chế độ, Lịch, Bát Tự,
+Tra cứu đóng và mở hết) và canh năm điều: trang không cuộn ngang, không ô nào
+tràn chữ, không chữ nào bị bẻ giữa chừng, không chữ nào sát/thò khỏi mép màn
+hình, không hai vùng chạm nào chồng nhau — cộng một phép canh **không còn chữ
+Việt nào trên màn**.
+
+Chính phép cuối bắt được cái mà bốn phép kia không thấy được: nhãn quên đường
+dịch vẫn vừa ô, vẫn không tràn, chỉ là sai thứ tiếng. Nó tìm ra:
+
+| chỗ | hỏng thế nào |
+|---|---|
+| nhãn tab thứ tư | "Tra cứu" đứng nguyên ở **mọi** tab — `calendar.js` gọi `__lenhRefreshLabels()` khi đổi ngôn ngữ nhưng quên `__tracuuRefreshLabels()`, nên ba tab đổi, một tab không |
+| tiêu đề hai mục Trí Nhuận · Sách Bổ | chữ cứng trong `index.html`, không có đường dịch nào |
+| tám ô tiêu đề cột của hai bảng ấy | "Dương lịch" · "Tiết Khí" · "Độn" · "Số Cục" — cũng chữ cứng |
+| ruột hai bảng | tên tiết khí, tên Phù Đầu (`Giáp Tý`), nhãn `Âm`/`Dương`, chữ `(lặp)`, và dòng tóm tắt `D1=… → Đại Tuyết đầu` |
+
+Tức **cả tab Tra cứu vốn chỉ có tiếng Việt**. Nay đủ hai thứ tiếng; `test_zh_ui`
+giữ cho nó không tụt lại.
+
+Một chi tiết đáng ghi vì dễ sai lại: `getDisplayCanChi("Giáp Tý")` phải HỎI
+từng bảng chứ không viết `getDisplayCan(w) || getDisplayChi(w)` — `getDisplayCan()`
+trả lại nguyên chữ khi tra không ra (đúng như nó phải thế cho mọi chỗ khác), nên
+`getDisplayCan('Tý')` ra `'Tý'`, một chuỗi thật, và phép `||` dừng ngay ở đó,
+không bao giờ tới bảng chi.
+
+## Bộ tính dùng chung (`js/core.js`) — và luật "không tab nào tự tính lại"
+
+Luật, ngắn gọn: **mọi con số mà từ hai tab trở lên cùng nhìn thấy đều phải tính
+ở một chỗ, đúng một lần.** Bốn tab chỉ còn việc HIỆN nó ra.
+
+### Xếp tầng
+
+| tầng | tệp | giữ cái gì |
+|---|---|---|
+| thư viện | `lunar.js` | lịch Trung Hoa, không sửa |
+| thiên văn | `astro.js` · `ephem.js` | nghiệm Mặt Trời; mốc Sóc · Vọng · tiết khí · Chính Ngọ |
+| **lịch pháp** | **`core.js`** | **ngày âm, bốn trụ, tiết khí đang giữ, thần sát suy từ trụ** |
+| ngữ nghĩa | `nguhanh.js` | ngũ hành, tàng can, thập thần, tuần không |
+| trình bày | `app.js` · `calendar.js` · `lenh.js` · `tracuu.js` | chỉ dựng HTML |
+
+Tầng dưới không biết gì về tầng trên. `Ephem` là nơi **duy nhất** chạm vào
+`ShouXingUtil`/`LunarYear`; `Core` là nơi **duy nhất** đọc ô ngày giờ và ô vị
+trí; `Core.chart()` là nơi **duy nhất** dựng bốn trụ.
+
+### Những chỗ trước đây có hai bản
+
+* **Ba tab tự đọc ô ngày giờ.** `calendar.js`, `lenh.js`, `tracuu.js` mỗi tệp
+  một bản `countryData[getDOM('country').value]` + `getTimezoneOffset(...)` —
+  ba bản *gần* giống nhau, mà "gần giống" chính là chỗ sinh ra hai màn hình cho
+  một con số. Nay: `Core.input()` · `Core.location()` · `Core.tzAt()`.
+* **Tab Bát Tự tự gọi `ShouXingUtil.qiAccurate`** để lấy mốc tiết khí, trong
+  khi tab Lịch lấy cùng mốc ấy qua `Ephem` — hai đường, hai bộ nhớ đệm, không
+  gì bảo đảm chúng khớp. Nay cả hai đi qua `Ephem.termJd()` / `Ephem.sunLonJd()`.
+* **Hai cửa ngầm `window.__yearGanIdx` / `window.__monthGanIdx`**: `app.js` gán
+  mỗi lần vẽ, `lenh.js` đọc. Đúng thì vẫn đúng, nhưng là một sợi dây nối ngầm
+  giữa hai tệp, và nó chỉ có giá trị SAU khi tab Kỳ Môn vẽ xong. Nay
+  `Core.chart().gan[...]`.
+* **Ba bảng 60 dòng chép tay** — `dayToTuanThu`, `hoaGiapToKhongVong`,
+  `hoaGiapToDichMa`. Cả ba chỉ là một phép tính viết bung ra, mà chép tay 60
+  dòng là 60 chỗ gõ nhầm được: nhầm một dòng thì chỉ sai đúng một ngày trong
+  sáu mươi, không ai thấy. Nay tính:
+
+  ```js
+  tuanIdx  = ((12 − ((chi − can) mod 12)) mod 12) / 2   // 0 = Giáp Tý … 5 = Giáp Dần
+  tuanThu  = ['Mậu','Kỷ','Canh','Tân','Nhâm','Quý'][tuanIdx]
+  khôngVong = hai chi ngay sau mười chi của tuần
+  dịchMã   = [Dần, Hợi, Thân, Tỵ][chi mod 4]            // tam hợp
+  ```
+
+* **Biến toàn cục `_tzOffsetHours` của lunar.js** bị ba tệp cùng đặt. Nay chỉ
+  `Ephem.atBasis()` (phạm vi, tự trả về) và `Ephem.setBasis()` (lâu dài, đúng
+  hai chỗ cần) chạm tới nó.
+* **Tên 24 tiết khí** có trong ba tệp. Nay `Core.TK_VI` / `Core.TK_ZH` /
+  `Core.tietKhiTen()`.
+
+### Đổi mã mà KHÔNG đổi con số — chứng minh thế nào
+
+Tái cấu trúc mà đổi một con số là hỏng, kể cả khi con số mới nhìn hợp lý hơn.
+`tools/golden_snapshot.mjs` chụp **ảnh vàng** mọi thứ bốn tab hiện ra, trên ma
+trận 4 nơi × 2 thứ tiếng × 12 ngày (gồm mấy ca sát Lập Xuân, sát giao tiết, sát
+Sóc) — 102 ô, mỗi ô gồm hộp thông tin, cả bàn Kỳ Môn 9 cung, hộp Bát Tự, dòng
+Lệnh, bảng Đại Vận, lưới lịch, bảng Tiết khí và bốn bảng tab Tra cứu:
+
+```bash
+node tools/golden_snapshot.mjs truoc.json          # chụp trước khi sửa
+node tools/golden_snapshot.mjs sau.json truoc.json # sửa xong, so lại
+```
+
+Nó **không** biết con số nào mới là đúng — nó chỉ trả lời đúng một câu: *"sau
+khi dọn mã, có con số nào đổi không?"*. Chạy hai lần liên tiếp phải trùng khít
+102/102 (đã canh) thì câu trả lời mới có nghĩa.
+
+Kết quả của chính lần gom này: **102/102 ô trùng khít**, trừ đúng một trường —
+`lenh.now`, tức hộp Lệnh, nơi cố ý thêm Chính Ngọ và Tiết khí (xem mục dưới).
+
+### Luật được canh bằng cách ĐỌC MÃ
+
+Một phép thử chạy được chỉ nói "hôm nay hai tab ra cùng một số"; nó không ngăn
+ai ngày mai viết thêm một bản tính thứ hai. `tools/test_core.mjs` canh chính chỗ
+ấy — nó đọc mã nguồn (đã bỏ ghi chú) và bắt lỗi nếu:
+
+* tệp của tab gọi thẳng `ShouXingUtil.` hay `LunarYear.`;
+* tệp của tab đọc `#inYear`/`#country`, tra `countryData`, gọi `getTimezoneOffset`;
+* hai cửa ngầm `__yearGanIdx`/`__monthGanIdx` quay lại;
+* ba bảng 60 dòng quay lại.
+
+Cộng với: hàm tính khớp **đúng ba bảng cũ ấy** (chép nguyên văn vào phép thử
+làm mốc — mốc mà lấy từ chính thứ đang kiểm thì không phải mốc), và **một lá số
+bốn tab** phải cho cùng những con số ấy, trùng khít từng ký tự.
+
 ## Engine thiên văn dùng chung (`js/ephem.js`)
 
 Tab Kỳ Môn và tab Lịch cần cùng những mốc thiên văn — Sóc, Vọng, tiết khí,

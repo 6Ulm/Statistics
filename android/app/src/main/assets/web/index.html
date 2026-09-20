@@ -344,25 +344,25 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
     <!-- ══ TRÍ NHUẬN PHÁP — PTTN INFO PANEL (collapsible) ══ -->
     <div id="trinhuanPanel" class="dp-panel">
       <div id="trinhuanHeader" class="dp-header" onclick="toggleDetailPanel('trinhuan')">
-        <span class="dp-title">Bảng chi tiết - Trí Nhuận pháp</span>
+        <span class="dp-title" id="lblTrinhuanTitle">Bảng chi tiết - Trí Nhuận pháp</span>
         <span id="trinhuanChevron" class="dp-chevron">▾</span>
       </div>
       <div id="trinhuanBody" class="dp-body">
         <div id="trn-pttn-row" style="display:flex;flex-direction:column;gap:2px;margin-bottom:3px;">
-          <span><span style="color:var(--text-dim,#888)">PTTN1:</span> <b id="trn-pttn1"></b> <span style="color:var(--text-dim,#888)">-</span> <span style="color:var(--text-dim,#888)">TK1:</span> <span id="trn-tk1"></span></span>
-          <span><span style="color:var(--text-dim,#888)">PTTN2:</span> <b id="trn-pttn2"></b> <span style="color:var(--text-dim,#888)">-</span> <span style="color:var(--text-dim,#888)">TK2:</span> <span id="trn-tk2"></span></span>
-          <span><span style="color:var(--text-dim,#888)">PTTN3:</span> <b id="trn-pttn3"></b> <span style="color:var(--text-dim,#888)">-</span> <span style="color:var(--text-dim,#888)">TK3:</span> <span id="trn-tk3"></span></span>
+          <span><span class="trn-k" id="lblTrnPttn1" style="color:var(--text-dim,#888)">PTTN1:</span> <b id="trn-pttn1"></b> <span style="color:var(--text-dim,#888)">-</span> <span class="trn-k" id="lblTrnTk1" style="color:var(--text-dim,#888)">TK1:</span> <span id="trn-tk1"></span></span>
+          <span><span class="trn-k" id="lblTrnPttn2" style="color:var(--text-dim,#888)">PTTN2:</span> <b id="trn-pttn2"></b> <span style="color:var(--text-dim,#888)">-</span> <span class="trn-k" id="lblTrnTk2" style="color:var(--text-dim,#888)">TK2:</span> <span id="trn-tk2"></span></span>
+          <span><span class="trn-k" id="lblTrnPttn3" style="color:var(--text-dim,#888)">PTTN3:</span> <b id="trn-pttn3"></b> <span style="color:var(--text-dim,#888)">-</span> <span class="trn-k" id="lblTrnTk3" style="color:var(--text-dim,#888)">TK3:</span> <span id="trn-tk3"></span></span>
           <span><span id="trn-d-summary"></span></span>
         </div>
         <div id="trn-table-wrap" class="dp-table-wrap">
           <table id="trn-table" class="dp-table">
             <thead>
               <tr>
-                <th>PTTN</th>
-                <th>Dương lịch</th>
-                <th>Tiết Khí</th>
-                <th class="c">Độn</th>
-                <th class="c">Số Cục</th>
+                <th id="lblTrnPttn">PTTN</th>
+                <th id="lblTrnSolar">Dương lịch</th>
+                <th id="lblTrnTk">Tiết Khí</th>
+                <th class="c" id="lblTrnDon">Độn</th>
+                <th class="c" id="lblTrnCuc">Số Cục</th>
               </tr>
             </thead>
             <tbody id="trn-tbody"></tbody>
@@ -374,7 +374,7 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
     <!-- ══ SÁCH BỔ PHÁP — INFO PANEL (collapsible, shares header with Trí Nhuận) ══ -->
     <div id="sachboPanel" class="dp-panel">
       <div id="sachboHeader" class="dp-header" onclick="toggleDetailPanel('sachbo')">
-        <span class="dp-title">Bảng chi tiết - Sách Bổ pháp</span>
+        <span class="dp-title" id="lblSachboTitle">Bảng chi tiết - Sách Bổ pháp</span>
         <span id="sachboChevron" class="dp-chevron">▾</span>
       </div>
       <div id="sachboBody" class="dp-body">
@@ -382,10 +382,10 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
           <table id="sb-table" class="dp-table">
             <thead>
               <tr>
-                <th>Tiết Khí</th>
-                <th>Dương lịch</th>
-                <th class="c">Độn</th>
-                <th class="c">Số Cục</th>
+                <th id="lblSbTk">Tiết Khí</th>
+                <th id="lblSbSolar">Dương lịch</th>
+                <th class="c" id="lblSbDon">Độn</th>
+                <th class="c" id="lblSbCuc">Số Cục</th>
               </tr>
             </thead>
             <tbody id="sb-tbody"></tbody>
@@ -465,6 +465,11 @@ if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('padding-bottom
      dựng bảng, mà Ephem lại uỷ quyền nghiệm Mặt Trời cho Astro. -->
 <script src="js/astro.js"></script>
 <script src="js/ephem.js"></script>
+<!-- core.js: BỘ TÍNH DÙNG CHUNG của cả bốn tab. Phải đứng sau ephem.js (nó
+     dựng trên Ephem) và trước mọi tệp của tab. Nó có gọi getDOM/countryData/
+     getTimezoneOffset của app.js, nhưng chỉ LÚC CHẠY chứ không lúc nạp, nên
+     không thành vòng phụ thuộc. -->
+<script src="js/core.js"></script>
 <script src="js/app.js"></script>
 <script src="js/location.js"></script>
 <script src="js/calendar.js"></script>

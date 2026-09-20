@@ -37,8 +37,12 @@ const check = (ten, được, mong) => ok(ten + ` = ${JSON.stringify(mong)}`,
 const CAN = ['Giáp', 'Ất', 'Bính', 'Đinh', 'Mậu', 'Kỷ', 'Canh', 'Tân', 'Nhâm', 'Quý'];
 const CHI = ['Tý', 'Sửu', 'Dần', 'Mão', 'Thìn', 'Tỵ', 'Ngọ', 'Mùi', 'Thân', 'Dậu', 'Tuất', 'Hợi'];
 
-/* ── 1. Số học: hàm tính khớp bảng 60 dòng của app.js ── */
-console.log('\nKhông vong: hàm tính so bảng 60 dòng trong app.js');
+/* ── 1. Số học: hàm tính khớp bảng 60 dòng CHÉP TAY ──
+ * Bảng `hoaGiapToKhongVong` từng nằm trong app.js và phép thử này đọc thẳng
+ * từ đó. Bảng ấy nay đã xoá (core.js tính ra nó), nên MỐC ĐỐI CHIẾU chuyển
+ * vào chính phép thử: sáu tuần × hai chi, chép nguyên văn bản cũ. Mốc mà lấy
+ * từ chính thứ đang kiểm thì không phải là mốc. */
+console.log('\nKhông vong: hàm tính so bảng 60 dòng chép tay');
 {
     // Chạy nguhanh.js trong một `window` giả — nó là IIFE gán window.NguHanh.
     const src = fs.readFileSync(path.join(WEB, 'js', 'nguhanh.js'), 'utf8');
@@ -47,12 +51,14 @@ console.log('\nKhông vong: hàm tính so bảng 60 dòng trong app.js');
     const NH = w.NguHanh;
     ok('nguhanh.js có lộ tuanKhongOf', typeof NH.tuanKhongOf === 'function');
 
-    // Bảng của app.js: `const hoaGiapToKhongVong = { "Giáp Tý": "Tuất Hợi", … }`
-    const app = fs.readFileSync(path.join(WEB, 'js', 'app.js'), 'utf8');
-    const i = app.indexOf('const hoaGiapToKhongVong = {');
-    const j = app.indexOf('};', i);
-    const BẢNG = JSON.parse(app.slice(app.indexOf('{', i), j + 1).replace(/,\s*}$/, '}'));
-    check('bảng app.js đủ 60 dòng', Object.keys(BẢNG).length, 60);
+    // Bản cũ của hoaGiapToKhongVong: mười trụ đầu tuần Giáp Tý thì "Tuất
+    // Hợi", mười trụ tuần Giáp Tuất thì "Thân Dậu", … sáu tuần như vậy.
+    const BẢNG = {};
+    const TUẦN = ['Tuất Hợi', 'Thân Dậu', 'Ngọ Mùi', 'Thìn Tỵ', 'Dần Mão', 'Tý Sửu'];
+    for (let n = 0; n < 60; n++) {
+        BẢNG[CAN[n % 10] + ' ' + CHI[n % 12]] = TUẦN[Math.floor(n / 10)];
+    }
+    check('bảng đối chiếu đủ 60 dòng', Object.keys(BẢNG).length, 60);
 
     let lệch = [];
     for (let n = 0; n < 60; n++) {

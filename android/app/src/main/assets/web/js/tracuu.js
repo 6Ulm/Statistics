@@ -172,13 +172,9 @@
 
     /** Toạ độ + múi giờ của địa điểm đang chọn ở hàng dùng chung dưới đáy. */
     function locInfo() {
-        if (typeof getDOM !== 'function' || typeof countryData === 'undefined') return null;
-        var el = getDOM('country');
-        var info = el ? countryData[el.value] : null;
-        if (!info) return null;
-        var tz = (typeof getTimezoneOffset === 'function')
-            ? getTimezoneOffset(info.tzId, new Date(year, 5, 15, 12)) : 7;
-        return { lon: info.lon, tz: tz, tzId: info.tzId };
+        var loc = (typeof Core !== 'undefined') ? Core.location() : null;
+        if (!loc) return null;
+        return { lon: loc.lon, tzId: loc.tzId, tz: Core.tzAt(year, 6, 15) };
     }
 
     /** Ngày Julius của 15/06 12:00 năm đang tra — chỉ là một mốc trong năm. */

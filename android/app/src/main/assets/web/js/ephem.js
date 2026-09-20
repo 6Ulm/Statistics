@@ -56,6 +56,24 @@
     }
 
     /**
+     * Đặt / đọc mốc múi giờ toàn cục của lunar.js một cách LÂU DÀI (không tự
+     * trả về như atBasis).
+     *
+     * Chỉ hai chỗ cần: tab Lịch đặt mốc địa phương cho suốt một lượt vẽ, và
+     * processAll() đặt mốc địa phương cho hai bảng cuối (Sách Bổ, Âm Bàn).
+     * Gói lại ở đây để cả ứng dụng còn ĐÚNG MỘT cửa chạm vào biến toàn cục
+     * ấy — biến mà quên trả về là mọi phép tính sau đó lệch múi giờ.
+     */
+    function setBasis(basis) {
+        if (typeof ShouXingUtil === 'undefined' || !ShouXingUtil.setTzOffsetHours) return;
+        ShouXingUtil.setTzOffsetHours(basis);
+    }
+    function getBasis() {
+        return (typeof ShouXingUtil !== 'undefined' && ShouXingUtil.getTzOffsetHours)
+            ? ShouXingUtil.getTzOffsetHours() : null;
+    }
+
+    /**
      * LunarYear ở một mốc múi giờ, có nhớ. Đây là chỗ tốn kém nhất của cả
      * ứng dụng — dựng một năm mất chừng 10ms.
      *
@@ -88,6 +106,34 @@
     });
 
     /* ─────────────── Mặt Trời ─────────────── */
+
+    var RAD = Math.PI / 180;
+
+    /**
+     * Mốc TIẾT KHÍ số `n` (hoàng kinh biểu kiến 15n°, n = 0 tại Đông Chí
+     * 1999), ngày Julius ở mốc UTC+8.
+     *
+     * TRUYỀN THẲNG 8 chứ không để trống: ShouXingUtil giữ mốc múi giờ trong
+     * một biến TOÀN CỤC mà tab Lịch đặt về múi giờ địa phương trước mỗi lần
+     * vẽ. Bỏ trống là con số ra theo mốc của người gọi cuối cùng.
+     */
+    function termJd(n) {
+        return ShouXingUtil.qiAccurate(n * Math.PI / 12, 8) + Solar.J2000;
+    }
+
+    /**
+     * Thời điểm Mặt Trời đạt hoàng kinh `deg` ĐỘ (đã mở vòng — 315° của năm
+     * sau là 675°), ngày Julius ở mốc UTC+8.
+     *
+     * Đây là ruột của qiAccurate, bỏ đi bước tra bảng DE423: bảng chỉ lưu 24
+     * tiết khí nên mốc GIỮA tháng (7°, 22°…) không tra được. `dtT` quy TT về
+     * UT, rồi cộng 8 giờ ra giờ Bắc Kinh — đúng chuỗi phép mà qiAccurate làm.
+     * Hai đường lệch nhau ≤ 2 giây tại các mốc dùng chung (đo cả năm 2026).
+     */
+    function sunLonJd(deg) {
+        var t = ShouXingUtil.saLonT(deg * RAD) * 36525;
+        return t - ShouXingUtil.dtT(t) + 8 / 24 + Solar.J2000;
+    }
 
     /**
      * Phương trình thời gian (phút) — BẢN DUY NHẤT của cả ứng dụng.
@@ -147,9 +193,11 @@
     root.Ephem = {
         /** Xoá mọi bộ nhớ đệm — chỉ dùng để ĐO tốc độ ở trạng thái nguội. */
         __clearCaches: function () { _allCaches.forEach(function (m) { m.clear(); }); },
-        atBasis: atBasis,
+        atBasis: atBasis, setBasis: setBasis, getBasis: getBasis,
         monthsAtBasis: monthsAtBasis,
         jieQiJdAtBasis: jieQiJdAtBasis,
+        termJd: termJd,
+        sunLonJd: sunLonJd,
         eotMinutes: eotMinutes,
         solarNoonMinutes: solarNoonMinutes,
         solarMidnightMinutes: solarMidnightMinutes,

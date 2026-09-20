@@ -23,14 +23,14 @@
 
    MỘT NGUỒN DUY NHẤT VỚI BẢNG TIẾT KHÍ.
 
-   Mốc mở tháng (bội số của 15°) lấy THẲNG từ ShouXingUtil.qiAccurate — đúng
-   hàm mà bảng tiết khí ở tab Lịch và bảng Sách Bổ ở tab Kỳ Môn đang dùng,
-   nên nó tra bảng DE423 y hệt. Không có chuyện "Lập Xuân" ở tab Lịch một
+   Mốc mở tháng (bội số của 15°) lấy qua Ephem.termJd — cùng một cửa mà bảng
+   tiết khí ở tab Lịch và bảng Sách Bổ ở tab Kỳ Môn đi qua, nên nó tra bảng
+   DE423 y hệt và dùng chung luôn bộ nhớ đệm. Không có chuyện "Lập Xuân" ở tab Lịch một
    giờ mà "vào lệnh Mậu" ở tab này một giờ khác.
 
    Mốc giữa tháng (7°, 22°… không phải bội số của 15°) thì bảng DE423 không
    có — nó chỉ lưu 24 tiết khí. Chỗ ấy giải bằng chuỗi giải tích saLonT của
-   chính lunar.js. Hai nguồn lệch nhau ≤ 2 giây tại các mốc dùng chung (đo
+   chính lunar.js, cũng qua Ephem (sunLonJd). Hai nguồn lệch nhau ≤ 2 giây tại các mốc dùng chung (đo
    trên cả năm 2026), tức không bao giờ đủ để đổi con số phút hiện ra.
 
    HAI BỘ SỐ, HAI CUỐN SÁCH — chọn bằng ô bên cạnh ô ngày giờ.
@@ -90,6 +90,12 @@
         pickRule: { vi: 'Quy tắc', zh: '选择流派' },
         daiVan:   { vi: 'Nhập vận',    zh: '起运' },
         pickGender: { vi: 'Giới tính', zh: '性别' },
+        // Hai nhãn dưới đây chép ĐÚNG chuỗi của hộp thông tin tab Kỳ Môn
+        // (uiDict.chinhNgo / uiDict.tietkhi trong app.js), kể cả dấu hai chấm
+        // — cùng một thông tin thì phải cùng một cách gọi tên, bằng không
+        // người dùng phải tự đoán "Chính Ngọ" ở đây có phải "正午时间" ở kia.
+        chinhNgo: { vi: 'Chính Ngọ:',  zh: '正午时间:' },
+        tietKhi:  { vi: 'Tiết khí:',   zh: '节气:' },
     };
     function isZH() { return typeof currentLang !== 'undefined' && currentLang === 'zh'; }
     function t(k) { return T[k][isZH() ? 'zh' : 'vi']; }
@@ -243,7 +249,7 @@
      * vẽ. Bỏ trống là con số ra theo mốc của người gọi cuối cùng.
      */
     function termJd(n) {
-        return ShouXingUtil.qiAccurate(n * Math.PI / 12, 8) + Solar.J2000;
+        return Ephem.termJd(n);
     }
 
     /**
@@ -255,8 +261,7 @@
      * cộng 8 giờ ra giờ Bắc Kinh — đúng chuỗi phép mà qiAccurate làm.
      */
     function lonJd(deg) {
-        var t = ShouXingUtil.saLonT(deg * RAD) * 36525;
-        return t - ShouXingUtil.dtT(t) + 8 / 24 + Solar.J2000;
+        return Ephem.sunLonJd(deg);
     }
 
     /**
@@ -299,11 +304,11 @@
      * CAN_VI/CAN_ZH) hoặc Nữ sinh năm can ÂM (Ất Đinh Kỷ Tân Quý — chỉ số
      * LẺ) thì THUẬN; còn lại (Nam+Âm hoặc Nữ+Dương) thì NGHỊCH.
      *
-     * `yearGanIdx` do app.js lộ ra qua `window.__yearGanIdx` (0=Giáp…9=Quý),
-     * tính lại mỗi lần `processAll()` chạy — cùng lúc bảng Bát Tự phía trên vẽ
-     * lại, nên không lệch pha với can năm đang hiển thị. Chưa có (lần vẽ đầu
-     * tiên, trước khi processAll từng chạy) thì mặc định THUẬN — chỉ để khỏi
-     * ném lỗi, không phải một lựa chọn có ý nghĩa mệnh lý.
+     * `yearGanIdx` lấy từ `Core.chart().gan[0]` (0=Giáp…9=Quý) — CÙNG một lá
+     * số mà bảng Bát Tự phía trên đang hiện, nên không thể lệch pha với can
+     * năm người dùng đang nhìn. (Trước đây đọc qua `window.__yearGanIdx` mà
+     * app.js gán mỗi lần vẽ: đúng thì vẫn đúng, nhưng là một sợi dây nối
+     * ngầm giữa hai tệp, và nó chỉ có giá trị SAU khi tab Kỳ Môn vẽ xong.)
      */
     function isThuanHanh(genderKey, yearGanIdx) {
         if (typeof yearGanIdx !== 'number' || yearGanIdx < 0) return true;
@@ -547,32 +552,20 @@
     /* ─────────────── Đọc đầu vào ─────────────── */
 
     /** Ngày giờ đang chọn + địa điểm, hoặc null khi app.js chưa sẵn sàng. */
+    /** Ô ngày giờ + vị trí — ĐỌC CHUNG với ba tab kia, xem Core.input(). */
     function readInput() {
-        if (typeof getDOM !== 'function' || typeof countryData === 'undefined') return null;
-        var y = parseInt(getDOM('inYear').value, 10);
-        var m = parseInt(getDOM('inMonth').value, 10);
-        var d = parseInt(getDOM('inDay').value, 10);
-        var h = parseInt(getDOM('solarHour').value, 10);
-        var mi = parseInt(getDOM('solarMinute').value, 10);
-        if (!isFinite(y) || !isFinite(m) || !isFinite(d)) return null;
-        var info = countryData[getDOM('country').value];
-        if (!info) return null;
-        var tz = (typeof getTimezoneOffset === 'function')
-            ? getTimezoneOffset(info.tzId, new Date(y, m - 1, d, h || 12)) : 7;
-        return { y: y, m: m, d: d, h: h || 0, mi: mi || 0, info: info, tz: tz };
+        return (typeof Core !== 'undefined') ? Core.input() : null;
     }
 
     /**
      * Giờ địa phương của một mốc UTC+8, trả về đối tượng Solar.
      *
-     * Dùng ĐÚNG đường mà bảng tiết khí dùng (_tzOffsetAtJdUTC8): offset lấy
-     * tại CHÍNH THỜI ĐIỂM ấy chứ không phải theo ngày đang xem, nên mốc mùa
-     * đông không bị cộng nhầm giờ mùa hè ở những nước có DST.
+     * Dùng ĐÚNG đường mà bảng tiết khí dùng (Core.localSolarFromJdUTC8):
+     * offset lấy tại CHÍNH THỜI ĐIỂM ấy chứ không phải theo ngày đang xem,
+     * nên mốc mùa đông không bị cộng nhầm giờ mùa hè ở những nước có DST.
      */
     function toLocal(jdUTC8, tzId) {
-        var tz = (typeof _tzOffsetAtJdUTC8 === 'function')
-            ? _tzOffsetAtJdUTC8(jdUTC8, tzId) : 8;
-        return Solar.fromJulianDay(jdUTC8 + (tz - 8) / 24);
+        return Core.localSolarFromJdUTC8(jdUTC8, tzId);
     }
 
     /**
@@ -674,32 +667,44 @@
         // nặng hơn cả sai vài phút.
         var active = null;
         var vanText = null;
+        // Khai ở ĐÂY chứ không trong khối try: bảng Đại Vận phía dưới đọc cả
+        // ba, và `var` trong JS tuy nâng lên đầu hàm nhưng `mCanIdx` mà chỉ
+        // gán trong try thì khi try ném lỗi nó là undefined — bảng lại phải
+        // phân biệt "chưa tính được" với "tính ra can Giáp (chỉ số 0)".
+        var thuan = true, dv = null, mCanIdx = null;
+        // Chính Ngọ và Tiết khí — CÙNG định dạng hộp thông tin tab Kỳ Môn:
+        // "12:02 (GMT+7)" và "Tiểu Thử 07-07-1991 16:53". Cả hai lấy từ
+        // Core.chart(), tức đúng con số mà tab Kỳ Môn hiện.
+        var ngoaiCanh = null;
         lastDaiVan = null;
-        if (typeof _readInputBJ === 'function') {
+        if (typeof Core !== 'undefined' && typeof Core.chart === 'function') {
             try {
-                var bj = _readInputBJ(inp.y, inp.m, inp.d, inp.h, inp.mi, inp.tz);
-                var birthJd = bj.solarBJ.getJulianDay();
+                var ch = Core.chart(inp);
+                ngoaiCanh = {
+                    chinhNgo: ch.chinhNgo.hhmm + ' (' + ch.chinhNgo.gmt + ')',
+                    tietKhi: Core.tietKhiTen(ch.tietKhi.zh, isZH()) + ' '
+                        + Core.fmtJdUTC8Local(ch.tietKhi.solarUTC8.getJulianDay(), inp.tzId),
+                };
+                var birthJd = ch.solarBJ.getJulianDay();
                 active = lenhAt(birthJd, inp.y);
                 // Cùng mốc giờ Bắc Kinh mà lenhAt() vừa dùng, nên "đang cầm
                 // lệnh can nào" và "tuổi nhập vận" luôn khớp cùng MỘT thời
                 // điểm sinh, không lệch nguồn.
                 if (active) {
                     var mb = monthBounds(active.month);
-                    var yIdx = (typeof window !== 'undefined') ? window.__yearGanIdx : undefined;
-                    var thuan = isThuanHanh(gender.key, yIdx);
+                    mCanIdx = ch.gan[1];
+                    thuan = isThuanHanh(gender.key, ch.gan[0]);
                     // Thuận: mốc mở tháng KẾ TIẾP trừ giờ sinh.
                     // Nghịch: giờ sinh trừ mốc mở tháng HIỆN TẠI.
                     var diff = thuan ? (mb.end - birthJd) : (birthJd - mb.start);
-                    var dv = daiVanTuoi(diff);
+                    dv = daiVanTuoi(diff);
                     // Can chi Đại Vận đầu tiên: bước một nấc từ CHÍNH trụ
                     // tháng, cùng chiều thuận/nghịch vừa dùng ở trên — không
-                    // phải một phép tính tách rời. monthCanIdx đọc từ app.js
-                    // (window.__monthGanIdx); monthChiIdx dùng thẳng
+                    // phải một phép tính tách rời. Can tháng lấy từ chart
+                    // (Core.chart().gan[1]); chi tháng dùng thẳng
                     // active.month.chi — đã có sẵn và đã BẢO ĐẢM khớp trụ
                     // tháng thật (xem khối ghi chú ngay trên `active`).
-                    var mCanIdx = (typeof window !== 'undefined') ? window.__monthGanIdx : undefined;
-                    var pillar = (typeof mCanIdx === 'number' && mCanIdx >= 0)
-                        ? daiVanPillarOf(thuan, mCanIdx, active.month.chi) : null;
+                    var pillar = daiVanPillarOf(thuan, mCanIdx, active.month.chi);
                     lastDaiVan = { dv: dv, thuan: thuan, diffDays: diff, mb: mb, pillar: pillar };
                     // Cộng lịch vào ĐÚNG ngày sinh người dùng đã chọn (inp.y/
                     // m/d, dương lịch địa phương) — không phải birthJd giờ
@@ -709,25 +714,58 @@
                     // ngày bắt đầu đại vận luôn ở SAU ngày sinh.
                     vanText = fmtTuoi(dv) + ' · ' + fmtYMD(addYMD(inp.y, inp.m, inp.d, dv));
                 }
-            } catch (e2) { active = null; vanText = null; }
+            } catch (e2) { active = null; vanText = null; mCanIdx = null; ngoaiCanh = null; }
         }
         lastActive = active;
 
         if (nowBox) {
-            // Một dòng duy nhất — "Lệnh" và "Nhập vận" là hai mẩu thông tin
-            // ngắn, không cần mỗi mẩu một dòng riêng như trước. Dòng "Đại
-            // Vận: …" (can chi đại vận đầu tiên) bỏ hẳn khỏi đây — đã có
-            // NGUYÊN một bảng ĐẠI VẬN đầy đủ ngay dưới, nhắc lại ở đây là
-            // thừa. pillarText/pillar vẫn tính (đại vận grid dùng riêng của
-            // nó, độc lập — xem buildDaiVanBang()), chỉ không hiện dòng này.
-            var lệnhLine = esc(t('now')) + (isZH() ? '：' : ': ') +
-                '<b id="lenhNowVal">' +
-                (active ? nh(canName(active.part.can)) : '—') + '</b>';
-            var vanLine = vanText
-                ? ' · ' + esc(t('daiVan')) + (isZH() ? '：' : ': ') +
-                  '<b id="lenhDaiVanVal">' + esc(vanText) + '</b>'
-                : '';
-            nowBox.innerHTML = lệnhLine + vanLine;
+            // HAI DÒNG × HAI Ô, dựng bằng CHÍNH khung của hộp thông tin tab
+            // Kỳ Môn (.info-line-nowrap > .info-pair > .lbl + .val-norm):
+            //
+            //   Lệnh: Ất            · Nhập vận: 3t 0th 6n · 22/07/1994
+            //   Chính Ngọ: 12:02 (GMT+7) · Tiết khí: Tiểu Thử 07-07-1991 16:53
+            //
+            // Người dùng chốt "same format for each information as what
+            // displayed in info table in Kỳ môn tab" — nên mượn thẳng lớp CSS
+            // ấy chứ không dựng một bộ nhãn na ná: mượn lớp thì hai hộp không
+            // thể trôi khỏi nhau khi một bên đổi.
+            //
+            // Chính Ngọ và Tiết khí lấy từ `ch` — cùng Core.chart() mà bốn trụ
+            // phía trên vừa dùng, nên ba mẩu trên một màn hình không thể cãi
+            // nhau. Dòng "Đại Vận: …" (can chi đại vận đầu) vẫn không hiện:
+            // đã có nguyên một bảng ĐẠI VẬN ngay dưới.
+            // `lớp` nhận đúng bộ lớp chia bề ngang của hộp Kỳ Môn
+            // (.info-pair-f1 / .info-pair-f14 / .info-pair-chinhngo …): ô nhãn
+            // ngắn nhường bề ngang cho ô nhãn dài, chứ chia đôi thì mốc tiết
+            // khí bị "…" nuốt mất phút.
+            var cặp = function (nhãn, giá, lớp, id) {
+                return '<span class="info-pair ' + lớp + '">'
+                    + '<span class="lbl">' + esc(nhãn) + '</span>'
+                    + '<span class="val-norm val-ellipsis"'
+                    + (id ? ' id="' + id + '"' : '') + '>' + giá + '</span></span>';
+            };
+            var dòng = function (html) {
+                return '<div class="info-line info-line-nowrap">' + html + '</div>';
+            };
+            // Dấu hai chấm dùng ĐÚNG kiểu của hộp Kỳ Môn: dấu nửa (':') ở cả
+            // hai thứ tiếng, vì uiDict bên app.js viết vậy. Trước đây hộp này
+            // dùng dấu toàn ('：') cho tiếng Trung — đẹp hơn theo lối chữ
+            // vuông, nhưng khác hộp kia, mà người dùng chốt hai hộp một kiểu.
+            var html = dòng(
+                cặp(t('now') + ':',
+                    '<b id="lenhNowVal">' + (active ? nh(canName(active.part.can)) : '—') + '</b>',
+                    'info-pair-f1')
+                + cặp(t('daiVan') + ':',
+                    '<b id="lenhDaiVanVal">' + (vanText ? esc(vanText) : '—') + '</b>',
+                    'info-pair-f2'));
+            if (ngoaiCanh) {
+                html += dòng(
+                    cặp(t('chinhNgo'), esc(ngoaiCanh.chinhNgo),
+                        'info-pair-chinhngo info-pair-f1', 'lenhChinhNgo')
+                    + cặp(t('tietKhi'), esc(ngoaiCanh.tietKhi),
+                        'info-pair-tietkhi info-pair-f14', 'lenhTietKhi'));
+            }
+            nowBox.innerHTML = html;
         }
 
         renderDaiVanTable(inp, active ? dv : null, thuan, mCanIdx, active ? active.month.chi : null);
@@ -738,8 +776,8 @@
 
     /**
      * Bảng ĐẠI VẬN: 10 thẻ × 10 năm. Không tính được (chưa có ngày sinh hợp
-     * lệ, hoặc app.js chưa kịp lộ window.__monthGanIdx) thì để trống — cùng
-     * cách #lenhBody tự để trống khi buildYear() ném lỗi.
+     * lệ) thì để trống — cùng cách #lenhBody tự để trống khi buildYear() ném
+     * lỗi.
      */
     function renderDaiVanTable(inp, dv, thuan, monthCanIdx, monthChiIdx) {
         var box = document.getElementById('daiVanBody');

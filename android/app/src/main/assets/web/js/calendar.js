@@ -46,10 +46,7 @@
      * điểm đang chọn trong biến toàn cục của lunar.js, nên nếu đang chọn Paris
      * (UTC+2) thì lịch sẽ lệch một ngày (26/08/2026 hoá ra 15/7 thay vì 14/7).
      */
-    function setLunarBasis() {
-        if (typeof ShouXingUtil === 'undefined' || !ShouXingUtil.setTzOffsetHours) return;
-        ShouXingUtil.setTzOffsetHours(localTz());
-    }
+    function setLunarBasis() { Ephem.setBasis(localTz()); }
 
     /**
      * Múi giờ dùng làm mốc cho lịch âm = múi giờ của ĐỊA ĐIỂM ĐANG CHỌN, đúng
@@ -59,20 +56,12 @@
      */
     function localTz() {
         try {
-            var info = countryData[getDOM('country').value];
-            if (info && info.tzId && typeof getTimezoneOffset === 'function') {
-                var sel = selected || { y: viewY, m: viewM, d: 15 };
-                return getTimezoneOffset(info.tzId, new Date(sel.y, sel.m - 1, sel.d, 12));
-            }
-        } catch (e) {}
-        return 7;
+            var sel = selected || { y: viewY, m: viewM, d: 15 };
+            return Core.tzAt(sel.y, sel.m, sel.d);
+        } catch (e) { return 7; }
     }
     /** Trả biến toàn cục về mặc định của thư viện cho phần còn lại của ứng dụng. */
-    function clearLunarBasis() {
-        if (typeof ShouXingUtil !== 'undefined' && ShouXingUtil.setTzOffsetHours) {
-            ShouXingUtil.setTzOffsetHours(null);
-        }
-    }
+    function clearLunarBasis() { Ephem.setBasis(null); }
 
     /**
      * Đệm dự phòng, KHÔNG phải phép cộng lề — lề nay do measureChrome() đo.
@@ -158,17 +147,15 @@
      * Bối cảnh cho MỘT lượt vẽ lịch: danh sách tháng âm và mốc can chi, dựng
      * đúng một lần rồi dùng cho cả 42 ô.
      *
-     * Trước đây mỗi ô tự gọi getDOM('country'), getTimezoneOffset (Intl, đắt)
+     * Trước đây mỗi ô tự đọc ô vị trí, tự gọi getTimezoneOffset (Intl, đắt)
      * và dựng một đối tượng Lunar riêng — 42 lần mỗi lần vẽ, mà 41 lần trong
-     * đó cho ra cùng một câu trả lời.
+     * đó cho ra cùng một câu trả lời. Nay hỏi Core.location() một lần.
      */
     function buildCtx(anchorY, anchorM) {
         try {
-            if (typeof zi_months !== 'function') return null;
-            var info = countryData[getDOM('country').value];
-            if (!info || !info.tzId) return null;
-            var tz = getTimezoneOffset(info.tzId, new Date(anchorY, anchorM - 1, 15, 12));
-            return { list: zi_months(anchorY, info.lon, info.tzId, tz) };
+            var loc = Core.location();
+            if (!loc) return null;
+            return { list: Core.months(anchorY, loc.lon, loc.tzId) };
         } catch (e) { return null; }
     }
 
@@ -663,12 +650,10 @@
             typeof TK_ZH === 'undefined' || typeof TK_VI === 'undefined') return null;
 
         var sel = selected || { y: viewY, m: viewM, d: 1 };
-        var info = (typeof countryData !== 'undefined' && typeof getDOM === 'function')
-            ? countryData[getDOM('country').value] : null;
-        if (!info) return null;
-        var tzId = info.tzId;
-        var tz = (typeof getTimezoneOffset === 'function')
-            ? getTimezoneOffset(tzId, new Date(sel.y, sel.m - 1, sel.d, 12)) : 7;
+        var loc = Core.location();
+        if (!loc) return null;
+        var tzId = loc.tzId;
+        var tz = Core.tzAt(sel.y, sel.m, sel.d);
 
         // Bảng Sách Bổ ở tab Kỳ Môn được dựng khi ShouXingUtil đang ở múi giờ
         // ĐỊA PHƯƠNG (app.js đặt trước bước 8). `findJieQi` bên trong sb_findY
@@ -1120,6 +1105,12 @@
         if (typeof window.__lenhRefreshLabels === 'function') {
             try { window.__lenhRefreshLabels(); } catch (e) {}
         }
+        // ...và tab Tra cứu cũng vậy. Thiếu lời gọi này thì nhãn tab thứ tư
+        // đứng nguyên tiếng Việt ở MỌI tab cho tới khi người dùng tình cờ mở
+        // nó ra — ba tab kia đổi, một tab không, mà không ai đoán được vì sao.
+        if (typeof window.__tracuuRefreshLabels === 'function') {
+            try { window.__tracuuRefreshLabels(); } catch (e) {}
+        }
     }
     /* ─────────────── Cho tab Tra cứu ───────────────
      * Bảng Lịch âm đã chuyển sang đó, nhưng hàm dựng ở lại đây vì nó dùng
@@ -1152,13 +1143,12 @@
     function publishLunarCache() {
         if (typeof ShouXingUtil === 'undefined' || typeof Solar === 'undefined') return;
         try {
-            var tz = localTz();
             var now = new Date();
             var rows = [];
             // Lấy thẳng danh sách tháng đã chỉnh theo Chính Tý — cùng nguồn với
             // tab Lịch và tab Kỳ Môn, nên widget không thể lệch với ứng dụng.
-            var info = countryData[getDOM('country').value];
-            if (!info || !info.tzId || typeof zi_months !== 'function') return;
+            var loc = Core.location();
+            if (!loc) return;
             // Ghi cả năm nay LẪN năm sau: tháng âm cuối năm dương tràn sang năm
             // sau, mà widget lật tháng bằng ‹ › thì đi xa hơn hôm nay nhiều.
             //
@@ -1168,7 +1158,7 @@
             // rồi sắp và bỏ trùng theo JDN.
             var seen = Object.create(null), all = [];
             for (var y = now.getFullYear(); y <= now.getFullYear() + 1; y++) {
-                var list = zi_months(y, info.lon, info.tzId, tz);
+                var list = Core.months(y, loc.lon, loc.tzId);
                 for (var i = 0; i < list.length; i++) {
                     if (seen[list[i].jdn]) continue;
                     seen[list[i].jdn] = 1;
@@ -1188,13 +1178,13 @@
             // DST hai con số ấy khác nhau suốt nửa năm (Paris: 120 vs 60), nên
             // bảng của ứng dụng bị chối và widget lặng lẽ lùi về bảng đóng sẵn
             // ở mốc UTC+7 — tức là hết đồng bộ, đúng lúc không ai ngờ.
-            var payload = info.tzId + '|' + rows.join(';');
+            var payload = loc.tzId + '|' + rows.join(';');
             if (payload === lastCache) return;
             lastCache = payload;
             prefSet(K_LUNAR_CACHE, payload);
             pokeWidget();
         } catch (e) {
-            try { ShouXingUtil.setTzOffsetHours(null); } catch (e2) {}
+            try { Ephem.setBasis(null); } catch (e2) {}
         }
     }
 

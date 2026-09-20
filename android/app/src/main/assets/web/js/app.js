@@ -127,26 +127,11 @@ const arrZhiZH = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申",
 const chiVI    = ["Tý","Sửu","Dần","Mão","Thìn","Tỵ","Ngọ","Mùi","Thân","Dậu","Tuất","Hợi"];
 
 /** 24 tiết khí theo thứ tự bắt đầu từ Đông Chí */
-const TK_VI = [
-    'Đông Chí','Tiểu Hàn','Đại Hàn',
-    'Lập Xuân','Vũ Thủy','Kinh Trập',
-    'Xuân Phân','Thanh Minh','Cốc Vũ',
-    'Lập Hạ','Tiểu Mãn','Mang Chủng',
-    'Hạ Chí','Tiểu Thử','Đại Thử',
-    'Lập Thu','Xử Thử','Bạch Lộ',
-    'Thu Phân','Hàn Lộ','Sương Giáng',
-    'Lập Đông','Tiểu Tuyết','Đại Tuyết'
-];
-const TK_ZH = [
-    '冬至','小寒','大寒',
-    '立春','雨水','惊蛰',
-    '春分','清明','谷雨',
-    '立夏','小满','芒种',
-    '夏至','小暑','大暑',
-    '立秋','处暑','白露',
-    '秋分','寒露','霜降',
-    '立冬','小雪','大雪'
-];
+/* Tên 24 tiết khí nay do core.js giữ — ba tệp cùng dùng (app.js, calendar.js,
+   lenh.js) thì phải có đúng một bản. Giữ lại tên cũ ở đây vì app.js gọi chúng
+   ở vài chục chỗ. */
+const TK_VI = Core.TK_VI;
+const TK_ZH = Core.TK_ZH;
 
 // ── Computed maps (built from source arrays — không lặp data) ──
 const tietKhiMap    = Object.fromEntries(TK_ZH.map((zh, i) => [zh, TK_VI[i]]));  // ZH→VI
@@ -168,10 +153,14 @@ const dataBase = {
     zh: { tinh: ["辅", "英", "芮", "柱", "心", "蓬", "任", "冲"], mon: ["杜", "景", "死", "惊", "开", "休", "生", "伤"], thanD: ["符", "蛇", "阴", "合", "虎", "玄", "地", "天"], thanA: ["符", "天", "地", "玄", "虎", "合", "阴", "蛇"], can: ["戊", "己", "庚", "辛", "壬", "癸", "丁", "丙", "乙"], canFull: ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"] }
 };
 
-const dayToTuanThu = { "Giáp Tý": "Mậu", "Ất Sửu": "Mậu", "Bính Dần": "Mậu", "Đinh Mão": "Mậu", "Mậu Thìn": "Mậu", "Kỷ Tỵ": "Mậu", "Canh Ngọ": "Mậu", "Tân Mùi": "Mậu", "Nhâm Thân": "Mậu", "Quý Dậu": "Mậu", "Giáp Tuất": "Kỷ", "Ất Hợi": "Kỷ", "Bính Tý": "Kỷ", "Đinh Sửu": "Kỷ", "Mậu Dần": "Kỷ", "Kỷ Mão": "Kỷ", "Canh Thìn": "Kỷ", "Tân Tỵ": "Kỷ", "Nhâm Ngọ": "Kỷ", "Quý Mùi": "Kỷ", "Giáp Thân": "Canh", "Ất Dậu": "Canh", "Bính Tuất": "Canh", "Đinh Hợi": "Canh", "Mậu Tý": "Canh", "Kỷ Sửu": "Canh", "Canh Dần": "Canh", "Tân Mão": "Canh", "Nhâm Thìn": "Canh", "Quý Tỵ": "Canh", "Giáp Ngọ": "Tân", "Ất Mùi": "Tân", "Bính Thân": "Tân", "Đinh Dậu": "Tân", "Mậu Tuất": "Tân", "Kỷ Hợi": "Tân", "Canh Tý": "Tân", "Tân Sửu": "Tân", "Nhâm Dần": "Tân", "Quý Mão": "Tân", "Giáp Thìn": "Nhâm", "Ất Tỵ": "Nhâm", "Bính Ngọ": "Nhâm", "Đinh Mùi": "Nhâm", "Mậu Thân": "Nhâm", "Kỷ Dậu": "Nhâm", "Canh Tuất": "Nhâm", "Tân Hợi": "Nhâm", "Nhâm Tý": "Nhâm", "Quý Sửu": "Nhâm", "Giáp Dần": "Quý", "Ất Mão": "Quý", "Bính Thìn": "Quý", "Đinh Tỵ": "Quý", "Mậu Ngọ": "Quý", "Kỷ Mùi": "Quý", "Canh Thân": "Quý", "Tân Dậu": "Quý", "Nhâm Tuất": "Quý", "Quý Hợi": "Quý" };
+/* BA BẢNG 60 DÒNG ĐÃ BỎ — dayToTuanThu, hoaGiapToKhongVong, hoaGiapToDichMa.
+   Cả ba chỉ là một phép tính viết bung ra, mà chép tay 60 dòng là 60 chỗ gõ
+   nhầm được — nhầm một dòng thì chỉ sai đúng một ngày trong sáu mươi, không
+   ai thấy. Nay tính trong core.js (tuanThuOf · khongVongOf · dichMaOf), và
+   test_core đối chiếu hàm tính với đúng ba bảng cũ ấy, chép lại trong chính
+   phép thử. thuToTuanGiap giữ lại vì nó chỉ là bảng tên, không phải phép
+   tính — Core.tuanGiapOf() dựng thẳng chuỗi "Giáp Tý". */
 const thuToTuanGiap = { "Mậu": "Giáp Tý", "Kỷ": "Giáp Tuất", "Canh": "Giáp Thân", "Tân": "Giáp Ngọ", "Nhâm": "Giáp Thìn", "Quý": "Giáp Dần" };
-const hoaGiapToKhongVong = { "Giáp Tý": "Tuất Hợi", "Ất Sửu": "Tuất Hợi", "Bính Dần": "Tuất Hợi", "Đinh Mão": "Tuất Hợi", "Mậu Thìn": "Tuất Hợi", "Kỷ Tỵ": "Tuất Hợi", "Canh Ngọ": "Tuất Hợi", "Tân Mùi": "Tuất Hợi", "Nhâm Thân": "Tuất Hợi", "Quý Dậu": "Tuất Hợi", "Giáp Tuất": "Thân Dậu", "Ất Hợi": "Thân Dậu", "Bính Tý": "Thân Dậu", "Đinh Sửu": "Thân Dậu", "Mậu Dần": "Thân Dậu", "Kỷ Mão": "Thân Dậu", "Canh Thìn": "Thân Dậu", "Tân Tỵ": "Thân Dậu", "Nhâm Ngọ": "Thân Dậu", "Quý Mùi": "Thân Dậu", "Giáp Thân": "Ngọ Mùi", "Ất Dậu": "Ngọ Mùi", "Bính Tuất": "Ngọ Mùi", "Đinh Hợi": "Ngọ Mùi", "Mậu Tý": "Ngọ Mùi", "Kỷ Sửu": "Ngọ Mùi", "Canh Dần": "Ngọ Mùi", "Tân Mão": "Ngọ Mùi", "Nhâm Thìn": "Ngọ Mùi", "Quý Tỵ": "Ngọ Mùi", "Giáp Ngọ": "Thìn Tỵ", "Ất Mùi": "Thìn Tỵ", "Bính Thân": "Thìn Tỵ", "Đinh Dậu": "Thìn Tỵ", "Mậu Tuất": "Thìn Tỵ", "Kỷ Hợi": "Thìn Tỵ", "Canh Tý": "Thìn Tỵ", "Tân Sửu": "Thìn Tỵ", "Nhâm Dần": "Thìn Tỵ", "Quý Mão": "Thìn Tỵ", "Giáp Thìn": "Dần Mão", "Ất Tỵ": "Dần Mão", "Bính Ngọ": "Dần Mão", "Đinh Mùi": "Dần Mão", "Mậu Thân": "Dần Mão", "Kỷ Dậu": "Dần Mão", "Canh Tuất": "Dần Mão", "Tân Hợi": "Dần Mão", "Nhâm Tý": "Dần Mão", "Quý Sửu": "Dần Mão", "Giáp Dần": "Tý Sửu", "Ất Mão": "Tý Sửu", "Bính Thìn": "Tý Sửu", "Đinh Tỵ": "Tý Sửu", "Mậu Ngọ": "Tý Sửu", "Kỷ Mùi": "Tý Sửu", "Canh Thân": "Tý Sửu", "Tân Dậu": "Tý Sửu", "Nhâm Tuất": "Tý Sửu", "Quý Hợi": "Tý Sửu" };
-const hoaGiapToDichMa = { "Giáp Tý": "Dần", "Ất Sửu": "Hợi", "Bính Dần": "Thân", "Đinh Mão": "Tỵ", "Mậu Thìn": "Dần", "Kỷ Tỵ": "Hợi", "Canh Ngọ": "Thân", "Tân Mùi": "Tỵ", "Nhâm Thân": "Dần", "Quý Dậu": "Hợi", "Giáp Tuất": "Thân", "Ất Hợi": "Tỵ", "Bính Tý": "Dần", "Đinh Sửu": "Hợi", "Mậu Dần": "Thân", "Kỷ Mão": "Tỵ", "Canh Thìn": "Dần", "Tân Tỵ": "Hợi", "Nhâm Ngọ": "Thân", "Quý Mùi": "Tỵ", "Giáp Thân": "Dần", "Ất Dậu": "Hợi", "Bính Tuất": "Thân", "Đinh Hợi": "Tỵ", "Mậu Tý": "Dần", "Kỷ Sửu": "Hợi", "Canh Dần": "Thân", "Tân Mão": "Tỵ", "Nhâm Thìn": "Dần", "Quý Tỵ": "Hợi", "Giáp Ngọ": "Thân", "Ất Mùi": "Tỵ", "Bính Thân": "Dần", "Đinh Dậu": "Hợi", "Mậu Tuất": "Thân", "Kỷ Hợi": "Tỵ", "Canh Tý": "Dần", "Tân Sửu": "Hợi", "Nhâm Dần": "Thân", "Quý Mão": "Tỵ", "Giáp Thìn": "Dần", "Ất Tỵ": "Hợi", "Bính Ngọ": "Thân", "Đinh Mùi": "Tỵ", "Mậu Thân": "Dần", "Kỷ Dậu": "Hợi", "Canh Tuất": "Thân", "Tân Hợi": "Tỵ", "Nhâm Tý": "Dần", "Quý Sửu": "Hợi", "Giáp Dần": "Thân", "Ất Mão": "Tỵ", "Bính Thìn": "Dần", "Đinh Tỵ": "Hợi", "Mậu Ngọ": "Thân", "Kỷ Mùi": "Tỵ", "Canh Thân": "Dần", "Tân Dậu": "Hợi", "Nhâm Tuất": "Thân", "Quý Hợi": "Tỵ" };
 
 // Nạp Âm Ngũ Hành cho 60 Can-Chi
 const canChiToNapAm = {
@@ -273,6 +262,11 @@ const uiDict = {
         header: "NHẬP THÔNG TIN", chinhNgo: "Chính Ngọ:", gmt: "Múi giờ:",
         lunar: "Lịch âm:", viaDay: "Ngày vía:", soc: "Sóc:", baziLunar: "Bát tự (Âm):", baziSolar: "Bát tự (Dương):",
         tietkhi: "Tiết khí:", cuc: "Cục:", don: "Độn:", tuan: "Tuần thủ:",
+        trinhuanTitle: "Bảng chi tiết - Trí Nhuận pháp",
+        sachboTitle: "Bảng chi tiết - Sách Bổ pháp",
+        colSolar: "Dương lịch", colTk: "Tiết Khí", colDon: "Độn", colCuc: "Số Cục",
+        colPttn: "PTTN", kPttn: "PTTN", kTk: "TK",
+        donDuong: "Dương", donAm: "Âm", lap: "(lặp)",
         tp: "Trực Phù:", ts: "Trực Sử:", dm: "Mã:", kv: "Nạp âm:",
         donD: "Dương", donA: "Âm", solarDate: "Lịch dương:",
         methodAmBan: "Âm Bàn", methodBoPhap: "Sách Bổ", methodTriNhuan: "Trí Nhuận", coban: "Đầy đủ",
@@ -282,6 +276,13 @@ const uiDict = {
         header: "输入信息", chinhNgo: "正午时间:", gmt: "时区:",
         lunar: "农历:", viaDay: "圣诞:", soc: "朔点:", baziLunar: "八字 (农历):", baziSolar: "八字 (阳历):",
         tietkhi: "节气:", cuc: "局数:", don: "遁:", tuan: "旬首:",
+        trinhuanTitle: "置闰法明细表",
+        sachboTitle: "拆补法明细表",
+        colSolar: "阳历", colTk: "节气", colDon: "遁", colCuc: "局数",
+        // PTTN = Phù Đầu Trí Nhuận, TK = tiết khí — hai chữ tắt tiếng Việt,
+        // người đọc tiếng Trung không đoán ra. Dùng đúng chữ Hán của khái niệm.
+        colPttn: "符头", kPttn: "符头", kTk: "节气",
+        donDuong: "阳", donAm: "阴", lap: "(重)",
         tp: "值符:", ts: "值使:", dm: "马:", kv: "纳音:",
         donD: "阳", donA: "阴", solarDate: "公历:",
         methodAmBan: "阴盘", methodBoPhap: "拆补", methodTriNhuan: "置润", coban: "完整",
@@ -376,6 +377,12 @@ function toggleLang() {
     const labelMap = {
         lblChinhNgo: u.chinhNgo, lblLunarInTable: u.lunar, lblViaDay: u.viaDay,
         lblTietkhi:  u.tietkhi,  lblCuc:   u.cuc,    lblTuan: u.tuan,
+        lblTrinhuanTitle: u.trinhuanTitle, lblSachboTitle: u.sachboTitle,
+        lblTrnPttn: u.colPttn,
+        lblTrnSolar: u.colSolar, lblTrnTk: u.colTk, lblTrnDon: u.colDon, lblTrnCuc: u.colCuc,
+        lblTrnPttn1: u.kPttn + '1:', lblTrnPttn2: u.kPttn + '2:', lblTrnPttn3: u.kPttn + '3:',
+        lblTrnTk1: u.kTk + '1:', lblTrnTk2: u.kTk + '2:', lblTrnTk3: u.kTk + '3:',
+        lblSbSolar:  u.colSolar, lblSbTk:  u.colTk, lblSbDon:  u.colDon, lblSbCuc:  u.colCuc,
         lblTP:       u.tp,       lblTS:    u.ts,
         lblHienThiCoBan: u.coban,
         lblTTNamTxt:   isZH ? '年' : 'Năm',
@@ -457,6 +464,21 @@ function getDisplayCan(c) {
     return entry.type === 'full'
         ? dataBase[currentLang].canFull[entry.idx]
         : dataBase[currentLang].can[entry.idx];
+}
+
+/**
+ * "Giáp Tý" → "甲子" khi đang ở tiếng Trung; giữ nguyên ở tiếng Việt.
+ * Dùng cho bảng Trí Nhuận, nơi tên Phù Đầu là một cặp can chi viết rời.
+ */
+function getDisplayCanChi(s) {
+    if (currentLang !== 'zh') return s;
+    // Phải HỎI từng bảng chứ không chuỗi `a || b`: getDisplayCan() trả lại
+    // nguyên chữ khi tra không ra (đúng như nó phải thế cho mọi chỗ khác),
+    // nên `getDisplayCan('Tý')` ra 'Tý' — một chuỗi thật, và phép `||` dừng
+    // ngay ở đó, không bao giờ tới bảng chi.
+    return String(s).split(/\s+/)
+        .map(w => _canLookup.has(w) ? getDisplayCan(w) : (chiMapping[w] || w))
+        .join('');
 }
 
 function getDisplayChi(c) {
@@ -983,10 +1005,6 @@ function convertBeijingToLocal(solarObj, targetTz) {
     return `${pad(local.getDay())}-${pad(local.getMonth())}-${local.getYear()} ${pad(local.getHour())}:${pad(local.getMinute())}`;
 }
 
-/** Chuyển Solar object thành số YYYYMMDDHHMM để so sánh thời điểm giao tiết */
-function solarToCompareNum(s) {
-    return parseInt(`${s.getYear()}${pad(s.getMonth())}${pad(s.getDay())}${pad(s.getHour())}${pad(s.getMinute())}`);
-}
 
 /* ======================================================================
    SÓC CHÍNH XÁC ĐẾN PHÚT (Precise New Moon time)
@@ -1022,11 +1040,7 @@ function getPreciseSocSolarUTC8(roundedSolar) {
  * @param {number} jdUTC8  Julian Day theo mốc UTC+8
  * @param {string} tzId    IANA timezone id (vd 'Europe/Paris')
  */
-function _tzOffsetAtJdUTC8(jdUTC8, tzId) {
-    const jdUTC  = jdUTC8 - 8 / 24;
-    const unixMs = (jdUTC - 2440587.5) * 86400000;
-    return getTimezoneOffset(tzId, new Date(unixMs));
-}
+const _tzOffsetAtJdUTC8 = (jdUTC8, tzId) => Core.tzOffsetAtJdUTC8(jdUTC8, tzId);
 
 /**
  * Quy đổi một Julian Day chính xác (mốc UTC+8) sang giờ địa phương `tzId`,
@@ -1043,12 +1057,7 @@ function _tzOffsetAtJdUTC8(jdUTC8, tzId) {
  * @param {number} jdUTC8  Julian Day theo mốc UTC+8
  * @param {string} tzId    IANA timezone id
  */
-function _formatJdUTC8ToLocal(jdUTC8, tzId) {
-    const tz = _tzOffsetAtJdUTC8(jdUTC8, tzId);
-    const jdLocal = jdUTC8 + (tz - 8) / 24;
-    const local = Solar.fromJulianDay(jdLocal);
-    return `${pad(local.getDay())}-${pad(local.getMonth())}-${local.getYear()} ${pad(local.getHour())}:${pad(local.getMinute())}`;
-}
+const _formatJdUTC8ToLocal = (jdUTC8, tzId) => Core.fmtJdUTC8Local(jdUTC8, tzId);
 
 /**
  * Quy đổi thời điểm Sóc (UTC+8, chính xác đến phút) sang giờ địa phương,
@@ -1116,125 +1125,43 @@ function formatUTC8SolarToLocal(solarUTC8, tzId) {
    ══════════════════════════════════════════════════════════════════════ */
 
 /** Số phút kể từ 00:00 mà Chính Tý (nửa đêm mặt trời thật) rơi vào. */
-function zi_midnightMinutes(y, m, d, lon, tz) {
-    return Ephem.solarMidnightMinutes(y, m, d, lon, tz);   // có thể âm
-}
+const zi_midnightMinutes = (y, m, d, lon, tz) => Ephem.solarMidnightMinutes(y, m, d, lon, tz);
 
 /**
  * Ngày (đếm từ Chính Tý tới Chính Tý) chứa một thời điểm giờ địa phương.
  * @returns {{y:number,m:number,d:number}}
  */
-function zi_dayOf(local, lon, tzId) {
-    const y = local.getYear(), m = local.getMonth(), d = local.getDay();
-    const tz = getTimezoneOffset(tzId, new Date(y, m - 1, d, 12));
-    const t = local.getHour() * 60 + local.getMinute();
-    const shift = Math.floor((t - zi_midnightMinutes(y, m, d, lon, tz)) / 1440);
-    if (shift === 0) return { y: y, m: m, d: d };
-    const dt = new Date(y, m - 1, d + shift);
-    return { y: dt.getFullYear(), m: dt.getMonth() + 1, d: dt.getDate() };
-}
+const zi_dayOf = (local, lon, tzId) => Core.dayOf(local, lon, tzId);
 
 /** Đưa một Solar ở mốc UTC+8 về giờ địa phương (Solar, chính xác tới phút). */
-function _localSolarFromJdUTC8(jdUTC8, tzId) {
-    const tz = _tzOffsetAtJdUTC8(jdUTC8, tzId);
-    return Solar.fromJulianDay(jdUTC8 + (tz - 8) / 24);
-}
+const _localSolarFromJdUTC8 = (jdUTC8, tzId) => Core.localSolarFromJdUTC8(jdUTC8, tzId);
 
 /**
  * Mùng 1 của một tháng âm: ngày (Chính Tý → Chính Tý) chứa điểm Sóc.
  * @param {object} mo  LunarMonth từ LunarYear.getMonths()
  */
-function zi_mung1(mo, lon, tzId) {
-    return zi_mung1FromJd(mo.getFirstJulianDay(), lon, tzId);
-}
-
-/** Như zi_mung1 nhưng nhận thẳng số ngày Julius của mùng 1 đã làm tròn. */
-function zi_mung1FromJd(firstJd, lon, tzId) {
-    const socUTC8 = getPreciseSocSolarUTC8(Solar.fromJulianDay(firstJd));
-    const local = _localSolarFromJdUTC8(socUTC8.getJulianDay(), tzId);
-    return zi_dayOf(local, lon, tzId);
-}
+const zi_mung1 = (mo, lon, tzId) => Core.mung1FromJd(mo.getFirstJulianDay(), lon, tzId);
+const zi_mung1FromJd = (firstJd, lon, tzId) => Core.mung1FromJd(firstJd, lon, tzId);
 
 /** Số ngày Julius của một ngày dương lịch (Fliegel–Van Flandern). */
-function zi_jdn(y, m, d) {
-    const a = Math.floor((14 - m) / 12), yy = y + 4800 - a, mm = m + 12 * a - 3;
-    return d + Math.floor((153 * mm + 2) / 5) + 365 * yy
-        + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
-}
+const zi_jdn = (y, m, d) => Core.jdn(y, m, d);
 
 /**
  * Kinh tuyến quy chiếu cho NHÃN tháng: UTC+7 cho lịch ta, UTC+8 cho lịch Tàu.
  * Chính chỗ khác nhau này làm Tết ta và Tết Tàu thỉnh thoảng lệch một ngày.
  */
-function zi_labelBasis() {
-    return (typeof currentLang !== 'undefined' && currentLang === 'zh') ? 8 : 7;
-}
+const zi_labelBasis = () => Core.labelBasis();
 
-/**
- * Danh sách tháng âm quanh một năm dương: NHÃN lấy ở mốc quy chiếu, MỐC BẮT
- * ĐẦU neo theo Chính Tý địa phương. Trả mảng {jdn, month, year, leap} tăng dần.
- *
- * Vì sao tách đôi như vậy:
- *
- *   • "Tháng này là tháng mấy, tháng nào nhuận" là QUY ƯỚC LỊCH, không phải sự
- *     kiện thiên văn tại chỗ người dùng đứng. Nó do luật "tháng không có trung
- *     khí là tháng nhuận" quyết, và luật ấy được định tại kinh tuyến quy chiếu.
- *     Lấy nhãn ở đó thì số tháng khớp lịch in, và xác định — không trôi.
- *
- *   • "Mùng 1 rơi vào ngày dương nào" thì mới là chuyện địa phương: ngày chứa
- *     điểm Sóc, đếm từ Chính Tý.
- *
- * Trước đây hỏi lunar.js ở ngay mốc địa phương, tức để chính luật trung khí bị
- * đánh giá trên lưới nửa đêm ĐỒNG HỒ ở một offset nguyên giờ. Mà Chính Tý lại
- * xê dịch tới ~30 phút trong năm theo phương trình thời gian, nên một offset cố
- * định không diễn tả nổi nó: đo ra chừng 4–8 tháng mỗi thế kỷ đổi nhãn chỉ vì
- * mốc lệch 15–30 phút. Nay nhãn không còn phụ thuộc chuyện đó nữa.
- *
- * Ghép nhãn với mốc bắt đầu là an toàn: dãy tuần trăng giống hệt nhau ở mọi
- * mốc — đã kiểm 1900–2100, mọi mốc từ UTC−8 tới UTC+12 đều ra ĐÚNG 2486 tháng,
- * mốc bắt đầu lệch tối đa 1 ngày, không cặp nào lệch quá.
+/* ─────────────── Cầu nối sang core.js ───────────────
+ * Tám hàm zi_* và hai hàm _*JdUTC8 ở trên NAY CHỈ LÀ TÊN GỌI CŨ: ruột đã
+ * chuyển hẳn sang js/core.js, nơi cả bốn tab cùng gọi. Giữ tên lại vì chúng
+ * rải khắp app.js (và window.zi_* còn là cửa cho tab Lịch), đổi hết trong một
+ * lần là trộn hai việc vào một lần sửa. Lời giải thích đầy đủ vì sao NHÃN
+ * tháng và MỐC BẮT ĐẦU tháng phải tính ở hai mốc quy chiếu khác nhau nay nằm
+ * ở core.js, cạnh chính đoạn mã ấy.
  */
-const _ziMonthCache = new Map();
-function zi_months(gregYear, lon, tzId, tz) {
-    const basis = zi_labelBasis();
-    const key = gregYear + '|' + tzId + '|' + lon + '|' + basis;
-    if (_ziMonthCache.has(key)) return _ziMonthCache.get(key);
-    const out = [];
-    for (let ly = gregYear - 1; ly <= gregYear + 1; ly++) {
-        // Ephem nhớ theo (năm, mốc) nên ba năm liền kề không còn đá văng nhau
-        // như khi gọi thẳng LunarYear.fromYear — bộ nhớ đệm của nó chỉ giữ MỘT.
-        for (const mo of Ephem.monthsAtBasis(ly, basis)) {
-            const g = zi_mung1FromJd(mo.jd, lon, tzId);   // mốc bắt đầu: địa phương
-            out.push({
-                jdn: zi_jdn(g.y, g.m, g.d),
-                month: mo.month,                          // nhãn: mốc quy chiếu
-                year: ly, leap: mo.leap,
-            });
-        }
-    }
-    out.sort((a, b) => a.jdn - b.jdn);
-    if (_ziMonthCache.size > 24) _ziMonthCache.clear();
-    _ziMonthCache.set(key, out);
-    return out;
-}
-
-/**
- * Ngày âm lịch của một ngày dương, theo ranh giới Chính Tý.
- * @returns {{day:number,month:number,year:number,leap:boolean}|null}
- */
-function zi_lunarOf(y, m, d, lon, tzId, tz) {
-    const list = zi_months(y, lon, tzId, tz);
-    const j = zi_jdn(y, m, d);
-    let at = -1;
-    for (let i = 0; i < list.length; i++) {
-        if (list[i].jdn <= j) at = i; else break;
-    }
-    if (at < 0) return null;
-    return {
-        day: j - list[at].jdn + 1, month: list[at].month,
-        year: list[at].year, leap: list[at].leap,
-    };
-}
+const zi_months   = (gregYear, lon, tzId, tz) => Core.months(gregYear, lon, tzId);
+const zi_lunarOf  = (y, m, d, lon, tzId, tz) => Core.lunarOf(y, m, d, lon, tzId);
 window.zi_lunarOf = zi_lunarOf;
 window.zi_months = zi_months;
 window.zi_mung1 = zi_mung1;
@@ -1275,6 +1202,13 @@ const TN_PTTN_NAMES  = ['Giáp Tý','Kỷ Mão','Giáp Ngọ','Kỷ Dậu'];
 const TN_THUONG_CHI  = new Set(['子','午','卯','酉']);
 const TN_TRUNG_CHI   = new Set(['寅','申','巳','亥']);
 const TN_NGUYEN_VI   = ['Thượng nguyên','Trung nguyên','Hạ nguyên'];
+/** Bốn trường hợp xếp tiết khí của phép Trí Nhuận, hai thứ tiếng. */
+const TN_CASE = {
+    dtDau: { vi: 'Đại Tuyết đầu',  zh: '大雪在前' },
+    mcLap: { vi: 'Mang Chủng lặp', zh: '芒种重复' },
+    dtLap: { vi: 'Đại Tuyết lặp',  zh: '大雪重复' },
+    chuan: { vi: 'Chuẩn',          zh: '标准' },
+};
 
 // ── Tiện ích Julian Day ──
 
@@ -1445,7 +1379,9 @@ function tn_calcPTTN(Y, lonDeg, tzH, tzId) {
     }
     while (tkAssign.length < 25) tkAssign.push(TK_VI[tkAssign.length % 24]);
 
-    const caseStr       = b1 ? 'Đại Tuyết đầu' : b2 ? 'Mang Chủng lặp' : b3 ? 'Đại Tuyết lặp' : 'Chuẩn';
+    // Bốn tên trường hợp — tra lúc HIỆN chứ không chốt lúc tính, vì người
+    // dùng đổi ngôn ngữ mà không đổi ngày thì phép tính không chạy lại.
+    const caseKey       = b1 ? 'dtDau' : b2 ? 'mcLap' : b3 ? 'dtLap' : 'chuan';
     const caseThreshold = b1 ? D1 : b2 ? D2 : b3 ? D3 : null;
     const startPhase    = Math.floor(p1Idx / 15) % 4;
 
@@ -1457,7 +1393,7 @@ function tn_calcPTTN(Y, lonDeg, tzH, tzId) {
 
     return {
         tk1, tk2, tk3, p1Day, p2Day, p3Day,
-        D1, D2, D3, b1, b2, b3, caseStr, caseThreshold,
+        D1, D2, D3, b1, b2, b3, caseKey, caseThreshold,
         baseJD, tkAssign, dupSlots, startPhase, tyTimes, lonDeg, tzH, tzId,
 
         getSoCucAt(jdFrac, dayGanIdx, dayZhiIdx) {
@@ -1540,7 +1476,8 @@ function tn_getSoCuc(year, month, day, hour, minute, lonDeg, tzH, tzId, dayGanId
 /** Badge Dương/Âm dùng CSS class (không inline style). sm=true → don-badge-sm */
 function _donBadge(isDuong, sm) {
     const cls = sm ? 'don-badge-sm' : 'don-badge';
-    return `<span class="${cls} ${isDuong ? 'duong' : 'am'}">${isDuong ? 'Dương' : 'Âm'}</span>`;
+    const u = uiDict[currentLang === 'zh' ? 'zh' : 'vi'];
+    return `<span class="${cls} ${isDuong ? 'duong' : 'am'}">${isDuong ? u.donDuong : u.donAm}</span>`;
 }
 function _donBadgeSm(isDuong) { return _donBadge(isDuong, true); }
 
@@ -1568,7 +1505,8 @@ function tn_renderPanel(Y, lonDeg, tzH, tzId, inputJDFrac, dayGanIdx, dayZhiIdx,
     getDOM('trn-tk3').textContent   = fmtDt(data.tk3);
     getDOM('trn-d-summary').textContent =
         `D1=${data.D1}, D2=${data.D2}, D3=${data.D3}` +
-        (data.caseThreshold !== null ? ` ≥9 → ${data.caseStr}` : ` → ${data.caseStr}`);
+        (data.caseThreshold !== null ? ` ≥9 → ${TN_CASE[data.caseKey][currentLang === 'zh' ? 'zh' : 'vi']}`
+                                      : ` → ${TN_CASE[data.caseKey][currentLang === 'zh' ? 'zh' : 'vi']}`);
 
     // res truyền vào từ processAll (cache hit) — nếu thiếu thì tính lại
     if (res === undefined) res = data.getSoCucAt(inputJDFrac, dayGanIdx, dayZhiIdx);
@@ -1582,10 +1520,13 @@ function tn_renderPanel(Y, lonDeg, tzH, tzId, inputJDFrac, dayGanIdx, dayZhiIdx,
         const isDuong = TK_DUONG_DON.has(tkZh);
         const cucArr  = TK_SO_CUC[tkZh] || ['-', '-', '-'];
         const isActive = res && i + 1 === res.pttnNo;
+        const isZH = currentLang === 'zh';
+        const u = uiDict[isZH ? 'zh' : 'vi'];
         tbody.appendChild(_mkRow(isActive, i,
-            `<td style="font-weight:600;">${data.pttnName(i)}</td>` +
+            `<td style="font-weight:600;">${getDisplayCanChi(data.pttnName(i))}</td>` +
             `<td class="dp-num">${data.fmtTyLocal(i)}</td>` +
-            `<td>${tkVi}${isDup ? ' <span class="dp-dup">(lặp)</span>' : ''}</td>` +
+            `<td>${Core.tietKhiTen(tkZh, isZH)}` +
+            `${isDup ? ` <span class="dp-dup">${u.lap}</span>` : ''}</td>` +
             `<td class="dp-c">${_donBadgeSm(isDuong)}</td>` +
             `<td class="dp-cuc">${cucArr.join(' · ')}</td>`
         ));
@@ -1656,7 +1597,8 @@ function sb_renderPanel(jieQiZH, y, m, d, h, min, tz, tzId) {
         const cucArr  = TK_SO_CUC[zhName] || ['-', '-', '-'];
         const isActive = zhName === jieQiZH;
         tbody.appendChild(_mkRow(isActive, i,
-            `<td${isActive ? ' style="font-weight:700;"' : ''}>${TK_VI[i]}</td>` +
+            `<td${isActive ? ' style="font-weight:700;"' : ''}>` +
+            `${Core.tietKhiTen(zhName, currentLang === 'zh')}</td>` +
             `<td class="dp-num">${dateStrs[i] || ''}</td>` +
             `<td class="dp-c">${_donBadgeSm(isDuong)}</td>` +
             `<td class="dp-cuc">${cucArr.join(' · ')}</td>`
@@ -1786,30 +1728,7 @@ function calculateCucDon({ method, jieQiZH,
    HELPERS nội bộ của processAll — định nghĩa 1 lần, tái dùng mỗi lần gọi
    ───────────────────────────────────────────────────────────────────────── */
 
-/** Đọc thời gian UTC+8 từ input cục bộ */
-function _readInputBJ(y, m, d, h, min, tz) {
-    const dUTC = new Date(Date.UTC(y, m - 1, d, h, min) - tz * 3600000 + 8 * 3600000);
-    const solar = Solar.fromYmdHms(
-        dUTC.getUTCFullYear(), dUTC.getUTCMonth() + 1, dUTC.getUTCDate(),
-        dUTC.getUTCHours(),    dUTC.getUTCMinutes(),   dUTC.getUTCSeconds()
-    );
-    return { solarBJ: solar, dUTC };
-}
 
-/** Tính Tiết Khí chuẩn xác (sửa lỗi nhảy độn sớm) */
-function _getPrevJieQi(solarBJ, dUTC) {
-    let jqObj   = solarBJ.getLunar().getPrevJieQi(true);
-    let jqSolar = jqObj.getSolar();
-    if (solarToCompareNum(solarBJ) < solarToCompareNum(jqSolar)) {
-        const prev = new Date(dUTC.getTime() - 86400000);
-        jqObj   = Solar.fromYmdHms(
-            prev.getUTCFullYear(), prev.getUTCMonth() + 1, prev.getUTCDate(),
-            prev.getUTCHours(),    prev.getUTCMinutes(),   prev.getUTCSeconds()
-        ).getLunar().getPrevJieQi(true);
-        jqSolar = jqObj.getSolar();
-    }
-    return { jqObj, jqSolar };
-}
 
 /** Tạo HTML cho một cell thường (không phải trung cung) */
 function _buildCell(lt, res, isCoban, isZH,
@@ -2036,196 +1955,66 @@ function processAll() {
         }
 
         // ── 1. Đọc input ──
-        const y      = parseInt(getDOM('inYear').value);
-        const m      = parseInt(getDOM('inMonth').value);
-        const d      = parseInt(getDOM('inDay').value);
-        const h      = parseInt(getDOM('solarHour').value);
-        const min    = parseInt(getDOM('solarMinute').value);
+        // Ô ngày giờ và ô vị trí do Core.input() đọc (xem bước 2): bốn tab
+        // dùng chung đúng một hàng điều khiển thì cũng phải dùng chung đúng
+        // một cách đọc nó. Chỉ `method` là của riêng tab này.
         const method = getDOM('methodSelect').value;
 
-        // ── 2. Múi giờ & kinh độ ──
-        const countryKey = getDOM('country').value;
-        const info       = countryData[countryKey];
-        const tz         = getTimezoneOffset(info.tzId, new Date(y, m - 1, d, h));
-        const lon        = info.lon;
+        // ── 2–4. Múi giờ, Chính Ngọ, bốn trụ, ngày âm, tiết khí ──
+        //
+        // TẤT CẢ ở một lời gọi: Core.chart() là nơi DUY NHẤT của cả ứng dụng
+        // tính những thứ này. Trình tự mốc múi giờ bên trong nó (trụ ngày ở
+        // UTC+8, nhãn tháng ở kinh tuyến quy chiếu, ngày âm ở Chính Tý địa
+        // phương, trụ năm/tháng so với Lập Xuân cũng ở UTC+8) là phần KHÔNG
+        // ĐƯỢC XÁO của phép tính — từng bước kèm lý do trong core.js.
+        const inp   = Core.input();
+        const chart = Core.chart(inp);
+        const { y, m, d, h, mi: min, info, tz, lon } = inp;
 
-        // ── 3. Chính Ngọ (kinh độ + Equation of Time) ──
-        // Chính Ngọ lấy thẳng từ Ephem để cả ứng dụng chung một con số;
-        // eotMins suy ngược ra vì bước 4 (dịch sang giờ Mặt Trời thật) cần nó.
-        const lonOffsetMins = (lon - tz * 15) * 4;
-        const noonMins      = Ephem.solarNoonMinutes(y, m, d, lon, tz);
-        const eotMins       = 720 - lonOffsetMins - noonMins;
-        const chinhNgoStr   = `${pad(Math.floor(noonMins / 60))}:${pad(Math.floor(noonMins % 60))}`;
-        const gmtStr        = `GMT${tz >= 0 ? '+' : ''}${tz}`;
+        const { lonOffsetMins, eotMins, minutes: noonMins,
+                hhmm: chinhNgoStr, gmt: gmtStr } = chart.chinhNgo;
 
-        // ── 4. Bát Tự: Local (Chân Thái Dương) + Bắc Kinh (UTC+8) ──
-        //
-        // QUY ƯỚC THIÊN VĂN (真子時):
-        // Giờ Tý bắt đầu tại Chính Ngọ − 13h (= noonMins − 780 phút).
-        // Ngày âm lịch đổi tại thời điểm này, không phải tại nửa đêm đồng hồ.
-        // Mùng 1 của tháng bắt đầu từ Giờ Tý thiên văn của ngày Sóc, không từ điểm Sóc.
-        //
-        // SHIFT CHO lunarLocal:
-        // Để lunar.js (dùng ranh giới nửa đêm lịch) cho kết quả đúng, ta dịch
-        // exactDate sao cho ranh giới Giờ Tý (tyStartMins = noonMins − 780) ánh xạ
-        // về đúng 00:00 trong giờ đã dịch.
-        //
-        //   tyStartMins = noonMins − 780 = (720 − lonOffsetMins − eotMins) − 780
-        //               = −60 − lonOffsetMins − eotMins
-        //   shift cần = −tyStartMins (mod 1440) = 60 + lonOffsetMins + eotMins
-        //
-        // Chứng minh: tyStartMins + shift = (−60 − lonOff − eot) + (60 + lonOff + eot) = 0 ✓
-        //
-        // Lưu ý: shift này cũng tự động làm cho ranh giới "giờ Tý = 23:00 TST"
-        // trong _computeDay.dayGanExact (hm >= '23:00') vẫn đúng — vì:
-        //   TST(tyStart) = tyStart + lonOff + eot = −60 → 23:00 (mod 1440) ← bất biến.
-        //
-        // FIX: KHÔNG gọi ShouXingUtil.setTzOffsetHours(tz) trước bước này.
-        // Việc set _tzOffsetHours toàn cục TRƯỚC khi tính lunarLocal làm
-        // LunarYear.fromYear() tính lại điểm Sóc các tháng theo múi giờ
-        // địa phương, có thể đẩy điểm Sóc qua ranh giới ngày dương lịch
-        // (lệch so với mốc UTC+8 chuẩn của lịch Trung Hoa), khiến độ dài
-        // tháng âm lịch bị tính sai 29/30 ngày → ngày âm lịch hiển thị
-        // sai (ví dụ 14/6/2026 ra ngày 30 thay vì 29 khi chọn múi giờ
-        // lệch xa UTC+8 như châu Âu).
-        // → Đảm bảo _tzOffsetHours = null (mặc định UTC+8) khi tính
-        // lunarLocal/ngày-tháng-năm âm lịch của ngày hiện tại; chỉ set tz
-        // địa phương SAU bước tính baziBJ/Tiết Khí (vì solarBJ là giờ Bắc
-        // Kinh — xem ghi chú ở bước 7), dành riêng cho bảng Sóc/Tiết Khí
-        // (Sách Bổ / Âm Bàn) bên dưới.
-        ShouXingUtil.setTzOffsetHours(null);
-        const exactDate = new Date(y, m - 1, d, h, min);
-        exactDate.setMinutes(exactDate.getMinutes() + lonOffsetMins + eotMins + 60);
-        const lunarLocal = Solar.fromDate(exactDate).getLunar();
-        const baziLocal  = lunarLocal.getEightChar();
+        const solarBJ = chart.solarBJ;
+        const baziBJ  = chart._baziBJ;
 
-        // NGÀY ÂM LỊCH tính ở mốc múi giờ ĐỊA PHƯƠNG, không phải UTC+8.
-        //
-        // Quy tắc của lịch âm: mùng 1 là ngày CHỨA điểm Sóc. "Ngày" nào thì
-        // tuỳ mốc quy chiếu — và mốc ấy phải trùng với mốc dùng để HIỆN giờ
-        // Sóc, nếu không một màn hình có hai hệ quy chiếu. Đúng lỗi này:
-        // ở Paris, Sóc hiện 12/08/2026 19:37 (giờ Paris) trong khi mùng 1
-        // lại là 13/08 (vì tính ở UTC+8, nơi Sóc rơi vào 13/08 00:37).
-        //
-        // Ghi chú cũ ở đây cảnh báo rằng đặt mốc địa phương làm hỏng độ dài
-        // tháng 29/30. Đã kiểm lại: KHÔNG đúng. Quét 2020–2035 ở các mốc từ
-        // UTC−8 tới UTC+12, mọi tháng đều 29 hoặc 30 ngày, số ngày âm liên
-        // tục, và mùng 1 luôn chứa Sóc (198/198 tháng mỗi mốc).
-        //
-        // Chỉ đổi NGÀY ÂM LỊCH. Năm/Tháng Can Chi vẫn lấy từ baziBJ (đổi tại
-        // Lập Xuân và các mốc Tiết, so với solarBJ ở giờ Bắc Kinh) và tiết khí
-        // vẫn tính ở mốc UTC+8 — đó là lý do thật của ghi chú cũ, và nó vẫn
-        // đúng: trộn solarBJ giờ Bắc Kinh với mốc Lập Xuân giờ địa phương thì
-        // Can Chi năm/tháng lệch hẳn.
-        ShouXingUtil.setTzOffsetHours(tz);
-        const lunarDisp = Solar.fromDate(exactDate).getLunar();
-        ShouXingUtil.setTzOffsetHours(null);
-
-        // …và mốc bắt đầu tháng còn phải chỉnh theo CHÍNH TÝ nữa: mùng 1 là
-        // ngày chứa điểm Sóc, đếm từ nửa đêm mặt trời thật chứ không phải
-        // 00:00 đồng hồ (xem khối "RANH GIỚI NGÀY ÂM LỊCH" ở trên).
-        // exactDate đã là giờ mặt trời thật nên hỏi bằng chính ngày dương đang
-        // xét: trụ ngày của nó cũng lấy từ mốc giờ Tý ấy.
-        const ziDay = zi_dayOf(Solar.fromYmdHms(y, m, d, h, min, 0), lon, info.tzId);
-        const ziLunar = zi_lunarOf(ziDay.y, ziDay.m, ziDay.d, lon, info.tzId, tz);
-
-        // FIX: _readInputBJ() trả về solarBJ ở GIỜ BẮC KINH (UTC+8) — Năm/Tháng
-        // Can Chi (baziBJ.getYearGan/Zhi, getMonthGan/Zhi) phụ thuộc vào việc so
-        // sánh solarBJ với mốc Lập Xuân (yearGanIndexByLiChun/Exact trong
-        // _computeYear), và mốc Lập Xuân đó được lấy từ
-        // LunarYear.getJieQiJulianDays() — vốn được tính theo _tzOffsetHours
-        // toàn cục. Nếu _tzOffsetHours = tz (múi giờ địa phương, có thể lệch xa
-        // UTC+8, ví dụ Paris +2 vs Bắc Kinh +8 = lệch 6h), mốc Lập Xuân/Tiết Khí
-        // sẽ bị tính theo giờ địa phương trong khi solarBJ vẫn là giờ Bắc Kinh
-        // → so sánh lệch múi giờ, có thể đẩy sai ngày-tháng Can Chi năm/tháng
-        // hoặc chọn sai jieQiZH (tiết khí hiện tại) gần ranh giới giao tiết.
-        // → Giữ _tzOffsetHours = null (UTC+8) cho cả baziBJ và _getPrevJieQi.
-        const { solarBJ, dUTC } = _readInputBJ(y, m, d, h, min, tz);
-        const baziBJ  = solarBJ.getLunar().getEightChar();
-        // Ngày-tháng-năm âm lịch (hiển thị + cục Âm Bàn + bảng Sóc) lấy bản đã
-        // chỉnh theo Chính Tý; baziLocal vẫn dùng lunarLocal (can chi ngày là chu
-        // kỳ 60 ngày liên tục, không phụ thuộc mốc này).
-        // ziLunar chỉ null khi lunar.js không dựng nổi danh sách tháng — lúc ấy
-        // lùi về bản mốc địa phương còn hơn là hỏng cả trang.
-        const lunar = ziLunar ? {
-            getDay:   () => ziLunar.day,
-            getMonth: () => ziLunar.leap ? -ziLunar.month : ziLunar.month,
-            getYear:  () => ziLunar.year,
-        } : lunarDisp;
-
-        // Đối tượng bazi tổng hợp (Năm/Tháng từ BJ, Ngày/Giờ từ Local).
-        // Giờ Can/Chi (getTimeGan/Zhi/getTime) được ghi đè bằng giá trị thiên văn
-        // ở bước 5 bên dưới (sau khi tính astTimeZhiIdx).
+        // `lunar` và `bazi` giữ nguyên hình dạng cũ (các hàm get*) vì chúng
+        // đi tiếp vào cả chục chỗ phía dưới; ruột thì lấy thẳng từ chart.
+        const lunar = {
+            getDay:   () => chart.lunar.day,
+            getMonth: () => chart.lunar.leap ? -chart.lunar.month : chart.lunar.month,
+            getYear:  () => chart.lunar.year,
+        };
         const bazi = {
-            getYearGan:  () => baziBJ.getYearGan(),    getYearZhi:  () => baziBJ.getYearZhi(),
-            getMonthGan: () => baziBJ.getMonthGan(),   getMonthZhi: () => baziBJ.getMonthZhi(),
-            getDayGan:   () => baziLocal.getDayGan(),  getDayZhi:   () => baziLocal.getDayZhi(),
-            getTimeGan:  () => bazi._astTimeGan,       getTimeZhi:  () => bazi._astTimeZhi,
-            getYear:     () => baziBJ.getYear(),       getMonth:    () => baziBJ.getMonth(),
-            getDay:      () => baziLocal.getDay(),     getTime:     () => bazi._astTime,
-            _astTimeGan: null, _astTimeZhi: null, _astTime: null
+            getYearGan:  () => chart.ganZH[0], getYearZhi:  () => chart.chiZH[0],
+            getMonthGan: () => chart.ganZH[1], getMonthZhi: () => chart.chiZH[1],
+            getDayGan:   () => chart.ganZH[2], getDayZhi:   () => chart.chiZH[2],
+            getTimeGan:  () => chart.ganZH[3], getTimeZhi:  () => chart.chiZH[3],
+            getYear:  () => chart.ganZH[0] + chart.chiZH[0],
+            getMonth: () => chart.ganZH[1] + chart.chiZH[1],
+            getDay:   () => chart.ganZH[2] + chart.chiZH[2],
+            getTime:  () => chart.ganZH[3] + chart.chiZH[3],
         };
 
         // ── 5. Can/Chi cần dùng ──
-        // FIX: Năm Can Chi (yearGanHan/yearZhiHan) và Tháng Can Chi
-        // (monthGanHan/monthZhiHan) dùng theo Bát Tự CHUẨN — đổi năm/tháng
-        // tại các mốc TIẾT (Lập Xuân cho năm; 12 Tiết trong 24 tiết khí cho
-        // tháng) — KHÔNG đổi tại mốc Sóc (mùng 1 âm lịch/Tết).
         //
-        // Trước đây yearGanHan/yearZhiHan = lunar.getYearGan/Zhi() (theo
-        // Sóc/Tết) còn dayGanHan/dayZhiHan/timeGanHan/timeZhiHan lại lấy từ
-        // `bazi` (đúng Bát Tự). Khoảng ~13 ngày mỗi năm — từ Lập Xuân
-        // (~4/2) đến Tết (mùng 1 tháng Giêng) — hai mốc này LỆCH NHAU 1 năm
-        // Can Chi (vd 2026: 04/02-16/02 Lập Xuân đã sang Bính Ngọ nhưng Sóc
-        // vẫn còn Ất Tỵ), khiến canChiNam hiển thị sai VÀ cuc (Âm Bàn Pháp,
-        // dùng chiToStt[yearZhiHan]) bị tính sai trong khoảng đó.
-        //
-        // Tương tự, monthGanHan/monthZhiHan trước đây tính từ lunarMonthNum
-        // (số tháng âm lịch theo Sóc) qua công thức Ngũ Hổ Độn — sai khác
-        // với chuẩn Bát Tự (đổi tháng tại mốc Tiết) trong ~23% số ngày mỗi
-        // năm (ngay sau mỗi lần giao Tiết).
-        // → Dùng trực tiếp baziBJ.getYearGan/Zhi() và
-        // baziBJ.getMonthGan/Zhi() (đã có sẵn, tính theo Lập Xuân/Tiết).
-        //
-        // Lưu ý: lunar.getYear()/getMonth()/getDay() (Sóc-based) VẪN được
-        // giữ nguyên cho phần "ngày-tháng-năm ÂM LỊCH" hiển thị
-        // (lunarMonthNum, socStr...) — đó là quy ước lịch âm
-        // dân gian đúng, không đổi.
-        const yearGanHan = baziBJ.getYearGan(), yearZhiHan = baziBJ.getYearZhi();
-        const dayGanHan  = bazi.getDayGan(),    dayZhiHan  = bazi.getDayZhi();
-
-        // Chỉ số Can năm (0=Giáp…9=Quý), lộ ra cho tab Lệnh: tuổi nhập đại
-        // vận đi thuận hay nghịch phụ thuộc CHẴN/LẺ của can năm chéo với
-        // giới tính (xem js/lenh.js, daiVanTuoi/chieuThuanNghich). Cùng một
-        // biến này đổi mỗi lần processAll() chạy, đúng lúc mọi tab khác cũng
-        // vẽ lại — không cần tính riêng.
-        window.__yearGanIdx = arrGanZH.indexOf(yearGanHan);
-
-        // ── Giờ Tý thiên văn (真子時) ──
-        // Giờ Tý bắt đầu tại noonMins − 780 (Chính Ngọ − 13h).
-        // Mỗi thời辰 = 120 phút thực, tính từ ranh giới Giờ Tý này.
-        // Index: 0=子 Tý, 1=丑 Sửu, …, 11=亥 Hợi.
-        const tyStartMins    = noonMins - 780;
-        const inputMins      = h * 60 + min;
-        const astTimeZhiIdx  = Math.floor(((inputMins - tyStartMins) % 1440 + 1440) % 1440 / 120) % 12;
-        // Can giờ: công thức Ngũ Thử Độn — (dayGanIndexExact % 5 × 2 + zhiIdx) % 10
-        const dayGanIdxExact = arrGanZH.indexOf(dayGanHan);
-        const astTimeGanIdx  = (dayGanIdxExact % 5 * 2 + astTimeZhiIdx) % 10;
-        const timeZhiHan     = arrZhiZH[astTimeZhiIdx];
-        const timeGanHan     = arrGanZH[astTimeGanIdx];
-        // Ghi vào bazi để Tứ Trụ panel và getTime() dùng đúng giá trị thiên văn
-        bazi._astTimeGan = timeGanHan;
-        bazi._astTimeZhi = timeZhiHan;
-        bazi._astTime    = timeGanHan + timeZhiHan;
+        // Bốn trụ lấy NGUYÊN từ chart — không tab nào tự dựng lại. Ba điều mà
+        // core.js chốt và ở đây chỉ việc đọc:
+        //   · trụ NĂM và trụ THÁNG đổi tại mốc TIẾT (Lập Xuân, rồi 12 Tiết),
+        //     KHÔNG đổi tại Sóc — khoảng 13 ngày mỗi năm hai mốc ấy lệch nhau
+        //     trọn một can chi năm;
+        //   · trụ NGÀY theo chu kỳ 60 ngày liên tục ở mốc UTC+8;
+        //   · trụ GIỜ theo giờ Tý THIÊN VĂN (đầu giờ Tý = Chính Ngọ − 13h,
+        //     mỗi thời thần 120 phút), can giờ theo Ngũ Thử Độn.
+        // Còn lunar.getYear/Month/Day() vẫn là ngày-tháng-năm ÂM LỊCH theo
+        // Sóc — quy ước lịch dân gian, khác hẳn trụ, và cố ý khác.
+        const yearGanHan = chart.ganZH[0], yearZhiHan = chart.chiZH[0];
+        const dayGanHan  = chart.ganZH[2], dayZhiHan  = chart.chiZH[2];
+        const timeGanHan = chart.ganZH[3], timeZhiHan = chart.chiZH[3];
+        const astTimeZhiIdx = chart.chi[3];
 
         const lunarMonthNum = Math.abs(lunar.getMonth());
-        const monthGanHan   = baziBJ.getMonthGan();
-        const monthZhiHan   = baziBJ.getMonthZhi();
-
-        // Chỉ số Can THÁNG (0=Giáp…9=Quý), lộ ra cho tab Lệnh — cùng lý do
-        // và cùng nhịp với window.__yearGanIdx ở trên: trụ tháng đang cầm
-        // đại vận đầu tiên tính LÙI hoặc TIẾN một bước từ đúng trụ này.
-        window.__monthGanIdx = arrGanZH.indexOf(monthGanHan);
+        const monthGanHan   = chart.ganZH[1];
+        const monthZhiHan   = chart.chiZH[1];
 
         // ── 6. Tứ Trụ panel ──
         updateTuTru(bazi.getYear(), bazi.getMonth(), bazi.getDay(), bazi.getTime());
@@ -2235,14 +2024,16 @@ function processAll() {
         getDOM('ttValGio').textContent   = `${pad(h)}:${pad(min)}`;
 
         // ── 7. Tiết Khí ──
-        const { jqObj: jieQiObj, jqSolar } = _getPrevJieQi(solarBJ, dUTC);
-        const jieQiZH = jieQiObj.getName();
+        // Cũng từ chart: mốc vào tiết là Solar ở UTC+8, quy sang giờ địa
+        // phương lúc HIỆN chứ không lúc tính (xem nhapTiet ở bước 11).
+        const jqSolar = chart.tietKhi.solarUTC8;
+        const jieQiZH = chart.tietKhi.zh;
 
-        // OPT-3-FULL: thiết lập múi giờ toàn cục cho ShouXingUtil SAU khi đã
-        // tính xong lunarLocal/baziBJ/jieQiZH (tất cả ở mốc UTC+8) — đảm bảo
-        // bảng tiết khí (sách bổ) và bảng sóc (âm bàn) dùng múi giờ địa phương
-        // thực, không còn cố định UTC+8.
-        ShouXingUtil.setTzOffsetHours(tz);
+        // Mốc múi giờ toàn cục của lunar.js chuyển sang ĐỊA PHƯƠNG kể từ đây,
+        // và chỉ từ đây: mọi thứ ở trên (bốn trụ, ngày âm, tiết khí đang giữ)
+        // đã tính xong trong Core ở đúng mốc của nó. Hai bảng còn lại —
+        // tiết khí của Sách Bổ và Sóc của Âm Bàn — thì phải ở mốc địa phương.
+        Ephem.setBasis(tz);
 
         // ── 8. Số Cục + Âm/Dương Độn ──
         const inputJDFrac = tn_dateToJD(y, m, d) + h / 24 + min / 1440;
@@ -2259,20 +2050,22 @@ function processAll() {
             trinhuanResult
         });
 
-        // ── 9. Tuần Thủ, Không Vong, Dịch Mã ──
+        // ── 9. Tuần Thủ, Không Vong, Dịch Mã — TÍNH, không tra bảng ──
+        // Cả ba suy từ TRỤ GIỜ và chỉ từ đó, nên core.js dựng sẵn trong
+        // `chart` để tab nào cần cũng có, không ai phải chép lại bảng.
         const canGioRaw   = mapToVi[timeGanHan];
         const canChiGio   = `${canGioRaw} ${mapToVi[timeZhiHan]}`;
-        const canTuan     = dayToTuanThu[canChiGio];
+        const canTuan     = chart.tuanThu;
         const canChiNam   = `${mapToVi[yearGanHan]} ${mapToVi[yearZhiHan]}`;
         const canChiThang = `${mapToVi[monthGanHan]} ${mapToVi[monthZhiHan]}`;
         const canChiNgay  = `${mapToVi[dayGanHan]} ${mapToVi[dayZhiHan]}`;
-        const kvStr       = hoaGiapToKhongVong[canChiGio];
-        const dmChi       = hoaGiapToDichMa[canChiGio];
+        const kvStr       = chart.khongVongChi.map(i => Core.CHI_VI[i]).join(' ');
+        const dmChi       = Core.CHI_VI[chart.dichMaChi];
 
         const isZH    = currentLang === 'zh';
         const isCoban = getDOM('mainBody').classList.contains('coban-mode');
 
-        const tuanGiapVi     = thuToTuanGiap[canTuan];
+        const tuanGiapVi     = chart.tuanGiap;
         const displayTuanThu = isZH
             ? `${arrGanZH[0]}${chiMapping[tuanGiapVi.split(' ')[1]]} (${arrGanZH[dataBase.vi.canFull.indexOf(canTuan)]})`
             : `${tuanGiapVi} (${canTuan})`;
@@ -2354,9 +2147,10 @@ function processAll() {
 
         // ── 12. Vẽ bàn KMDG ──
         const canGioSoSanh   = mapToVi[timeGanHan]  === 'Giáp' ? canTuan                   : mapToVi[timeGanHan];
-        const canNamSoSanh   = mapToVi[yearGanHan]  === 'Giáp' ? dayToTuanThu[canChiNam]   : mapToVi[yearGanHan];
-        const canNgaySoSanh  = mapToVi[dayGanHan]   === 'Giáp' ? dayToTuanThu[canChiNgay]  : mapToVi[dayGanHan];
-        const canThangSoSanh = mapToVi[monthGanHan] === 'Giáp' ? dayToTuanThu[canChiThang] : mapToVi[monthGanHan];
+        const thu = (i) => Core.tuanThuOf(chart.gan[i], chart.chi[i]);
+        const canNamSoSanh   = mapToVi[yearGanHan]  === 'Giáp' ? thu(0) : mapToVi[yearGanHan];
+        const canNgaySoSanh  = mapToVi[dayGanHan]   === 'Giáp' ? thu(2) : mapToVi[dayGanHan];
+        const canThangSoSanh = mapToVi[monthGanHan] === 'Giáp' ? thu(1) : mapToVi[monthGanHan];
         const hlCanThien     = canGioRaw === 'Giáp' ? canTuan : canGioRaw;
 
         const kvLtSet   = new Set(kvStr ? kvStr.split(' ').map(chi => chiToLT[chi]) : []);

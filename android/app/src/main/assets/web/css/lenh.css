@@ -90,19 +90,30 @@ body.view-lenh #qmRow #lenhRuleText {
    lenh.js, đỡ phải sửa hai chỗ. */
 #lenhNow {
     box-sizing: border-box;
-    text-align: center;
-    font-size: clamp(12.5px, 3.4vw, 14px);
+    font-size: clamp(11px, 3.1vw, 13px);
     font-weight: 400;
     color: var(--text-main, #000);
     border: var(--border-panel, 1px solid #ddd);
     border-radius: var(--panel-radius, 8px);
     background: var(--bg-white, #fff);
-    padding: 3px 10px;
+    padding: 3px 8px;
     margin-bottom: 3px;
 }
+/* Hộp này nay dùng CHÍNH khung của hộp thông tin tab Kỳ Môn (.info-line
+   .info-pair .lbl .val-norm trong app.css) — bốn mẩu, hai dòng, mỗi dòng hai
+   ô chia đều. Chỉ chỉnh ba chỗ cho hợp khung hẹp hơn của tab Bát Tự:
+
+   · bỏ `text-align: center` của bản một dòng — bốn ô canh trái mới thẳng cột;
+   · vạch đứt giữa hai dòng mảnh lại và khe dọc bớt đi (hộp này chỉ cao chừng
+     34px, vạch của hộp Kỳ Môn dày quá so với nó);
+   · cỡ chữ hạ một nấc: bốn mẩu trong một hộp rộng bằng nửa hộp Kỳ Môn. */
+#lenhNow .info-line { margin: 1px 0; gap: 6px; }
+#lenhNow .info-line + .info-line { margin-top: 2px; }
+#lenhNow .lbl { font-weight: 600; }
+#lenhNow .val-norm { color: var(--text-main, #000); }
 #lenhNow b {
     font-size: inherit;
-    font-weight: inherit;
+    font-weight: 600;
     color: inherit;
 }
 
