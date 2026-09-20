@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Kiểm thử headless cho phần web đóng gói trong app Android.",
   "scripts": {
-    "test": "node test_astro.mjs && node test_app.mjs && node test_core.mjs",
+    "test": "node test_astro.mjs && node test_app.mjs && node test_core.mjs && node test_astro_ref.mjs",
     "test:ui": "node test_responsive.mjs && node test_a51_s21fe.mjs && node test_shared_bar.mjs && node test_cal_sections.mjs && node test_lenh.mjs && node test_thansat.mjs && node test_zh_ui.mjs"
   },
   "devDependencies": {

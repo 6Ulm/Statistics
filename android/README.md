@@ -1875,6 +1875,91 @@ Cộng với: hàm tính khớp **đúng ba bảng cũ ấy** (chép nguyên vă
 làm mốc — mốc mà lấy từ chính thứ đang kiểm thì không phải mốc), và **một lá số
 bốn tab** phải cho cùng những con số ấy, trùng khít từng ký tự.
 
+## Độ chuẩn thiên văn — đối chiếu PyEphem
+
+Câu hỏi "bộ tính có chuẩn không" khác hẳn câu hỏi "dọn mã có làm xê dịch gì
+không", nên `tools/test_astro_ref.mjs` trả lời riêng từng câu.
+
+### A. So với một thư viện độc lập
+
+PyEphem (dựng trên XEphem: VSOP87 cho Mặt Trời, ELP2000 cho Mặt Trăng) không
+dính dáng gì tới repo này; lunar.js thì dùng chuỗi rút gọn khớp bảng DE423. Hai
+đường tính khác hẳn nhau, nên khớp được là khớp thật. Mốc tham chiếu nằm sẵn ở
+`tools/refdata/astro_ref.json`, sinh bằng `tools/refdata/gen_ref.py`.
+
+**Phải tách ΔT ra trước khi so.** ΔT là hiệu giữa thời gian nguyên tử và vòng
+quay thật của Trái Đất — **đo được** cho quá khứ, chỉ **đoán được** cho tương
+lai. Hai thư viện dùng hai bộ đa thức khác nhau:
+
+| năm | lunar.js | PyEphem | chênh |
+|---|---|---|---|
+| 1900 | −1,78s | −1,58s | 0,20s |
+| 1991 | 58,16s | 58,29s | 0,13s |
+| 2000 | 63,97s | 64,08s | 0,11s |
+| **2026** | **68,98s** | **74,61s** | **5,64s** |
+| 2050 | 72,04s | 109,94s | 37,90s |
+| 2100 | 128,47s | 227,61s | 99,14s |
+
+Tới ~2030 hai bên gần như trùng. Sau đó chúng rẽ nhau, và **ở mốc 2026 thì
+lunar.js mới là bộ sát thực tế hơn**. ΔT của hôm nay không phải đoán, nó tính
+thẳng ra được:
+
+```
+ΔT = 32,184 + (TAI − UTC) − DUT1
+   = 32,184 + 37 − DUT1          (chưa có giây nhuận nào kể từ 2017)
+   ≈ 69,2 s                       (DUT1 quanh 0 suốt 2025–2026)
+```
+
+Tức lunar.js lệch ~0,2s còn PyEphem lệch ~5,4s. Nhiều khả năng vì bộ đa thức
+của XEphem được khớp từ trước khi Trái Đất quay nhanh lên mấy năm gần đây —
+nhưng dù lý do là gì, đây là điểm cần nhớ khi đọc bảng: **PyEphem là mốc đối
+chiếu độc lập, không phải chân lý.**
+
+Khử ΔT ra rồi, phần **thiên văn thuần tuý** khớp thế này (1900–2100):
+
+| đại lượng | lệch tối đa | tương đương |
+|---|---|---|
+| Chính Ngọ | **0,25s** | — |
+| Sóc | **1,74s** | — |
+| Vọng | **1,99s** | — |
+| Tiết khí | **15,94s** | 0,65″ hoàng kinh |
+
+Tiết khí "tệ" hơn ba cái kia vì 16 giây chuyển động của Mặt Trời chỉ là **0,65
+giây cung** — dưới một phần nghìn của một phút hiển thị.
+
+### B. Hệ quả thật: có đổi được con số nào trên màn không?
+
+Ngày âm lịch đổi tại **Chính Tý**, nên mùng 1 chỉ xê dịch nếu điểm Sóc rơi sát
+mốc ấy. Quét mọi tuần trăng của bộ tham chiếu × bốn nơi:
+
+* **thời kỳ ΔT đo được (≤ 2030)**: điểm Sóc gần Chính Tý nhất còn cách **9,6
+  phút** — xa hơn mọi sai số nói trên hai bậc, nên hai bộ tính không thể cho
+  hai mùng 1 khác nhau;
+* **thời kỳ ΔT phải đoán**: đúng **một** ca sát ranh trong cả bộ mẫu — Sóc
+  ngày 2100/4/9 16:15:57 UTC, ở Asia/Shanghai chỉ cách Chính Tý **12 giây**.
+  Ở đó chênh ΔT đổi được mùng 1 một ngày. Đây **không phải lỗi**: ΔT của năm
+  2100 chưa ai biết, và như bảng trên, bộ của lunar.js còn đáng tin hơn.
+
+Phép thử canh đúng hai điều ấy — không ca sát ranh nào trước 2050, và thời kỳ
+đo được thì sạch — chứ không giấu ca 2100 bằng một dung sai rộng tay.
+
+### C. Dọn mã không làm xê dịch gì
+
+Nhóm B của phép thử dựng **hai trang cùng lúc**: bản trước khi gom phép tính về
+`core.js` (lấy bằng `git archive`) và bản bây giờ. Cùng một dải tham số, so
+từng con số:
+
+| đại lượng | số mẫu | kết quả |
+|---|---|---|
+| tiết khí | 4800 (200 năm) | trùng khít |
+| Sóc | 2460 | trùng khít |
+| Vọng | 2460 | trùng khít |
+| Chính Ngọ | 240 | trùng khít |
+| ngày âm lịch | 5376 (4 năm × 4 nơi × mọi ngày) | trùng khít |
+
+Không có bản cũ (máy không có git, hoặc lịch sử đã đổi) thì nhóm B tự bỏ qua và
+nói rõ, chứ không đỏ.
+
 ## Engine thiên văn dùng chung (`js/ephem.js`)
 
 Tab Kỳ Môn và tab Lịch cần cùng những mốc thiên văn — Sóc, Vọng, tiết khí,
