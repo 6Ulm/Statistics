@@ -177,7 +177,8 @@ def get_go_files(go_folder):
 
 
 def score_ot_plan(plan, go_files, aggregation="mass", *, block_detection="coclustered",
-                  eta=None, R=20, seed=0, nmf_backend='auto', nmf_device='cpu', nmf_dtype='float64'):
+                  eta=None, R=20, seed=0, nmf_backend='auto', nmf_device='cpu', nmf_dtype='float64',
+                  nmf_max_iter=500, nmf_tol=1e-5):
     """Return (Q, S, block_scores). The plan is the only data input.
 
     Q is the original GO score; S = Q - mean(Q_shuffled).
@@ -247,8 +248,12 @@ def score_ot_plan(plan, go_files, aggregation="mass", *, block_detection="coclus
     Both start from hard BRIM cores, use that core count as initial rank,
     and threshold per-gene component mass at eta times its strongest mass.
     seed also controls their small positive initialization; fits are shared
-    across eta/aggregation/R, capped at 500 iterations with tolerance 1e-5.
-    The table's nmf_fit attribute reports convergence and objective history.
+    across eta/aggregation/R. nmf_max_iter (default 500) caps the iterations
+    and nmf_tol (default 1e-5) is the relative objective decrease over five
+    updates below which the fit stops; a smaller nmf_tol is stricter. Both
+    apply only to NMF detectors and are part of the fit cache key.
+    The table's nmf_fit attribute reports convergence and objective history;
+    check nmf_fit['converged'], since hitting the cap leaves it False.
     nmf_backend='auto' uses compiled sparse CPU updates when a C compiler is
     available, otherwise NumPy. Use 'numpy' for the original reference or
     'native' to require compiled updates. nmf_device='cuda' selects optional
@@ -315,8 +320,16 @@ def score_ot_plan(plan, go_files, aggregation="mass", *, block_detection="coclus
         raise ValueError("aggregation must be 'mass' or 'uniform'")
     if nmf_backend not in {'auto','numpy','native','torch'}:
         raise ValueError("nmf_backend must be 'auto', 'numpy', 'native', or 'torch'")
-    if (nmf_backend,nmf_device,nmf_dtype)!=('auto','cpu','float64') and block_detection not in {'kl_nmf','bayesian_nmf'}:
-        raise ValueError('nmf_backend/device/dtype only apply to NMF detectors')
+    if (isinstance(nmf_max_iter, (bool, np.bool_)) or not isinstance(nmf_max_iter, (int, np.integer))
+            or nmf_max_iter < 1):
+        raise ValueError('nmf_max_iter must be a positive integer')
+    if (isinstance(nmf_tol, (bool, np.bool_)) or not isinstance(nmf_tol, (int, float, np.integer, np.floating))
+            or not np.isfinite(nmf_tol) or nmf_tol <= 0):
+        raise ValueError('nmf_tol must be a finite positive number')
+    nmf_options = (nmf_backend, nmf_device, nmf_dtype, int(nmf_max_iter), float(nmf_tol))
+    default_nmf_options = ('auto', 'cpu', 'float64', 500, 1e-5)
+    if nmf_options != default_nmf_options and block_detection not in {'kl_nmf','bayesian_nmf'}:
+        raise ValueError('nmf_backend/device/dtype/max_iter/tol only apply to NMF detectors')
     if block_detection not in {"coclustered", "adaptive", "hard_brim", "soft_brim", "brim", "lpawb", "modularity", "kl_nmf", "bayesian_nmf"}:
         raise ValueError("block_detection must be 'adaptive', 'hard_brim', 'soft_brim', 'lpawb', 'coclustered', 'kl_nmf', or 'bayesian_nmf'; 'brim' and 'modularity' alias 'hard_brim'")
     if block_detection in {'soft_brim', 'kl_nmf', 'bayesian_nmf'}:
@@ -351,7 +364,7 @@ def score_ot_plan(plan, go_files, aggregation="mass", *, block_detection="coclus
         cache_key = (method_name, eta if method_name in {"soft_brim", "kl_nmf", "bayesian_nmf"} else None,
                      int(seed) if method_name in {"lpawb", "kl_nmf", "bayesian_nmf"} else None, plan_key)
         if method_name in {'kl_nmf','bayesian_nmf'}:
-            cache_key += (nmf_backend,nmf_device,nmf_dtype)
+            cache_key += nmf_options
         cached = getattr(evaluator, "_last_detected", None)
         if cached is not None and cached[0] == cache_key:
             return cached[1]
@@ -375,14 +388,15 @@ def score_ot_plan(plan, go_files, aggregation="mass", *, block_detection="coclus
                     cache = (plan_key, {})
                     evaluator._nmf_fits = cache
                 fit_key = (method_name, int(seed))
-                if (nmf_backend,nmf_device,nmf_dtype)!=('auto','cpu','float64'):
-                    fit_key += (nmf_backend,nmf_device,nmf_dtype)
+                if nmf_options != default_nmf_options:
+                    fit_key += nmf_options
                 if fit_key not in cache[1]:
                     # Bound memory even if a caller tries many seeds.
                     if len(cache[1]) >= 2:
                         cache[1].pop(next(iter(cache[1])))
                     cache[1][fit_key] = fit_nmf(array, method=method_name, cores=cores, seed=seed,
-                        backend=nmf_backend,device=nmf_device,dtype=nmf_dtype)
+                        backend=nmf_backend,device=nmf_device,dtype=nmf_dtype,
+                        max_iter=int(nmf_max_iter),tol=float(nmf_tol))
                 found = blocks_from_fit(array, cache[1][fit_key], eta)
             else:
                 found = cores if method_name == 'hard_brim' else _expand_brim_cores(array, cores, eta, include_blocks=False)
@@ -420,8 +434,7 @@ def score_ot_plan(plan, go_files, aggregation="mass", *, block_detection="coclus
     result["blocks"].attrs["eta"] = eta
     if block_detection in {'kl_nmf', 'bayesian_nmf'}:
         fitted = getattr(evaluator, '_nmf_fits', None)
-        options=(nmf_backend,nmf_device,nmf_dtype)
-        fit_key = (block_detection, int(seed)) + (() if options==('auto','cpu','float64') else options)
+        fit_key = (block_detection, int(seed)) + (() if nmf_options==default_nmf_options else nmf_options)
         if fitted is not None and fit_key in fitted[1]:
             result['blocks'].attrs['nmf_fit'] = dict(fitted[1][fit_key]['details'])
     return (float(result["summary"]["raw_biological_score"]),
