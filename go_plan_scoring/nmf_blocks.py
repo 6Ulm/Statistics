@@ -11,7 +11,7 @@ adaptation, not a literal count likelihood or a posterior uncertainty estimate.
 from time import perf_counter
 import numpy as np
 from scipy import sparse
-from extract_dense_block import extract_dense_blocks_hard_brim, _validate_overlap_eta
+from .extract_dense_block import extract_dense_blocks_hard_brim, _validate_overlap_eta
 
 
 def _matrix(A):
@@ -151,7 +151,10 @@ def fit_nmf(A, *, method='kl_nmf', cores=None, max_iter=500, tol=1e-5,
         v[np.ix_(active_c, np.arange(len(cores), k))] *= base / floor
     beta = np.ones(k) if method == 'bayesian_nmf' else None
     if use_torch:
-        from nmf_torch import fit_arrays
+        try:
+            from .nmf_torch import fit_arrays
+        except ImportError:
+            from nmf_torch import fit_arrays
         result=fit_arrays(x,u,v,beta,device=device,dtype=dtype,max_iter=int(max_iter),tol=tol,a=a,b=b,target=target)
         details.update(result['details']);details['fit_seconds']=perf_counter()-started
         result['details']=details
@@ -159,7 +162,10 @@ def fit_nmf(A, *, method='kl_nmf', cores=None, max_iter=500, tol=1e-5,
     predict = None
     if backend in {'auto','native'}:
         try:
-            from nmf_native import SparsePredictor
+            try:
+                from .nmf_native import SparsePredictor
+            except ImportError:
+                from nmf_native import SparsePredictor
             predict = SparsePredictor(x)
         except (ImportError,RuntimeError) as exc:
             if backend == 'native':

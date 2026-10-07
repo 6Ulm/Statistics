@@ -22,7 +22,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from scipy import sparse
-from extract_dense_block import (extract_dense_blocks, extract_dense_blocks_coclustered,
+from .extract_dense_block import (extract_dense_blocks, extract_dense_blocks_coclustered,
                                  extract_dense_blocks_adaptive, extract_dense_blocks_hard_brim,
                                  extract_dense_blocks_lpawb, _expand_brim_cores,
                                  _validate_overlap_eta)
@@ -164,7 +164,19 @@ def _validate_permutations(n_permutations, seed):
         raise ValueError("seed must be a nonnegative integer")
 
 
-def score_ot_plan(plan, aggregation="mass", go_folder=None, *, block_detection="coclustered",
+def get_go_files(go_folder):
+    paths = []
+    for name in ("go-basic.obo", "MOUSE-mod.gaf.gz", "HUMAN-uniprot.gaf.gz"):
+        path = _scoring_file(name) if go_folder is None else (Path(go_folder).expanduser() / name).resolve()
+        if not path.is_file():
+            raise FileNotFoundError(f"Annotation file does not exist: {path}")
+        paths.append(path)
+    go_files = tuple((str(path), path.stat().st_size, path.stat().st_mtime_ns) for path in paths)
+
+    return go_files
+
+
+def score_ot_plan(plan, go_files, aggregation="mass", *, block_detection="coclustered",
                   eta=None, R=20, seed=0, nmf_backend='auto', nmf_device='cpu', nmf_dtype='float64'):
     """Return (Q, S, block_scores). The plan is the only data input.
 
@@ -314,13 +326,7 @@ def score_ot_plan(plan, aggregation="mass", go_folder=None, *, block_detection="
     _validate_permutations(R, seed)
     if not isinstance(plan, pd.DataFrame):
         raise TypeError("plan must be a DataFrame with mouse row names and human column names")
-    paths = []
-    for name in ("go-basic.obo", "MOUSE-mod.gaf.gz", "HUMAN-uniprot.gaf.gz"):
-        path = _scoring_file(name) if go_folder is None else (Path(go_folder).expanduser() / name).resolve()
-        if not path.is_file():
-            raise FileNotFoundError(f"Annotation file does not exist: {path}")
-        paths.append(path)
-    files = tuple((str(path), path.stat().st_size, path.stat().st_mtime_ns) for path in paths)
+
     mouse_genes, human_genes = tuple(map(str, plan.index)), tuple(map(str, plan.columns))
     array = _dataframe_array(plan)
     if not np.isfinite(array).all() or (array < 0).any():
@@ -331,10 +337,10 @@ def score_ot_plan(plan, aggregation="mass", go_folder=None, *, block_detection="
     human_mass = array.sum(axis=0)
     if not np.isfinite(mouse_mass).all() or not np.isfinite(human_mass).all():
         raise ValueError("Plan marginals must be finite")
-    sources = _cached_go_sources(files)
+    sources = _cached_go_sources(go_files)
     mouse_choices = _axis_mass_choices(mouse_genes, mouse_mass, sources[1])
     human_choices = _axis_mass_choices(human_genes, human_mass, sources[2])
-    evaluator = _cached_evaluator(mouse_genes, human_genes, files,
+    evaluator = _cached_evaluator(mouse_genes, human_genes, go_files,
                                   mouse_choices, human_choices)
 
     def detect(array):
@@ -360,7 +366,10 @@ def score_ot_plan(plan, aggregation="mass", go_folder=None, *, block_detection="
                 cores = [dict(row_indices=b['row_indices'].copy(), col_indices=b['col_indices'].copy()) for b in cores]
                 evaluator._last_hard_brim_cores = (plan_key, cores)
             if method_name in {'kl_nmf', 'bayesian_nmf'}:
-                from nmf_blocks import fit_nmf, blocks_from_fit
+                try:
+                    from .nmf_blocks import fit_nmf, blocks_from_fit
+                except ImportError:
+                    from nmf_blocks import fit_nmf, blocks_from_fit
                 cache = getattr(evaluator, '_nmf_fits', None)
                 if cache is None or cache[0] != plan_key:
                     cache = (plan_key, {})

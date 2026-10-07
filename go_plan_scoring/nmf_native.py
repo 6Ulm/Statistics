@@ -32,7 +32,6 @@ static double dot(int64_t k, const double *ui, const double *vj) {
 void predict_csr(int64_t nr, int64_t k, const int64_t *ptr,
                  const int64_t *col, const double *u,
                  const double *v, double *out) {
-    #pragma omp parallel for schedule(dynamic, 64)
     for (int64_t i=0; i<nr; ++i) {
         const double *ui = u+i*k;
         for (int64_t e=ptr[i]; e<ptr[i+1]; ++e) {
@@ -41,38 +40,27 @@ void predict_csr(int64_t nr, int64_t k, const int64_t *ptr,
         }
     }
 }
-/* Rows are independent and each row's arithmetic order is unchanged, so the
-   OpenMP result is bitwise identical to the serial one for any thread count. */
 int update_csr(int64_t nr, int64_t k, const int64_t *ptr,
                const int64_t *col, const double *data, double *restrict u,
                const double *restrict v, const double *total, const double *beta) {
-    int failed = 0;
-    #pragma omp parallel
-    {
-        double *num=malloc(k*sizeof(double));
-        if (!num) {
-            #pragma omp atomic write
-            failed = 1;
+    double *num=malloc(k*sizeof(double));
+    if (!num) return 1;
+    for (int64_t i=0; i<nr; ++i) {
+        double *ui=u+i*k;
+        memset(num,0,k*sizeof(double));
+        for (int64_t e=ptr[i]; e<ptr[i+1]; ++e) {
+            const double *vj=v+col[e]*k;
+            double pred=dot(k,ui,vj);
+            double ratio=data[e]/(pred>DBL_MIN ? pred:DBL_MIN);
+            for (int64_t j=0; j<k; ++j) num[j]+=ratio*vj[j];
         }
-        #pragma omp for schedule(dynamic, 64)
-        for (int64_t i=0; i<nr; ++i) {
-            if (!num) continue;
-            double *ui=u+i*k;
-            memset(num,0,k*sizeof(double));
-            for (int64_t e=ptr[i]; e<ptr[i+1]; ++e) {
-                const double *vj=v+col[e]*k;
-                double pred=dot(k,ui,vj);
-                double ratio=data[e]/(pred>DBL_MIN ? pred:DBL_MIN);
-                for (int64_t j=0; j<k; ++j) num[j]+=ratio*vj[j];
-            }
-            for (int64_t j=0; j<k; ++j) {
-                double den=total[j]+beta[j]*ui[j];
-                ui[j]*=num[j]/(den>DBL_MIN ? den:DBL_MIN);
-            }
+        for (int64_t j=0; j<k; ++j) {
+            double den=total[j]+beta[j]*ui[j];
+            ui[j]*=num[j]/(den>DBL_MIN ? den:DBL_MIN);
         }
-        free(num);
     }
-    return failed;
+    free(num);
+    return 0;
 }
 '''
 
@@ -88,22 +76,14 @@ def _library():
     folder = Path(temporary.name)
     source = folder/'predict.c'; source.write_text(_SOURCE)
     library = folder/('predict.dylib' if sys.platform=='darwin' else 'predict.so')
-    base = [compiler, '-O3', '-std=c99', '-ffp-contract=off', '-fPIC',
-            '-dynamiclib' if sys.platform=='darwin' else '-shared']
-    loaded = error = None
-    # Try OpenMP first (multi-threaded rows; OMP_NUM_THREADS controls threads),
-    # then the plain serial build when the toolchain lacks OpenMP.
-    for extra in (['-fopenmp'], []):
-        try:
-            subprocess.run(base + extra + [str(source), '-o', str(library)],
-                           check=True, capture_output=True, text=True, timeout=60)
-            loaded = ctypes.CDLL(str(library))
-            break
-        except Exception as exc:
-            error = exc
-    if loaded is None:
+    command = [compiler, '-O3', '-std=c99', '-ffp-contract=off', '-fPIC',
+               '-dynamiclib' if sys.platform=='darwin' else '-shared', str(source), '-o', str(library)]
+    try:
+        subprocess.run(command, check=True, capture_output=True, text=True, timeout=60)
+        loaded = ctypes.CDLL(str(library))
+    except Exception as exc:
         temporary.cleanup()
-        raise RuntimeError('Native NMF compilation failed; use backend="numpy"') from error
+        raise RuntimeError('Native NMF compilation failed; use backend="numpy"') from exc
     function = loaded.predict_csr
     integer = np.ctypeslib.ndpointer(dtype=np.int64, ndim=1, flags='C_CONTIGUOUS')
     matrix = np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='C_CONTIGUOUS')
