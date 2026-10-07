@@ -1,0 +1,152 @@
+--- orig/go_block_quality.py	2026-10-07 10:07:45.495249759 +0000
++++ src/go_block_quality.py	2026-10-07 10:08:05.933651833 +0000
+@@ -13,7 +13,10 @@
+ from functools import lru_cache
+ import gzip
+ import hashlib
++import os
+ from pathlib import Path
++import pickle
++import tempfile
+ import warnings
+ 
+ import numpy as np
+@@ -46,11 +49,53 @@
+     return frame.to_numpy(dtype=float)
+ 
+ 
++_GO_CACHE_FORMAT = 1  # bump when _Ontology/_Annotations parsing or layout changes
++
++
++def _go_cache_file(files):
++    """Pickle path for parsed GO sources, or None when disk caching is off.
++
++    GO_BLOCK_QUALITY_CACHE sets the folder ('' or 'off' disables caching;
++    default ~/.cache/go_block_quality). The key covers the format version and
++    every input file's path, size and mtime, so edited files are re-parsed.
++    """
++    folder = os.environ.get("GO_BLOCK_QUALITY_CACHE")
++    if folder is not None and folder.strip().lower() in {"", "off", "0", "none"}:
++        return None
++    folder = Path(folder).expanduser() if folder else Path.home() / ".cache" / "go_block_quality"
++    key = hashlib.sha256(repr((_GO_CACHE_FORMAT, tuple(files))).encode()).hexdigest()[:32]
++    return folder / f"go_sources_{key}.pkl"
++
++
+ @lru_cache(maxsize=2)
+ def _cached_go_sources(files):
++    path = _go_cache_file(files)
++    if path is not None and path.is_file():
++        try:
++            with open(path, "rb") as handle:
++                loaded = pickle.load(handle)
++            if (isinstance(loaded, tuple) and len(loaded) == 3 and isinstance(loaded[0], _Ontology)
++                    and all(isinstance(x, _Annotations) for x in loaded[1:])):
++                return loaded
++        except Exception:  # corrupt/stale cache: fall through and re-parse
++            pass
+     ontology = _Ontology(files[0][0], "BP")
+-    return (ontology, _Annotations(files[1][0], ontology, "experimental", 10090),
+-            _Annotations(files[2][0], ontology, "experimental", 9606))
++    sources = (ontology, _Annotations(files[1][0], ontology, "experimental", 10090),
++               _Annotations(files[2][0], ontology, "experimental", 9606))
++    if path is not None:
++        try:
++            path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
++            handle = tempfile.NamedTemporaryFile(dir=path.parent, suffix=".tmp", delete=False)
++            try:
++                with handle:
++                    pickle.dump(sources, handle, protocol=pickle.HIGHEST_PROTOCOL)
++                os.replace(handle.name, path)
++            except BaseException:
++                Path(handle.name).unlink(missing_ok=True)
++                raise
++        except Exception:  # read-only or full disk: caching is best-effort
++            pass
++    return sources
+ 
+ 
+ def _axis_mass_choices(genes, masses, annotations):
+@@ -382,6 +427,11 @@
+            "CC": ("cellular_component", "C")}
+ 
+ 
++# Term fields read by this module; everything else in the OBO is skipped.
++_KEPT_FIELDS = frozenset({"id", "name", "namespace", "alt_id", "is_a", "relationship",
++                          "is_obsolete", "replaced_by"})
++
++
+ def _open_text(path):
+     return gzip.open(path, "rt", encoding="utf-8") if str(path).endswith(".gz") else open(path, encoding="utf-8")
+ 
+@@ -396,7 +446,7 @@
+         def finish():
+             if stanza == "Term" and fields.get("id"):
+                 term = fields["id"][0]
+-                self.terms[term] = dict(fields)
++                self.terms[term] = dict(fields)  # only _KEPT_FIELDS are collected
+                 for alias in fields.get("alt_id", []):
+                     self.aliases[alias] = term
+ 
+@@ -410,8 +460,9 @@
+                     key, value = line.split(": ", 1)
+                     if stanza is None and key == "data-version":
+                         self.version = value
+-                    elif stanza == "Term":
+-                        fields[key].append(value)
++                    elif stanza == "Term" and key in _KEPT_FIELDS:
++                        if key != "relationship" or value.startswith("part_of "):
++                            fields[key].append(value)
+             finish()
+ 
+     def resolve(self, term):
+@@ -459,6 +510,8 @@
+         self.taxon = int(taxon)
+         self.stats = Counter()
+         self.headers = {}
++        taxon_text = str(taxon)
++        seen_identity, resolved_terms = set(), {}
+         with _open_text(path) as handle:
+             for raw in handle:
+                 if raw.startswith("!"):
+@@ -466,21 +519,26 @@
+                         key, value = raw[1:].strip().split(": ", 1)
+                         self.headers[key] = value
+                     continue
+-                if not raw.strip():
++                if raw.isspace():
+                     continue
+                 fields = raw.rstrip("\n").split("\t")
+                 self.stats["records"] += 1
+                 if len(fields) < 15:
+                     self.stats["malformed"] += 1
+                     continue
+-                if not any(x.rsplit(":", 1)[-1] == str(taxon) for x in fields[12].split("|")):
++                # Substring test is a cheap necessary condition for the exact
++                # taxon-token match below.
++                if taxon_text not in fields[12] or not any(
++                        x.rsplit(":", 1)[-1] == taxon_text for x in fields[12].split("|")):
+                     self.stats["wrong_taxon"] += 1
+                     continue
+                 # Identity metadata is independent of annotation evidence.
+                 # A gene lacking experimental BP evidence must still prevent
+                 # its symbol/alias from being assigned to a different gene.
+                 symbol = fields[2]
+-                if symbol:
++                identity = (fields[0], fields[1], symbol, fields[10])
++                if symbol and identity not in seen_identity:  # records repeat per gene
++                    seen_identity.add(identity)
+                     self.symbols.add(symbol)
+                     aliases = {symbol, fields[1], fields[0] + ":" + fields[1]}
+                     aliases.update(fields[10].split("|"))
+@@ -495,7 +553,9 @@
+                 if code == "ND" or (allowed is not None and code not in allowed) or (evidence == "reviewed" and code == "IEA"):
+                     self.stats["evidence_excluded"] += 1
+                     continue
+-                term = ontology.resolve(fields[4])
++                if fields[4] not in resolved_terms:
++                    resolved_terms[fields[4]] = ontology.resolve(fields[4])
++                term = resolved_terms[fields[4]]
+                 if term is None:
+                     self.stats["unresolved_GO"] += 1
+                     continue
