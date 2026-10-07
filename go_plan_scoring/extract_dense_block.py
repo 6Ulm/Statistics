@@ -37,10 +37,18 @@ def _close_square(mask, size):
     scipy.ndimage.binary_closing's reflected footprint convention.
     """
     origin = -1 if size % 2 == 0 else 0
-    closed = ndimage.maximum_filter1d(mask, size, axis=0, mode="constant", cval=0, origin=origin)
-    closed = ndimage.maximum_filter1d(closed, size, axis=1, mode="constant", cval=0, origin=origin)
-    closed = ndimage.minimum_filter1d(closed, size, axis=0, mode="constant", cval=0)
-    return ndimage.minimum_filter1d(closed, size, axis=1, mode="constant", cval=0)
+    closed = ndimage.maximum_filter1d(
+        mask, size, axis=0, mode="constant", cval=0, origin=origin
+    )
+    closed = ndimage.maximum_filter1d(
+        closed, size, axis=1, mode="constant", cval=0, origin=origin
+    )
+    closed = ndimage.minimum_filter1d(
+        closed, size, axis=0, mode="constant", cval=0
+    )
+    return ndimage.minimum_filter1d(
+        closed, size, axis=1, mode="constant", cval=0
+    )
 
 
 def _fill_holes(mask):
@@ -53,7 +61,12 @@ def _fill_holes(mask):
         return mask.copy()
     background, count = ndimage.label(~mask)
     exterior = np.zeros(count + 1, dtype=bool)
-    for border in (background[0], background[-1], background[:, 0], background[:, -1]):
+    for border in (
+        background[0],
+        background[-1],
+        background[:, 0],
+        background[:, -1],
+    ):
         exterior[border] = True
     exterior[0] = False  # Label zero denotes original foreground.
     return ~exterior[background]
@@ -256,7 +269,9 @@ def extract_dense_blocks(
     if use_binary_activity:
         if activity_threshold is None:
             nonzero = magnitude[magnitude > 0]
-            activity_threshold = np.percentile(nonzero, 50) if nonzero.size else 0.0
+            activity_threshold = (
+                np.percentile(nonzero, 50) if nonzero.size else 0.0
+            )
         activity = (magnitude > activity_threshold).astype(float)
     else:
         activity = magnitude
@@ -282,8 +297,9 @@ def extract_dense_blocks(
 
     component_ids = np.arange(1, n_components + 1)
     sizes = np.bincount(labels.ravel(), minlength=n_components + 1)[1:]
-    totals = np.bincount(labels.ravel(), weights=density_map.ravel(),
-                         minlength=n_components + 1)[1:]
+    totals = np.bincount(
+        labels.ravel(), weights=density_map.ravel(), minlength=n_components + 1
+    )[1:]
     bounds = ndimage.find_objects(labels)
 
     candidates = [
@@ -308,18 +324,27 @@ def extract_dense_blocks(
         # copy for EVERY candidate, and avoid subtracting nearly equal totals.
         inside_mean = magnitude[r0:r1, c0:c1].mean()
         outside_size = magnitude.size - (r1 - r0) * (c1 - c0)
-        outside_sum = (magnitude[:r0].sum() + magnitude[r1:].sum()
-                       + magnitude[r0:r1, :c0].sum() + magnitude[r0:r1, c1:].sum())
-        outside_mean = outside_sum / outside_size + 1e-12 if outside_size else np.nan
+        outside_sum = (
+            magnitude[:r0].sum()
+            + magnitude[r1:].sum()
+            + magnitude[r0:r1, :c0].sum()
+            + magnitude[r0:r1, c1:].sum()
+        )
+        outside_mean = (
+            outside_sum / outside_size + 1e-12 if outside_size else np.nan
+        )
         density_ratio = float(inside_mean / outside_mean)
 
         # The sum order differs slightly; preserve the original decision for
         # ratios within floating-point roundoff of a requested filter cutoff.
-        if min_density_ratio is not None and np.isclose(density_ratio, min_density_ratio,
-                                                       rtol=1e-12, atol=1e-15):
+        if min_density_ratio is not None and np.isclose(
+            density_ratio, min_density_ratio, rtol=1e-12, atol=1e-15
+        ):
             outside_mask = np.ones_like(magnitude, dtype=bool)
             outside_mask[r0:r1, c0:c1] = False
-            density_ratio = float(inside_mean / (magnitude[outside_mask].mean() + 1e-12))
+            density_ratio = float(
+                inside_mean / (magnitude[outside_mask].mean() + 1e-12)
+            )
 
         if min_density_ratio is not None and density_ratio < min_density_ratio:
             continue
@@ -337,7 +362,9 @@ def extract_dense_blocks(
             break
 
     if not blocks:
-        raise ValueError("No component passed `min_density_ratio`. Try lowering it.")
+        raise ValueError(
+            "No component passed `min_density_ratio`. Try lowering it."
+        )
 
     if return_details:
         details = {"density_map": density_map, "mask": mask, "labels": labels}
@@ -364,7 +391,9 @@ def extract_dense_block(A, return_details=False, **kwargs):
     """
     kwargs["max_blocks"] = 1
     if return_details:
-        blocks, details = extract_dense_blocks(A, return_details=True, **kwargs)
+        blocks, details = extract_dense_blocks(
+            A, return_details=True, **kwargs
+        )
         details = dict(details)
         details["density_ratio"] = blocks[0]["density_ratio"]
         return blocks[0]["bbox"], blocks[0]["block"], details
@@ -372,7 +401,14 @@ def extract_dense_block(A, return_details=False, **kwargs):
     return blocks[0]["bbox"], blocks[0]["block"]
 
 
-def _refine_order_within_groups(activity, group_labels, group_order, axis, metric="jaccard", method="average"):
+def _refine_order_within_groups(
+    activity,
+    group_labels,
+    group_order,
+    axis,
+    metric="jaccard",
+    method="average",
+):
     """
     Within each group (as assigned by co-clustering), further order the
     rows (axis=0) or columns (axis=1) by their own similarity, so that
@@ -389,14 +425,18 @@ def _refine_order_within_groups(activity, group_labels, group_order, axis, metri
         for g in group_order:
             members = np.where(group_labels == g)[0]
             if members.size >= 3:
-                sub_order = _cluster_leaf_order(mat[members], axis=0, metric=metric, method=method)
+                sub_order = _cluster_leaf_order(
+                    mat[members], axis=0, metric=metric, method=method
+                )
                 members = members[sub_order]
-            order[pos:pos + members.size] = members
+            order[pos : pos + members.size] = members
             pos += members.size
     return order
 
 
-def _cluster_leaf_order(binary_matrix, axis, metric="jaccard", method="average"):
+def _cluster_leaf_order(
+    binary_matrix, axis, metric="jaccard", method="average"
+):
     """
     Return a permutation of the rows (axis=0) or columns (axis=1) of a binary
     matrix that places similar rows/columns next to each other, using
@@ -413,7 +453,11 @@ def _cluster_leaf_order(binary_matrix, axis, metric="jaccard", method="average")
         return np.concatenate([signal_idx, empty_idx])
 
     signal = mat[signal_idx]
-    if metric == "jaccard" and signal.dtype == np.bool_ and signal.shape[1] < 2**24:
+    if (
+        metric == "jaccard"
+        and signal.dtype == np.bool_
+        and signal.shape[1] < 2**24
+    ):
         # Boolean intersections and cardinalities are exact in float32 up to
         # 2**24 features. BLAS computes all pair intersections in one call;
         # float64 division gives the same distances as scipy pdist(jaccard).
@@ -421,7 +465,9 @@ def _cluster_leaf_order(binary_matrix, axis, metric="jaccard", method="average")
         common = (values @ values.T).astype(np.float64)
         cardinality = values.sum(axis=1, dtype=np.float64)
         union = cardinality[:, None] + cardinality[None, :] - common
-        full = np.divide(union - common, union, out=np.zeros_like(union), where=union != 0)
+        full = np.divide(
+            union - common, union, out=np.zeros_like(union), where=union != 0
+        )
         distances = squareform(full, checks=False)
     else:
         distances = pdist(signal, metric=metric)
@@ -572,10 +618,12 @@ def extract_dense_blocks_coclustered(
     >>> rng = np.random.default_rng(0)
     >>> n_rows, n_cols = 150, 400
     >>> A = rng.random((n_rows, n_cols)) * 0.05
-    >>> row_block = rng.permutation(n_rows)[:40]     # scattered, not contiguous
+    >>> # scattered, not contiguous
+    >>> row_block = rng.permutation(n_rows)[:40]
     >>> col_block = rng.permutation(n_cols)[:60]
     >>> A[np.ix_(row_block, col_block)] += rng.random((40, 60)) * 0.8
-    >>> blocks = extract_dense_blocks_coclustered(A, n_clusters=2, mad_multiplier=4.0)
+    >>> blocks = extract_dense_blocks_coclustered(
+    ...     A, n_clusters=2, mad_multiplier=4.0)
     >>> sorted(blocks[0]["row_indices"]) == sorted(row_block)
     True
     """
@@ -584,16 +632,24 @@ def extract_dense_blocks_coclustered(
         raise ValueError(f"`A` must be 2-dimensional, got shape {A.shape}")
     n_rows, n_cols = A.shape
 
-    row_labels_arr = np.arange(n_rows) if row_labels is None else np.asarray(row_labels)
-    col_labels_arr = np.arange(n_cols) if col_labels is None else np.asarray(col_labels)
+    row_labels_arr = (
+        np.arange(n_rows) if row_labels is None else np.asarray(row_labels)
+    )
+    col_labels_arr = (
+        np.arange(n_cols) if col_labels is None else np.asarray(col_labels)
+    )
 
     magnitude = np.abs(A)
     if activity_threshold is None:
         nonzero = magnitude[magnitude > 0]
-        activity_threshold = np.percentile(nonzero, 50) if nonzero.size else 0.0
+        activity_threshold = (
+            np.percentile(nonzero, 50) if nonzero.size else 0.0
+        )
     activity = magnitude > activity_threshold
 
-    cocluster_input = activity.astype(float) if use_binary_activity else magnitude
+    cocluster_input = (
+        activity.astype(float) if use_binary_activity else magnitude
+    )
 
     # SpectralCoclustering normalizes by each row's and column's sum, so an
     # all-zero row/column (common once a noise-aware activity_threshold is
@@ -608,13 +664,16 @@ def extract_dense_blocks_coclustered(
 
     if active_row_idx.size < n_clusters or active_col_idx.size < n_clusters:
         raise ValueError(
-            f"Only {active_row_idx.size} active rows and {active_col_idx.size} "
+            f"Only {active_row_idx.size} active rows and "
+            f"{active_col_idx.size} "
             f"active columns at this activity_threshold -- too few for "
             f"n_clusters={n_clusters}. Lower n_clusters or activity_threshold."
         )
 
     sub_input = cocluster_input[np.ix_(active_row_idx, active_col_idx)]
-    model = SpectralCoclustering(n_clusters=n_clusters, random_state=random_state)
+    model = SpectralCoclustering(
+        n_clusters=n_clusters, random_state=random_state
+    )
     model.fit(sub_input)
 
     row_cluster = np.full(n_rows, -1, dtype=int)
@@ -622,15 +681,29 @@ def extract_dense_blocks_coclustered(
     col_cluster = np.full(n_cols, -1, dtype=int)
     col_cluster[active_col_idx] = model.column_labels_
 
-    row_group_order = list(np.unique(model.row_labels_)) + ([-1] if empty_row_idx.size else [])
-    col_group_order = list(np.unique(model.column_labels_)) + ([-1] if empty_col_idx.size else [])
+    row_group_order = list(np.unique(model.row_labels_)) + (
+        [-1] if empty_row_idx.size else []
+    )
+    col_group_order = list(np.unique(model.column_labels_)) + (
+        [-1] if empty_col_idx.size else []
+    )
 
     if refine_within_cluster:
         row_order = _refine_order_within_groups(
-            activity, row_cluster, row_group_order, axis=0, metric=cluster_metric, method=cluster_method
+            activity,
+            row_cluster,
+            row_group_order,
+            axis=0,
+            metric=cluster_metric,
+            method=cluster_method,
         )
         col_order = _refine_order_within_groups(
-            activity, col_cluster, col_group_order, axis=1, metric=cluster_metric, method=cluster_method
+            activity,
+            col_cluster,
+            col_group_order,
+            axis=1,
+            metric=cluster_metric,
+            method=cluster_method,
         )
     else:
         row_sort_key = np.where(row_cluster == -1, n_clusters, row_cluster)
@@ -686,7 +759,9 @@ def extract_dense_blocks_coclustered(
     return blocks
 
 
-def _grouped_modularity_scores(weights, own_strength, other_strength, other_labels):
+def _grouped_modularity_scores(
+    weights, own_strength, other_strength, other_labels
+):
     """Grouped sums minus marginal correction; no full centered matrix."""
     groups, inverse = np.unique(other_labels, return_inverse=True)
     if len(groups) == 1:
@@ -695,7 +770,11 @@ def _grouped_modularity_scores(weights, own_strength, other_strength, other_labe
         # Singleton starts need only column ordering. Avoid multiplying by
         # a sparse permutation matrix on the largest first sweep.
         if np.array_equal(inverse, np.arange(len(inverse))):
-            scores = weights.toarray() if sparse.issparse(weights) else weights.copy(order="K")
+            scores = (
+                weights.toarray()
+                if sparse.issparse(weights)
+                else weights.copy(order="K")
+            )
         else:
             scores = weights[:, np.argsort(inverse)]
             if sparse.issparse(scores):
@@ -708,14 +787,22 @@ def _grouped_modularity_scores(weights, own_strength, other_strength, other_labe
         scores = weights @ indicator
         if sparse.issparse(scores):
             scores = scores.toarray()
-    scores -= own_strength[:, None] * np.bincount(
-        inverse, weights=other_strength, minlength=len(groups))[None, :]
+    scores -= (
+        own_strength[:, None]
+        * np.bincount(inverse, weights=other_strength, minlength=len(groups))[
+            None, :
+        ]
+    )
     return groups, scores
 
 
-def _brim_assign(weights, own_strength, other_strength, other_labels, current=None):
+def _brim_assign(
+    weights, own_strength, other_strength, other_labels, current=None
+):
     """Exact one-side maximization of weighted Barber modularity."""
-    groups, scores = _grouped_modularity_scores(weights, own_strength, other_strength, other_labels)
+    groups, scores = _grouped_modularity_scores(
+        weights, own_strength, other_strength, other_labels
+    )
     selected = np.argmax(scores, axis=1)
     if current is not None:
         previous = np.searchsorted(groups, current)
@@ -724,9 +811,14 @@ def _brim_assign(weights, own_strength, other_strength, other_labels, current=No
         positions = np.flatnonzero(present)
         # Keep existing memberships on numerical ties: avoid label oscillation.
         tolerance = 64 * np.finfo(float).eps * own_strength[positions]
-        keep = scores[positions, previous[positions]] >= scores[positions, selected[positions]] - tolerance
+        keep = (
+            scores[positions, previous[positions]]
+            >= scores[positions, selected[positions]] - tolerance
+        )
         selected[positions[keep]] = previous[positions[keep]]
-    return groups[selected], float(scores[np.arange(len(selected)), selected].sum())
+    return groups[selected], float(
+        scores[np.arange(len(selected)), selected].sum()
+    )
 
 
 def _lpawb_assign(weights, own_strength, other_strength, other_labels, rng):
@@ -738,46 +830,68 @@ def _lpawb_assign(weights, own_strength, other_strength, other_labels, rng):
     """
     if sparse.issparse(weights):
         groups, inverse = np.unique(other_labels, return_inverse=True)
-        indicator = sparse.csr_matrix((np.ones(len(inverse)), (np.arange(len(inverse)), inverse)),
-                                      shape=(len(inverse), len(groups)))
+        indicator = sparse.csr_matrix(
+            (np.ones(len(inverse)), (np.arange(len(inverse)), inverse)),
+            shape=(len(inverse), len(groups)),
+        )
         grouped = (weights @ indicator).tocsr()
         # Zero-edge group scores are strictly negative. Since a row's full
         # centered scores sum to zero, its maximizer is on a positive edge.
         # Use sparse segmented reductions, retaining dense treatment when
         # numerical-zero ties could include zero-edge candidates.
-        if (grouped.nnz < grouped.shape[0] * grouped.shape[1] / 4
-                and np.all(np.diff(grouped.indptr) > 0)):
+        if grouped.nnz < grouped.shape[0] * grouped.shape[1] / 4 and np.all(
+            np.diff(grouped.indptr) > 0
+        ):
             grouped.sort_indices()
             degree = np.diff(grouped.indptr)
             node = np.repeat(np.arange(len(own_strength)), degree)
-            group_strength = np.bincount(inverse, weights=other_strength, minlength=len(groups))
-            values = grouped.data - own_strength[node] * group_strength[grouped.indices]
+            group_strength = np.bincount(
+                inverse, weights=other_strength, minlength=len(groups)
+            )
+            values = (
+                grouped.data
+                - own_strength[node] * group_strength[grouped.indices]
+            )
             best = np.maximum.reduceat(values, grouped.indptr[:-1])
             tolerance = 64 * np.finfo(float).eps * own_strength
             if np.all(best > tolerance):
                 tied = values >= (best - tolerance)[node]
-                counts = np.add.reduceat(tied.astype(np.int32), grouped.indptr[:-1])
+                counts = np.add.reduceat(
+                    tied.astype(np.int32), grouped.indptr[:-1]
+                )
                 ranks = np.zeros(len(counts), dtype=int)
                 positions = np.flatnonzero(counts > 1)
-                ranks[positions] = (rng.random(len(positions)) * counts[positions]).astype(int)
+                ranks[positions] = (
+                    rng.random(len(positions)) * counts[positions]
+                ).astype(int)
                 offsets = np.cumsum(counts) - counts
                 selected = np.flatnonzero(tied)[offsets + ranks]
-                return groups[grouped.indices[selected]], float(values[selected].sum())
-    groups, scores = _grouped_modularity_scores(weights, own_strength, other_strength, other_labels)
+                return groups[grouped.indices[selected]], float(
+                    values[selected].sum()
+                )
+    groups, scores = _grouped_modularity_scores(
+        weights, own_strength, other_strength, other_labels
+    )
     selected = np.argmax(scores, axis=1)
     best = scores[np.arange(len(selected)), selected]
     if len(groups) > 1:
-        tied = scores >= best[:, None] - (64 * np.finfo(float).eps * own_strength[:, None])
+        tied = scores >= best[:, None] - (
+            64 * np.finfo(float).eps * own_strength[:, None]
+        )
         counts = tied.sum(axis=1)
         positions = np.flatnonzero(counts > 1)
         # Uniform rank in each row's set of tied labels. Fixed-size chunks
         # cap temporary storage; no extra full-sized random/float matrix.
         ranks = (rng.random(len(positions)) * counts[positions]).astype(int)
         for start in range(0, len(positions), 128):
-            pos = positions[start:start + 128]
+            pos = positions[start : start + 128]
             cumulative = np.cumsum(tied[pos], axis=1, dtype=np.int32)
-            selected[pos] = (cumulative > ranks[start:start + 128, None]).argmax(axis=1)
-    return groups[selected], float(scores[np.arange(len(selected)), selected].sum())
+            selected[pos] = (
+                cumulative > ranks[start : start + 128, None]
+            ).argmax(axis=1)
+    return groups[selected], float(
+        scores[np.arange(len(selected)), selected].sum()
+    )
 
 
 def _lpawb_stage_one(weights, rs, cs, rows, cols, objective, rng, max_iter):
@@ -787,7 +901,9 @@ def _lpawb_stage_one(weights, rs, cs, rows, cols, objective, rng, max_iter):
     while max_iter is None or iteration < max_iter:
         iteration += 1
         candidate_c, _ = _lpawb_assign(weights.T, cs, rs, rows, rng)
-        candidate_r, candidate_objective = _lpawb_assign(weights, rs, cs, candidate_c, rng)
+        candidate_r, candidate_objective = _lpawb_assign(
+            weights, rs, cs, candidate_c, rng
+        )
         if objective is not None and candidate_objective <= objective + 1e-12:
             return rows, cols, objective, trace, True
         rows, cols, objective = candidate_r, candidate_c, candidate_objective
@@ -797,20 +913,37 @@ def _lpawb_stage_one(weights, rs, cs, rows, cols, objective, rng, max_iter):
 
 def _lpawb_best_merge(weights, rs, cs, rows, cols, state=None):
     """Largest positive pair gain; necessarily mutually best (Algorithm 2)."""
-    if (state and np.array_equal(state['rows'], rows) and np.array_equal(state['cols'], cols)):
-        gains = state['gains']
+    if (
+        state
+        and np.array_equal(state["rows"], rows)
+        and np.array_equal(state["cols"], cols)
+    ):
+        gains = state["gains"]
         a, b = np.unravel_index(np.argmax(gains), gains.shape)
         gain = float(gains[a, b])
-        return (state['groups'][a], state['groups'][b], gain) if gain > 1e-12 else None
+        return (
+            (state["groups"][a], state["groups"][b], gain)
+            if gain > 1e-12
+            else None
+        )
     groups = np.intersect1d(rows, cols)
     if len(groups) < 2:
         return None
     # Include one-sided labels in grouped sums, but only joint modules merge.
     all_groups = np.union1d(rows, cols)
-    ri, ci = np.searchsorted(all_groups, rows), np.searchsorted(all_groups, cols)
+    ri, ci = (
+        np.searchsorted(all_groups, rows),
+        np.searchsorted(all_groups, cols),
+    )
     count = len(all_groups)
-    rind = sparse.csr_matrix((np.ones(len(rows)), (np.arange(len(rows)), ri)), shape=(len(rows), count))
-    cind = sparse.csr_matrix((np.ones(len(cols)), (np.arange(len(cols)), ci)), shape=(len(cols), count))
+    rind = sparse.csr_matrix(
+        (np.ones(len(rows)), (np.arange(len(rows)), ri)),
+        shape=(len(rows), count),
+    )
+    cind = sparse.csr_matrix(
+        (np.ones(len(cols)), (np.arange(len(cols)), ci)),
+        shape=(len(cols), count),
+    )
     cross = rind.T @ (weights @ cind)
     if sparse.issparse(cross):
         cross = cross.toarray()
@@ -821,30 +954,42 @@ def _lpawb_best_merge(weights, rs, cs, rows, cols, state=None):
     gains = cross + cross.T - r[:, None] * c[None, :] - c[:, None] * r[None, :]
     np.fill_diagonal(gains, -np.inf)
     if state is not None:
-        state.update(rows=rows.copy(), cols=cols.copy(), groups=groups,
-                     cross=cross, rs=r, cs=c, gains=gains,
-                     active=np.ones(len(groups), dtype=bool))
+        state.update(
+            rows=rows.copy(),
+            cols=cols.copy(),
+            groups=groups,
+            cross=cross,
+            rs=r,
+            cs=c,
+            gains=gains,
+            active=np.ones(len(groups), dtype=bool),
+        )
     a, b = np.unravel_index(np.argmax(gains), gains.shape)
     gain = float(gains[a, b])
     return (groups[a], groups[b], gain) if gain > 1e-12 else None
 
 
 def _lpawb_update_merge_state(state, a_label, b_label, rows, cols):
-    """Incremental exact pair-gain formula when a refinement changes no labels."""
-    groups, cross = state['groups'], state['cross']
+    """Incremental exact pair-gain formula for a no-change refinement."""
+    groups, cross = state["groups"], state["cross"]
     a, b = np.searchsorted(groups, [a_label, b_label])
     cross[a, :] += cross[b, :]
     cross[:, a] += cross[:, b]
-    state['rs'][a] += state['rs'][b]
-    state['cs'][a] += state['cs'][b]
-    state['active'][b] = False
-    other = np.flatnonzero(state['active'])
+    state["rs"][a] += state["rs"][b]
+    state["cs"][a] += state["cs"][b]
+    state["active"][b] = False
+    other = np.flatnonzero(state["active"])
     other = other[other != a]
-    gain = cross[a, other] + cross[other, a] - state['rs'][a]*state['cs'][other] - state['cs'][a]*state['rs'][other]
-    state['gains'][a, other] = gain
-    state['gains'][other, a] = gain
-    state['gains'][b, :] = state['gains'][:, b] = -np.inf
-    state['rows'], state['cols'] = rows.copy(), cols.copy()
+    gain = (
+        cross[a, other]
+        + cross[other, a]
+        - state["rs"][a] * state["cs"][other]
+        - state["cs"][a] * state["rs"][other]
+    )
+    state["gains"][a, other] = gain
+    state["gains"][other, a] = gain
+    state["gains"][b, :] = state["gains"][:, b] = -np.inf
+    state["rows"], state["cols"] = rows.copy(), cols.copy()
 
 
 def _lpawb_optimize(weights, rs, cs, rng, max_iter):
@@ -852,7 +997,9 @@ def _lpawb_optimize(weights, rs, cs, rng, max_iter):
     transposed = len(rs) > len(cs)
     w, r, c = (weights.T, cs, rs) if transposed else (weights, rs, cs)
     rows = np.arange(len(r))  # Unique labels on the smaller species.
-    rows, cols, objective, trace, converged = _lpawb_stage_one(w, r, c, rows, None, None, rng, max_iter)
+    rows, cols, objective, trace, converged = _lpawb_stage_one(
+        w, r, c, rows, None, None, rng, max_iter
+    )
     phases, merge_gains = [len(trace)], []
     merge_state = {}
     while converged:
@@ -866,7 +1013,9 @@ def _lpawb_optimize(weights, rs, cs, rng, max_iter):
         objective += gain
         merge_gains.append(gain)
         trace.append(objective)
-        rows, cols, objective, refinement, converged = _lpawb_stage_one(w, r, c, rows, cols, objective, rng, max_iter)
+        rows, cols, objective, refinement, converged = _lpawb_stage_one(
+            w, r, c, rows, cols, objective, rng, max_iter
+        )
         trace += refinement
         phases.append(len(refinement))
     if transposed:
@@ -874,28 +1023,44 @@ def _lpawb_optimize(weights, rs, cs, rng, max_iter):
     return objective, rows, cols, trace, converged, phases, merge_gains
 
 
-def _brim_optimize(weights, row_strength, col_strength, col_labels, max_iter, row_labels=None):
+def _brim_optimize(
+    weights, row_strength, col_strength, col_labels, max_iter, row_labels=None
+):
     """BRIM alternating updates; trace records actual normalized objectives."""
     history = []
     for _ in range(max_iter):
         old_rows, old_cols = row_labels, col_labels
-        row_labels, _ = _brim_assign(weights, row_strength, col_strength, col_labels, row_labels)
-        col_labels, objective = _brim_assign(weights.T, col_strength, row_strength, row_labels, col_labels)
+        row_labels, _ = _brim_assign(
+            weights, row_strength, col_strength, col_labels, row_labels
+        )
+        col_labels, objective = _brim_assign(
+            weights.T, col_strength, row_strength, row_labels, col_labels
+        )
         history.append(objective)
-        if old_rows is not None and np.array_equal(old_rows, row_labels) and np.array_equal(old_cols, col_labels):
+        if (
+            old_rows is not None
+            and np.array_equal(old_rows, row_labels)
+            and np.array_equal(old_cols, col_labels)
+        ):
             return row_labels, col_labels, history, True
     return row_labels, col_labels, history, False
 
 
 def _merge_modularity_groups(weights, row_strength, col_strength, rows, cols):
-    """Greedy positive-gain whole-module merges, followed externally by BRIM."""
+    """Greedy positive-gain whole-module merges (BRIM runs afterwards)."""
     groups = np.union1d(rows, cols)
     ri, ci = np.searchsorted(groups, rows), np.searchsorted(groups, cols)
     count = len(groups)
     if count < 2:
         return rows, cols, 0
-    r_indicator = sparse.csr_matrix((np.ones(len(rows)), (np.arange(len(rows)), ri)), shape=(len(rows), count))
-    c_indicator = sparse.csr_matrix((np.ones(len(cols)), (np.arange(len(cols)), ci)), shape=(len(cols), count))
+    r_indicator = sparse.csr_matrix(
+        (np.ones(len(rows)), (np.arange(len(rows)), ri)),
+        shape=(len(rows), count),
+    )
+    c_indicator = sparse.csr_matrix(
+        (np.ones(len(cols)), (np.arange(len(cols)), ci)),
+        shape=(len(cols), count),
+    )
     cross = r_indicator.T @ (weights @ c_indicator)
     if sparse.issparse(cross):
         cross = cross.toarray()
@@ -904,9 +1069,13 @@ def _merge_modularity_groups(weights, row_strength, col_strength, rows, cols):
     # Keep the original greedy maximum-gain order, updating only pairs
     # touching the merged group. Versioned heap entries discard stale gains.
     # Avoid rebuilding and copying K x K matrices after each of K merges.
-    gains = cross + cross.T - rs[:, None] * cs[None, :] - cs[:, None] * rs[None, :]
+    gains = (
+        cross + cross.T - rs[:, None] * cs[None, :] - cs[:, None] * rs[None, :]
+    )
     ii, jj = np.nonzero(np.triu(gains > 1e-12, k=1))
-    queue = [(-float(gains[i, j]), int(i), int(j), 0, 0) for i, j in zip(ii, jj)]
+    queue = [
+        (-float(gains[i, j]), int(i), int(j), 0, 0) for i, j in zip(ii, jj)
+    ]
     heapq.heapify(queue)
     version = np.zeros(count, dtype=int)
     active = np.ones(count, dtype=bool)
@@ -914,7 +1083,12 @@ def _merge_modularity_groups(weights, row_strength, col_strength, rows, cols):
     merged = 0
     while queue:
         _, a, b, va, vb = heapq.heappop(queue)
-        if not active[a] or not active[b] or version[a] != va or version[b] != vb:
+        if (
+            not active[a]
+            or not active[b]
+            or version[a] != va
+            or version[b] != vb
+        ):
             continue
         cross[a, :] += cross[b, :]
         cross[:, a] += cross[:, b]
@@ -926,10 +1100,19 @@ def _merge_modularity_groups(weights, row_strength, col_strength, rows, cols):
         version[b] += 1
         others = np.flatnonzero(active)
         others = others[others != a]
-        new_gain = cross[a, others] + cross[others, a] - rs[a] * cs[others] - cs[a] * rs[others]
-        for other, gain in zip(others[new_gain > 1e-12], new_gain[new_gain > 1e-12]):
+        new_gain = (
+            cross[a, others]
+            + cross[others, a]
+            - rs[a] * cs[others]
+            - cs[a] * rs[others]
+        )
+        for other, gain in zip(
+            others[new_gain > 1e-12], new_gain[new_gain > 1e-12]
+        ):
             i, j = sorted((a, int(other)))
-            heapq.heappush(queue, (-float(gain), i, j, int(version[i]), int(version[j])))
+            heapq.heappush(
+                queue, (-float(gain), i, j, int(version[i]), int(version[j]))
+            )
         merged += 1
     # Resolve merge ancestry once, rather than scanning every gene per merge.
     for group in range(count):
@@ -937,9 +1120,16 @@ def _merge_modularity_groups(weights, row_strength, col_strength, rows, cols):
     return groups[parent[ri]], groups[parent[ci]], merged
 
 
-def extract_dense_blocks_modularity(A, *, min_component_size=4, max_blocks=None,
-                                    row_labels=None, col_labels=None,
-                                    max_iter=50, return_details=False):
+def extract_dense_blocks_modularity(
+    A,
+    *,
+    min_component_size=4,
+    max_blocks=None,
+    row_labels=None,
+    col_labels=None,
+    max_iter=50,
+    return_details=False,
+):
     """Find weighted mouse/human modules without thresholding or a fixed K.
 
     Uses weighted Barber modularity:
@@ -963,7 +1153,8 @@ def extract_dense_blocks_modularity(A, *, min_component_size=4, max_blocks=None,
     min_component_size positive entries, default 4. With no objective gain,
     return one active rectangle rather than invent subdivisions. With gain,
     retain modules whose contribution exceeds numerical tolerance. Modules
-    need not be filled rectangles: this detects excess mass, not binary density.
+    need not be filled rectangles: this detects excess mass, not binary
+    density.
     max_iter is a computational limit per BRIM phase, default 50; two starts
     are fixed. return_details adds memberships, optimizer traces/convergence,
     and the internal objective (not an additional GO ranking metric).
@@ -973,9 +1164,16 @@ def extract_dense_blocks_modularity(A, *, min_component_size=4, max_blocks=None,
     OT weights are not independent observations, so no p-value or SBM
     recovery theorem is asserted. No tuning or selection uses Q, S, or GO.
     """
-    return _extract_weighted_blocks(A, min_component_size=min_component_size, max_blocks=max_blocks,
-                                    row_labels=row_labels, col_labels=col_labels, max_iter=max_iter,
-                                    return_details=return_details, algorithm="brim")
+    return _extract_weighted_blocks(
+        A,
+        min_component_size=min_component_size,
+        max_blocks=max_blocks,
+        row_labels=row_labels,
+        col_labels=col_labels,
+        max_iter=max_iter,
+        return_details=return_details,
+        algorithm="brim",
+    )
 
 
 def extract_dense_blocks_hard_brim(A, **kwargs):
@@ -993,76 +1191,126 @@ def extract_dense_blocks_brim(A, **kwargs):
 
 
 def _validate_overlap_eta(eta):
-    if (isinstance(eta, (bool, np.bool_)) or not isinstance(eta, (int, float, np.integer, np.floating))
-            or not np.isfinite(eta) or not 0 < eta <= 1):
+    if (
+        isinstance(eta, (bool, np.bool_))
+        or not isinstance(eta, (int, float, np.integer, np.floating))
+        or not np.isfinite(eta)
+        or not 0 < eta <= 1
+    ):
         raise ValueError("eta must be a finite number in (0, 1] for soft_brim")
     return float(eta)
 
 
-def _expand_brim_cores(A, cores, eta, *, row_labels=None, col_labels=None, return_details=False,
-                       include_blocks=True):
+def _expand_brim_cores(
+    A,
+    cores,
+    eta,
+    *,
+    row_labels=None,
+    col_labels=None,
+    return_details=False,
+    include_blocks=True,
+):
     """Frozen-core candidates, accepted by positive uncovered-cell gain.
 
     Private shared implementation also lets score_ot_plan cache hard cores
     independently of eta. Core dictionaries need only original-axis indices.
     """
     eta = _validate_overlap_eta(eta)
-    original = A.tocsr().astype(float, copy=False) if sparse.issparse(A) else np.asarray(A, dtype=float)
+    original = (
+        A.tocsr().astype(float, copy=False)
+        if sparse.issparse(A)
+        else np.asarray(A, dtype=float)
+    )
     nr, nc = original.shape
     k = len(cores)
     names_r = np.arange(nr) if row_labels is None else np.asarray(row_labels)
     names_c = np.arange(nc) if col_labels is None else np.asarray(col_labels)
     if names_r.shape != (nr,) or names_c.shape != (nc,):
         raise ValueError("row_labels and col_labels must match A's axes")
+
     def indicators(axis, size):
-        indices = np.concatenate([np.asarray(b[axis], dtype=int) for b in cores]) if k else np.empty(0, int)
+        indices = (
+            np.concatenate([np.asarray(b[axis], dtype=int) for b in cores])
+            if k
+            else np.empty(0, int)
+        )
         groups = np.repeat(np.arange(k), [len(b[axis]) for b in cores])
-        return sparse.csr_matrix((np.ones(len(indices)), (indices, groups)), shape=(size, k))
-    core_r, core_c = indicators('row_indices', nr), indicators('col_indices', nc)
-    details = dict(detector='soft_brim', eta=eta, core_blocks=cores,
-                   row_memberships=core_r.astype(bool), col_memberships=core_c.astype(bool),
-                   expansion_rule='positive_uncovered_excess', proposed_additions=0,
-                   accepted_additions=0, rejected_nonpositive=0, rejected_redundant=0,
-                   expansion_gains=np.empty(0), accepted_moves=[],
-                   structural_objective_before=0., structural_objective_after=0.,
-                   structural_objective_trace=np.array([0.]))
+        return sparse.csr_matrix(
+            (np.ones(len(indices)), (indices, groups)), shape=(size, k)
+        )
+
+    core_r, core_c = (
+        indicators("row_indices", nr),
+        indicators("col_indices", nc),
+    )
+    details = dict(
+        detector="soft_brim",
+        eta=eta,
+        core_blocks=cores,
+        row_memberships=core_r.astype(bool),
+        col_memberships=core_c.astype(bool),
+        expansion_rule="positive_uncovered_excess",
+        proposed_additions=0,
+        accepted_additions=0,
+        rejected_nonpositive=0,
+        rejected_redundant=0,
+        expansion_gains=np.empty(0),
+        accepted_moves=[],
+        structural_objective_before=0.0,
+        structural_objective_after=0.0,
+        structural_objective_trace=np.array([0.0]),
+    )
     if not k:
         return ([], details) if return_details else []
     values = original.data if sparse.issparse(original) else original
     # Normalize before summing for the same extreme-mass stability as BRIM.
     weights = original / float(values.max())
     weights = weights / float(weights.sum())
-    if not sparse.issparse(weights) and np.count_nonzero(weights) < weights.size / 5:
+    if (
+        not sparse.issparse(weights)
+        and np.count_nonzero(weights) < weights.size / 5
+    ):
         weights = sparse.csr_matrix(weights)
     rs = np.asarray(weights.sum(axis=1)).ravel()
     cs = np.asarray(weights.sum(axis=0)).ravel()
+
     def secondary(w, own_strength, other_strength, opposite_cores, own_cores):
         observed = w @ opposite_cores
         if sparse.issparse(observed):
             observed = observed.toarray()
-        expected = own_strength[:, None] * np.asarray(opposite_cores.T @ other_strength).ravel()[None, :]
+        expected = (
+            own_strength[:, None]
+            * np.asarray(opposite_cores.T @ other_strength).ravel()[None, :]
+        )
         scores = observed - expected
         # Relative cancellation tolerance suppresses roundoff-only overlap
         # in rank-one transport; no mass or biological cutoff is introduced.
-        numerical = 64*np.finfo(float).eps
-        tolerance = numerical*(np.abs(observed)+np.abs(expected))
-        scores[scores <= tolerance] = 0.
-        threshold = eta*scores.max(axis=1, keepdims=True)
-        joined = (scores > 0) & (scores >= threshold*(1-numerical))
+        numerical = 64 * np.finfo(float).eps
+        tolerance = numerical * (np.abs(observed) + np.abs(expected))
+        scores[scores <= tolerance] = 0.0
+        threshold = eta * scores.max(axis=1, keepdims=True)
+        joined = (scores > 0) & (scores >= threshold * (1 - numerical))
         ri, ci = own_cores.nonzero()
         joined[ri, ci] = True  # Keep every original core membership.
         return joined, scores
+
     # Candidate eligibility uses ORIGINAL cores; acceptance below uses the
     # current cover, including earlier accepted additions on either species.
     proposed_r, affinity_r = secondary(weights, rs, cs, core_c, core_r)
     proposed_c, affinity_c = secondary(weights.T, cs, rs, core_r, core_c)
-    joined_r, joined_c = core_r.toarray().astype(bool), core_c.toarray().astype(bool)
+    joined_r, joined_c = (
+        core_r.toarray().astype(bool),
+        core_c.toarray().astype(bool),
+    )
     covered = np.zeros((nr, nc), dtype=bool)
-    initial_objective = 0.
+    initial_objective = 0.0
     for core in cores:
-        r, c = core['row_indices'], core['col_indices']
+        r, c = core["row_indices"], core["col_indices"]
         covered[np.ix_(r, c)] = True
-        initial_objective += float(weights[np.ix_(r, c)].sum()) - float(rs[r].sum()*cs[c].sum())
+        initial_objective += float(weights[np.ix_(r, c)].sum()) - float(
+            rs[r].sum() * cs[c].sum()
+        )
     # eta generates candidates against ORIGINAL cores only. A fixed order
     # prevents cascading eligibility. Recompute the true incremental gain
     # against CURRENT memberships and CURRENT covered cells before accepting.
@@ -1079,22 +1327,38 @@ def _expand_brim_cores(A, cores, eta, *, row_labels=None, col_labels=None, retur
     accepted, redundant, nonpositive = 0, 0, 0
     gains, moves = [], []
     for candidate in order:
-        axis, node, group = int(axes[candidate]), int(nodes[candidate]), int(groups[candidate])
+        axis, node, group = (
+            int(axes[candidate]),
+            int(nodes[candidate]),
+            int(groups[candidate]),
+        )
         if axis == 0:
             opposite = np.flatnonzero(joined_c[:, group] & ~covered[node, :])
             if opposite.size:
-                observed = float((csr[node, opposite] if csr is not None else weights[node, opposite]).sum())
-                expected = float(rs[node]*cs[opposite].sum())
+                observed = float(
+                    (
+                        csr[node, opposite]
+                        if csr is not None
+                        else weights[node, opposite]
+                    ).sum()
+                )
+                expected = float(rs[node] * cs[opposite].sum())
         else:
             opposite = np.flatnonzero(joined_r[:, group] & ~covered[:, node])
             if opposite.size:
-                observed = float((csc[opposite, node] if csc is not None else weights[opposite, node]).sum())
-                expected = float(cs[node]*rs[opposite].sum())
+                observed = float(
+                    (
+                        csc[opposite, node]
+                        if csc is not None
+                        else weights[opposite, node]
+                    ).sum()
+                )
+                expected = float(cs[node] * rs[opposite].sum())
         if not opposite.size:
             redundant += 1
             continue
         gain = observed - expected
-        tolerance = 64*np.finfo(float).eps*(abs(observed)+abs(expected))
+        tolerance = 64 * np.finfo(float).eps * (abs(observed) + abs(expected))
         if gain <= tolerance:
             nonpositive += 1
             continue
@@ -1109,16 +1373,25 @@ def _expand_brim_cores(A, cores, eta, *, row_labels=None, col_labels=None, retur
         if return_details:
             moves.append((axis, node, group))
     if return_details:
-        details.update(expansion_rule='positive_uncovered_excess',
-                       proposed_additions=len(order), accepted_additions=accepted,
-                       rejected_redundant=redundant, rejected_nonpositive=nonpositive,
-                       expansion_gains=np.asarray(gains), accepted_moves=moves,
-                       structural_objective_before=initial_objective,
-                       structural_objective_after=initial_objective+sum(gains),
-                       structural_objective_trace=initial_objective+np.r_[0., np.cumsum(gains)])
+        details.update(
+            expansion_rule="positive_uncovered_excess",
+            proposed_additions=len(order),
+            accepted_additions=accepted,
+            rejected_redundant=redundant,
+            rejected_nonpositive=nonpositive,
+            expansion_gains=np.asarray(gains),
+            accepted_moves=moves,
+            structural_objective_before=initial_objective,
+            structural_objective_after=initial_objective + sum(gains),
+            structural_objective_trace=initial_objective
+            + np.r_[0.0, np.cumsum(gains)],
+        )
     blocks, seen, retained = [], set(), []
     for group, core in enumerate(cores):
-        ri, ci = np.flatnonzero(joined_r[:, group]), np.flatnonzero(joined_c[:, group])
+        ri, ci = (
+            np.flatnonzero(joined_r[:, group]),
+            np.flatnonzero(joined_c[:, group]),
+        )
         identity = (tuple(ri), tuple(ci))
         if identity in seen:
             continue
@@ -1128,21 +1401,42 @@ def _expand_brim_cores(A, cores, eta, *, row_labels=None, col_labels=None, retur
             blocks.append(dict(row_indices=ri, col_indices=ci))
             continue
         sub = original[np.ix_(ri, ci)]
-        edges = sub.count_nonzero() if sparse.issparse(sub) else np.count_nonzero(sub)
-        blocks.append(dict(row_indices=ri, col_indices=ci,
-                           row_labels=names_r[ri], col_labels=names_c[ci],
-                           block=sub.toarray() if sparse.issparse(sub) else sub,
-                           size=int(edges), core_row_indices=np.asarray(core['row_indices']).copy(),
-                           core_col_indices=np.asarray(core['col_indices']).copy()))
+        edges = (
+            sub.count_nonzero()
+            if sparse.issparse(sub)
+            else np.count_nonzero(sub)
+        )
+        blocks.append(
+            dict(
+                row_indices=ri,
+                col_indices=ci,
+                row_labels=names_r[ri],
+                col_labels=names_c[ci],
+                block=sub.toarray() if sparse.issparse(sub) else sub,
+                size=int(edges),
+                core_row_indices=np.asarray(core["row_indices"]).copy(),
+                core_col_indices=np.asarray(core["col_indices"]).copy(),
+            )
+        )
     if return_details:
-        details.update(row_memberships=sparse.csr_matrix(joined_r[:, retained]),
-                       col_memberships=sparse.csr_matrix(joined_c[:, retained]))
+        details.update(
+            row_memberships=sparse.csr_matrix(joined_r[:, retained]),
+            col_memberships=sparse.csr_matrix(joined_c[:, retained]),
+        )
     return (blocks, details) if return_details else blocks
 
 
-def extract_dense_blocks_soft_brim(A, *, eta, min_component_size=4, max_blocks=None,
-                                  row_labels=None, col_labels=None, max_iter=50,
-                                  return_details=False):
+def extract_dense_blocks_soft_brim(
+    A,
+    *,
+    eta,
+    min_component_size=4,
+    max_blocks=None,
+    row_labels=None,
+    col_labels=None,
+    max_iter=50,
+    return_details=False,
+):
     """Hard BRIM cores with controlled overlapping, binary memberships.
 
     eta is required, finite, and in (0, 1]. For a mouse gene i and ORIGINAL
@@ -1181,18 +1475,38 @@ def extract_dense_blocks_soft_brim(A, *, eta, min_component_size=4, max_blocks=N
     """
     eta = _validate_overlap_eta(eta)
     cores, hard_details = extract_dense_blocks_hard_brim(
-        A, min_component_size=min_component_size, max_blocks=max_blocks,
-        row_labels=row_labels, col_labels=col_labels, max_iter=max_iter, return_details=True)
-    output = _expand_brim_cores(A, cores, eta, row_labels=row_labels, col_labels=col_labels,
-                              return_details=return_details)
+        A,
+        min_component_size=min_component_size,
+        max_blocks=max_blocks,
+        row_labels=row_labels,
+        col_labels=col_labels,
+        max_iter=max_iter,
+        return_details=True,
+    )
+    output = _expand_brim_cores(
+        A,
+        cores,
+        eta,
+        row_labels=row_labels,
+        col_labels=col_labels,
+        return_details=return_details,
+    )
     if return_details:
-        output[1]['hard_core_details'] = hard_details
+        output[1]["hard_core_details"] = hard_details
     return output
 
 
-def extract_dense_blocks_lpawb(A, *, min_component_size=4, max_blocks=None,
-                               row_labels=None, col_labels=None, seed=0,
-                               max_iter=None, return_details=False):
+def extract_dense_blocks_lpawb(
+    A,
+    *,
+    min_component_size=4,
+    max_blocks=None,
+    row_labels=None,
+    col_labels=None,
+    seed=0,
+    max_iter=None,
+    return_details=False,
+):
     """Beckett (2016) LPAwb+ for finite nonnegative weighted bipartite plans.
 
     Implements Algorithm 1 and Eq. 2.5: unique singleton labels on the
@@ -1222,28 +1536,66 @@ def extract_dense_blocks_lpawb(A, *, min_component_size=4, max_blocks=None,
     is used. Modularity has a resolution limit, disjoint memberships and
     local optima; more modular does not guarantee more biological relevance.
     """
-    return _extract_weighted_blocks(A, min_component_size=min_component_size, max_blocks=max_blocks,
-                                    row_labels=row_labels, col_labels=col_labels, max_iter=max_iter,
-                                    return_details=return_details, algorithm="lpawb", seed=seed)
+    return _extract_weighted_blocks(
+        A,
+        min_component_size=min_component_size,
+        max_blocks=max_blocks,
+        row_labels=row_labels,
+        col_labels=col_labels,
+        max_iter=max_iter,
+        return_details=return_details,
+        algorithm="lpawb",
+        seed=seed,
+    )
 
 
-def _extract_weighted_blocks(A, *, min_component_size, max_blocks, row_labels, col_labels,
-                             max_iter, return_details, algorithm, seed=0):
+def _extract_weighted_blocks(
+    A,
+    *,
+    min_component_size,
+    max_blocks,
+    row_labels,
+    col_labels,
+    max_iter,
+    return_details,
+    algorithm,
+    seed=0,
+):
     """Shared normalized transport preparation and membership extraction."""
-    if (not isinstance(min_component_size, (int, np.integer)) or isinstance(min_component_size, (bool, np.bool_))
-            or min_component_size < 1):
+    if (
+        not isinstance(min_component_size, (int, np.integer))
+        or isinstance(min_component_size, (bool, np.bool_))
+        or min_component_size < 1
+    ):
         raise ValueError("min_component_size must be a positive integer")
     if max_iter is None:
         if algorithm != "lpawb":
             raise ValueError("max_iter must be a positive integer")
-    elif not isinstance(max_iter, (int, np.integer)) or isinstance(max_iter, (bool, np.bool_)) or max_iter < 1:
-        raise ValueError("max_iter must be None (lpawb only) or a positive integer")
-    if not isinstance(seed, (int, np.integer)) or isinstance(seed, (bool, np.bool_)) or seed < 0:
+    elif (
+        not isinstance(max_iter, (int, np.integer))
+        or isinstance(max_iter, (bool, np.bool_))
+        or max_iter < 1
+    ):
+        raise ValueError(
+            "max_iter must be None (lpawb only) or a positive integer"
+        )
+    if (
+        not isinstance(seed, (int, np.integer))
+        or isinstance(seed, (bool, np.bool_))
+        or seed < 0
+    ):
         raise ValueError("seed must be a nonnegative integer")
-    if max_blocks is not None and (not isinstance(max_blocks, (int, np.integer))
-                                  or isinstance(max_blocks, (bool, np.bool_)) or max_blocks < 1):
+    if max_blocks is not None and (
+        not isinstance(max_blocks, (int, np.integer))
+        or isinstance(max_blocks, (bool, np.bool_))
+        or max_blocks < 1
+    ):
         raise ValueError("max_blocks must be None or a positive integer")
-    original = A.tocsr(copy=True).astype(float) if sparse.issparse(A) else np.asarray(A, dtype=float)
+    original = (
+        A.tocsr(copy=True).astype(float)
+        if sparse.issparse(A)
+        else np.asarray(A, dtype=float)
+    )
     if original.ndim != 2:
         raise ValueError("A must be two-dimensional")
     values = original.data if sparse.issparse(original) else original
@@ -1254,10 +1606,15 @@ def _extract_weighted_blocks(A, *, min_component_size, max_blocks, row_labels, c
     names_c = np.arange(nc) if col_labels is None else np.asarray(col_labels)
     if names_r.shape != (nr,) or names_c.shape != (nc,):
         raise ValueError("row_labels and col_labels must match A's axes")
-    details = dict(row_cluster_labels=np.full(nr, -1, dtype=int),
-                   col_cluster_labels=np.full(nc, -1, dtype=int), weighted_modularity=0.,
-                   optimizer_traces=[], converged=True, detector="lpawb" if algorithm == "lpawb" else "weighted_brim")
-    maximum = float(values.max()) if values.size else 0.
+    details = dict(
+        row_cluster_labels=np.full(nr, -1, dtype=int),
+        col_cluster_labels=np.full(nc, -1, dtype=int),
+        weighted_modularity=0.0,
+        optimizer_traces=[],
+        converged=True,
+        detector="lpawb" if algorithm == "lpawb" else "weighted_brim",
+    )
+    maximum = float(values.max()) if values.size else 0.0
     if maximum <= 0:
         return ([], details) if return_details else []
     # Normalize before summing: stable even for tiny/very large OT masses.
@@ -1276,30 +1633,47 @@ def _extract_weighted_blocks(A, *, min_component_size, max_blocks, row_labels, c
     if algorithm == "lpawb":
         # Domain-separated stream leaves the GO-permutation seed sequence
         # unchanged and makes detector output independent of replication R.
-        rng = np.random.default_rng(np.random.SeedSequence([int(seed), 0x4C5041]))
-        objective, rows, cols, trace, converged, phases, gains = _lpawb_optimize(weights, rs, cs, rng, max_iter)
-        details.update(optimizer_traces=[trace], phase_iterations=phases, merge_gains=gains, seed=int(seed))
+        rng = np.random.default_rng(
+            np.random.SeedSequence([int(seed), 0x4C5041])
+        )
+        objective, rows, cols, trace, converged, phases, gains = (
+            _lpawb_optimize(weights, rs, cs, rng, max_iter)
+        )
+        details.update(
+            optimizer_traces=[trace],
+            phase_iterations=phases,
+            merge_gains=gains,
+            seed=int(seed),
+        )
         best = objective, rows, cols, converged
     else:
         best = None
         for transpose in (False, True):
             w, r, c = (weights.T, cs, rs) if transpose else (weights, rs, cs)
-            rows, cols, trace, converged = _brim_optimize(w, r, c, np.arange(len(c)), max_iter)
+            rows, cols, trace, converged = _brim_optimize(
+                w, r, c, np.arange(len(c)), max_iter
+            )
             rows, cols, merges = _merge_modularity_groups(w, r, c, rows, cols)
             if merges:
-                rows, cols, refinement, done = _brim_optimize(w, r, c, cols, max_iter, rows)
+                rows, cols, refinement, done = _brim_optimize(
+                    w, r, c, cols, max_iter, rows
+                )
                 trace += refinement
                 converged &= done
             details["optimizer_traces"].append(trace)
-            candidate = (trace[-1], cols, rows, converged) if transpose else (trace[-1], rows, cols, converged)
+            candidate = (
+                (trace[-1], cols, rows, converged)
+                if transpose
+                else (trace[-1], rows, cols, converged)
+            )
             if best is None or candidate[0] > best[0] + 1e-12:
                 best = candidate
     objective, rows, cols, converged = best
     if objective <= 1e-12:
         rows, cols = np.zeros(len(rs), dtype=int), np.zeros(len(cs), dtype=int)
-        objective = 0.
+        objective = 0.0
     _, merged_labels = np.unique(np.r_[rows, cols], return_inverse=True)
-    rows, cols = merged_labels[:len(rs)], merged_labels[len(rs):]
+    rows, cols = merged_labels[: len(rs)], merged_labels[len(rs) :]
     details.update(weighted_modularity=float(objective), converged=converged)
     details["row_cluster_labels"][active_r] = rows
     details["col_cluster_labels"][active_c] = cols
@@ -1310,21 +1684,41 @@ def _extract_weighted_blocks(A, *, min_component_size, max_blocks, row_labels, c
         edges = sub.nnz if sparse.issparse(sub) else np.count_nonzero(sub)
         mass = float(sub.sum())
         contribution = mass - float(rs[r].sum() * cs[c].sum())
-        if edges < min_component_size or (objective > 0 and contribution <= 1e-12):
+        if edges < min_component_size or (
+            objective > 0 and contribution <= 1e-12
+        ):
             continue
         ri, ci = active_r[r], active_c[c]
         block = original[np.ix_(ri, ci)]
         if sparse.issparse(block):
             block = block.toarray()
-        candidates.append((mass, {"row_indices": ri, "col_indices": ci,
-                                  "row_labels": names_r[ri], "col_labels": names_c[ci],
-                                  "block": block, "size": int(edges)}))
-    candidates.sort(key=lambda item: (-item[0], tuple(item[1]["row_indices"]), tuple(item[1]["col_indices"])))
+        candidates.append(
+            (
+                mass,
+                {
+                    "row_indices": ri,
+                    "col_indices": ci,
+                    "row_labels": names_r[ri],
+                    "col_labels": names_c[ci],
+                    "block": block,
+                    "size": int(edges),
+                },
+            )
+        )
+    candidates.sort(
+        key=lambda item: (
+            -item[0],
+            tuple(item[1]["row_indices"]),
+            tuple(item[1]["col_indices"]),
+        )
+    )
     blocks = [item[1] for item in candidates[:max_blocks]]
     return (blocks, details) if return_details else blocks
 
 
-def extract_dense_blocks_adaptive(A, n_clusters=10, activity_threshold=None, **kwargs):
+def extract_dense_blocks_adaptive(
+    A, n_clusters=10, activity_threshold=None, **kwargs
+):
     """Detect separated dense support components, otherwise use coclustering.
 
     This optional detector uses only the transport, never GO annotations.
@@ -1349,19 +1743,30 @@ def extract_dense_blocks_adaptive(A, n_clusters=10, activity_threshold=None, **k
     magnitude = np.abs(A)
     if activity_threshold is None:
         positive = magnitude[magnitude > 0]
-        activity_threshold = np.nextafter(float(np.median(positive)), -np.inf) if positive.size else 0.
-    fallback = dict(n_clusters=n_clusters, activity_threshold=activity_threshold, **kwargs)
-    if (not kwargs.get("use_binary_activity", True)
-            or kwargs.get("min_density_ratio") is not None or kwargs.get("return_details", False)):
+        activity_threshold = (
+            np.nextafter(float(np.median(positive)), -np.inf)
+            if positive.size
+            else 0.0
+        )
+    fallback = dict(
+        n_clusters=n_clusters, activity_threshold=activity_threshold, **kwargs
+    )
+    if (
+        not kwargs.get("use_binary_activity", True)
+        or kwargs.get("min_density_ratio") is not None
+        or kwargs.get("return_details", False)
+    ):
         return extract_dense_blocks_coclustered(A, **fallback)
     support = sparse.csr_matrix(magnitude > activity_threshold)
     graph = sparse.bmat([[None, support], [support.T, None]], format="csr")
     _, labels = connected_components(graph, directed=False)
-    rows = labels[:A.shape[0]]
-    cols = labels[A.shape[0]:]
+    rows = labels[: A.shape[0]]
+    cols = labels[A.shape[0] :]
     row_degree = np.diff(support.indptr)
     col_degree = np.asarray(support.sum(axis=0)).ravel()
-    groups = np.intersect1d(np.unique(rows[row_degree > 0]), np.unique(cols[col_degree > 0]))
+    groups = np.intersect1d(
+        np.unique(rows[row_degree > 0]), np.unique(cols[col_degree > 0])
+    )
     minimum = kwargs.get("min_component_size", 4)
     candidates = []
     for group in groups:
@@ -1377,33 +1782,55 @@ def extract_dense_blocks_adaptive(A, n_clusters=10, activity_threshold=None, **k
         return extract_dense_blocks_coclustered(A, **fallback)
     candidates.sort(key=lambda item: item[0], reverse=True)
     if kwargs.get("max_blocks") is not None:
-        candidates = candidates[:kwargs["max_blocks"]]
+        candidates = candidates[: kwargs["max_blocks"]]
     total = float(magnitude.sum())
-    row_labels = np.arange(A.shape[0]) if kwargs.get("row_labels") is None else np.asarray(kwargs["row_labels"])
-    col_labels = np.arange(A.shape[1]) if kwargs.get("col_labels") is None else np.asarray(kwargs["col_labels"])
+    row_labels = (
+        np.arange(A.shape[0])
+        if kwargs.get("row_labels") is None
+        else np.asarray(kwargs["row_labels"])
+    )
+    col_labels = (
+        np.arange(A.shape[1])
+        if kwargs.get("col_labels") is None
+        else np.asarray(kwargs["col_labels"])
+    )
     blocks = []
     for edges, r, c in candidates:
         block = A[np.ix_(r, c)]
         inside = float(np.abs(block).sum())
         outside_size = A.size - block.size
-        outside_mean = max(0., total - inside) / outside_size + 1e-12 if outside_size else np.nan
-        blocks.append({"row_indices": r, "col_indices": c,
-                       "row_labels": row_labels[r], "col_labels": col_labels[c],
-                       "block": block, "size": edges, "total_density": float(edges),
-                       "density_ratio": float(inside / block.size / outside_mean)})
+        outside_mean = (
+            max(0.0, total - inside) / outside_size + 1e-12
+            if outside_size
+            else np.nan
+        )
+        blocks.append(
+            {
+                "row_indices": r,
+                "col_indices": c,
+                "row_labels": row_labels[r],
+                "col_labels": col_labels[c],
+                "block": block,
+                "size": edges,
+                "total_density": float(edges),
+                "density_ratio": float(inside / block.size / outside_mean),
+            }
+        )
     return blocks
 
 
 if __name__ == "__main__":
     rng = np.random.default_rng(0)
     A = rng.random((300, 1000)) * 0.05
-    A[20:140, 10:230] += rng.random((120, 220)) * 0.8   # block 1 (strong)
+    A[20:140, 10:230] += rng.random((120, 220)) * 0.8  # block 1 (strong)
     A[180:260, 700:950] += rng.random((80, 250)) * 0.5  # block 2 (weaker)
 
     blocks = extract_dense_blocks(A, mad_multiplier=4.0)
     for i, b in enumerate(blocks, 1):
-        print(f"Block {i}: bbox={b['bbox']}  size={b['size']}  "
-              f"density_ratio={b['density_ratio']:.2f}x")
+        print(
+            f"Block {i}: bbox={b['bbox']}  size={b['size']}  "
+            f"density_ratio={b['density_ratio']:.2f}x"
+        )
 
     # Same idea, but with rows/columns scattered (not contiguous) beforehand,
     # recovered by co-clustering FIRST, then extracting.
@@ -1418,8 +1845,14 @@ if __name__ == "__main__":
         B, n_clusters=2, mad_multiplier=4.0, min_density_ratio=1.5
     )
     for i, b in enumerate(coclustered_blocks, 1):
-        row_overlap = len(set(b["row_indices"]) & set(row_block)) / len(set(b["row_indices"]) | set(row_block))
-        col_overlap = len(set(b["col_indices"]) & set(col_block)) / len(set(b["col_indices"]) | set(col_block))
-        print(f"Block {i}: {len(b['row_indices'])}x{len(b['col_indices'])}  "
-              f"density_ratio={b['density_ratio']:.2f}x  "
-              f"row_jaccard={row_overlap:.2f}  col_jaccard={col_overlap:.2f}")
+        row_overlap = len(set(b["row_indices"]) & set(row_block)) / len(
+            set(b["row_indices"]) | set(row_block)
+        )
+        col_overlap = len(set(b["col_indices"]) & set(col_block)) / len(
+            set(b["col_indices"]) | set(col_block)
+        )
+        print(
+            f"Block {i}: {len(b['row_indices'])}x{len(b['col_indices'])}  "
+            f"density_ratio={b['density_ratio']:.2f}x  "
+            f"row_jaccard={row_overlap:.2f}  col_jaccard={col_overlap:.2f}"
+        )

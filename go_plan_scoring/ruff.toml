@@ -1,0 +1,14 @@
+# Style configuration for these modules (run `ruff format` and `ruff check`).
+line-length = 79
+
+[lint]
+select = ["E", "W", "F", "N"]
+# E203: PEP 8 itself allows spaces around a slice colon, e.g.
+# ``ham[lower + offset : upper + offset]``; the formatter emits that form.
+ignore = ["E203"]
+
+[lint.pep8-naming]
+# Mathematical names kept for API compatibility: ``A`` is the transport or
+# activity matrix, ``R`` the number of shuffled draws, ``Z`` a standardised
+# matrix. Renaming public arguments would break keyword callers.
+ignore-names = ["A", "R", "Z", "A_reordered"]
